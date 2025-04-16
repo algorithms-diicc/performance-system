@@ -1,0 +1,14 @@
+.vscode
+token.txt
+Server/webapp/static/*
+Server/webapp/status/*
+Server/webapp/template/*
+Server/webapp/test/*
+Server/input/english.50MB
+Server/input/numerical_input.txt
+Server/input/numerical_input_same.txt
+Server/input/numerical_input_semi_sorted.txt
+Server/utils/static
+startup.sh
+*.csv.tmp
+Server/utils/zips/*

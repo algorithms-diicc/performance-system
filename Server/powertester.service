@@ -1,0 +1,11 @@
+[Unit]
+Description=Gunicorn instance to serve powertester
+After=network.target
+[Service]
+User=dcaripan
+Group=www-data
+WorkingDirectory=/home/alumnos/dcaripan/Personal/powertester
+Environment="PATH=/home/alumnos/dcaripan/anaconda3/envs/memoria/bin"
+ExecStart=/home/alumnos/dcaripan/anaconda3/envs/memoria/bin/gunicorn --workers 3 --bind unix:powertester.sock -m 007 wsgi:app
+[Install]
+WantedBy=multi-user.target

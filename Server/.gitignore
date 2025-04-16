@@ -1,0 +1,7 @@
+
+#testing folder
+/test/*
+/__pycache__
+/ejemplo.txt
+/static/
+*.csvS

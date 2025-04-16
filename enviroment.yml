@@ -1,0 +1,11 @@
+name: env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.9
+  - flask
+  - flask-cors
+  - pandas
+  - matplotlib
+  - numpy

@@ -1,0 +1,48 @@
+
+  .container{
+    padding:1em 1em;
+  }
+  .buttonv {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    cursor: pointer;
+  }
+
+  .buttonv2 {
+    width: 100%;          /* Make button full width */
+    text-align: center;   /* Center text inside the button */
+    /* Additional styling */
+    padding: 10px 10px;      /* Example padding, adjust as needed */
+    border: none;         /* Remove borders */
+    cursor: pointer;      /* Change cursor to hand when hovering */
+    background-color: #007bff;  /* Example background color, adjust as needed */
+    color: white;         /* Text color */
+    transition: background-color 0.3s;  /* Smooth background color transition */
+}
+  
+  .buttonv:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+  }
+  
+.buttonv {
+    border-radius: 20px; /* Rounded buttons */
+  }
+
+textarea#code, textarea#status {
+  max-width: 100%; /* ensures it doesn't grow beyond its parent */
+  box-sizing: border-box; /* includes padding and borders in width */
+  resize: vertical; /* allows only vertical resizing, optional */
+}
+
+.scrollable-area {
+  max-height: 270px; /* Adjust this value as needed */
+  overflow-y: auto;    /* Enables vertical scrolling if content overflows */
+}
+
+
+
+  
+  
