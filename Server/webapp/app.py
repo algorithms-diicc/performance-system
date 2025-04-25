@@ -134,6 +134,7 @@ def cap_code():
                 name = unique_id + tag
 
                 cpp_file_dir = os.path.join(TEST_DIR, name + ".cpp")
+                print(cpp_file_dir)
                 outputfile = os.path.join(TEST_DIR, name + ".out")
                 statusfile = os.path.join(STATUS_DIR, name)
 
