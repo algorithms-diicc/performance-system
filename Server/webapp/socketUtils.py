@@ -12,6 +12,7 @@ from statistics import mean
 import sys
 import numpy as np
 import os 
+import shutil
 
 # === 📁 RUTAS ABSOLUTAS SEGURAS ===
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # carpeta Server/
@@ -102,10 +103,10 @@ def receive_data(conn, ident):
             f.write(payloadDict["results"])
         print(f"[{ident}] Resultado guardado en: {result_path}")
 
-def slave_serve(file_dir, name, cmd, input_size):
+def slave_serve(file_dir, name, cmd, input_size, samples):
     port = 50000
     port2 = 60000
-    host = '127.0.0.1'
+    host = '152.74.52.200'
     print(file_dir, name, cmd)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -123,7 +124,7 @@ def slave_serve(file_dir, name, cmd, input_size):
             with open(file_dir, 'r') as f:
                 code = f.read()
 
-            m = {"name": name, "cmd": cmd, "code": code, "input_size": input_size}
+            m = {"name": name, "cmd": cmd, "code": code, "input_size": input_size, "samples": samples}
             print('m: ', m)
             json_string = json.dumps(m)
             print('json_string: ', json_string)

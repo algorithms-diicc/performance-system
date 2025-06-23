@@ -25,18 +25,18 @@ class App extends Component {
   }
 
   componentDidMount() {
-    document.title = "Power-tester";
+    document.title = "Performace System";
   }
 
   render() {
     return (
       <div>
         <BrowserRouter>
-        <Navbar tasksState={this.state.tasksState} />
+          <Navbar tasksState={this.state.tasksState} />
           <Routes>
             <Route path="/taskpage" element={<TaskPage onTaskToggle={this.handleTaskToggle} tasksState={this.state.tasksState} />} />
             {/* <Route path="/" element={<RenderForm tasksState={this.state.tasksState} />} /> */}
-            <Route path="/" element={<RenderForm/>} />
+            <Route path="/" element={<RenderForm />} />
             <Route path="/compare" element={<RenderDoubleForm tasksState={this.state.tasksState} />} />
             <Route path="/code/:codename" element={<RenderImage />} />
           </Routes>

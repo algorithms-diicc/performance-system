@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
-import getUrl from '../common/Constants.js';
+import getUrl, { serverURL } from '../common/Constants.js';
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./RenderForm.css";
 
@@ -19,7 +19,7 @@ function RenderDoubleForm({ tasksState }) {
   useEffect(() => {
     document.title = "Power Tester";
   }, []);
-  
+
   function handleSubmit(event) {
     alert("¡Enviado! Espere por el estado del código");
     event.preventDefault();
@@ -54,7 +54,7 @@ function RenderDoubleForm({ tasksState }) {
     setCode(event.target.value);
     setCheck(true);
   }
-  
+
   function handleChangeCode2(event) {
     setCode2(event.target.value);
     setCheck(true);
@@ -75,7 +75,7 @@ function RenderDoubleForm({ tasksState }) {
       reader.readAsText(file);
     }
   }
-  
+
   function handleFileChange2(event) {
     const file = event.target.files[0];
     if (file) {
@@ -87,14 +87,14 @@ function RenderDoubleForm({ tasksState }) {
 
   function getStatusfromServer(match) {
     axios
-      .get("http://127.0.0.1:5000/checkstatus/" + match)
+      .get(serverURL + "checkstatus/" + match)
       .then((response) => {
         if (response.data === "IN QUEUE") setStatus("En cola");
         else if (response.data === "DONE") setStatus("Listo");
         else setStatus(response.data);
         flag = response.data;
       })
-      .catch((response) => {});
+      .catch((response) => { });
     var tmp = flag.split(":");
     console.log(tmp, flag);
     if (flag === "DONE" || tmp[0] === "ERROR") {
@@ -114,10 +114,10 @@ function RenderDoubleForm({ tasksState }) {
                   <label htmlFor="title">Ingrese un nombre al código (para identificarlo en ventanas o pestañas)</label>
                   <input type="text" value={name} onChange={handleChange2} />
                   <div>
-                  <label htmlFor="code">Inserte primer código </label>
+                    <label htmlFor="code">Inserte primer código </label>
                   </div>
                   <textarea
-                  className="form-control"
+                    className="form-control"
                     type="text"
                     id="code"
                     name="code"
@@ -135,13 +135,13 @@ function RenderDoubleForm({ tasksState }) {
             <div className="col-6">
               <div className="card border-0 shadow">
                 <div className="card-body">
-                <label htmlFor="title">Ingrese un nombre al código (para identificarlo en ventanas o pestañas)</label>
+                  <label htmlFor="title">Ingrese un nombre al código (para identificarlo en ventanas o pestañas)</label>
                   <input type="text" value={name} onChange={handleChange2} />
                   <div>
-                  <label htmlFor="code2">Inserte segundo código </label>
+                    <label htmlFor="code2">Inserte segundo código </label>
                   </div>
                   <textarea
-                  className="form-control"
+                    className="form-control"
                     type="text"
                     id="code2"
                     name="code2"
@@ -156,33 +156,33 @@ function RenderDoubleForm({ tasksState }) {
               </div>
             </div>
             <div>
-            <input type="submit" className="buttonv2" value="Subir" />
+              <input type="submit" className="buttonv2" value="Subir" />
             </div>
             <div className="d-flex justify-content-center mt-3"> {/* Added this wrapping div */}
-    <div className="col-6">
-        <div className="card border-0 shadow">
-            <div className="card-body">
-                <h2> Estado del Código </h2>
-                <textarea
-                    type="text"
-                    id="status"
-                    value={status}
-                    disabled
-                    rows="15"
-                    cols="78"
-                ></textarea>
-                <button
-                    type="button"
-                    className="buttonv"
-                    onClick={() => navigate("/code/" + codename, { replace: false, state: { name: name } })}
-                    disabled={check}
-                >
-                    Ver estadísticas
-                </button>
-            </div>
-        </div>
-    </div>
-</div> {/* Closing the wrapping div */}
+              <div className="col-6">
+                <div className="card border-0 shadow">
+                  <div className="card-body">
+                    <h2> Estado del Código </h2>
+                    <textarea
+                      type="text"
+                      id="status"
+                      value={status}
+                      disabled
+                      rows="15"
+                      cols="78"
+                    ></textarea>
+                    <button
+                      type="button"
+                      className="buttonv"
+                      onClick={() => navigate("/code/" + codename, { replace: false, state: { name: name } })}
+                      disabled={check}
+                    >
+                      Ver estadísticas
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div> {/* Closing the wrapping div */}
           </div>
         </div>
       </form>

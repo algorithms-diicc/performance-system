@@ -24,7 +24,7 @@ SAMPLES=30
 for((j=0; j<SAMPLES; j++))
 do
     #echo "loop ${j}"
-    sudo /usr/lib/linux-tools/6.8.0-57-generic/perf stat -a -x';' -o ${outfile}.tmp -e \
+    sudo /usr/lib/linux-tools/6.8.0-59-generic/perf stat -a -x';' -o ${outfile}.tmp -e \
                 cpu-clock,task-clock,page-faults,major-faults,context-switches,cpu-migrations,duration_time ./${executable} >> ${outfile} #<- agregar soporte de argumentos
     cut -d';' -f1 ${outfile}.tmp | sed '/#/d' | sed '/^$/d' | paste -s | sed 's/,/./g' | sed 's/\s\+/,/g' >> ${outfile}
 done

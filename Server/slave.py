@@ -11,14 +11,14 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 TEST_DIR = os.path.join(BASE_DIR, 'test')
 STATUS_DIR = os.path.join(BASE_DIR, 'status')
 RESULTS_DIR = os.path.join(BASE_DIR, 'results')
-
+DEFAULT_TIMEOUT = 2000  # segundos
 # Crea los directorios si no existen
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(TEST_DIR, exist_ok=True)
 os.makedirs(STATUS_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
 
-HOST = '127.0.0.1'  # The server's hostname or IP address
+HOST = '152.74.52.200'  # The server's hostname or IP address
 PORT = 50000       # The port used by the server
 
 def connect_to_server(host, port):
@@ -26,11 +26,12 @@ def connect_to_server(host, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     while True:
         try:
+            print(f"[🌐 Intentando conectar a {host}:{port}]")
             s.connect((host, port))
-            print("Connected to the server")
+            print("✅ Connected to the server")
             return s
         except ConnectionRefusedError:
-            print('Waiting for connection')
+            print('[🕐 Esperando conexión con el servidor]')
             time.sleep(5)
 
 def receive_payload(s):
@@ -77,20 +78,23 @@ def compile_and_execute(name):
     try:
         exec_process = sub.run([
             "bash", "measurescript2.sh", "./a.out"
-        ], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True, timeout=300)
+        ], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True, timeout=DEFAULT_TIMEOUT)
 
         if exec_process.returncode != 0:
             print(f"[❌ Error en ejecución] {exec_process.stderr}")
             return None
 
-        print(f"[📊 Resultado parcial] {exec_process.stdout[:200]}... (recortado)\n")
-        return exec_process.stdout.strip()
+        # Solo tomar la primera línea (el nombre del archivo CSV generado)
+        output_lines = exec_process.stdout.strip().splitlines()
+        csv_filename = output_lines[0] if output_lines else None
+        print(f"[📊 Resultado parcial] {csv_filename}")
+        return csv_filename
 
     except sub.TimeoutExpired:
         print("[⏰ Timeout] La ejecución excedió el límite de tiempo")
         return None
 
-def cae_lcs(name, input_size):
+def cae_lcs(name, input_size, samples):
     """
     Compila y ejecuta el código para tareas tipo LCS (Text Input).
     Utiliza como entrada el archivo input/english.50MB y genera un .csv con métricas.
@@ -115,14 +119,14 @@ def cae_lcs(name, input_size):
         print(f"[❌ Error de compilación] {compile_result.stderr}")
         return None
 
-    print(f"[🚀 LCS] Ejecutando script de medición con input {input_file}")
+    print(f"[🚀 LCS] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
     try:
         exec_result = sub.run(
-            ["bash", "measurescript4.sh", executable, input_file, str(input_size), csv_output],
+            ["bash", "measurescript4.sh", executable, input_file, str(input_size), samples, csv_output],
             stdout=sub.PIPE,
             stderr=sub.PIPE,
             universal_newlines=True,
-            timeout=300
+            timeout=DEFAULT_TIMEOUT
         )
         if exec_result.returncode != 0:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
@@ -141,7 +145,7 @@ def cae_lcs(name, input_size):
 
 
 
-def cae_camm(name, input_size, task):
+def cae_camm(name, input_size, samples, task):
     """
     Compila y ejecuta el código para tareas tipo CAMM (Numerical Input).
     Utiliza diferentes archivos de entrada según la subvariante (CAMMS, CAMMSO, CAMMR, etc).
@@ -172,14 +176,14 @@ def cae_camm(name, input_size, task):
         print(f"[❌ Error de compilación] {compile_result.stderr}")
         return None
 
-    print(f"[🚀 CAMM] Ejecutando script de medición con input {input_file}")
+    print(f"[🚀 CAMM] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
     try:
         exec_result = sub.run(
-            ["bash", "measurescript3.sh", executable, input_file, str(input_size), csv_output],
+            ["bash", "measurescript3.sh", executable, input_file, str(input_size), samples, csv_output],
             stdout=sub.PIPE,
             stderr=sub.PIPE,
             universal_newlines=True,
-            timeout=300
+            timeout=DEFAULT_TIMEOUT
         )
         if exec_result.returncode != 0:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
@@ -197,7 +201,7 @@ def cae_camm(name, input_size, task):
     return csv_output
 
 
-def cae_size(name, input_size):
+def cae_size(name, input_size, samples):
     """
     Compila y ejecuta el código para tareas tipo SIZE (Input Size).
     Este test ejecuta el algoritmo pasando como argumento un entero
@@ -221,14 +225,14 @@ def cae_size(name, input_size):
         print(f"[❌ Error de compilación] {compile_result.stderr}")
         return None
 
-    print(f"[🚀 SIZE] Ejecutando script de medición con input size {input_size}")
+    print(f"[🚀 SIZE] Ejecutando script de medición con input size {input_size} y {samples} repeticiones por cada incremento")
     try:
         exec_result = sub.run(
-            ["bash", "measurescript5.sh", executable, str(input_size), csv_output],
+            ["bash", "measurescript5.sh", executable, str(input_size), samples, csv_output],
             stdout=sub.PIPE,
             stderr=sub.PIPE,
             universal_newlines=True,
-            timeout=300
+            timeout=DEFAULT_TIMEOUT
         )
         if exec_result.returncode != 0:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
@@ -252,7 +256,7 @@ def cae_size(name, input_size):
     #    f.write(aux.stdout.strip())
     #return result_file
 
-def send_results(host, port, name_request, result_name):
+def send_results(host, port2, name_request, result_name):
     """
     Envía el archivo de resultados generado (.csv) al servidor maestro a través de un socket.
     host: IP del servidor que escucha los resultados (normalmente 127.0.0.1).
@@ -262,8 +266,8 @@ def send_results(host, port, name_request, result_name):
     """
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-            s2.connect((host, port))
-            print(f"[📤 Enviando resultados] Archivo: {result_name} => {host}:{port}")
+            s2.connect((host, port2))
+            print(f"[📤 Enviando resultados] Archivo: {result_name} => {host}:{port2}")
             with open(result_name, 'r') as f:
                 results = f.read()
 
@@ -296,6 +300,32 @@ def cleanup_files(*files):
     except Exception as e:
         print(f"[❌ Cleanup error] No se pudieron eliminar archivos: {e}")
 
+def wait_until_recent_in_queue():
+    """
+    Espera hasta detectar al menos un archivo en el servidor con:
+    - Contenido igual a 'IN QUEUE'
+    - Modificado en los últimos 5 minutos
+
+    Esto evita conectar cuando hay archivos viejos o tareas ya procesadas.
+    """
+    print("[⏳ Esperando tareas recientes con estado IN QUEUE...]")
+    while True:
+        try:
+            cmd = [
+                "ssh", "jose@performance.inf.udec.cl",
+                "find /home/jose/performance-system/Server/status -type f -mmin -5 -exec grep -l 'IN QUEUE' {} +"
+            ]
+            result = sub.run(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
+            output = result.stdout.decode().strip()
+
+            if output:
+                print("[✔️ Tarea IN QUEUE reciente detectada. Conectando al servidor...]")
+                break
+            else:
+                print("[🔁 Nada nuevo. Revisando de nuevo en 10 segundos...]")
+        except Exception as e:
+            print(f"[⚠️ Error verificando IN QUEUE recientes]: {e}")
+        time.sleep(10)
 
     
 
@@ -309,34 +339,38 @@ def main():
     - Envía los resultados y elimina archivos temporales.
     """
     while True:
+        wait_until_recent_in_queue()
         with connect_to_server(HOST, PORT) as s:
             payload_dict = receive_payload(s)
 
         print(f"[📦 Payload recibido]\n{json.dumps(payload_dict, indent=2)}")
-
+        print(f"[🔧 Configuración] Timeout por defecto: {DEFAULT_TIMEOUT} segundos")
         # Guardar código en archivo local
         filename = write_code_to_file(payload_dict["name"], payload_dict["code"])
+        print(f"DEBUG filename: '{filename}'")
         input_size = payload_dict.get("input_size", 10000)  # Valor por defecto: 10000
+        samples = payload_dict.get("samples", "30")
         result_name = None
 
         # Determinar tipo de test según nombre del archivo
         if "LCS" in payload_dict["name"]:
             print(f"[🧩 Test detectado: LCS] Ejecutando cae_lcs")
-            result_name = cae_lcs(filename, input_size)
+            result_name = cae_lcs(filename, input_size, samples)
 
         elif "SIZE" in payload_dict["name"]:
             print(f"[🧩 Test detectado: SIZE] Ejecutando cae_size")
-            result_name = cae_size(filename, input_size)
+            result_name = cae_size(filename, input_size, samples)
 
         elif "CAMM" in payload_dict["name"]:
             print(f"[🧩 Test detectado: CAMM] Ejecutando cae_camm")
-            result_name = cae_camm(filename, input_size, payload_dict["name"])
+            result_name = cae_camm(filename, input_size, samples, payload_dict["name"])
 
         else:
             print(f"[🧩 Test detectado: NONE] Ejecutando test por defecto")
             result_name = compile_and_execute(filename)
 
         # Eliminar archivos temporales: fuente .cpp y ejecutable
+        filename = filename.replace(" ", "")
         cleanup_files(filename, 'a.out')
 
         # Si hay resultados, los enviamos y eliminamos

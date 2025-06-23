@@ -20,6 +20,7 @@ function RenderForm() {
   const [name, setName] = useState("test");
   const [fileList, setFileList] = useState();
   const [inputSize, setInputSize] = useState(10000);
+  const [samples, setSamples] = useState(30); 
   var flag = "";
   var intervalID = 0;
   let navigate = useNavigate();
@@ -27,7 +28,7 @@ function RenderForm() {
   const [selectedTaskType, setselectedTaskType] = useState('');
 
   useEffect(() => {
-    document.title = "Power Tester";
+    document.title = "Performance System";
     console.log("Selected Task Type:", selectedTaskType);
   }, [selectedTaskType, fileList]);
 
@@ -40,11 +41,11 @@ function RenderForm() {
     console.log("Nuevo valor:", newValue);
 
     if (!isNaN(newValue) && newValue.trim() !== '') {
-        setInputSize(newValue);
+      setInputSize(newValue);
     } else {
-        console.log("El valor introducido no es numérico");
+      console.log("El valor introducido no es numérico");
     }
-};
+  };
 
   function handleFileChange(event) {
     const uploadedFile = event.target.files[0];
@@ -66,6 +67,7 @@ function RenderForm() {
     const bodyFormData = new FormData();
     bodyFormData.append("file", file, file.name);
     bodyFormData.append("input_size", inputSize);
+    bodyFormData.append("samples", samples);
     setStatus("Esperando respuesta");
     console.log(bodyFormData);
     if (selectedTaskType) {
@@ -186,37 +188,47 @@ function RenderForm() {
                               {selectedTaskType !== task.id &&
                                 ""}
                             </label>
-                            
+
                           </div>
-                          {(selectedTaskType === task.id || (selectedTaskType.includes("camm") && task.id.includes("camm")) )&&  (
+                          {(selectedTaskType === task.id || (selectedTaskType.includes("camm") && task.id.includes("camm"))) && (
                             <div className="mt-2">
                               <p>{task.description}</p>
-                              {(selectedTaskType.includes('camm' ) || selectedTaskType === 'size' || selectedTaskType === 'lcs' ) && (
+                              {(selectedTaskType.includes('camm') || selectedTaskType === 'size' || selectedTaskType === 'lcs') && (
                                 <div>
-                                <label>max input size</label>
-                              <input 
-                              type="text"
-                                className="form-control"
-                                placeholder={inputSize}
-                                onChange={sizeChange}
-                                
-                            />
-                            <div className="mt-2">
-                              { selectedTaskType !== 'size' && selectedTaskType !== 'lcs' && numericalInputOptions.map((option) => (
-                                <div className="form-check" key={option.value}>
-                                  <input 
-                                    className="form-check-input" 
-                                    type="radio" 
-                                    name="option" 
-                                    value={option.value} 
-                                    onChange={(e) => handleRadioChange(option.value)} 
+                                  <label>max input size</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder={inputSize}
+                                    onChange={sizeChange}
+
                                   />
-                                  <label className="form-check-label">{option.label}</label>
+                                 <label className="mt-2">Repeticiones por incremento</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    name="samples"
+                                    value={samples}
+                                    onChange={(e) => setSamples(e.target.value)}
+                                    className="form-control"
+                                    placeholder="Ej: 30"
+                                  />
+                                    <div className="mt-2">
+                                    {selectedTaskType !== 'size' && selectedTaskType !== 'lcs' && numericalInputOptions.map((option) => (
+                                      <div className="form-check" key={option.value}>
+                                        <input
+                                          className="form-check-input"
+                                          type="radio"
+                                          name="option"
+                                          value={option.value}
+                                          onChange={(e) => handleRadioChange(option.value)}
+                                        />
+                                        <label className="form-check-label">{option.label}</label>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                            
+
                               )}
                             </div>
                           )}
@@ -253,7 +265,7 @@ function RenderForm() {
                     onClick={() =>
                       navigate("/code/" + codename, {
                         replace: false,
-                        state: { name: name,  codeList:  fileList },
+                        state: { name: name, codeList: fileList },
                       })
                     }
                     disabled={check}

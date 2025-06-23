@@ -1,23 +1,23 @@
 import React from "react";
 import 'bootstrap/dist/css/bootstrap.min.css';
-import './Navbar.css'; 
+import './Navbar.css';
 import { Link } from "react-router-dom";
 
 function Navbar({ tasksState }) {
-  const isAnyTaskActive = Object.values(tasksState).some(Boolean);
-  return (
-      <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
-          <div className="container">
-              <Link to="/" className="navbar-brand">Power Tester</Link>
-              <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+    const isAnyTaskActive = Object.values(tasksState).some(Boolean);
+    return (
+        <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+            <div className="container">
+                <Link to="/" className="navbar-brand">Performace System</Link>
+                <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span className="navbar-toggler-icon"></span>
-              </button>
-              <div className="collapse navbar-collapse justify-content-center" id="navbarNav">
-                  <ul className="navbar-nav">
-                      <li className="nav-item active">
-                          <Link to="/" className="nav-link">Test</Link>
-                      </li>
-                      {/* <li className="nav-item active">
+                </button>
+                <div className="collapse navbar-collapse justify-content-center" id="navbarNav">
+                    <ul className="navbar-nav">
+                        <li className="nav-item active">
+                            <Link to="/" className="nav-link">Test</Link>
+                        </li>
+                        {/* <li className="nav-item active">
                           <Link to="/compare" className="nav-link">Compare</Link>
                       </li>
                       <li className="nav-item">
@@ -26,16 +26,16 @@ function Navbar({ tasksState }) {
             {isAnyTaskActive && <span className="white-dot"></span>}
           </Link>
                       </li> */}
-                      <li className="nav-item">
-                          <a className="nav-link" href="#">
-                            About
-                          </a>
+                        <li className="nav-item">
+                            <a className="nav-link" href="#">
+                                Tutorial y ejemplos de ejecución
+                            </a>
                         </li>
-                  </ul>
-              </div>
-          </div>
-      </nav>
-  );
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    );
 }
 
 export default Navbar;

@@ -1,47 +1,57 @@
 #!/bin/bash
 
-EXECUTABLE=$1
-MAX_SIZE=$2
-CSV_OUTPUT=$3
+# === ✅ Parámetros esperados ===
+EXECUTABLE=$1        # ./a.out
+MAX_SIZE=$2          # Número máximo a pasar como argumento
+SAMPLES=$3           # Repeticiones por cada incremento
+CSV_OUTPUT=$4        # Ruta completa del archivo de salida .csv
 
-# Validar ejecutable
+# === ❌ Validación del ejecutable ===
 if [ ! -x "$EXECUTABLE" ]; then
-    echo "Error: ejecutable no encontrado o no ejecutable: $EXECUTABLE"
+    echo "❌ Ejecutable no encontrado o no tiene permisos: $EXECUTABLE"
     exit 1
 fi
 
+# === ⚙️ Configuración de iteraciones ===
 INCREMENT=30
-SAMPLES=30
 WARMUP_ROUNDS=3
 
-# Escribir encabezado
-echo "Increment,cpu-clock,task-clock,page-faults,major-faults,context-switches,cpu-migrations,duration_time" > "$CSV_OUTPUT"
+# === 📊 Métricas útiles compatibles con keira (sin RAPL) ===
+METRICS="instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores,cache-references,cache-misses,branches,branch-misses,cpu-cycles,task-clock,cpu-clock,page-faults,major-faults"
 
-# Warmup
+# === 🏷️ Encabezado CSV ===
+HEADER="Increment,InputSize,Instructions,LLCLoads,LLCLoadMisses,LLCStores,LLCStoreMisses,L1DcacheLoads,L1DcacheLoadMisses,L1DcacheStores,CacheReferences,CacheMisses,Branches,BranchMisses,CpuCycles,TaskClock,CpuClock,PageFaults,MajorFaults,StartTime,EndTime,DurationTime"
+echo "$HEADER" > "$CSV_OUTPUT"
+
+# === 🔥 Warmup ===
+warmup_size=$((MAX_SIZE / INCREMENT))
 for ((i=0; i<WARMUP_ROUNDS; i++)); do
-    warmup_size=$((MAX_SIZE / INCREMENT))
-    $EXECUTABLE $warmup_size > /dev/null 2>&1
+    "$EXECUTABLE" $warmup_size > /dev/null 2>&1
 done
 
-# Mediciones reales
+# === 🚀 Mediciones reales ===
 for ((i=1; i<=INCREMENT; i++)); do
-    current_input_size=$((MAX_SIZE * i / INCREMENT))
+    current_size=$((MAX_SIZE * i / INCREMENT))
 
     for ((j=0; j<SAMPLES; j++)); do
-        sudo /usr/lib/linux-tools/6.8.0-57-generic/perf stat -a -x';' -o perf_output.tmp -e \
-            cpu-clock,task-clock,page-faults,major-faults,context-switches,cpu-migrations,duration_time \
-            $EXECUTABLE $current_input_size > /dev/null 2>&1
+        start=$(date +%s%3N)
+
+        LC_NUMERIC=C /usr/lib/linux-tools/4.15.0-192-generic/perf stat -a --no-big-num -x';' \
+            -o perf_output.tmp -e $METRICS "$EXECUTABLE" $current_size > /dev/null 2>&1
+
+        end=$(date +%s%3N)
+        elapsed=$((end - start))
 
         if [ -s perf_output.tmp ]; then
-            results=$(cut -d';' -f1 perf_output.tmp | sed '/#/d' | sed '/^$/d' | paste -sd, -)
-            echo "$i,$results" >> "$CSV_OUTPUT"
+            values=$(cut -d';' -f1 perf_output.tmp | sed '/#/d' | sed '/^$/d' | paste -sd, -)
+            echo "$i,$current_size,$values,$start,$end,$elapsed" >> "$CSV_OUTPUT"
         else
-            echo "$i,<not-counted>,<not-counted>,<not-counted>,<not-counted>,<not-counted>,<not-counted>,<not-counted>" >> "$CSV_OUTPUT"
+            echo "$i,$current_size"$(yes ",<not-counted>" | head -n 17 | tr -d '\n'),$start,$end,$elapsed >> "$CSV_OUTPUT"
         fi
     done
 done
 
-# Limpieza
+# === 🧹 Limpieza final ===
+rm -f perf_output.tmp
 sed -i 's/<not,counted>/<not-counted>/g' "$CSV_OUTPUT"
 sed -i 's/<not,supported>/<not-supported>/g' "$CSV_OUTPUT"
-rm -f perf_output.tmp

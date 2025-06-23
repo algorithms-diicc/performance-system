@@ -1,14 +1,15 @@
 import React, { Component } from "react";
 import axios from "axios";
+import { serverURL } from '../common/Constants';
 
 class RenderTable extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
-    this.state={
+    this.state = {
       EnergyCores: '',
       EnergyPkg: '',
-      EnergyRAM: '', 
-      Instructions: '', 
+      EnergyRAM: '',
+      Instructions: '',
       LLCLoads: '',
       LLCLoadMisses: '',
       LLCStores: '',
@@ -19,32 +20,33 @@ class RenderTable extends Component {
       CacheMisses: '',
       CacheReferences: '',
       Branches: '',
-      BranchMisses: '', 
+      BranchMisses: '',
       CpuCycles: '',
       DurationTime: '',
-      PowerCores : '',
+      PowerCores: '',
       PowerPkg: '',
-      PowerRAM: ''}
+      PowerRAM: ''
+    }
   }
 
-  componentDidMount(){
+  componentDidMount() {
     axios({
-      url: 'http://127.0.0.1:5000/'+this.props.code+'/mean',
-        method: 'GET'
-      })
-    .then((response) => {
-      this.setState(response.data)
-      this.setState({
-        BranchMisses: response.data['Branch-Misses']
-      })
-    });
+      url: `${serverURL}${this.props.code}/mean`,
+      method: 'GET'
+    })
+      .then((response) => {
+        this.setState(response.data)
+        this.setState({
+          BranchMisses: response.data['Branch-Misses']
+        })
+      });
   }
 
-  render(){
-    return(
+  render() {
+    return (
       <React.Fragment>
         <div>
-          <table style={{width: "50%"} }>
+          <table style={{ width: "50%" }}>
             <tbody>
               <tr>
                 <td className="dataName">Energía de Nucleos (J):</td>
@@ -98,7 +100,7 @@ class RenderTable extends Component {
               </tr>
             </tbody>
           </table>
-         
+
         </div>
       </React.Fragment>
     )

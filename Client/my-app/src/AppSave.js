@@ -1,10 +1,11 @@
-import React, { Component , useState, useEffect} from "react";
-import {BrowserRouter, Routes, Route, useParams, useNavigate, useLocation} from "react-router-dom"
+import React, { Component, useState, useEffect } from "react";
+import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation } from "react-router-dom"
+import { serverURL } from "./common/Constants";
 
 const axios = require("axios").default;
 
 class App extends Component {
-  componentDidMount(){
+  componentDidMount() {
     document.title = "Power-tester"
   }
 
@@ -14,11 +15,11 @@ class App extends Component {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={
-              <RenderForm/>
-              }
+              <RenderForm />
+            }
             ></Route>
             <Route path="/code/:codename" element={
-              <RenderImage/>
+              <RenderImage />
             }></Route>
           </Routes>
         </BrowserRouter>
@@ -28,13 +29,13 @@ class App extends Component {
 }
 
 class RenderTable extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
-    this.state={
+    this.state = {
       EnergyCores: '',
       EnergyPkg: '',
-      EnergyRAM: '', 
-      Instructions: '', 
+      EnergyRAM: '',
+      Instructions: '',
       LLCLoads: '',
       LLCLoadMisses: '',
       LLCStores: '',
@@ -45,32 +46,33 @@ class RenderTable extends Component {
       CacheMisses: '',
       CacheReferences: '',
       Branches: '',
-      BranchMisses: '', 
+      BranchMisses: '',
       CpuCycles: '',
       DurationTime: '',
-      PowerCores : '',
+      PowerCores: '',
       PowerPkg: '',
-      PowerRAM: ''}
+      PowerRAM: ''
+    }
   }
 
-  componentDidMount(){
+  componentDidMount() {
     axios({
-      url: 'http://127.0.0.1/'+this.props.code+'/mean',
-        method: 'GET'
-      })
-    .then((response) => {
-      this.setState(response.data)
-      this.setState({
-        BranchMisses: response.data['Branch-Misses']
-      })
-    });
+      url: serverURL + this.props.code + '/mean',
+      method: 'GET'
+    })
+      .then((response) => {
+        this.setState(response.data)
+        this.setState({
+          BranchMisses: response.data['Branch-Misses']
+        })
+      });
   }
 
-  render(){
-    return(
+  render() {
+    return (
       <React.Fragment>
         <div>
-          <table style={{width: "50%"} }>
+          <table style={{ width: "50%" }}>
             <tbody>
               <tr>
                 <td className="dataName">Energía de Nucleos (J):</td>
@@ -124,7 +126,7 @@ class RenderTable extends Component {
               </tr>
             </tbody>
           </table>
-          <p style={{"text-align": "center"}}> *La línea naranja (y púrpura) en los gráficos representan los promedios.</p>
+          <p style={{ "text-align": "center" }}> *La línea naranja (y púrpura) en los gráficos representan los promedios.</p>
         </div>
       </React.Fragment>
     )
@@ -132,96 +134,96 @@ class RenderTable extends Component {
 }
 
 
-function RenderImage(props){
+function RenderImage(props) {
   let asd2 = useNavigate();
   var asd = useParams().codename;
   var name = useLocation().state.name;
-  const link = "http://127.0.0.1/static/"+asd+"/";
+  const link = serverURL + "files/" + asd + "/";
 
-  useEffect(()=>{
+  useEffect(() => {
     document.title = "Power-tester: " + name;
   })
 
   return (
     <div>
       <div class="row">
-        <button type="button" className="buttonv" onClick={()=>asd2(-1)}> Volver</button>
-        <button type="button" className="buttonv" onClick={handleDownload} style={{float: "right"}}> Descargar CSV </button>
+        <button type="button" className="buttonv" onClick={() => asd2(-1)}> Volver</button>
+        <button type="button" className="buttonv" onClick={handleDownload} style={{ float: "right" }}> Descargar CSV </button>
         <h1>{name}</h1>
       </div>
       <div class="cat">
         <h2>Tabla de Promedios</h2>
-        <RenderTable code={asd}/>
+        <RenderTable code={asd} />
       </div>
       <div class="cat">
         <h2>Energía y rendimiento de CPU</h2>
         <div class="row">
-          <img src={link+"fig0.svg"} alt="img0"></img>
-          <img src={link+"fig1.svg"} alt="img1"></img>
+          <img src={link + "fig0.svg"} alt="img0"></img>
+          <img src={link + "fig1.svg"} alt="img1"></img>
         </div>
         <div class="row">
-          <img src={link+"fig2.svg"} alt="img2"></img>
-          <img src={link+"fig3.svg"} alt="img3"></img>
+          <img src={link + "fig2.svg"} alt="img2"></img>
+          <img src={link + "fig3.svg"} alt="img3"></img>
         </div>
         <div>
-          <img src={link+"fig16.svg"} alt="img16"></img>
-          <img src={link+"fig15.svg"} alt="img15"></img>
+          <img src={link + "fig16.svg"} alt="img16"></img>
+          <img src={link + "fig15.svg"} alt="img15"></img>
         </div>
         <div>
-          <img src={link+"fig14.svg"} alt="img14"></img>
-          <img src={link+"fig13.svg"} alt="img13"></img>
+          <img src={link + "fig14.svg"} alt="img14"></img>
+          <img src={link + "fig13.svg"} alt="img13"></img>
         </div>
       </div>
       <div class="cat">
         <h2>Estadísticas generales de Caché</h2>
         <div class="row">
-          <img src={link+"fig12.svg"} alt="img12"></img>
-          <img src={link+"fig11.svg"} alt="img11"></img>
+          <img src={link + "fig12.svg"} alt="img12"></img>
+          <img src={link + "fig11.svg"} alt="img11"></img>
         </div>
       </div>
       <div class="cat">
         <h2>Estadísticas de Último nivel de Caché (LLC)</h2>
         <div class="row">
-          <img src={link+"fig4.svg"} alt="img4"></img>
-          <img src={link+"fig5.svg"} alt="img5"></img>
+          <img src={link + "fig4.svg"} alt="img4"></img>
+          <img src={link + "fig5.svg"} alt="img5"></img>
         </div>
         <div class="row">
-          <img src={link+"fig6.svg"} alt="img6"></img>
-          <img src={link+"fig7.svg"} alt="img7"></img>
+          <img src={link + "fig6.svg"} alt="img6"></img>
+          <img src={link + "fig7.svg"} alt="img7"></img>
         </div>
       </div>
       <div class="cat">
         <h2>Estadísticas de Caché nivel 1 (L1D)</h2>
         <div class="row">
-          <img src={link+"fig8.svg"} alt="img8"></img>
-          <img src={link+"fig9.svg"} alt="img9"></img>
+          <img src={link + "fig8.svg"} alt="img8"></img>
+          <img src={link + "fig9.svg"} alt="img9"></img>
         </div>
         <div class="row">
-          <img src={link+"fig10.svg"} alt="img10"></img>
+          <img src={link + "fig10.svg"} alt="img10"></img>
         </div>
       </div>
     </div>
-    );
+  );
 
-  function handleDownload(event){
+  function handleDownload(event) {
     axios({
-      url: 'http://127.0.0.1/static/'+asd+'/'+asd+'ResultsFinal.csv',
-        method: 'GET',
-        responseType: 'blob', // important
-      })
-    .then((response) => {
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'results.csv');
-      document.body.appendChild(link);
-      link.click();
-    });
+      url: serverURL + 'files/' + asd + 'Results0.csv',
+      method: 'GET',
+      responseType: 'blob', // important
+    })
+      .then((response) => {
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', 'results.csv');
+        document.body.appendChild(link);
+        link.click();
+      });
   }
 }
 
 
-function RenderForm(){
+function RenderForm() {
   const [code, setCode] = useState('');
   const [codename, setCodename] = useState();
   const [status, setStatus] = useState('Esperando entrada');
@@ -231,80 +233,80 @@ function RenderForm(){
   var intervalID = 0;
   let navigate = useNavigate();
 
-  function handleSubmit(event){
+  function handleSubmit(event) {
     alert('¡Enviado! Espere por el estado del código');
     event.preventDefault();
     setStatus('Esperando respuesta');
     var bodyFormData = new FormData();
     bodyFormData.append('code', code);
     axios({
-        method: 'post',
-        url: 'http://127.0.0.1/sendcode',
-        data: bodyFormData,
-        headers: {'Content-Type': 'multipart/form-data'}
-      })
-      .then((response) =>{
+      method: 'post',
+      url: serverURL + 'sendcode',
+      data: bodyFormData,
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+      .then((response) => {
         console.log(response.data, codename);
         setCodename(response.data);
         intervalID = setInterval(getStatusfromServer, 5000, response.data)
       })
-      .catch((response) =>{
+      .catch((response) => {
         console.log(response);
       });
   }
 
-  function handleChange(event){
+  function handleChange(event) {
     setCode(event.target.value);
     setCheck(true);
   }
-  function handleChange2(event){
+  function handleChange2(event) {
     setName(event.target.value);
   }
 
-  function getStatusfromServer(match){
-    axios.get('http://127.0.0.1/checkstatus/'+match)
-        .then((response) =>{
-          if(response.data === 'IN QUEUE')
-            setStatus('En cola')
-          else 
-            if(response.data === 'DONE')
+  function getStatusfromServer(match) {
+    axios.get(serverURL + 'checkstatus/' + match)
+      .then((response) => {
+        if (response.data === 'IN QUEUE')
+          setStatus('En cola')
+        else
+          if (response.data === 'DONE')
             setStatus('Listo')
           else
             setStatus(response.data);
-          flag = response.data;
-        })
-        .catch((response)=>{
-        })
+        flag = response.data;
+      })
+      .catch((response) => {
+      })
     var tmp = flag.split(':');
     console.log(tmp, flag)
-    if(flag === 'DONE' || tmp[0] === 'ERROR'){
+    if (flag === 'DONE' || tmp[0] === 'ERROR') {
       clearInterval(intervalID)
-      if(flag === 'DONE')
+      if (flag === 'DONE')
         setCheck(false)
     }
-}
+  }
 
   return (<React.Fragment>
-            <div><h1>Power Tester</h1></div>
-            <form onSubmit={handleSubmit}>
-              <div>
-                <label htmlFor="title">Ingrese un nombre al código (para identificarlo en ventanas o pestañas)</label><br/>
-                <input type="text" value={name} onChange={handleChange2}/>
-              </div>
-              <div><label htmlFor="code">Inserte código </label></div>
-              <textarea type="text" id="code" name="code" rows="20" cols="100" value={code} onChange={handleChange}></textarea>
-              <aside>
-                <h2> Estado del Código </h2>
-                <div>
-                  <textarea type="text" id="status" value={status} disabled rows="10" cols="50"></textarea>
-                </div>
-                <button type="button" className="buttonv" onClick={()=>navigate('/code/'+codename, {replace: false, state: {'name': name}})} disabled={check}>Ver estadísticas</button>
-              </aside>
-              <div>
-                <input type="submit" className="buttonv" value="Subir"/>
-              </div>
-            </form>
-          </React.Fragment>)
+    <div><h1>Performance System</h1></div>
+    <form onSubmit={handleSubmit}>
+      <div>
+        <label htmlFor="title">Ingrese un nombre al código (para identificarlo en ventanas o pestañas)</label><br />
+        <input type="text" value={name} onChange={handleChange2} />
+      </div>
+      <div><label htmlFor="code">Inserte código </label></div>
+      <textarea type="text" id="code" name="code" rows="20" cols="100" value={code} onChange={handleChange}></textarea>
+      <aside>
+        <h2> Estado del Código </h2>
+        <div>
+          <textarea type="text" id="status" value={status} disabled rows="10" cols="50"></textarea>
+        </div>
+        <button type="button" className="buttonv" onClick={() => navigate('/code/' + codename, { replace: false, state: { 'name': name } })} disabled={check}>Ver estadísticas</button>
+      </aside>
+      <div>
+        <input type="submit" className="buttonv" value="Subir" />
+      </div>
+    </form>
+  </React.Fragment>)
 }
 
 export default App;
