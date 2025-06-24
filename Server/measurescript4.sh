@@ -6,6 +6,8 @@ INPUT_FILE=$2        # Archivo de texto tipo english.50MB
 MAX_SIZE=$3          # Cantidad máxima de líneas a leer
 SAMPLES=$4           # Repeticiones por cada incremento
 CSV_OUTPUT=$5        # Ruta completa del archivo de salida .csv
+# === 📄 LOG DE PARÁMETROS RECIBIDOS ===
+# echo "[`date`] [ARGS] Ejecutable: $1 | Input: $2 | MAX_SIZE: $3 | SAMPLES: $4 | CSV: $5" >> debug_script.log
 
 # === ❌ Validación básica de archivo de entrada ===
 if [ ! -f "$INPUT_FILE" ]; then
@@ -44,7 +46,7 @@ for ((i=1; i<=INCREMENT; i++)); do
 
         # Ejecutar medición con perf y guardar salida
         echo "→ Ejecutando con input size: $current_size"
-        LC_NUMERIC=C /usr/lib/linux-tools/4.15.0-192-generic/perf stat -a --no-big-num -x';' \
+        LC_NUMERIC=C /usr/lib/linux-tools/6.8.0-60-generic/perf stat -a --no-big-num -x';' \
             -o perf_output.tmp -e $METRICS "$EXECUTABLE" "temp_input.txt" > /dev/null 2>&1
 
         end=$(date +%s%3N)

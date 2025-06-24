@@ -36,7 +36,7 @@ for ((i=1; i<=INCREMENT; i++)); do
     for ((j=0; j<SAMPLES; j++)); do
         start=$(date +%s%3N)
 
-        LC_NUMERIC=C /usr/lib/linux-tools/4.15.0-192-generic/perf stat -a --no-big-num -x';' \
+        LC_NUMERIC=C /usr/lib/linux-tools/6.8.0-60-generic/perf stat -a --no-big-num -x';' \
             -o perf_output.tmp -e $METRICS "$EXECUTABLE" $current_size > /dev/null 2>&1
 
         end=$(date +%s%3N)
