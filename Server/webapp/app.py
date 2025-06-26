@@ -99,6 +99,18 @@ def check():
         return 'Algunos medidores no responden!', 200
     else:
         return 'Todo OK!', 200
+@app.route('/status/<filename>')
+def serve_status_json(filename):
+    full_path = os.path.join(STATUS_DIR, filename)
+    if not os.path.exists(full_path):
+        abort(404)
+    with open(full_path, 'r', encoding='utf-8') as f:
+        try:
+            data = json.load(f)
+            return jsonify(data)
+        except Exception as e:
+            print(f"❌ Error al parsear JSON desde {filename}:", e)
+            return make_response("Error al leer archivo de estado", 500)
     
 @app.route('/sendcode', methods=['POST'])
 def cap_code():
@@ -136,13 +148,14 @@ def cap_code():
                 cpp_file_dir = os.path.join(TEST_DIR, name + ".cpp")
                 print(cpp_file_dir)
                 outputfile = os.path.join(TEST_DIR, name + ".out")
-                statusfile = os.path.join(STATUS_DIR, name)
+                statusfile = os.path.join(STATUS_DIR, name + "_status.json")
+
 
                 with open(cpp_file_dir, "w", newline="\n") as f:
                     f.writelines([line.decode('utf-8') for line in zip_ref.open(file_info)])
 
                 with open(statusfile, "w", newline="\n") as st:
-                    st.write('IN QUEUE')
+                 st.write(json.dumps({"messages": [{"time": timestamp_actual, "msg": "IN QUEUE"}]}))
 
                 cpp_dirs_onZip.append(cpp_file_dir)
                 names_onZip.append(name)

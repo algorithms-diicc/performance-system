@@ -15,7 +15,7 @@ function RenderForm() {
   //const [code, setCode] = useState("");
   const [file, setFile] = useState(null);
   const [codename, setCodename] = useState();
-  const [status, setStatus] = useState("Esperando entrada");
+  const [messages, setMessages] = useState([]);
   const [check, setCheck] = useState(true);
   const [name, setName] = useState("test");
   const [fileList, setFileList] = useState();
@@ -27,10 +27,43 @@ function RenderForm() {
 
   const [selectedTaskType, setselectedTaskType] = useState('');
 
-  useEffect(() => {
-    document.title = "Performance System";
-    console.log("Selected Task Type:", selectedTaskType);
-  }, [selectedTaskType, fileList]);
+useEffect(() => {
+  if (!codename) return;
+
+  let lastCount = 0;
+
+  const interval = setInterval(() => {
+    axios
+      .get(`${serverURL}status/${codename}_status.json`)
+      .then((response) => {
+        const data = response.data;
+
+        if (Array.isArray(data.messages)) {
+          const newMessages = data.messages.slice(lastCount);
+          if (newMessages.length > 0) {
+            setMessages((prev) => [...prev, ...newMessages]);
+            lastCount = data.messages.length;
+
+            // ✅ Habilitar botón cuando se detecta mensaje final
+            if (
+              newMessages.some((m) =>
+                m.msg.includes("📊 Generando gráficos") ||
+                m.msg.includes("✅ Test ejecutado correctamente")
+              )
+            ) {
+              setCheck(false);
+            }
+          }
+        }
+      })
+      .catch((error) => {
+        console.error("❌ Error al obtener estado JSON:", error);
+      });
+  }, 3000);
+
+  return () => clearInterval(interval);
+}, [codename]);
+
 
   const handleRadioChange = (taskId) => {
     setselectedTaskType(taskId);
@@ -68,7 +101,10 @@ function RenderForm() {
     bodyFormData.append("file", file, file.name);
     bodyFormData.append("input_size", inputSize);
     bodyFormData.append("samples", samples);
-    setStatus("Esperando respuesta");
+    setMessages([{
+      time: new Date().toISOString().replace("T", " ").slice(0, 19),
+      msg: "📨 Enviando archivo al servidor..."
+    }]);
     console.log(bodyFormData);
     if (selectedTaskType) {
       bodyFormData.append("task_type", getTask(selectedTaskType));
@@ -91,10 +127,6 @@ function RenderForm() {
         } else {
           console.log("No files found");
         }
-        intervalID = setInterval(
-          () => getStatusfromServer(queuedFiles),
-          5000
-        );
       })
       .catch((error) => {
         console.error(error);
@@ -105,31 +137,53 @@ function RenderForm() {
     setName(event.target.value);
   }
 
-  function getStatusfromServer(fileNames) {
-    console.log("File names: ", fileNames);
-    setFileList(fileNames)
-    // No need to split if fileNames is already an array
-    Promise.all(
-      fileNames.map((fileName) =>
-        axios
-          .get(statusURL + fileName)
-          .then((response) => ({ name: fileName, status: response.data }))
-          .catch((error) => ({ name: fileName, status: "ERROR", error }))
-      )
-    ).then((results) => {
-      results.forEach((file) =>
-        console.log(file.name + " status: " + file.status)
-      );
-      const allDone = results.every((file) => file.status === "DONE");
-      if (allDone) {
-        clearInterval(intervalID);
-        setCheck(false);
-        //COMPLETAR
-      } else {
-        //COMPLETAR
-      }
-    });
-  }
+function getStatusfromServer(fileNames) {
+  console.log("File names: ", fileNames);
+  setFileList(fileNames);
+
+  Promise.all(
+    fileNames.map((fileName) =>
+      axios
+        .get(statusURL + fileName)
+        .then((response) => {
+          const data = response.data;
+          let formattedStatus = "";
+
+          if (Array.isArray(data.messages)) {
+            formattedStatus = data.messages
+              .map((entry) => `[${entry.time}] ${entry.msg}`)
+              .join("\n");
+          }
+
+          // Si ya hay un error o ya terminó, se puede frenar
+          const isDone = data.status === "DONE";
+          const isError = data.status === "ERROR";
+
+          return {
+            name: fileName,
+            formattedStatus,
+            stop: isDone || isError
+          };
+        })
+        .catch((error) => ({
+          name: fileName,
+          formattedStatus: "[ERROR] No se pudo obtener estado",
+          stop: true
+        }))
+    )
+  ).then((results) => {
+    const combinedStatus = results.map((file) => file.formattedStatus).join("\n\n");
+    setMessages(combinedStatus);
+
+    // Si todos terminaron, detener polling
+    const allStop = results.every((r) => r.stop);
+    if (allStop) {
+      clearInterval(intervalID);
+      setCheck(false);
+    }
+  });
+}
+
 
   function handleChange2(event) {
     setName(event.target.value);
@@ -250,28 +304,31 @@ function RenderForm() {
                 <div className="card-body">
                   <h2> Estado del Código </h2>
                   <div>
-                    <textarea
-                      type="text"
-                      id="status"
-                      value={status}
-                      disabled
-                      rows="15" // Adjusted rows to fit content
-                      cols="78"
-                    ></textarea>
+                     <div className="status-box border rounded p-2" style={{ height: "300px", overflowY: "auto", backgroundColor: "#f8f9fa" }}>
+                        <ul className="list-group list-group-flush">
+                          {messages.map((entry, index) => (
+                            <li key={index} className="list-group-item py-1 px-2">
+                              <strong>[{entry.time}]</strong> {entry.msg}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                   </div>
-                  <button
-                    type="button"
-                    className="buttonv"
-                    onClick={() =>
-                      navigate("/code/" + codename, {
-                        replace: false,
-                        state: { name: name, codeList: fileList },
-                      })
-                    }
-                    disabled={check}
-                  >
-                    Ver estadísticas
-                  </button>
+                  {!messages.some((m) => m.msg.includes("❌ ERROR DETECTADO")) && (
+                    <button
+                      type="button"
+                      className="buttonv"
+                      onClick={() =>
+                        navigate("/code/" + codename, {
+                          replace: false,
+                          state: { name: name, codeList: fileList },
+                        })
+                      }
+                      disabled={check}
+                    >
+                      Ver estadísticas
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

@@ -1,82 +1,39 @@
-[2025-06-23 22:47:55] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3618055003LCS.cpp | slave: Shenu
-[2025-06-23 22:47:56] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 333, repeticiones: 30 | slave: Shenu
-[2025-06-23 22:48:51] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3618055003LCSResults0.csv | slave: Shenu
-[2025-06-23 22:48:51] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3618055003LCS.cpp | g++: OK | exec: OK | duración: 56.24s | slave: Shenu | input: 333
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3618055003LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 333 30 /home/perf/Desktop/performance-system/Server/webapp/test/3618055003LCSResults0.csv
-[2025-06-23 22:51:10] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2465661395LCS.cpp | slave: Shenu
-[2025-06-23 22:51:11] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 400, repeticiones: 30 | slave: Shenu
-[2025-06-23 22:52:26] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2465661395LCSResults0.csv | slave: Shenu
-[2025-06-23 22:52:26] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2465661395LCS.cpp | g++: OK | exec: OK | duración: 75.60s | slave: Shenu | input: 400
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2465661395LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 400 30 /home/perf/Desktop/performance-system/Server/webapp/test/2465661395LCSResults0.csv
-[2025-06-23 23:32:28] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-23 23:33:07] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSO.cpp | slave: Shenu
-[2025-06-23 23:33:08] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 500, repeticiones: 30 | slave: Shenu
-[2025-06-23 23:33:32] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSOResults0.csv | slave: Shenu
-[2025-06-23 23:33:32] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSO.cpp | g++: OK | exec: OK | duración: 24.85s | slave: Shenu | input: 500
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSO.cpp -o ./a.out
-→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSOResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3835341886CAMMSOResults0.csv
-[2025-06-23 23:36:18] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-23 23:36:18] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-23 23:40:36] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZE.cpp | slave: Shenu
-[2025-06-23 23:40:36] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
-[2025-06-23 23:40:59] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZEResults0.csv | slave: Shenu
-[2025-06-23 23:40:59] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZE.cpp | g++: OK | exec: OK | duración: 22.57s | slave: Shenu | input: 30
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZE.cpp -o ./a.out
-→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZEResults0.csv
-→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5931271996SIZEResults0.csv
-[2025-06-23 23:43:47] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZE.cpp | slave: Shenu
-[2025-06-23 23:43:47] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
-[2025-06-23 23:44:09] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZEResults0.csv | slave: Shenu
-[2025-06-23 23:44:09] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZE.cpp | g++: OK | exec: OK | duración: 22.66s | slave: Shenu | input: 30
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZE.cpp -o ./a.out
-→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZEResults0.csv
-→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7976998883SIZEResults0.csv
-[2025-06-23 23:44:23] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZE.cpp | slave: Shenu
-[2025-06-23 23:44:23] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
-[2025-06-23 23:44:48] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZEResults0.csv | slave: Shenu
-[2025-06-23 23:44:48] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZE.cpp | g++: OK | exec: OK | duración: 25.10s | slave: Shenu | input: 30
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZE.cpp -o ./a.out
-→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZEResults0.csv
-→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/125187640SIZEResults0.csv
-[2025-06-24 00:08:09] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-24 00:09:16] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCS.cpp | slave: Shenu
-[2025-06-24 00:09:16] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
-[2025-06-24 00:11:07] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCSResults0.csv | slave: Shenu
-[2025-06-24 00:11:07] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCS.cpp | g++: OK | exec: OK | duración: 111.23s | slave: Shenu | input: 500
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCSResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCSResults0.csv
-[2025-06-24 00:11:07] [UNEXPECTED_ERROR] Fallo inesperado en cae_size: name 'payload_dict' is not defined | slave: Shenu
-[2025-06-24 00:11:07] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCS.cpp | g++: OK | exec: FAIL | duración: 111.23s | slave: Shenu | input: 500 | error: name 'payload_dict' is not defined
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCSResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/13141261358LCSResults0.csv
-[2025-06-24 00:15:42] [JSON_ERROR] Payload inválido recibido desde 152.74.52.200:50000 — Expecting value: line 1 column 1 (char 0) | slave: Shenu
-[2025-06-24 00:17:43] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-24 00:23:41] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCS.cpp | slave: Shenu
-[2025-06-24 00:23:41] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
-[2025-06-24 00:25:33] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCSResults0.csv | slave: Shenu
-[2025-06-24 00:25:33] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCS.cpp | g++: OK | exec: OK | duración: 112.51s | slave: Shenu | input: 500
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCSResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCSResults0.csv
-[2025-06-24 00:25:33] [UNEXPECTED_ERROR] Fallo inesperado en cae_size: name 'payload_dict' is not defined | slave: Shenu
-[2025-06-24 00:25:33] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCS.cpp | g++: OK | exec: FAIL | duración: 112.51s | slave: Shenu | input: 500 | error: name 'payload_dict' is not defined
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCSResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2167244861LCSResults0.csv
-[2025-06-24 00:25:33] [RESULT_NOT_GENERATED] No se generaron resultados para 2167244861LCS | slave: Shenu
-[2025-06-24 00:36:18] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
-[2025-06-24 00:37:50] [JSON_ERROR] Payload inválido recibido desde 152.74.52.200:50000 — Expecting value: line 1 column 1 (char 0) | slave: Shenu
-[2025-06-24 00:38:26] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCS.cpp | slave: Shenu
-[2025-06-24 00:38:26] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 400, repeticiones: 30 | slave: Shenu
-[2025-06-24 00:39:41] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCSResults0.csv | slave: Shenu
-[2025-06-24 00:39:41] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCS.cpp | g++: OK | exec: OK | duración: 75.21s | slave: Shenu | input: 400
-→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCS.cpp -o ./a.out
-→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 400 30 /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCSResults0.csv
-→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=400 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCSResults0.csv
-[2025-06-24 00:39:41] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11744102094LCS.cpp | slave: Shenu
-[2025-06-24 00:49:31] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-06-26 01:58:36] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-06-26 01:58:49] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZE.cpp | slave: Shenu
+[2025-06-26 01:58:49] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
+[2025-06-26 01:59:14] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZEResults0.csv | slave: Shenu
+[2025-06-26 01:59:14] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZE.cpp | g++: OK | exec: OK | duración: 25.03s | slave: Shenu | input: 30
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZEResults0.csv
+[2025-06-26 01:59:14] [UNEXPECTED_ERROR] Fallo inesperado en cae_size: name 'payload_dict' is not defined | slave: Shenu
+[2025-06-26 01:59:14] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZE.cpp | g++: OK | exec: FAIL | duración: 25.03s | slave: Shenu | input: 30 | error: name 'payload_dict' is not defined
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7198412607SIZEResults0.csv
+[2025-06-26 02:07:52] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-06-26 02:09:07] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZE.cpp | slave: Shenu
+[2025-06-26 02:09:07] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
+[2025-06-26 02:09:33] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZEResults0.csv | slave: Shenu
+[2025-06-26 02:09:33] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZE.cpp | g++: OK | exec: OK | duración: 25.83s | slave: Shenu | input: 30
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZEResults0.csv
+[2025-06-26 02:09:33] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3868569007SIZE.cpp | slave: Shenu
+[2025-06-26 02:10:17] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZE.cpp | slave: Shenu
+[2025-06-26 02:10:17] [START_EXEC] Ejecutando test SIZE con tamaño: 20, repeticiones: 30 | slave: Shenu
+[2025-06-26 02:10:42] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZEResults0.csv | slave: Shenu
+[2025-06-26 02:10:42] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZE.cpp | g++: OK | exec: OK | duración: 25.06s | slave: Shenu | input: 20
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 20 30 /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=20 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZEResults0.csv
+[2025-06-26 02:10:42] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10419362007SIZE.cpp | slave: Shenu
+[2025-06-26 02:10:53] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZE.cpp | slave: Shenu
+[2025-06-26 02:10:54] [START_EXEC] Ejecutando test SIZE con tamaño: 20, repeticiones: 30 | slave: Shenu
+[2025-06-26 02:11:19] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZEResults0.csv | slave: Shenu
+[2025-06-26 02:11:19] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZE.cpp | g++: OK | exec: OK | duración: 25.50s | slave: Shenu | input: 20
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 20 30 /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=20 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZEResults0.csv
+[2025-06-26 02:11:19] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZE.cpp | slave: Shenu
+[2025-06-26 02:25:17] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu

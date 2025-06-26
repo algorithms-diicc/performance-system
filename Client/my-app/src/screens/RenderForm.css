@@ -41,6 +41,10 @@ textarea#code, textarea#status {
   max-height: 270px; /* Adjust this value as needed */
   overflow-y: auto;    /* Enables vertical scrolling if content overflows */
 }
+.status-box {
+  font-family: monospace;
+  font-size: 0.9rem;
+}
 
 
 

@@ -111,6 +111,7 @@ def cae_lcs(name, input_size, samples):
     output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
     os.makedirs(output_dir, exist_ok=True)
 
+    codename = os.path.basename(name).split('.')[0]
     executable = "./a.out"
     input_file = os.path.join(input_dir, "english.50MB")
     csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
@@ -121,10 +122,10 @@ def cae_lcs(name, input_size, samples):
 
     t0 = time.time()
     log_admin_stage("START_COMPILE", f"Compilando {name}")
+    print(f"[⚙️ LCS] Compilando {name} ...")
 
  
 
-    print(f"[⚙️ LCS] Compilando {name} ...")
     compile_result = sub.run(
         compile_cmd.split(), 
         stdout=sub.PIPE,
@@ -132,19 +133,22 @@ def cae_lcs(name, input_size, samples):
         universal_newlines=True
     )
 
-    compile_ok = compile_result.returncode == 0 
-
-    if not compile_ok:
+    if compile_result.returncode != 0:
         duration = time.time() - t0
         print(f"[❌ Error de compilación] {compile_result.stderr}")
         log_admin_stage("COMPILE_ERROR", compile_result.stderr)
         log_admin("LCS", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 100
+        }
+
+
 
     log_admin_stage("START_EXEC", f"Ejecutando test LCS con input: {input_file}, tamaño: {input_size}, repeticiones: {samples}")
+    print(f"[🚀 LCS] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
 
   
-    print(f"[🚀 LCS] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
     try:
         exec_result = sub.run(
             exec_cmd.split(), 
@@ -154,14 +158,16 @@ def cae_lcs(name, input_size, samples):
             timeout=DEFAULT_TIMEOUT
         )
 
-        exec_ok = exec_result.returncode == 0
-
-        if not exec_ok:
+        if exec_result.returncode != 0:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
             duration = time.time() - t0
             log_admin_stage("EXEC_ERROR", exec_result.stderr)
             log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return None
+            return {
+                "name": codename,
+                "error_code": 400  # Error inesperado de ejecución
+            }
+
 
         if not os.path.exists(csv_output):
             print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
@@ -169,14 +175,15 @@ def cae_lcs(name, input_size, samples):
             msg = f"No se generó el archivo de resultados: {csv_output}"
             log_admin_stage("CSV_ERROR", msg)
             log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return None
+            return {
+                "name": codename,
+                "error_code": 300
+            }
 
 
         duration = time.time() - t0
         log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
         log_admin("LCS", name, compile_cmd, exec_cmd, True, True, duration, input_val=input_size)
-
-
         print(f"[✔️ LCS] Resultados guardados en: {csv_output}")
         log_admin_stage("TEST_DONE", f"Test finalizado para {name}")
 
@@ -186,13 +193,19 @@ def cae_lcs(name, input_size, samples):
         msg = "El script LCS excedió el tiempo límite"
         log_admin_stage("TIMEOUT", msg)
         log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 200,  
+        }
 
     except Exception as e:
         duration = time.time() - t0
         log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_lcs: {e}")
         log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 400
+        }
 
     return csv_output
 
@@ -208,6 +221,7 @@ def cae_camm(name, input_size, samples, task):
     output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
     os.makedirs(output_dir, exist_ok=True)
 
+    codename = os.path.basename(name).split('.')[0]
     executable = "./a.out"
     csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
 
@@ -231,14 +245,15 @@ def cae_camm(name, input_size, samples, task):
         stderr=sub.PIPE,
         universal_newlines=True
     )
-    compile_ok = compile_result.returncode == 0
-
-    if not compile_ok:
-        print(f"[❌ Error de compilación] {compile_result.stderr}")
+    if compile_result.returncode != 0:
         duration = time.time() - t0
+        print(f"[❌ Error de compilación] {compile_result.stderr}")
         log_admin_stage("COMPILE_ERROR", compile_result.stderr)
         log_admin("CAMM", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 100
+        }
 
     log_admin_stage("START_EXEC", f"Ejecutando test CAMM con input: {input_file}, tamaño: {input_size}, repeticiones: {samples}")
     print(f"[🚀 CAMM] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
@@ -251,14 +266,17 @@ def cae_camm(name, input_size, samples, task):
             universal_newlines=True,
             timeout=DEFAULT_TIMEOUT
         )
-        exec_ok = exec_result.returncode == 0
 
-        if not exec_ok:
+        if exec_result.returncode != 0:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
             duration = time.time() - t0
             log_admin_stage("EXEC_ERROR", exec_result.stderr)
             log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return None
+            return {
+                "name": codename,
+                "error_code": 400  # Error inesperado de ejecución
+            }
+
 
         if not os.path.exists(csv_output):
             print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
@@ -266,7 +284,12 @@ def cae_camm(name, input_size, samples, task):
             msg = f"No se generó el archivo de resultados: {csv_output}"
             log_admin_stage("CSV_ERROR", msg)
             log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return None
+            return {
+                "name": codename,
+                "error_code": 300
+            }
+
+
         print(f"[✔️ CAMM] Resultados guardados en: {csv_output}")
         duration = time.time() - t0
         log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
@@ -279,12 +302,18 @@ def cae_camm(name, input_size, samples, task):
         msg = "El script CAMM excedió el tiempo límite"
         log_admin_stage("TIMEOUT", msg)
         log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 200,  
+        }
     except Exception as e:
         duration = time.time() - t0
         log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_camm: {e}")
         log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 400
+        }
 
     return csv_output
 
@@ -299,6 +328,7 @@ def cae_size(name, input_size, samples):
     output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
     os.makedirs(output_dir, exist_ok=True)
 
+    codename = os.path.basename(name).split('.')[0]
     executable = "./a.out"
     csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
 
@@ -318,11 +348,14 @@ def cae_size(name, input_size, samples):
     compile_ok = compile_result.returncode == 0
 
     if not compile_ok:
-        print(f"[❌ Error de compilación] {compile_result.stderr}")
         duration = time.time() - t0
+        print(f"[❌ Error de compilación] {compile_result.stderr}")
         log_admin_stage("COMPILE_ERROR", compile_result.stderr)
         log_admin("SIZE", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 100
+        }
 
     log_admin_stage("START_EXEC", f"Ejecutando test SIZE con tamaño: {input_size}, repeticiones: {samples}")
     print(f"[🚀 SIZE] Ejecutando script de medición con input size {input_size} y {samples} repeticiones por cada incremento")
@@ -335,28 +368,33 @@ def cae_size(name, input_size, samples):
             universal_newlines=True,
             timeout=DEFAULT_TIMEOUT
         )
-        exec_ok = exec_result.returncode == 0
 
+        exec_ok = exec_result.returncode == 0
         if not exec_ok:
             print(f"[❌ Error ejecución] {exec_result.stderr}")
             duration = time.time() - t0
             log_admin_stage("EXEC_ERROR", exec_result.stderr)
             log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return None
-
+            return {
+                "name": codename,
+                "error_code": 400  # Error inesperado de ejecución
+            }
         if not os.path.exists(csv_output):
             print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
             duration = time.time() - t0
             msg = f"No se generó el archivo de resultados: {csv_output}"
             log_admin_stage("CSV_ERROR", msg)
             log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return None
+            return {
+                "name": codename,
+                "error_code": 300
+            }
 
         duration = time.time() - t0
         log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
         log_admin("SIZE", name, compile_cmd, exec_cmd, True, True, duration, input_val=input_size)
         print(f"[✔️ SIZE] Resultados guardados en: {csv_output}")
-        log_admin_stage("TEST_DONE", f"Test finalizado para {payload_dict['name']}")
+        log_admin_stage("TEST_DONE", f"Test finalizado para {name}")
 
     except sub.TimeoutExpired:
         print("[⏰ Timeout] El script SIZE excedió el tiempo límite")
@@ -364,12 +402,19 @@ def cae_size(name, input_size, samples):
         msg = "El script SIZE excedió el tiempo límite"
         log_admin_stage("TIMEOUT", msg)
         log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 200,  
+        }
+
     except Exception as e:
         duration = time.time() - t0
         log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_size: {e}")
         log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
-        return None
+        return {
+            "name": codename,
+            "error_code": 400
+        }
 
     return csv_output
 
@@ -449,7 +494,21 @@ def wait_until_recent_in_queue():
             print(f"[⚠️ Error verificando IN QUEUE recientes]: {e}")
         time.sleep(10)
 
-    
+def enviar_json_error(codename, code, message):
+    error_payload = {
+        "name": codename,
+        "error": True,
+        "error_code": code,
+        "message": message
+    }    
+def send_json_result(host, port, error_dict):
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.connect((host, port))
+            s.sendall(json.dumps(error_dict).encode())
+            print(f"[❌ JSON error enviado] {error_dict}")
+    except Exception as e:
+        print(f"[❌ ERROR al enviar JSON de error] {e}")
 
 # === FUNCION PRINCIPAL DE EJECUCION ===
 def main():
@@ -521,8 +580,10 @@ def main():
         filename = filename.replace(" ", "")
         cleanup_files(filename, 'a.out')
 
-        # Envío de resultados o error
-        if result_name:
+
+        if isinstance(result_name, dict) and "error_code" in result_name:
+            send_json_result(HOST, 60000, result_name)  # nueva función simple
+        elif result_name:
             send_results(HOST, 60000, payload_dict["name"], result_name)
             cleanup_files(result_name)
             print(f"[✅ Resultado final enviado para {payload_dict['name']}]\n")

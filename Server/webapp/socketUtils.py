@@ -13,6 +13,7 @@ import sys
 import numpy as np
 import os 
 import shutil
+from datetime import datetime
 
 # === 📁 RUTAS ABSOLUTAS SEGURAS ===
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # carpeta Server/
@@ -23,10 +24,19 @@ STATIC_DIR = os.path.join(BASE_DIR, "webapp", "static")
 os.makedirs(STATUS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 
+# === 🧠 Diccionario de códigos de error
+ERROR_MESSAGES = {
+    100: "❌ Error de compilación del archivo recibido. Por favor, revise su código fuente.",
+    200: "⏰ El algoritmo superó el tiempo límite de ejecución.",
+    300: "📂 El archivo CSV no se generó correctamente.",
+    400: "⚠️ Error inesperado durante la ejecución del test.",
+}
+
 # === 🔁 ESTADO GLOBAL ===
 activeS = 0  # medidores activos
 
 # === 🚀 FUNCIONES ===
+
 
 def send_manager(s, json_string, name):
     global activeS
@@ -82,11 +92,11 @@ def recv_manager(s, name):
 
 def receive_data(conn, ident):
     with conn:
-        print(conn)
+        #print(conn)
         payload = b''
         while True:
             data = conn.recv(1024)
-            print(data)
+            #print(data)
             if not data:
                 break
             payload += data
@@ -95,14 +105,83 @@ def receive_data(conn, ident):
             print("Received empty payload, skipping JSON decoding.")
             return
 
-        payloadDict = json.loads(payload.decode())
-        filename = payloadDict["name"] + str(ident) + ".csv"
-        result_path = os.path.join(STATIC_DIR, filename)
+        try:
+            payloadDict = json.loads(payload.decode())
+        except Exception as e:
+            print(f"❌ Error al decodificar JSON: {e}")
+            return
+        
+        filename = payloadDict.get("name", "unnamed")
+        codename = filename.replace("Results", "")
+        if "results" in payloadDict:
+            # ✅ Es un CSV
+            escribir_estado(codename, "✅ Test ejecutado correctamente. Resultados CSV recibidos.")
+            escribir_estado(codename, "📊 Generando gráficos...")
+            filename_csv = filename + str(ident) + ".csv"
+            result_path = os.path.join(STATIC_DIR, filename_csv)
+            with open(result_path, 'w') as f:
+                f.write(payloadDict["results"])
+            print(f"[{ident}] ✅ Resultado CSV guardado en: {result_path}")
 
-        with open(result_path, 'w') as f:
-            f.write(payloadDict["results"])
-        print(f"[{ident}] Resultado guardado en: {result_path}")
+        #filename = payloadDict["name"] + str(ident) + ".csv"
+        #result_path = os.path.join(STATIC_DIR, filename)
+        elif "error_code" in payloadDict:
+            # ❗ Es un JSON de error
+            code = payloadDict["error_code"]
+            translated_msg = ERROR_MESSAGES.get(code, "❓ Error desconocido")
 
+            # Agregar al archivo de estado (frontend lo leerá)
+            escribir_estado(filename, translated_msg)
+
+            # Guardar el JSON de error interpretado
+            #status_error = {
+                #"name": filename,
+               # "status": "ERROR",
+              #  "error_code": code,
+             #   "message": translated_msg
+            #}
+
+           # escribir_estado(filename, translated_msg, tipo="ERROR", error_code=code)
+            print(f"[{ident}] ⚠️ Error recibido: {translated_msg} | Guardado en {STATIC_DIR}")
+
+def escribir_estado(codename, msg, tipo="INFO", error_code=None):
+    """
+    Registra un mensaje en el archivo <codename>_status.json dentro de STATIC_DIR.
+    Si el tipo es ERROR, se incluye 'status': 'ERROR' y 'error_code'.
+    """
+    path = os.path.join(STATIC_DIR, f"{codename}_status.json")
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Si el archivo ya existe, lo cargamos
+    if os.path.exists(path):
+        try:
+            with open(path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+    else:
+        data = {}
+
+    # Asegurar que exista el arreglo de mensajes
+    if "messages" not in data:
+        data["messages"] = []
+
+    # Agregar el nuevo mensaje
+    data["messages"].append({
+        "time": timestamp,
+        "msg": msg
+    })
+
+    # Si es error, se marca como tal
+    if tipo == "ERROR":
+        data["status"] = "ERROR"
+        data["error_code"] = error_code
+
+    # Guardar el archivo actualizado
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+
+        
 def slave_serve(file_dir, name, cmd, input_size, samples):
     port = 50000
     port2 = 60000
@@ -123,8 +202,14 @@ def slave_serve(file_dir, name, cmd, input_size, samples):
 
             with open(file_dir, 'r') as f:
                 code = f.read()
-
+            task_suffix = ''
+            for possible in ['LCS', 'CAMM', 'CAMMR', 'CAMMS', 'CAMMSO', 'SIZE']:
+                if name.endswith(possible):
+                    task_suffix = possible
+                    break
             m = {"name": name, "cmd": cmd, "code": code, "input_size": input_size, "samples": samples}
+            escribir_estado(name, "📨 Archivo recibido correctamente.")
+            escribir_estado(name, f"🚚 Enviando test al slave con tipo: {task_suffix}, input_size: {input_size}, repeticiones: {samples}.")
             print('m: ', m)
             json_string = json.dumps(m)
             print('json_string: ', json_string)
@@ -148,3 +233,4 @@ def slave_serve(file_dir, name, cmd, input_size, samples):
 
 def security_check():
     pass
+
