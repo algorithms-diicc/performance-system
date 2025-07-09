@@ -1,19 +1,25 @@
+
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
-import RenderTable from './RenderTable';
-import { serverURL } from "../common/Constants";
+import { serverURL, METRIC_CATEGORIES, METRIC_DESCRIPTIONS } from "../common/Constants";
+import { Tooltip } from "react-tooltip";
+import { Info, ArrowLeft, Download, Filter } from "lucide-react";
+import "./RenderImage.css";
 
-function RenderImage({ codeList }) {
+function RenderImage() {
   const navigate = useNavigate();
   const codename = useParams().codename;
   const name = useLocation().state.name;
   const [plotFiles, setPlotFiles] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState("Todas");
+  const [statusData, setStatusData] = useState({});
   const link = `${serverURL}files/${codename}/`;
 
   useEffect(() => {
     document.title = `Performance-System: ${name}`;
     fetchPlots();
+    fetchStatusData();
   }, [name]);
 
   const fetchPlots = async () => {
@@ -22,15 +28,20 @@ function RenderImage({ codeList }) {
       const htmls = response.data
         .split('\n')
         .filter(filename => filename.trim().endsWith('.html'));
-      console.log("Archivos HTML recibidos:", htmls);
       setPlotFiles(htmls);
     } catch (error) {
       console.error("No se pudieron cargar los gráficos:", error);
     }
   };
-
+  const fetchStatusData = async () => {
+    try {
+      const response = await axios.get(`${serverURL}status/${codename}_status.json`);
+      setStatusData(response.data);
+    } catch (error) {
+      console.error("No se pudo obtener status JSON:", error);
+    }
+  };
   const handleDownload = () => {
-    // CSV combinado en carpeta del codename (funciona tanto con 1 como varios cpp)
     axios({
       url: `${serverURL}files/${codename}/CombinedResults.csv`,
       method: 'GET',
@@ -53,29 +64,98 @@ function RenderImage({ codeList }) {
     <iframe
       src={src}
       title="Plot"
-      style={{ width: "100%", height: "500px", border: "none" }}
+      style={{ width: "100%", height: "400px", border: "none" }}
     ></iframe>
   );
 
+  const groupedFiles = {};
+  plotFiles.forEach(file => {
+    const metricName = file.replace(".html", "").trim();
+    let found = false;
+    for (const [category, metrics] of Object.entries(METRIC_CATEGORIES)) {
+      if (metrics.includes(metricName)) {
+        if (!groupedFiles[category]) groupedFiles[category] = [];
+        groupedFiles[category].push(file);
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      if (!groupedFiles["Otros"]) groupedFiles["Otros"] = [];
+      groupedFiles["Otros"].push(file);
+    }
+  });
+
+  const categories = ["Todas", ...Object.keys(METRIC_CATEGORIES)];
+
   return (
     <div>
-      <div className="row">
-        <button type="button" className="buttonv" onClick={() => navigate(-1)}>Volver</button>
-        <button type="button" className="buttonv" onClick={handleDownload} style={{ float: "right" }}>
-          Descargar CSV
-        </button>
-        <h1>{name}</h1>
+      <div className="glass-header header-content">
+        <div className="header-left">
+          <button className="icon-button" onClick={() => navigate(-1)}>
+            <ArrowLeft size={18} /> Volver
+          </button>
+        </div>
+        <div className="header-center">
+          <h1 className="test-title">{name}</h1>
+          <div className="test-details-box">
+            <p className="test-subtitle">
+              Tipo: {statusData.task_type} · Max Input Size: {statusData.input_size} · Repeticiones: {statusData.samples}
+            </p>
+          </div>
+        </div>
+        <div className="header-controls">
+          <div className="filter-container">
+            <Filter size={16} style={{ marginRight: "4px" }} />
+            <select
+              id="category-select"
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+            >
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+          <button className="icon-button" onClick={handleDownload}>
+            <Download size={18} /> CSV
+          </button>
+        </div>
       </div>
 
-      <div className="cat">
-        <h2>Gráficos de las Métricas</h2>
-        {plotFiles.map((file, index) => (
-          <div key={index}>
-            <h4>{file.replace(".html", "")}</h4>
-            <PlotIframe src={`${link}${file}`} />
+      <div className="metrics-title-container">
+        <h2 className="metrics-title">Métricas de Rendimiento</h2>
+        <p className="metrics-subtitle">Análisis detallado del rendimiento y eficiencia energética de tu código.</p>
+      </div>
+      {Object.entries(groupedFiles)
+        .filter(([category]) => selectedCategory === "Todas" || selectedCategory === category)
+        .map(([category, files]) => (
+          <div key={category} className="category-group-container">
+            <div className="category-chip">{category}</div> {/* Solo aquí */}
+            {files.map((file, index) => {
+              const metricName = file.replace(".html", "").trim();
+              const description = METRIC_DESCRIPTIONS[metricName] || "Descripción no disponible.";
+              let originalFileName = "";
+              if (statusData.files) {
+                const match = statusData.files.find(f => metricName.includes(f.codename));
+                if (match) originalFileName = match.original_filename;
+              }
+
+              return (
+                <div key={index} className="metric-card">
+                  <div className="metric-header">
+                    <h3>{metricName}</h3>
+                    <Info data-tooltip-id={`tooltip-${metricName}`} data-tooltip-content={description} className="info-icon" color="#3b82f6" />
+                    <Tooltip id={`tooltip-${metricName}`} place="top" />
+                  </div>
+                  <div className="iframe-container">
+                    <PlotIframe src={`${link}${file}`} />
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ))}
-      </div>
     </div>
   );
 }

@@ -5,65 +5,54 @@ import getTask, {
   numericalInputOptions,
   serverURL,
   baseURL,
-  statusURL,
   tasks,
 } from "../common/Constants.js";
 import "bootstrap/dist/css/bootstrap.min.css";
 import "./RenderForm.css";
 
 function RenderForm() {
-  //const [code, setCode] = useState("");
   const [file, setFile] = useState(null);
   const [codename, setCodename] = useState();
   const [messages, setMessages] = useState([]);
   const [check, setCheck] = useState(true);
   const [name, setName] = useState("test");
-  const [fileList, setFileList] = useState();
+  const [fileList, setFileList] = useState([]);
   const [inputSize, setInputSize] = useState(10000);
-  const [samples, setSamples] = useState(30); 
-  var flag = "";
-  var intervalID = 0;
-  let navigate = useNavigate();
+  const [samples, setSamples] = useState(30);
+  const [selectedTaskType, setselectedTaskType] = useState("");
+  const navigate = useNavigate();
 
-  const [selectedTaskType, setselectedTaskType] = useState('');
+  // 🔁 Leer JSON de estado cada 3s
+  useEffect(() => {
+    if (!codename) return;
 
-useEffect(() => {
-  if (!codename) return;
+    const interval = setInterval(() => {
+      axios
+        .get(`${serverURL}status/${codename}_status.json`, {
+          headers: { "Cache-Control": "no-cache" },
+        })
+        .then((response) => {
+          const data = response.data;
+          if (Array.isArray(data.messages)) {
+            setMessages(data.messages);
 
-  let lastCount = 0;
-
-  const interval = setInterval(() => {
-    axios
-      .get(`${serverURL}status/${codename}_status.json`)
-      .then((response) => {
-        const data = response.data;
-
-        if (Array.isArray(data.messages)) {
-          const newMessages = data.messages.slice(lastCount);
-          if (newMessages.length > 0) {
-            setMessages((prev) => [...prev, ...newMessages]);
-            lastCount = data.messages.length;
-
-            // ✅ Habilitar botón cuando se detecta mensaje final
-            if (
-              newMessages.some((m) =>
-                m.msg.includes("📊 Generando gráficos") ||
-                m.msg.includes("✅ Test ejecutado correctamente")
-              )
-            ) {
+            const terminado = data.messages.some((m) =>
+              m.msg.includes("📊 Generando gráficos") ||
+              m.msg.includes("✅ Test ejecutado correctamente")
+            );
+            if (terminado) {
               setCheck(false);
+              clearInterval(interval);
             }
           }
-        }
-      })
-      .catch((error) => {
-        console.error("❌ Error al obtener estado JSON:", error);
-      });
-  }, 3000);
+        })
+        .catch((error) => {
+          console.warn("⏳ JSON no disponible todavía:", error.message);
+        });
+    }, 3000);
 
-  return () => clearInterval(interval);
-}, [codename]);
-
+    return () => clearInterval(interval);
+  }, [codename]);
 
   const handleRadioChange = (taskId) => {
     setselectedTaskType(taskId);
@@ -71,12 +60,8 @@ useEffect(() => {
 
   const sizeChange = (event) => {
     const newValue = event.target.value;
-    console.log("Nuevo valor:", newValue);
-
-    if (!isNaN(newValue) && newValue.trim() !== '') {
+    if (!isNaN(newValue) && newValue.trim() !== "") {
       setInputSize(newValue);
-    } else {
-      console.log("El valor introducido no es numérico");
     }
   };
 
@@ -86,7 +71,7 @@ useEffect(() => {
       setFile(uploadedFile);
     } else {
       alert("Please upload a .zip file.");
-      event.target.value = ""; // Reset the file input
+      event.target.value = "";
     }
   }
 
@@ -96,19 +81,14 @@ useEffect(() => {
       alert("Please upload a .zip file.");
       return;
     }
-    console.log(file);
+
     const bodyFormData = new FormData();
     bodyFormData.append("file", file, file.name);
     bodyFormData.append("input_size", inputSize);
     bodyFormData.append("samples", samples);
-    setMessages([{
-      time: new Date().toISOString().replace("T", " ").slice(0, 19),
-      msg: "📨 Enviando archivo al servidor..."
-    }]);
-    console.log(bodyFormData);
+
     if (selectedTaskType) {
       bodyFormData.append("task_type", getTask(selectedTaskType));
-      console.log(bodyFormData);
     }
 
     axios({
@@ -119,17 +99,17 @@ useEffect(() => {
     })
       .then((response) => {
         const queuedFiles = response.data.cpp_files_queued;
-        console.log('queuedFiles: ', queuedFiles);
         if (queuedFiles.length > 0 && queuedFiles[0].length > 0) {
-          const lastIndex = queuedFiles.length - 1;
-          setCodename(queuedFiles[lastIndex]);
-          console.log(codename);
+          const realCodename = queuedFiles[queuedFiles.length - 1];
+          setMessages([]); 
+          setCodename(realCodename);
+          setFileList(queuedFiles);
         } else {
-          console.log("No files found");
+          console.error("No se encontraron archivos en la respuesta");
         }
       })
       .catch((error) => {
-        console.error(error);
+        console.error("❌ Error al enviar archivo:", error);
       });
   }
 
@@ -137,91 +117,32 @@ useEffect(() => {
     setName(event.target.value);
   }
 
-function getStatusfromServer(fileNames) {
-  console.log("File names: ", fileNames);
-  setFileList(fileNames);
-
-  Promise.all(
-    fileNames.map((fileName) =>
-      axios
-        .get(statusURL + fileName)
-        .then((response) => {
-          const data = response.data;
-          let formattedStatus = "";
-
-          if (Array.isArray(data.messages)) {
-            formattedStatus = data.messages
-              .map((entry) => `[${entry.time}] ${entry.msg}`)
-              .join("\n");
-          }
-
-          // Si ya hay un error o ya terminó, se puede frenar
-          const isDone = data.status === "DONE";
-          const isError = data.status === "ERROR";
-
-          return {
-            name: fileName,
-            formattedStatus,
-            stop: isDone || isError
-          };
-        })
-        .catch((error) => ({
-          name: fileName,
-          formattedStatus: "[ERROR] No se pudo obtener estado",
-          stop: true
-        }))
-    )
-  ).then((results) => {
-    const combinedStatus = results.map((file) => file.formattedStatus).join("\n\n");
-    setMessages(combinedStatus);
-
-    // Si todos terminaron, detener polling
-    const allStop = results.every((r) => r.stop);
-    if (allStop) {
-      clearInterval(intervalID);
-      setCheck(false);
-    }
-  });
-}
-
-
-  function handleChange2(event) {
-    setName(event.target.value);
-  }
   return (
     <React.Fragment>
       <form onSubmit={handleSubmit}>
         <div className="container">
           <div className="row">
+            {/* Columna izquierda */}
             <div className="col-6">
-              <div className="card border-0 shadow ">
+              <div className="card border-0 shadow">
                 <div className="card-body">
-                  <div>
-                    <label htmlFor="title">
-                      Ingrese un nombre al código (para identificarlo en
-                      ventanas o pestañas)
-                    </label>
-                    <br />
-                    <input type="text" value={name} onChange={handleChange2} />
-                  </div>
-                  {/* <textarea
-                  type="text"
-                  id="code"
-                  name="code"
-                  rows="15" // Adjusted rows to fit content
-                  cols="78"
-                  value={code}
-                  onChange={handleChange}
-                ></textarea> */}
-                  <label htmlFor="formFile" className="form-label">
-                    Upload .zip file
+                  <label>
+                    Ingrese un nombre al código (para identificarlo)
                   </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={handleChangeName}
+                    className="form-control mb-3"
+                  />
+
+                  <label className="form-label">Upload .zip file</label>
                   <input
                     className="form-control"
                     type="file"
-                    id="formFile"
                     onChange={handleFileChange}
                   />
+
                   <div className="container mt-4 scrollable-area">
                     {tasks.map((task) => (
                       <div className="card mb-3" key={task.id}>
@@ -232,57 +153,73 @@ function getStatusfromServer(fileNames) {
                               type="radio"
                               name="taskToggle"
                               id={task.id}
-                              onChange={(e) => handleRadioChange(task.id)}
+                              onChange={() => handleRadioChange(task.id)}
                             />
                             <label
                               className="form-check-label"
                               htmlFor={task.id}
                             >
-                              {task.title}{" "}
-                              {selectedTaskType !== task.id &&
-                                ""}
+                              {task.title}
                             </label>
-
                           </div>
-                          {(selectedTaskType === task.id || (selectedTaskType.includes("camm") && task.id.includes("camm"))) && (
+
+                          {(selectedTaskType === task.id ||
+                            (selectedTaskType.includes("camm") &&
+                              task.id.includes("camm"))) && (
                             <div className="mt-2">
                               <p>{task.description}</p>
-                              {(selectedTaskType.includes('camm') || selectedTaskType === 'size' || selectedTaskType === 'lcs') && (
-                                <div>
+
+                              {(selectedTaskType.includes("camm") ||
+                                selectedTaskType === "size" ||
+                                selectedTaskType === "lcs") && (
+                                <>
                                   <label>max input size</label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     placeholder={inputSize}
                                     onChange={sizeChange}
-
                                   />
-                                 <label className="mt-2">Repeticiones por incremento</label>
+
+                                  <label className="mt-2">
+                                    Repeticiones por incremento
+                                  </label>
                                   <input
                                     type="number"
                                     min="1"
                                     name="samples"
                                     value={samples}
-                                    onChange={(e) => setSamples(e.target.value)}
+                                    onChange={(e) =>
+                                      setSamples(e.target.value)
+                                    }
                                     className="form-control"
                                     placeholder="Ej: 30"
                                   />
-                                    <div className="mt-2">
-                                    {selectedTaskType !== 'size' && selectedTaskType !== 'lcs' && numericalInputOptions.map((option) => (
-                                      <div className="form-check" key={option.value}>
-                                        <input
-                                          className="form-check-input"
-                                          type="radio"
-                                          name="option"
-                                          value={option.value}
-                                          onChange={(e) => handleRadioChange(option.value)}
-                                        />
-                                        <label className="form-check-label">{option.label}</label>
-                                      </div>
-                                    ))}
-                                  </div>
-                                </div>
 
+                                  <div className="mt-2">
+                                    {selectedTaskType !== "size" &&
+                                      selectedTaskType !== "lcs" &&
+                                      numericalInputOptions.map((option) => (
+                                        <div
+                                          className="form-check"
+                                          key={option.value}
+                                        >
+                                          <input
+                                            className="form-check-input"
+                                            type="radio"
+                                            name="option"
+                                            value={option.value}
+                                            onChange={(e) =>
+                                              handleRadioChange(option.value)
+                                            }
+                                          />
+                                          <label className="form-check-label">
+                                            {option.label}
+                                          </label>
+                                        </div>
+                                      ))}
+                                  </div>
+                                </>
                               )}
                             </div>
                           )}
@@ -290,6 +227,7 @@ function getStatusfromServer(fileNames) {
                       </div>
                     ))}
                   </div>
+
                   <input
                     type="submit"
                     className="buttonv"
@@ -299,25 +237,38 @@ function getStatusfromServer(fileNames) {
                 </div>
               </div>
             </div>
+
+            {/* Columna derecha */}
             <div className="col-6">
-              <div className="card border-0 shadow ">
+              <div className="card border-0 shadow">
                 <div className="card-body">
-                  <h2> Estado del Código </h2>
-                  <div>
-                     <div className="status-box border rounded p-2" style={{ height: "300px", overflowY: "auto", backgroundColor: "#f8f9fa" }}>
-                        <ul className="list-group list-group-flush">
-                          {messages.map((entry, index) => (
-                            <li key={index} className="list-group-item py-1 px-2">
-                              <strong>[{entry.time}]</strong> {entry.msg}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                  <h2>Estado del Código</h2>
+                  <div
+                    className="status-box border rounded p-2"
+                    style={{
+                      height: "300px",
+                      overflowY: "auto",
+                      backgroundColor: "#f8f9fa",
+                    }}
+                  >
+                    <ul className="list-group list-group-flush">
+                      {messages.map((entry, index) => (
+                        <li
+                          key={index}
+                          className="list-group-item py-1 px-2"
+                        >
+                          <strong>[{entry.time}]</strong> {entry.msg}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  {!messages.some((m) => m.msg.includes("❌ ERROR DETECTADO")) && (
+
+                  {!messages.some((m) =>
+                    m.msg.includes("❌ ERROR DETECTADO")
+                  ) && (
                     <button
                       type="button"
-                      className="buttonv"
+                      className="buttonv mt-3"
                       onClick={() =>
                         navigate("/code/" + codename, {
                           replace: false,

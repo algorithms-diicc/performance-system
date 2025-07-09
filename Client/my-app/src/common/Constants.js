@@ -46,3 +46,33 @@ export const numericalInputOptions = [
     { value: 'cammso', label: 'Numeros semi-ordenados' },
     { value: 'camms', label: 'Numeros iguales' },
 ];
+
+export const METRIC_DESCRIPTIONS = {
+    Instructions: "Número total de instrucciones ejecutadas. Relacionado con la eficiencia general del código.",
+    CpuCycles: "Ciclos totales de CPU usados. Indica uso intensivo del procesador.",
+    TaskClock: "Tiempo de ejecución del proceso en milisegundos.",
+    CpuClock: "Tiempo total de CPU consumido.",
+    Branches: "Número de bifurcaciones (branches) ejecutadas.",
+    BranchMisses: "Fallos en predicción de branches. Afecta rendimiento.",
+    LLCLoads: "Lecturas desde el último nivel de caché (LLC).",
+    LLCLoadMisses: "Fallos al leer desde LLC.",
+    LLCStores: "Escrituras en LLC.",
+    LLCStoreMisses: "Fallos al escribir en LLC.",
+    L1DcacheLoads: "Lecturas desde caché L1 de datos.",
+    L1DcacheLoadMisses: "Fallos al leer desde caché L1.",
+    L1DcacheStores: "Escrituras en caché L1.",
+    CacheReferences: "Referencias totales a cualquier nivel de caché.",
+    CacheMisses: "Fallos generales de caché.",
+    PageFaults: "Fallas de página. Indican acceso a memoria que no estaba en RAM.",
+    MajorFaults: "Fallas mayores que requieren cargar datos desde disco.",
+    StartTime: "Hora de inicio de la ejecución.",
+    EndTime: "Hora de fin de la ejecución.",
+    DurationTime: "Duración total de la ejecución en milisegundos."
+};
+
+export const METRIC_CATEGORIES = {
+    CPU: ["Instructions", "CpuCycles", "TaskClock", "CpuClock", "Branches", "BranchMisses"],
+    Memoria: ["LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses", "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores", "CacheReferences", "CacheMisses"],
+    Sistema: ["PageFaults", "MajorFaults"],
+    Tiempo: ["StartTime", "EndTime", "DurationTime"]
+};

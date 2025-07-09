@@ -101,7 +101,7 @@ def check():
         return 'Todo OK!', 200
 @app.route('/status/<filename>')
 def serve_status_json(filename):
-    full_path = os.path.join(STATUS_DIR, filename)
+    full_path = os.path.join(STATIC_DIR, filename)  # ANTES era STATUS_DIR
     if not os.path.exists(full_path):
         abort(404)
     with open(full_path, 'r', encoding='utf-8') as f:
@@ -111,6 +111,7 @@ def serve_status_json(filename):
         except Exception as e:
             print(f"❌ Error al parsear JSON desde {filename}:", e)
             return make_response("Error al leer archivo de estado", 500)
+
     
 @app.route('/sendcode', methods=['POST'])
 def cap_code():
@@ -144,18 +145,37 @@ def cap_code():
 
                 tag = task_type if task_type in ["CAMM", "CAMMR", "CAMMS", "CAMMSO", "LCS", "SIZE"] else ""
                 name = unique_id + tag
+                status_json_path = os.path.join(STATIC_DIR, name + "_status.json")
+                files_info = []
+                for i, cpp_file in enumerate(names_onZip):
+                    files_info.append({
+                        "codename": cpp_file,
+                        "original_filename": fileNames[i]
+                    })
 
+                data = {
+                    "status": "IN QUEUE",
+                    "task_type": task_type,
+                    "input_size": input_size,
+                    "samples": samples,
+                    "files": files_info
+                }
+
+                with open(status_json_path, "w") as f:
+                    json.dump(data, f, indent=4)
+
+
+                print("✅ JSON inicial creado:", status_json_path)
                 cpp_file_dir = os.path.join(TEST_DIR, name + ".cpp")
                 print(cpp_file_dir)
                 outputfile = os.path.join(TEST_DIR, name + ".out")
-                statusfile = os.path.join(STATUS_DIR, name + "_status.json")
-
+                statusfile = os.path.join(STATUS_DIR, name)
 
                 with open(cpp_file_dir, "w", newline="\n") as f:
                     f.writelines([line.decode('utf-8') for line in zip_ref.open(file_info)])
 
                 with open(statusfile, "w", newline="\n") as st:
-                 st.write(json.dumps({"messages": [{"time": timestamp_actual, "msg": "IN QUEUE"}]}))
+                    st.write("IN QUEUE")
 
                 cpp_dirs_onZip.append(cpp_file_dir)
                 names_onZip.append(name)

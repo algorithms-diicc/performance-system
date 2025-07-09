@@ -90,16 +90,41 @@ def plot_metric_multi(all_data, metric, output_dir):
             name=fname
         ))
 
+    # Etiquetas personalizadas para el eje Y
+    metric_y_labels = {
+        "Instructions": "Instrucciones (unidades)",
+        "CpuCycles": "Ciclos CPU",
+        "TaskClock": "Tiempo de tarea (ms)",
+        "CpuClock": "Reloj CPU (ms)",
+        "Branches": "Branches (unidades)",
+        "BranchMisses": "Branch Misses (unidades)",
+        "LLCLoads": "LLC Loads (unidades)",
+        "LLCLoadMisses": "LLC Load Misses (unidades)",
+        "LLCStores": "LLC Stores (unidades)",
+        "LLCStoreMisses": "LLC Store Misses (unidades)",
+        "L1DcacheLoads": "L1D Loads (unidades)",
+        "L1DcacheLoadMisses": "L1D Load Misses (unidades)",
+        "L1DcacheStores": "L1D Stores (unidades)",
+        "CacheReferences": "Referencias Caché (unidades)",
+        "CacheMisses": "Fallos Caché (unidades)",
+        "PageFaults": "Page Faults",
+        "MajorFaults": "Major Faults",
+        "StartTime": "Start Time (ms)",
+        "EndTime": "End Time (ms)",
+        "DurationTime": "Duración total (ms)"
+    }
+
     fig.update_layout(
-        title=f"Comparación de {metric} entre archivos",
         xaxis_title="Input Size",
-        yaxis_title=f"{metric} (ms)" if metric == "DurationTime" else metric,
-        template='plotly_white'
+        yaxis_title=metric_y_labels.get(metric, metric),
+        template='plotly_white',
+        showlegend=True  # 🔥 Forzar mostrar leyenda siempre
     )
 
     fig_path = os.path.join(output_dir, f"{metric}.html")
     fig.write_html(fig_path)
     print(f"[✅] Gráfico guardado: {fig_path}")
+
 # === 🔁 GRAFICAR TODAS LAS MÉTRICAS ===
 def graph_results(names, fileNames, input_size):
     print("📊 Iniciando generación de gráficos combinados en HTML con Plotly...")
@@ -114,6 +139,7 @@ def graph_results(names, fileNames, input_size):
             df = df.copy()
             df['InputSize'] = pd.to_numeric(df['InputSize'], errors='coerce')
             df['source'] = fname
+            print (fname)
             dataframes.append(df)
             display_names.append(fname)
             print(f"📄 CSV: {filename}")
