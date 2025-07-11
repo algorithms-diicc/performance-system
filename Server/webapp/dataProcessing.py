@@ -109,6 +109,9 @@ def plot_metric_multi(all_data, metric, output_dir):
         "CacheMisses": "Fallos Caché (unidades)",
         "PageFaults": "Page Faults",
         "MajorFaults": "Major Faults",
+        "EnergyPkg": "Energía paquete CPU (J)",
+        "EnergyCores": "Energía núcleos CPU (J)",
+        "EnergyRAM": "Energía RAM (J)",
         "StartTime": "Start Time (ms)",
         "EndTime": "End Time (ms)",
         "DurationTime": "Duración total (ms)"

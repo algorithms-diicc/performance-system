@@ -16,14 +16,14 @@ if [ ! -f "$INPUT_FILE" ]; then
 fi
 
 # === ⚙️ Métricas compatibles en keira (sin RAPL) ===
-METRICS="instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores,cache-references,cache-misses,branches,branch-misses,cpu-cycles,task-clock,cpu-clock,page-faults,major-faults"
+METRICS="instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores,cache-references,cache-misses,branches,branch-misses,cpu-cycles,task-clock,cpu-clock,page-faults,major-faults,power/energy-pkg/,power/energy-cores/,power/energy-ram/"
 
 # === ⚙️ Configuración de iteraciones ===
 INCREMENT=30
 WARMUP_ROUNDS=3
 
 # === 📊 Cabecera del CSV ===
-HEADER="Increment,InputSize,Instructions,LLCLoads,LLCLoadMisses,LLCStores,LLCStoreMisses,L1DcacheLoads,L1DcacheLoadMisses,L1DcacheStores,CacheReferences,CacheMisses,Branches,BranchMisses,CpuCycles,TaskClock,CpuClock,PageFaults,MajorFaults,StartTime,EndTime,DurationTime"
+HEADER="Increment,InputSize,Instructions,LLCLoads,LLCLoadMisses,LLCStores,LLCStoreMisses,L1DcacheLoads,L1DcacheLoadMisses,L1DcacheStores,CacheReferences,CacheMisses,Branches,BranchMisses,CpuCycles,TaskClock,CpuClock,PageFaults,MajorFaults,EnergyPkg,EnergyCores,EnergyRAM,StartTime,EndTime,DurationTime"
 echo "$HEADER" > "$CSV_OUTPUT"
 
 # === 🔁 Warmup: ejecución sin medición para calentar el sistema ===

@@ -65,6 +65,9 @@ export const METRIC_DESCRIPTIONS = {
     CacheMisses: "Fallos generales de caché.",
     PageFaults: "Fallas de página. Indican acceso a memoria que no estaba en RAM.",
     MajorFaults: "Fallas mayores que requieren cargar datos desde disco.",
+    EnergyPkg: "Energía consumida por el paquete completo del CPU (package).",
+    EnergyCores: "Energía consumida específicamente por los núcleos del CPU.",
+    EnergyRAM: "Energía consumida por la memoria RAM.",
     StartTime: "Hora de inicio de la ejecución.",
     EndTime: "Hora de fin de la ejecución.",
     DurationTime: "Duración total de la ejecución en milisegundos."
@@ -74,5 +77,6 @@ export const METRIC_CATEGORIES = {
     CPU: ["Instructions", "CpuCycles", "TaskClock", "CpuClock", "Branches", "BranchMisses"],
     Memoria: ["LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses", "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores", "CacheReferences", "CacheMisses"],
     Sistema: ["PageFaults", "MajorFaults"],
-    Tiempo: ["StartTime", "EndTime", "DurationTime"]
+    Tiempo: ["StartTime", "EndTime", "DurationTime"],
+    Energía: ["EnergyPkg", "EnergyCores", "EnergyRAM"]
 };

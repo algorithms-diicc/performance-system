@@ -27,9 +27,7 @@ function Navbar({ tasksState }) {
           </Link>
                       </li> */}
                         <li className="nav-item">
-                            <a className="nav-link" href="#">
-                                Tutorial y ejemplos de ejecución
-                            </a>
+                            <Link to="/tutorial" className="nav-link">  📄 Tutorial y Ejemplos</Link>
                         </li>
                     </ul>
                 </div>

@@ -5,6 +5,7 @@ import RenderImage from "./screens/RenderImage";
 import Navbar from "./common/Navbar";
 import TaskPage from "./screens/TaskPage";
 import RenderDoubleForm from "./screens/RenderDobuleForm";
+import TutorialPage from './screens/TutorialPage';
 
 class App extends Component {
   state = {
@@ -39,6 +40,7 @@ class App extends Component {
             <Route path="/" element={<RenderForm />} />
             <Route path="/compare" element={<RenderDoubleForm tasksState={this.state.tasksState} />} />
             <Route path="/code/:codename" element={<RenderImage />} />
+            <Route path="/tutorial" element={<TutorialPage />} />
           </Routes>
         </BrowserRouter>
       </div>

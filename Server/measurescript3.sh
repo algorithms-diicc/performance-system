@@ -7,7 +7,6 @@ MAX_SIZE=$3          # Cantidad máxima de líneas a leer
 SAMPLES=$4           # Repeticiones por cada incremento
 CSV_OUTPUT=$5        # Ruta del archivo de salida
 
-
 # === ❌ Validación de existencia del archivo de entrada ===
 if [ ! -f "$INPUT_FILE" ]; then
     echo "❌ El archivo de entrada no existe: $INPUT_FILE"
@@ -18,9 +17,9 @@ fi
 INCREMENT=30
 WARMUP_ROUNDS=3
 
-# === 📊 Métricas útiles soportadas por keira (sin RAPL, sin métricas del SO) ===
-METRICS="instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores,cache-references,cache-misses,branches,branch-misses,cpu-cycles,task-clock,cpu-clock,page-faults,major-faults"
-HEADER="Increment,InputSize,Instructions,LLCLoads,LLCLoadMisses,LLCStores,LLCStoreMisses,L1DcacheLoads,L1DcacheLoadMisses,L1DcacheStores,CacheReferences,CacheMisses,Branches,BranchMisses,CpuCycles,TaskClock,CpuClock,PageFaults,MajorFaults,StartTime,EndTime,DurationTime"
+# === 📊 Métricas útiles soportadas + nuevas métricas de energía ===
+METRICS="instructions,LLC-loads,LLC-load-misses,LLC-stores,LLC-store-misses,L1-dcache-loads,L1-dcache-load-misses,L1-dcache-stores,cache-references,cache-misses,branches,branch-misses,cpu-cycles,task-clock,cpu-clock,page-faults,major-faults,power/energy-pkg/,power/energy-cores/,power/energy-ram/"
+HEADER="Increment,InputSize,Instructions,LLCLoads,LLCLoadMisses,LLCStores,LLCStoreMisses,L1DcacheLoads,L1DcacheLoadMisses,L1DcacheStores,CacheReferences,CacheMisses,Branches,BranchMisses,CpuCycles,TaskClock,CpuClock,PageFaults,MajorFaults,EnergyPkg,EnergyCores,EnergyRAM,StartTime,EndTime,DurationTime"
 echo "$HEADER" > "$CSV_OUTPUT"
 
 # === 🔥 Warmup: ejecución sin medición para estabilizar entorno ===
@@ -37,9 +36,9 @@ for ((i=1; i<=INCREMENT; i++)); do
 
     for ((j=0; j<SAMPLES; j++)); do
         start=$(date +%s%3N)
-       # Ejecutar medición con perf y guardar salida
+
         echo "→ Ejecutando con input size: $current_size"
-        # Ejecutar perf con métricas relevantes
+
         LC_NUMERIC=C /usr/lib/linux-tools/6.8.0-60-generic/perf stat -a --no-big-num -x';' \
             -o perf_output.tmp -e $METRICS "$EXECUTABLE" $current_input > /dev/null 2>&1
 
