@@ -123,6 +123,7 @@ def cap_code():
     task_type = request.form.get('task_type', '')
     input_size = request.form.get('input_size', 10000)
     samples = request.form.get("samples", default="30")  
+    username = request.form.get("username", "")
 
     if file.filename == '':
         return 'No selected file', 400
@@ -158,7 +159,8 @@ def cap_code():
                     "task_type": task_type,
                     "input_size": input_size,
                     "samples": samples,
-                    "files": files_info
+                    "files": files_info,
+                    "username": username  
                 }
 
                 with open(status_json_path, "w") as f:

@@ -7,7 +7,6 @@ import getTask, {
   baseURL,
   tasks,
 } from "../common/Constants.js";
-import "bootstrap/dist/css/bootstrap.min.css";
 import "./RenderForm.css";
 
 function RenderForm() {
@@ -15,17 +14,17 @@ function RenderForm() {
   const [codename, setCodename] = useState();
   const [messages, setMessages] = useState([]);
   const [check, setCheck] = useState(true);
-  const [name, setName] = useState("test");
+  const [name, setName] = useState("");
+  const [username, setuserName] = useState("");
   const [fileList, setFileList] = useState([]);
-  const [inputSize, setInputSize] = useState(10000);
+  const [inputSize, setInputSize] = useState(1000);
   const [samples, setSamples] = useState(30);
-  const [selectedTaskType, setselectedTaskType] = useState("");
+  const [selectedTaskType, setSelectedTaskType] = useState("");
+  const [dataType, setDataType] = useState("");
   const navigate = useNavigate();
 
-  // 🔁 Leer JSON de estado cada 3s
   useEffect(() => {
     if (!codename) return;
-
     const interval = setInterval(() => {
       axios
         .get(`${serverURL}status/${codename}_status.json`, {
@@ -35,7 +34,6 @@ function RenderForm() {
           const data = response.data;
           if (Array.isArray(data.messages)) {
             setMessages(data.messages);
-
             const terminado = data.messages.some((m) =>
               m.msg.includes("📊 Generando gráficos") ||
               m.msg.includes("✅ Test ejecutado correctamente")
@@ -50,35 +48,32 @@ function RenderForm() {
           console.warn("⏳ JSON no disponible todavía:", error.message);
         });
     }, 3000);
-
     return () => clearInterval(interval);
   }, [codename]);
 
-  const handleRadioChange = (taskId) => {
-    setselectedTaskType(taskId);
+  const handleTaskChange = (taskId) => {
+    setSelectedTaskType(taskId);
+    setDataType("");
   };
 
-  const sizeChange = (event) => {
-    const newValue = event.target.value;
-    if (!isNaN(newValue) && newValue.trim() !== "") {
-      setInputSize(newValue);
-    }
+  const handleDataTypeChange = (type) => {
+    setDataType(type);
   };
 
-  function handleFileChange(event) {
+  const handleFileChange = (event) => {
     const uploadedFile = event.target.files[0];
     if (uploadedFile && uploadedFile.name.endsWith(".zip")) {
       setFile(uploadedFile);
     } else {
-      alert("Please upload a .zip file.");
+      alert("Por favor, sube un archivo .zip válido.");
       event.target.value = "";
     }
-  }
+  };
 
-  function handleSubmit(event) {
+  const handleSubmit = (event) => {
     event.preventDefault();
     if (!file) {
-      alert("Please upload a .zip file.");
+      alert("Por favor, sube un archivo .zip.");
       return;
     }
 
@@ -89,6 +84,12 @@ function RenderForm() {
 
     if (selectedTaskType) {
       bodyFormData.append("task_type", getTask(selectedTaskType));
+    }
+    if (dataType) {
+      bodyFormData.append("data_type", dataType);
+    }
+    if (username) {
+      bodyFormData.append("username", username);
     }
 
     axios({
@@ -101,7 +102,7 @@ function RenderForm() {
         const queuedFiles = response.data.cpp_files_queued;
         if (queuedFiles.length > 0 && queuedFiles[0].length > 0) {
           const realCodename = queuedFiles[queuedFiles.length - 1];
-          setMessages([]); 
+          setMessages([]);
           setCodename(realCodename);
           setFileList(queuedFiles);
         } else {
@@ -111,182 +112,184 @@ function RenderForm() {
       .catch((error) => {
         console.error("❌ Error al enviar archivo:", error);
       });
-  }
+  };
 
-  function handleChangeName(event) {
+  const handleChangeName = (event) => {
     setName(event.target.value);
-  }
+  };
+  const handleChangeuserName = (event) => {
+    setuserName(event.target.value);
+  };
 
   return (
-    <React.Fragment>
+    <div className="inicio-container">
       <form onSubmit={handleSubmit}>
-        <div className="container">
-          <div className="row">
-            {/* Columna izquierda */}
-            <div className="col-6">
-              <div className="card border-0 shadow">
-                <div className="card-body">
-                  <label>
-                    Ingrese un nombre al código (para identificarlo)
-                  </label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={handleChangeName}
-                    className="form-control mb-3"
-                  />
+        <div className="content-grid">
+          {/* Panel configuración */}
+          <div className="glass-card config-scroll">
+            <div className="card-header" style={{ padding: "2rem 2rem 1rem 2rem" }}>
+              <h2 style={{ marginLeft: "0.5rem", marginTop: "0.5rem" }}>🛠️ Configuración del Test</h2>
+            </div>
 
-                  <label className="form-label">Upload .zip file</label>
-                  <input
-                    className="form-control"
-                    type="file"
-                    onChange={handleFileChange}
-                  />
+            <div className="form-section">
+              <label className="form-label"><span className="label-icon">📝</span> Usuario </label>
+              <input
+                type="text"
+                value={username}
+                onChange={handleChangeuserName}
+                className="form-input"
+                required
+              />
+            </div>            <div className="form-section">
+              <label className="form-label"><span className="label-icon">📝</span> Nombre del Test</label>
+              <input
+                type="text"
+                value={name}
+                onChange={handleChangeName}
+                className="form-input"
+                placeholder="Ej: mi algoritmo"
+                required
+              />
+            </div>
 
-                  <div className="container mt-4 scrollable-area">
-                    {tasks.map((task) => (
-                      <div className="card mb-3" key={task.id}>
-                        <div className="card-body">
-                          <div className="form-check">
+            <div className="form-section">
+              <label className="form-label"><span className="label-icon">📁</span> Archivo de código (.zip)</label>
+              <input
+                type="file"
+                onChange={handleFileChange}
+                className="form-input"
+                accept=".zip"
+                required
+              />
+            </div>
+
+            <div className="form-section">
+              <label className="form-label"><span className="label-icon">💻</span> Tipo de Test</label>
+              <div className="test-options">
+                {tasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className={`test-option ${selectedTaskType === task.id ? "selected" : ""}`}
+                    onClick={() => handleTaskChange(task.id)}
+                  >
+                    <label className="test-radio-label">
+                      <input
+                        type="radio"
+                        name="taskToggle"
+                        checked={selectedTaskType === task.id}
+                        onChange={() => handleTaskChange(task.id)}
+                        className="test-radio"
+                      />
+                      <span className="test-title">{task.title}</span>
+                    </label>
+                    {selectedTaskType === task.id && (
+                      <div className="test-details">
+                        <p className="test-description">{task.description}</p>
+                        <div className="test-params">
+                          <div className="param-group">
+                            <label className="param-label">Tamaño máximo de entrada</label>
                             <input
-                              className="form-check-input"
-                              type="radio"
-                              name="taskToggle"
-                              id={task.id}
-                              onChange={() => handleRadioChange(task.id)}
+                              type="number"
+                              className="param-input"
+                              value={inputSize}
+                              onChange={(e) => setInputSize(e.target.value)}
+                              min="1"
                             />
-                            <label
-                              className="form-check-label"
-                              htmlFor={task.id}
-                            >
-                              {task.title}
-                            </label>
+                          </div>
+                          <div className="param-group">
+                            <label className="param-label">Repeticiones por incremento</label>
+                            <input
+                              type="number"
+                              className="param-input"
+                              value={samples}
+                              onChange={(e) => setSamples(e.target.value)}
+                              min="1"
+                              placeholder="Ej: 30"
+                            />
                           </div>
 
-                          {(selectedTaskType === task.id ||
-                            (selectedTaskType.includes("camm") &&
-                              task.id.includes("camm"))) && (
-                            <div className="mt-2">
-                              <p>{task.description}</p>
-
-                              {(selectedTaskType.includes("camm") ||
-                                selectedTaskType === "size" ||
-                                selectedTaskType === "lcs") && (
-                                <>
-                                  <label>max input size</label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    placeholder={inputSize}
-                                    onChange={sizeChange}
-                                  />
-
-                                  <label className="mt-2">
-                                    Repeticiones por incremento
+                          {/* Opciones solo para CAMM */}
+                          {selectedTaskType === "camm" && (
+                            <div className="param-group">
+                              <label className="param-label">Tipo de datos</label>
+                              <div className="data-options">
+                                {numericalInputOptions.map((option) => (
+                                  <label key={option.value} className="data-option" style={{ marginBottom: "0.5rem" }}>
+                                    <input
+                                      type="radio"
+                                      name="dataType"
+                                      value={option.value}
+                                      onChange={(e) => handleDataTypeChange(e.target.value)}
+                                      checked={dataType === option.value}
+                                      className="data-radio"
+                                    />
+                                    <span className="data-label">{option.label}</span>
                                   </label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    name="samples"
-                                    value={samples}
-                                    onChange={(e) =>
-                                      setSamples(e.target.value)
-                                    }
-                                    className="form-control"
-                                    placeholder="Ej: 30"
-                                  />
-
-                                  <div className="mt-2">
-                                    {selectedTaskType !== "size" &&
-                                      selectedTaskType !== "lcs" &&
-                                      numericalInputOptions.map((option) => (
-                                        <div
-                                          className="form-check"
-                                          key={option.value}
-                                        >
-                                          <input
-                                            className="form-check-input"
-                                            type="radio"
-                                            name="option"
-                                            value={option.value}
-                                            onChange={(e) =>
-                                              handleRadioChange(option.value)
-                                            }
-                                          />
-                                          <label className="form-check-label">
-                                            {option.label}
-                                          </label>
-                                        </div>
-                                      ))}
-                                  </div>
-                                </>
-                              )}
+                                ))}
+                              </div>
                             </div>
                           )}
                         </div>
                       </div>
-                    ))}
+                    )}
                   </div>
-
-                  <input
-                    type="submit"
-                    className="buttonv"
-                    disabled={!selectedTaskType}
-                    value="Subir"
-                  />
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Columna derecha */}
-            <div className="col-6">
-              <div className="card border-0 shadow">
-                <div className="card-body">
-                  <h2>Estado del Código</h2>
-                  <div
-                    className="status-box border rounded p-2"
-                    style={{
-                      height: "300px",
-                      overflowY: "auto",
-                      backgroundColor: "#f8f9fa",
-                    }}
-                  >
-                    <ul className="list-group list-group-flush">
-                      {messages.map((entry, index) => (
-                        <li
-                          key={index}
-                          className="list-group-item py-1 px-2"
-                        >
-                          <strong>[{entry.time}]</strong> {entry.msg}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            <button
+              type="submit"
+              className={`submit-button ${!selectedTaskType || !file ? "disabled" : ""}`}
+              disabled={!selectedTaskType || !file}
+            >
+              Ejecutar Test
+            </button>
+          </div>
 
-                  {!messages.some((m) =>
-                    m.msg.includes("❌ ERROR DETECTADO")
-                  ) && (
-                    <button
-                      type="button"
-                      className="buttonv mt-3"
-                      onClick={() =>
-                        navigate("/code/" + codename, {
-                          replace: false,
-                          state: { name: name, codeList: fileList },
-                        })
-                      }
-                      disabled={check}
-                    >
-                      Ver estadísticas
-                    </button>
-                  )}
-                </div>
+          {/* Panel estado */}
+          <div className="glass-card" style={{ minHeight: "600px" }}>
+            <div className="card-header" style={{ padding: "2rem 2rem 1rem 2rem" }}>
+              <h2 style={{ marginLeft: "0.5rem", marginTop: "0.5rem" }}>⚙️ Estado del Código</h2>
+            </div>
+            <div className="status-content">
+              <div className="status-box">
+                {messages.length === 0 ? (
+                  <div className="status-empty">
+                    <span className="status-icon">⏳</span>
+                    <p>Esperando ejecución del test...</p>
+                  </div>
+                ) : (
+                  <div className="status-messages">
+                    {messages.map((entry, index) => (
+                      <div key={index} className="status-message">
+                        <span className="message-time">[{entry.time}]</span>
+                        <span className="message-text">{entry.msg}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {codename && !messages.some((m) => m.msg.includes("❌ ERROR DETECTADO")) && (
+                <button
+                  type="button"
+                  className={`results-button ${check ? "disabled" : ""}`}
+                  onClick={() =>
+                    navigate("/code/" + codename, {
+                      replace: false,
+                      state: { name: name, codeList: fileList },
+                    })
+                  }
+                  disabled={check}
+                >
+                  Ver Estadísticas
+                </button>
+              )}
             </div>
           </div>
         </div>
       </form>
-    </React.Fragment>
+    </div>
   );
 }
 
