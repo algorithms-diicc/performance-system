@@ -15,7 +15,7 @@ function Navbar({ tasksState }) {
                 <div className="collapse navbar-collapse justify-content-center" id="navbarNav">
                     <ul className="navbar-nav">
                         <li className="nav-item active">
-                            <Link to="/" className="nav-link">Test</Link>
+                            <Link to="/" className="nav-link">Inicio</Link>
                         </li>
                         {/* <li className="nav-item active">
                           <Link to="/compare" className="nav-link">Compare</Link>

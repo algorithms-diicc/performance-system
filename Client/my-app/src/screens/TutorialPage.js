@@ -66,7 +66,7 @@ const TutorialPage = () => {
                                     <img
                                         src="/tutorial-images/visualizacion-de-resultados.PNG"
                                         alt="Visualización de resultados"
-                                        style={{ maxWidth: "30%", borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
+                                        style={{ maxWidth: "60%", borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
                                     />
                                 </div>
                             </div>
@@ -152,6 +152,12 @@ int main(int argc, char* argv[]) {
     return 0;
 }`}
                                     </SyntaxHighlighter>
+                                    <a href="/tutorial-codigos/lcs_template.cpp" download className="icon-button">
+                                        Descargar Código LCS
+                                    </a>
+                                    <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
+                                        ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                    </p>
                                 </div>
                             </div>
                         </div>
@@ -241,6 +247,12 @@ int main(int argc, char* argv[]) {
 }
                               `}
                                         </SyntaxHighlighter>
+                                        <a href="/tutorial-codigos/camm_template.cpp" download className="icon-button">
+                                            Descargar Código CAMM
+                                        </a>
+                                        <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
+                                            ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
@@ -296,6 +308,12 @@ int main(int argc, char* argv[]) {
 }
                         `}
                                         </SyntaxHighlighter>
+                                        <a href="/tutorial-codigos/size_template.cpp" download className="icon-button">
+                                            Descargar Código SIZE
+                                        </a>
+                                        <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
+                                            ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                        </p>
                                     </div>
                                 </div>
                             </div>
