@@ -87,6 +87,13 @@ function RenderImage() {
   });
 
   const categories = ["Todas", ...Object.keys(METRIC_CATEGORIES)];
+  const normalizeClassName = (str) => {
+    return str
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // quitar tildes
+      .replace(/\s/g, '');
+  };
 
   return (
     <div>
@@ -131,7 +138,7 @@ function RenderImage() {
         .filter(([category]) => selectedCategory === "Todas" || selectedCategory === category)
         .map(([category, files]) => (
           <div key={category} className="category-group-container">
-            <div className="category-chip">{category}</div> {/* Solo aquí */}
+            <div className={`category-chip ${normalizeClassName(category)}`}>{category}</div>
             {files.map((file, index) => {
               const metricName = file.replace(".html", "").trim();
               const description = METRIC_DESCRIPTIONS[metricName] || "Descripción no disponible.";
@@ -145,11 +152,24 @@ function RenderImage() {
                 <div key={index} className="metric-card">
                   <div className="metric-header">
                     <h3>{metricName}</h3>
-                    <Info data-tooltip-id={`tooltip-${metricName}`} data-tooltip-content={description} className="info-icon" color="#3b82f6" />
-                    <Tooltip id={`tooltip-${metricName}`} place="top" />
+                    <Info
+                      data-tooltip-id={`tooltip-${metricName}`}
+                      data-tooltip-content={description.replace(/\n/g, "<br/>")}
+                      className="info-icon"
+                      color="#3b82f6"
+                    />
+                    <Tooltip
+                      id={`tooltip-${metricName}`}
+                      place="top"
+                      render={() => <span dangerouslySetInnerHTML={{ __html: description.replace(/\n/g, "<br/>") }} />}
+                    ></Tooltip>
                   </div>
                   <div className="iframe-container">
-                    <PlotIframe src={`${link}${file}`} />
+                    <iframe
+                      src={`${link}${file}`}
+                      title="Plot"
+                      style={{ width: "100%", height: "400px", border: "none" }}
+                    ></iframe>
                   </div>
                 </div>
               );
