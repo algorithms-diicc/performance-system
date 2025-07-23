@@ -79,13 +79,13 @@ export const METRIC_DESCRIPTIONS = {
         "Número de lecturas realizadas desde la LLC (Last Level Cache), que en la mayoría de los sistemas modernos corresponde a la caché L3.\nL3 (Level 3): más grande y más lenta que L1 y L2, suele ser compartida por varios núcleos.\nAcceder a la LLC es mucho más rápido que ir a la RAM, pero más lento que L1 o L2.\nAlta actividad en LLC puede indicar acceso frecuente a datos compartidos entre hilos o núcleos.",
 
     LLCLoadMisses:
-        "Cantidad de fallos al intentar leer en la LLC (normalmente L3).\nCuando se produce un fallo aquí, el CPU se ve obligado a buscar datos en la memoria RAM, lo que introduce mucha más latencia.\nReducir estos fallos mejora significativamente el rendimiento general y el consumo energético.",
+        "Cantidad de fallos al intentar leer en la LLC (Last Level Cache, normalmente L3).\nCuando se produce un fallo aquí, el CPU se ve obligado a buscar datos en la memoria RAM, lo que introduce mucha más latencia.\nReducir estos fallos mejora significativamente el rendimiento general y el consumo energético.",
 
     LLCStores:
-        "Número de escrituras en la LLC (caché L3).\nEste nivel se usa para almacenar datos que podrían necesitar otros núcleos y para preparar escritura en RAM.\nUn uso eficiente ayuda a reducir la congestión en la RAM y facilita el trabajo en paralelo.",
+        "Número de escrituras en la LLC (Last Level Cache, normalmente L3).\nEste nivel se usa para almacenar datos que podrían necesitar otros núcleos y para preparar escritura en RAM.\nUn uso eficiente ayuda a reducir la congestión en la RAM y facilita el trabajo en paralelo.",
 
     LLCStoreMisses:
-        "Cantidad de fallos al escribir en la LLC.\nCuando ocurre un fallo, se debe escribir directamente en la memoria RAM, lo que es mucho más lento y costoso.\nMinimizar estos fallos implica un mejor diseño de estructuras de datos y un acceso más coherente a la memoria.",
+        "Cantidad de fallos al escribir en la LLC (Last Level Cache).\nCuando ocurre un fallo, se debe escribir directamente en la memoria RAM, lo que es mucho más lento y costoso.\nMinimizar estos fallos implica un mejor diseño de estructuras de datos y un acceso más coherente a la memoria.",
 
     CacheReferences:
         "Número total de accesos a cualquier nivel de caché (lecturas + escrituras).\nEsta métrica muestra la intensidad del uso de la jerarquía de memoria rápida.\nUn programa bien optimizado tendrá muchas referencias exitosas y pocos fallos, lo que mejora tanto la velocidad como el consumo energético.",

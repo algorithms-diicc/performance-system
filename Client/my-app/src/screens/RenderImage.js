@@ -104,10 +104,22 @@ function RenderImage() {
           </button>
         </div>
         <div className="header-center">
-          <h1 className="test-title">{name}</h1>
+          <div className="test-title-with-icon">
+            <h1 className="test-title">{name}</h1>
+            <Info
+              data-tooltip-id="tooltip-test-info"
+              data-tooltip-content="🔍 Información del entorno de pruebas: este test fue ejecutado en la máquina Slave1 con procesador Intel y acceso a medición energética mediante RAPL."
+              className="info-icon"
+              color="#3b82f6"
+              style={{ marginLeft: "6px" }}
+            />
+            <Tooltip id="tooltip-test-info" place="top" />
+          </div>
           <div className="test-details-box">
             <p className="test-subtitle">
-              Tipo: {statusData.task_type} · Max Input Size: {statusData.input_size} · Repeticiones: {statusData.samples}
+              Tipo de Test: <strong>{statusData.task_type}</strong> ·
+              Tamaño Máximo de Entrada: <strong>{statusData.input_size}</strong> ·
+              Repeticiones por Incremento: <strong>{statusData.samples}</strong>
             </p>
           </div>
         </div>

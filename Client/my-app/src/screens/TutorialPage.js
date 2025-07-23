@@ -23,6 +23,15 @@ const TutorialPage = () => {
                             <h2 className="section-title">Flujo General del Sistema</h2>
                             <div className="section-content">
                                 <p>
+                                    🙋 <strong>Ingresar nombre y usuario:</strong> El usuario debe ingresar un nombre representativo para el test y su identificador personal. Esta información se usará para identificar los resultados y asociarlos con quien ejecutó la prueba.
+                                </p>
+                                <div className="image-wrapper">
+                                    <img
+                                        src="/tutorial-images/Usuario_y_Test.PNG"
+                                        alt="Subida de archivo a la plataforma"
+                                        style={{ maxWidth: "30%", borderRadius: "8px", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}
+                                    />
+                                </div>                                <p>
                                     📥 <strong>Subir archivo .zip:</strong> El usuario sube un archivo comprimido que contiene uno o más archivos <code>.cpp</code>.
                                 </p>
                                 <div className="image-wrapper">
@@ -34,7 +43,7 @@ const TutorialPage = () => {
                                 </div>
 
                                 <p>
-                                    ⚙️ <strong>Configuración del test:</strong> Debes seleccionar el tipo de test que deseas realizar (por ejemplo, LCS, CAMM o SIZE). Además, debes definir el <strong>Max Input Size</strong> y las repeticiones por incremento.
+                                    ⚙️ <strong>Configuración del test:</strong> Debes seleccionar el tipo de test que deseas realizar entre LCS, CAMM o SIZE. Además, debes definir el Tamaño máximo de entrada y las repeticiones por incremento.
                                 </p>
                                 <div className="image-wrapper">
                                     <img
@@ -45,11 +54,11 @@ const TutorialPage = () => {
                                 </div>
 
                                 <p>
-                                    ⚡ <strong>Compilación y envío:</strong> El backend compila automáticamente cada archivo y lo envía a la red de máquinas medidoras (slaves).
+                                    ⚡ <strong>Compilación y envío:</strong> El backend compila automáticamente cada archivo y lo envía a la máquina medidora (slave).
                                 </p>
 
                                 <p>
-                                    🧪 <strong>Ejecución y medición:</strong> Cada slave mide consumo energético, instrucciones, ciclos de CPU, tiempos y otros parámetros usando <code>perf</code>.
+                                    🧪 <strong>Ejecución y medición:</strong> El slave mide consumo energético, instrucciones, ciclos de CPU, tiempos y otros parámetros usando <code>perf</code>.
                                 </p>
                                 <div className="image-wrapper">
                                     <img
@@ -152,13 +161,25 @@ int main(int argc, char* argv[]) {
     return 0;
 }`}
                                     </SyntaxHighlighter>
-                                    <a href="/tutorial-codigos/lcs_template.cpp" download className="icon-button">
-                                        Descargar Código LCS
+                                    <a href="/tutorial-codigos/lcs_template.zip" download className="icon-button">
+                                        Descargar Código LCS (.zip)
                                     </a>
                                     <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
-                                        ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                        ⚠️ <strong>Nota:</strong> Este código es completamente funcional y puedes usarlo tal como está para ejecutar el test. También puedes subir tu propio código, siempre que respete la estructura esperada y las condiciones definidas para este tipo de prueba.
                                     </p>
                                 </div>
+                                <div className="config-hint-box">
+                                    <h4 className="config-hint-title">🔧 Valores recomendados</h4>
+                                    <ul className="config-hint-list">
+                                        <li><strong>Tamaño máximo de entrada:</strong> 500 a 1500</li>
+                                        <li><strong>Repeticiones por incremento:</strong> 10 a 30</li>
+                                        <li><strong>Tiempo estimado:</strong> 1 a 10 minutos</li>
+                                    </ul>
+                                    <p className="config-hint-note">
+                                        Estos valores corresponden al código de ejemplo mostrado arriba. Puedes probar otros, pero asegúrate que tu algoritmo y el test puedan soportarlos correctamente.
+                                    </p>
+                                </div>
+
                             </div>
                         </div>
                     </section>
@@ -247,14 +268,26 @@ int main(int argc, char* argv[]) {
 }
                               `}
                                         </SyntaxHighlighter>
-                                        <a href="/tutorial-codigos/camm_template.cpp" download className="icon-button">
-                                            Descargar Código CAMM
+                                        <a href="/tutorial-codigos/camm_template.zip" download className="icon-button">
+                                            Descargar Código CAMM (.zip)
                                         </a>
                                         <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
-                                            ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                            ⚠️ <strong>Nota:</strong> Este código es completamente funcional y puedes usarlo tal como está para ejecutar el test. También puedes subir tu propio código, siempre que respete la estructura esperada y las condiciones definidas para este tipo de prueba.
                                         </p>
                                     </div>
                                 </div>
+                                <div className="config-hint-box">
+                                    <h4 className="config-hint-title">🔧 Valores recomendados</h4>
+                                    <ul className="config-hint-list">
+                                        <li><strong>Tamaño máximo de entrada:</strong> 1000 a 10000</li>
+                                        <li><strong>Repeticiones por incremento:</strong> 10 a 30</li>
+                                        <li><strong>Tiempo estimado:</strong> 10 a 60 segundos</li>
+                                    </ul>
+                                    <p className="config-hint-note">
+                                        Estos valores corresponden al código de ejemplo mostrado arriba. Puedes probar otros, pero asegúrate que tu algoritmo y el test puedan soportarlos correctamente.
+                                    </p>
+                                </div>
+
                             </div>
                         </div>
                     </section>
@@ -285,36 +318,49 @@ int main(int argc, char* argv[]) {
                                     <div className="code-placeholder">
                                         <SyntaxHighlighter language="cpp" style={oneDark} showLineNumbers>
                                             {`
+
 #include <iostream>
 #include <cstdlib>
 
-// Función recursiva para calcular Fibonacci
-long long recursiveFibonacci(int n) {
+long long iterativeFibonacci(int n) {
     if (n <= 1) return n;
-    return recursiveFibonacci(n - 1) + recursiveFibonacci(n - 2);
+    long long a = 0, b = 1, c;
+    for (int i = 2; i <= n; ++i) {
+        c = a + b;
+        a = b;
+        b = c;
+    }
+    return b;
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Uso: ./a.out <tamaño_input>" << std::endl;
-        return 1;
-    }
-
+    if (argc < 2) return 1;
     int num = std::atoi(argv[1]);
-    recursiveFibonacci(num);
-
-    std::cout << "Fibonacci calculado para n = " << num << std::endl;
+    iterativeFibonacci(num);
     return 0;
 }
+
                         `}
                                         </SyntaxHighlighter>
-                                        <a href="/tutorial-codigos/size_template.cpp" download className="icon-button">
-                                            Descargar Código SIZE
+                                        <a href="/tutorial-codigos/size_template.zip" download className="icon-button">
+                                            Descargar Código SIZE (.zip)
                                         </a>
                                         <p style={{ marginTop: "1rem", fontStyle: "italic", color: "#64748b" }}>
-                                            ⚠️ <strong>Nota:</strong> Este código es solo un ejemplo de referencia. Puedes subir tu propio código siempre que respete la estructura y las condiciones requeridas para este tipo de test.
+                                            ⚠️ <strong>Nota:</strong> Este código es completamente funcional y puedes usarlo tal como está para ejecutar el test. También puedes subir tu propio código, siempre que respete la estructura esperada y las condiciones definidas para este tipo de prueba.
                                         </p>
                                     </div>
+                                    <div className="config-hint-box">
+                                        <h4 className="config-hint-title">🔧 Valores recomendados</h4>
+                                        <ul className="config-hint-list">
+                                            <li><strong>Tamaño máximo de entrada:</strong> 1000 a 5000</li>
+                                            <li><strong>Repeticiones por incremento:</strong> 10 a 30</li>
+                                            <li><strong>Tiempo estimado:</strong> 10 a 60 segundos</li>
+                                        </ul>
+                                        <p className="config-hint-note">
+                                            Estos valores corresponden al código de ejemplo mostrado arriba. Puedes probar otros, pero asegúrate que tu algoritmo y el test puedan soportarlos correctamente.
+                                        </p>
+                                    </div>
+
                                 </div>
                             </div>
                         </div>
@@ -329,7 +375,7 @@ int main(int argc, char* argv[]) {
                                 <div className="subsection">
                                     <h3 className="subsection-title">Tipos de Métricas</h3>
                                     <p>
-                                        A continuación se explican las principales métricas utilizadas para evaluar el rendimiento de tu código:
+                                        A continuación se explican las métricas utilizadas para evaluar el rendimiento de tu código:
                                     </p>
                                     <ul>
                                         <li><strong>Instructions:</strong> Número total de instrucciones ejecutadas. Relacionado con la eficiencia general del código.</li>
@@ -355,6 +401,9 @@ int main(int argc, char* argv[]) {
                                         <li><strong>StartTime:</strong> Hora de inicio de la ejecución.</li>
                                         <li><strong>EndTime:</strong> Hora de fin de la ejecución.</li>
                                         <li><strong>DurationTime:</strong> Duración total de la ejecución en milisegundos.</li>
+                                        <li><strong>IPC:</strong> Instrucciones por ciclo (Instructions Per Cycle). Mide cuántas instrucciones se completan en promedio por cada ciclo de CPU. Un valor más alto indica mayor eficiencia del procesador y un código más optimizado.</li>
+                                        <li><strong>CacheMissRate:</strong> Tasa de fallos en la caché. Calculada como CacheMisses / CacheReferences. Muestra el porcentaje de accesos a caché que fallaron; una tasa más baja indica mejor aprovechamiento de la memoria rápida.</li>
+                                        <li><strong>BranchMissRate:</strong> Tasa de fallos en predicción de bifurcaciones. Calculada como BranchMisses / Branches. Representa cuántas veces el procesador predijo mal el flujo del programa; una tasa baja mejora el rendimiento general.</li>
                                     </ul>
                                     <p>
                                         📈 Estas métricas te permiten analizar el comportamiento detallado de tu algoritmo, identificar cuellos de botella y optimizar el rendimiento general.
@@ -393,7 +442,7 @@ int main(int argc, char* argv[]) {
             {/* Footer opcional */}
             < footer className="tutorial-footer" >
                 <div className="footer-container">
-                    <p>&copy; 2024 Performance System - Tutorial y Documentación</p>
+                    <p>&copy; 2025 Performance System - Tutorial y Documentación</p>
                 </div>
             </footer >
         </div >
