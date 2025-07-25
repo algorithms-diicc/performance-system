@@ -11,7 +11,6 @@ import "./RenderForm.css";
 
 function RenderForm() {
   const [file, setFile] = useState(null);
-  const [codename, setCodename] = useState();
   const [messages, setMessages] = useState([]);
   const [check, setCheck] = useState(true);
   const [name, setName] = useState("");
@@ -23,33 +22,54 @@ function RenderForm() {
   const [dataType, setDataType] = useState("");
   const navigate = useNavigate();
 
+  // 🔁 Lectura de todos los archivos *_status.json para cada archivo subido
   useEffect(() => {
-    if (!codename) return;
+    if (!fileList || fileList.length === 0) return;
+
     const interval = setInterval(() => {
-      axios
-        .get(`${serverURL}status/${codename}_status.json`, {
-          headers: { "Cache-Control": "no-cache" },
-        })
-        .then((response) => {
-          const data = response.data;
-          if (Array.isArray(data.messages)) {
-            setMessages(data.messages);
-            const terminado = data.messages.some((m) =>
-              m.msg.includes("📊 Generando gráficos") ||
-              m.msg.includes("✅ Test ejecutado correctamente")
+      const requests = fileList.map((code) =>
+        axios
+          .get(`${serverURL}status/${code}_status.json`, {
+            headers: { "Cache-Control": "no-cache" },
+          })
+          .then((res) => ({
+            codename: code,
+            originalName:
+              res.data.files && res.data.files.length > 0
+                ? res.data.files[0].original_filename
+                : code,
+            messages: res.data.messages
+          }))
+          .catch(() => null)
+      );
+
+      Promise.all(requests).then((results) => {
+        let allMessages = [];
+        let allDone = true;
+        results.forEach((res) => {
+          if (res && Array.isArray(res.messages)) {
+            allMessages.push({
+              codename: res.codename,
+              originalName: res.originalName,  // ✅ Añadido correctamente aquí
+              messages: res.messages,
+            });
+
+            const isDone = res.messages.some((m) =>
+              m.msg.includes("✅ Resultados listos.")
             );
-            if (terminado) {
-              setCheck(false);
-              clearInterval(interval);
-            }
+            if (!isDone) allDone = false;
           }
-        })
-        .catch((error) => {
-          console.warn("⏳ JSON no disponible todavía:", error.message);
         });
+        setMessages(allMessages);
+        if (allDone) {
+          setCheck(false);
+          clearInterval(interval);
+        }
+      });
     }, 3000);
+
     return () => clearInterval(interval);
-  }, [codename]);
+  }, [fileList]);
 
   const handleTaskChange = (taskId) => {
     setSelectedTaskType(taskId);
@@ -101,9 +121,7 @@ function RenderForm() {
       .then((response) => {
         const queuedFiles = response.data.cpp_files_queued;
         if (queuedFiles.length > 0 && queuedFiles[0].length > 0) {
-          const realCodename = queuedFiles[queuedFiles.length - 1];
           setMessages([]);
-          setCodename(realCodename);
           setFileList(queuedFiles);
         } else {
           console.error("No se encontraron archivos en la respuesta");
@@ -140,7 +158,8 @@ function RenderForm() {
                 className="form-input"
                 required
               />
-            </div>            <div className="form-section">
+            </div>
+            <div className="form-section">
               <label className="form-label"><span className="label-icon">📝</span> Nombre del Test</label>
               <input
                 type="text"
@@ -260,31 +279,40 @@ function RenderForm() {
                   </div>
                 ) : (
                   <div className="status-messages">
-                    {messages.map((entry, index) => (
-                      <div key={index} className="status-message">
-                        <span className="message-time">[{entry.time}]</span>
-                        <span className="message-text">{entry.msg}</span>
+                    {messages.map((group, idx) => (
+                      <div key={idx} className="status-group">
+                        <h4 className="codename-title">
+                          Archivo: <span style={{ fontWeight: 600 }}>{group.originalName}</span>
+                        </h4>
+                        {group.messages.map((entry, index) => (
+                          <div key={index} className="status-message">
+                            <span className="message-time">[{entry.time}]</span>
+                            <span className="message-text">{entry.msg}</span>
+                          </div>
+                        ))}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
 
-              {codename && !messages.some((m) => m.msg.includes("❌ ERROR DETECTADO")) && (
-                <button
-                  type="button"
-                  className={`results-button ${check ? "disabled" : ""}`}
-                  onClick={() =>
-                    navigate("/code/" + codename, {
-                      replace: false,
-                      state: { name: name, codeList: fileList },
-                    })
-                  }
-                  disabled={check}
-                >
-                  Ver Estadísticas
-                </button>
-              )}
+              {fileList.length > 0 && !messages.some((g) =>
+                g.messages.some((m) => m.msg.includes("❌ ERROR DETECTADO"))
+              ) && (
+                  <button
+                    type="button"
+                    className={`results-button ${check ? "disabled" : ""}`}
+                    onClick={() =>
+                      navigate("/code/" + fileList[fileList.length - 1], {
+                        replace: false,
+                        state: { name: name, codeList: fileList },
+                      })
+                    }
+                    disabled={check}
+                  >
+                    Ver Estadísticas
+                  </button>
+                )}
             </div>
           </div>
         </div>

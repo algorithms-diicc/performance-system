@@ -40,27 +40,30 @@ activeS = 0  # medidores activos
 
 def send_manager(s, json_string, name):
     global activeS
-    firsttime = True
-    s.settimeout(20.0)
+    s.settimeout(1.0)  # Chequeos más rápidos
+    max_wait = 60      # ⏳ Esperar hasta 60 segundos
+    elapsed = 0
     counter = 0
-    while True:
+
+    while elapsed < max_wait:
         try:
             conn, addr = s.accept()
             th.Thread(target=send_program, args=(conn, json_string), daemon=True).start()
             counter += 1
         except socket.timeout:
-            if counter == 0:
-                print("No measure machines available!", file=sys.stderr)
-                status_path = os.path.join(STATUS_DIR, name)
-                with open(status_path, 'r+') as w:
-                    w.seek(0)
-                    w.write('ERROR: no machines available')
-                    w.truncate()
-            break
-        if firsttime:
-            firsttime = False
-            s.settimeout(5.0)
+            elapsed += 1
+            if counter > 0:
+                break  # ✅ Al menos una máquina ya recibió
+        time.sleep(1)
+
+    if counter == 0:
+        print("❌ No measure machines available!", file=sys.stderr)
+        status_path = os.path.join(STATUS_DIR, name)
+        with open(status_path, 'w') as w:
+            w.write('ERROR: no machines available')
+
     activeS = counter
+
 
 def send_program(conn, json_string):
     with conn:
@@ -116,12 +119,15 @@ def receive_data(conn, ident):
         if "results" in payloadDict:
             # ✅ Es un CSV
             escribir_estado(codename, "✅ Test ejecutado correctamente. Resultados CSV recibidos.")
-            escribir_estado(codename, "📊 Generando gráficos...")
             filename_csv = filename + str(ident) + ".csv"
             result_path = os.path.join(STATIC_DIR, filename_csv)
             with open(result_path, 'w') as f:
                 f.write(payloadDict["results"])
             print(f"[{ident}] ✅ Resultado CSV guardado en: {result_path}")
+            # ✅ Notificar finalización al Server (para serve_next_inline)
+            status_path = os.path.join(STATUS_DIR, codename)
+            with open(status_path, 'w') as w:
+                w.write('DONE')
 
         #filename = payloadDict["name"] + str(ident) + ".csv"
         #result_path = os.path.join(STATIC_DIR, filename)
@@ -132,16 +138,9 @@ def receive_data(conn, ident):
 
             # Agregar al archivo de estado (frontend lo leerá)
             escribir_estado(filename, translated_msg)
-
-            # Guardar el JSON de error interpretado
-            #status_error = {
-                #"name": filename,
-               # "status": "ERROR",
-              #  "error_code": code,
-             #   "message": translated_msg
-            #}
-
-           # escribir_estado(filename, translated_msg, tipo="ERROR", error_code=code)
+            status_path = os.path.join(STATUS_DIR, filename)
+            with open(status_path, 'w') as w:
+                w.write(f'ERROR: {translated_msg}')
             print(f"[{ident}] ⚠️ Error recibido: {translated_msg} | Guardado en {STATIC_DIR}")
 
 def escribir_estado(codename, msg, tipo="INFO", error_code=None):

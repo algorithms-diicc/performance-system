@@ -171,7 +171,7 @@ int main(int argc, char* argv[]) {
                                 <div className="config-hint-box">
                                     <h4 className="config-hint-title">🔧 Valores recomendados</h4>
                                     <ul className="config-hint-list">
-                                        <li><strong>Tamaño máximo de entrada:</strong> 500 a 1500</li>
+                                        <li><strong>Tamaño máximo de entrada:</strong> 500 a 1000</li>
                                         <li><strong>Repeticiones por incremento:</strong> 10 a 30</li>
                                         <li><strong>Tiempo estimado:</strong> 1 a 10 minutos</li>
                                     </ul>

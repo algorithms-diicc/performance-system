@@ -80,7 +80,7 @@ def plot_metric_multi(all_data, metric, output_dir):
             y=mean_values.values,
             error_y=dict(type='data', array=std_values.values, visible=True),
             mode='lines+markers',
-            name=fname
+            name=os.path.basename(fname)
         ))
 
     fig.update_layout(

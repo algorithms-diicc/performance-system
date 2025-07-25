@@ -170,7 +170,23 @@ body {
   align-items: center;
   gap: 0.4rem;
 }
+/* === 👥 Agrupación de mensajes por codename === */
+.status-group {
+  margin-bottom: 2rem;
+  border-left: 4px solid #4f46e5;
+  padding-left: 1rem;
+  background: #f9fafb;
+  border-radius: 0.5rem;
+  padding-top: 0.8rem;
+  padding-bottom: 0.8rem;
+}
 
+.codename-title {
+  font-weight: bold;
+  color: #1e293b;
+  font-size: 1.1rem;
+  margin-bottom: 0.6rem;
+}
 /* ====================== PARAMS ====================== */
 .test-params {
   padding: 0 1rem 1rem 1rem;

@@ -142,32 +142,31 @@ def cap_code():
         for file_info in zip_ref.infolist():
             if file_info.filename.endswith('.cpp'):
                 unique_id = str(random.randint(0, 13458345324))
-                print(f"Code {unique_id} found, with task {task_type}")
-
                 tag = task_type if task_type in ["CAMM", "CAMMR", "CAMMS", "CAMMSO", "LCS", "SIZE"] else ""
                 name = unique_id + tag
                 status_json_path = os.path.join(STATIC_DIR, name + "_status.json")
-                files_info = []
-                for i, cpp_file in enumerate(names_onZip):
-                    files_info.append({
-                        "codename": cpp_file,
-                        "original_filename": fileNames[i]
-                    })
 
+                # Crear estructura inicial
                 data = {
                     "status": "IN QUEUE",
+                    "username": username,
                     "task_type": task_type,
                     "input_size": input_size,
                     "samples": samples,
-                    "files": files_info,
-                    "username": username  
+                    "files": [{
+                        "codename": name,
+                        "original_filename": os.path.basename(file_info.filename)
+                    }]
                 }
 
                 with open(status_json_path, "w") as f:
                     json.dump(data, f, indent=4)
 
+                # ⬅️ Agregar mensaje inicial al JSON
+                escribir_estado(name, "📦 Archivo añadido a la cola de espera.")
 
                 print("✅ JSON inicial creado:", status_json_path)
+
                 cpp_file_dir = os.path.join(TEST_DIR, name + ".cpp")
                 print(cpp_file_dir)
                 outputfile = os.path.join(TEST_DIR, name + ".out")
@@ -190,54 +189,91 @@ def cap_code():
     return jsonify({'cpp_files_queued': names_onZip, 'task_type': task_type}), 200
 
 
-# Process and serve the next inline item from the queue
 def serve_next_inline():
-    """Process and serve the next inline item from the queue."""
+    """Process and serve the next inline item from the queue, uno a la vez esperando que termine cada archivo."""
     if not queuelist:
         print("Error: queuelist está vacío, no hay elementos para procesar.")
         return
 
-    print("Contenido de queuelist antes de pop:", queuelist)
+    #print("Contenido de queuelist antes de pop:", queuelist)
     next_inline = queuelist.pop()
-    print("next_inline: ", next_inline)
+    #print("next_inline: ", next_inline)
 
     if not isinstance(next_inline, list) or len(next_inline) < 7:
         print("Error: next_inline no tiene la estructura esperada.")
         return
 
-    if not all(isinstance(item, list) for item in [next_inline[1], next_inline[6]]):
-        print("Error: Algunos elementos en next_inline no son listas como se esperaba.")
-        return
+    cpp_paths, names, opt_cmd, task_type, input_size, samples, file_names = next_inline
 
-    if not next_inline[1]:  # Verifica si la lista en next_inline[1] está vacía
-        print("Error: next_inline[1] está vacío")
-        return
+    for file_num in range(len(names)):
+        codename = names[file_num]
+        status_file_path = os.path.join(STATUS_DIR, codename)
 
-    for file_num in range(len(next_inline[1])):
-        status_file_path = os.path.join(STATUS_DIR, next_inline[1][file_num])
+        # Verifica si el estado está marcado como IN QUEUE
         with open(status_file_path, 'r') as r:
-            asd = r.read()
-            if asd == 'IN QUEUE':
-                print(next_inline)
-                slave_serve(next_inline[0][file_num], next_inline[1][file_num], next_inline[2], next_inline[4], next_inline[5])
+            estado = r.read()
+            if estado != 'IN QUEUE':
+                continue
+        os.utime(status_file_path, None)
+        # Enviar tarea al slave
+        slave_serve(
+            cpp_paths[file_num], 
+            codename,
+            opt_cmd,
+            input_size,
+            samples
+        )
 
+        print(f"⏳ Esperando que finalice la ejecución de {codename}...")
+        MAX_WAIT = 600  # segundos
+        waited = 0
+
+        while True:
+            try:
+                with open(status_file_path, 'r') as r2:
+                    estado_final = r2.read()
+                    if estado_final == 'DONE' or estado_final.startswith('ERROR'):
+                        break
+            except Exception:
+                pass
+
+            time.sleep(2)
+            waited += 2
+
+            if waited >= MAX_WAIT:
+                with open(status_file_path, 'w') as w:
+                    w.write('ERROR: timeout exceeded')
+                escribir_estado(
+                    codename,
+                    "❌ ERROR DETECTADO: La ejecución del test tomó más de 10 minutos. Revisa el algoritmo o reduce el tamaño de entrada."
+                )
+                print(f"⏱️ Timeout alcanzado para {codename} (más de 10 minutos)")
+                break
+        print(f"✅ Finalizado: {codename} → {estado_final}")
+
+    # Si todo salió bien, generar gráficos
     error_count = 0
-    for file_num in range(len(next_inline[1])):
-        status_file_path = os.path.join(STATUS_DIR, next_inline[1][file_num])
+    for file_num in range(len(names)):
+        status_file_path = os.path.join(STATUS_DIR, names[file_num])
         with open(status_file_path, 'r+') as r:
-            asd2 = r.read()
-            if asd2 != 'ERROR: no machines available':
-                print("prev-graph_results")
-                print(next_inline, 'served!')
+            final_status = r.read()
+            if final_status.startswith('ERROR'):
+                print(f"⚠️ Fallo en test {codename} → {final_status}")
+            if final_status == 'ERROR: no machines available':
+                escribir_estado(names[file_num], "❌ ERROR DETECTADO: No hay máquinas disponibles.")
+                error_count += 1
+            else:
                 r.seek(0)
                 r.write('DONE')
                 r.truncate()
-            else:
-                error_count += 1
-                print(next_inline, 'failed: No machines available!')
 
     if error_count == 0:
-        graph_results(next_inline[1], next_inline[6], next_inline[4])
+        for name in names:
+            escribir_estado(name, "📊 Generando gráficos...")
+        graph_results(names, file_names, input_size)
+        for name in names:
+            escribir_estado(name, "✅ Resultados listos.")
+
 
 # Get the number of files in the 'status' directory
 def get_status_file_count():
@@ -276,17 +312,19 @@ def is_queue_empty():
 def queue_manager():
     """Main function to manage the queue. Runs indefinitely."""
     while True:
-        # An error may occur whenever mutiple files are uploaded and the first condition happens
         if is_queue_empty():
-            print('Waiting...')
+            print('🔁 Cola vacía. Esperando nuevos archivos...')
             if get_status_file_count() >= 50:
+                print('⚠️ Muchas tareas pendientes en estado. Limpiando la más antigua...')
                 oldest_file = get_oldest_status_file()
                 remove_status_file(oldest_file)
                 remove_associated_static_file(oldest_file)
             time.sleep(10)
         else:
+            print('📦 Procesando nueva tanda de archivos desde la cola...')
             serve_next_inline()
-# agregar mensajes de error en lista de status
+            print('✅ Tanda completa procesada. Esperando próxima...')
+
 
 
 
