@@ -8,6 +8,11 @@ import getTask, {
   tasks,
 } from "../common/Constants.js";
 import "./RenderForm.css";
+const defaultParams = {
+  lcs: { inputSize: 500, samples: 30 },
+  camm: { inputSize: 5000, samples: 30 },
+  size: { inputSize: 2500, samples: 30 },
+};
 
 function RenderForm() {
   const [file, setFile] = useState(null);
@@ -74,6 +79,13 @@ function RenderForm() {
   const handleTaskChange = (taskId) => {
     setSelectedTaskType(taskId);
     setDataType("");
+
+    // Asignar valores por defecto al cambiar de test
+    const params = defaultParams[taskId];
+    if (params) {
+      setInputSize(params.inputSize);
+      setSamples(params.samples);
+    }
   };
 
   const handleDataTypeChange = (type) => {

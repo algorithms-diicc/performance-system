@@ -108,7 +108,19 @@ function RenderImage() {
             <h1 className="test-title">{name}</h1>
             <Info
               data-tooltip-id="tooltip-test-info"
-              data-tooltip-content="🔍 Información del entorno de pruebas: este test fue ejecutado en la máquina Slave1 con procesador Intel y acceso a medición energética mediante RAPL."
+              data-tooltip-html={`
+    <div style="text-align: left;">
+      <strong>🔍 Máquina Medidora</strong><br/>
+      Sistema operativo: <em>Linux Mint 22 (64 bits)</em><br/>
+      Procesador: <em>Intel Core i5-9400 @ 2.90GHz</em><br/>
+      Memoria RAM: <em>23 GB</em><br/>
+      Caché L3: <em>9 MB</em><br/>
+      Caché L2: <em>256 KB</em><br/>
+      Caché L1i: <em>32 KB</em><br/>
+      Caché L1d: <em>32 KB</em><br/><br/>
+      ⚠️ Esta máquina no es de uso exclusivo para este sistema. Por lo tanto, <strong>las mediciones pueden variar</strong> ligeramente debido a procesos concurrentes.
+    </div>
+  `}
               className="info-icon"
               color="#3b82f6"
               style={{ marginLeft: "6px" }}

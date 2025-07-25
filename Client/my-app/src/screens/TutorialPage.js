@@ -56,10 +56,15 @@ const TutorialPage = () => {
                                 <p>
                                     ⚡ <strong>Compilación y envío:</strong> El backend compila automáticamente cada archivo y lo envía a la máquina medidora (slave).
                                 </p>
-
+                                <div className="info-hint-box">
+                                    <p>
+                                        ⏳ <strong>Importante:</strong> Una vez que subas tu archivo <code>.zip</code> y configures el test, debes esperar a que todos los archivos se ejecuten correctamente. El sistema compilará y medirá cada uno. Cuando el proceso termine, el botón <strong>"Ver Estadísticas"</strong> se activará automáticamente.
+                                    </p>
+                                </div>
                                 <p>
                                     🧪 <strong>Ejecución y medición:</strong> El slave mide consumo energético, instrucciones, ciclos de CPU, tiempos y otros parámetros usando <code>perf</code>.
                                 </p>
+
                                 <div className="image-wrapper">
                                     <img
                                         src="/tutorial-images/test-realizado.PNG"
