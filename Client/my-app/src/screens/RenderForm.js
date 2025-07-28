@@ -77,16 +77,27 @@ function RenderForm() {
   }, [fileList]);
 
   const handleTaskChange = (taskId) => {
-    setSelectedTaskType(taskId);
-    setDataType("");
+    // Solo reiniciar dataType si el tipo de test es diferente
+    if (selectedTaskType !== taskId) {
+      setDataType("");
+    }
 
-    // Asignar valores por defecto al cambiar de test
+    setSelectedTaskType(taskId);
+
     const params = defaultParams[taskId];
+
+    // Solo aplicar valores por defecto si el usuario no los ha cambiado aún
     if (params) {
-      setInputSize(params.inputSize);
-      setSamples(params.samples);
+      setInputSize((prev) => {
+        return prev === defaultParams[selectedTaskType]?.inputSize ? params.inputSize : prev;
+      });
+      setSamples((prev) => {
+        return prev === defaultParams[selectedTaskType]?.samples ? params.samples : prev;
+      });
     }
   };
+
+
 
   const handleDataTypeChange = (type) => {
     setDataType(type);

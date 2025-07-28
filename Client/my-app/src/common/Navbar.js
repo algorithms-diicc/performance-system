@@ -10,7 +10,7 @@ function Navbar({ tasksState }) {
             <div className="container">
                 <Link to="/" className="navbar-brand d-flex align-items-center">
                     <img
-                        src="/logo512.png"
+                        src="/iconSP.png"
                         alt="Logo"
                         width="30"
                         height="30"
