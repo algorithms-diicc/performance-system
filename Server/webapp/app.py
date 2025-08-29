@@ -225,7 +225,7 @@ def serve_next_inline():
         )
 
         print(f"⏳ Esperando que finalice la ejecución de {codename}...")
-        MAX_WAIT = 600  # segundos
+        MAX_WAIT = 2000  # segundos
         waited = 0
 
         while True:

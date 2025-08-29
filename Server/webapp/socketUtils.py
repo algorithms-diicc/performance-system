@@ -58,6 +58,12 @@ def send_manager(s, json_string, name):
 
     if counter == 0:
         print("❌ No measure machines available!", file=sys.stderr)
+        #code = payloadDict["error_code"]
+        #translated_msg = ERROR_MESSAGES.get(code, "❓ Error desconocido")
+#agregar este estado, y que sucede despues de esto
+        # Agregar al archivo de estado (frontend lo leerá) 
+        #escribir_estado(filename, translated_msg)
+        #escribir_estado(name, f"🚚 Enviando test al slave con tipo: {task_suffix}, input_size: {input_size}, repeticiones: {samples}.")
         status_path = os.path.join(STATUS_DIR, name)
         with open(status_path, 'w') as w:
             w.write('ERROR: no machines available')
@@ -73,7 +79,7 @@ def recv_manager(s, name):
     global activeR
     counter = 0
     firsttime = True
-    s.settimeout(1000.0)
+    s.settimeout(2000.0)
     while True:
         try:
             conn, addr = s.accept()

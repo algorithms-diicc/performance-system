@@ -124,13 +124,27 @@ export const METRIC_DESCRIPTIONS = {
         "Tasa de fallos de caché.\nCalculada como CacheMisses / CacheReferences.\nIndica qué porcentaje de los accesos a la caché no encontró el dato necesario y debió buscarlo en la memoria RAM.\nUna tasa baja refleja un uso eficiente de la jerarquía de caché y un algoritmo bien optimizado en acceso a memoria.",
 
     BranchMissRate:
-        "Tasa de fallos en predicción de bifurcaciones.\nCalculada como BranchMisses / Branches.\nRefleja qué tan bien el procesador logra predecir los saltos en el flujo del programa (if, loops).\nUna tasa baja significa menor penalización y mayor aprovechamiento del pipeline, lo que se traduce en mejor rendimiento."
+        "Tasa de fallos en predicción de bifurcaciones.\nCalculada como BranchMisses / Branches.\nRefleja qué tan bien el procesador logra predecir los saltos en el flujo del programa (if, loops).\nUna tasa baja significa menor penalización y mayor aprovechamiento del pipeline, lo que se traduce en mejor rendimiento.",
+    CacheMissesPerMI:
+        "Fallos de caché por millón de instrucciones.\n" +
+        "Calculada como CacheMisses / (Instructions / 1e6).\n" +
+        "Este indicador normaliza los fallos de caché respecto al volumen total de instrucciones ejecutadas, " +
+        "permitiendo una comparación más justa entre algoritmos de diferente tamaño.\n" +
+        "Valores bajos reflejan una mejor localidad de datos y mayor eficiencia en el uso de la jerarquía de memoria.",
+
+    BranchMissesPerMI:
+        "Fallos de predicción de saltos por millón de instrucciones.\n" +
+        "Calculada como BranchMisses / (Instructions / 1e6).\n" +
+        "Este indicador complementa a BranchMissRate, pero al estar expresado por unidad de trabajo (instrucciones ejecutadas) " +
+        "facilita la comparación entre implementaciones con diferente volumen de instrucciones.\n" +
+        "Valores bajos sugieren un flujo de control más predecible y eficiente."
+
 };
 
 
 export const METRIC_CATEGORIES = {
-    CPU: ["Instructions", "CpuCycles", "TaskClock", "CpuClock", "Branches", "BranchMisses", "IPC"],
-    Memoria: ["LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses", "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores", "CacheReferences", "CacheMisses", "CacheMissRate"],
+    CPU: ["Instructions", "CpuCycles", "TaskClock", "CpuClock", "Branches", "BranchMisses", "BranchMissesPerMI", "IPC"],
+    Memoria: ["LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses", "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores", "CacheReferences", "CacheMisses", "CacheMissRate", "CacheMissesPerMI"],
     Sistema: ["PageFaults", "MajorFaults"],
     Tiempo: ["StartTime", "EndTime", "DurationTime"],
     Energía: ["EnergyPkg", "EnergyCores", "EnergyRAM"],

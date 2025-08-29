@@ -47,9 +47,9 @@ for ((i=1; i<=INCREMENT; i++)); do
 
         if [ -s perf_output.tmp ]; then
             values=$(cut -d';' -f1 perf_output.tmp | sed '/#/d' | sed '/^$/d' | paste -sd, -)
-            echo "$i,$current_size,$values,$elapsed" >> "$CSV_OUTPUT"
+            echo "$i,$current_size,$values,$start,$end,$elapsed" >> "$CSV_OUTPUT"
         else
-            echo "$i"$(yes ",<not-counted>" | head -n 10 | tr -d '\n'),$elapsed >> "$CSV_OUTPUT"
+            echo "$i"$(yes ",<not-counted>" | head -n 10 | tr -d '\n'),$start,$end,$elapsed >> "$CSV_OUTPUT"
         fi
     done
 done

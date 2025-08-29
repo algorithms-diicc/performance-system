@@ -409,6 +409,8 @@ int main(int argc, char* argv[]) {
                                         <li><strong>IPC:</strong> Instrucciones por ciclo (Instructions Per Cycle). Mide cuántas instrucciones se completan en promedio por cada ciclo de CPU. Un valor más alto indica mayor eficiencia del procesador y un código más optimizado.</li>
                                         <li><strong>CacheMissRate:</strong> Tasa de fallos en la caché. Calculada como CacheMisses / CacheReferences. Muestra el porcentaje de accesos a caché que fallaron; una tasa más baja indica mejor aprovechamiento de la memoria rápida.</li>
                                         <li><strong>BranchMissRate:</strong> Tasa de fallos en predicción de bifurcaciones. Calculada como BranchMisses / Branches. Representa cuántas veces el procesador predijo mal el flujo del programa; una tasa baja mejora el rendimiento general.</li>
+                                        <li><strong>CacheMissesPerMI:</strong> Fallos de caché por millón de instrucciones. Calculada como CacheMisses / (Instructions / 1e6). Permite comparar la eficiencia de acceso a memoria entre algoritmos de distinto tamaño.</li>
+                                        <li><strong>BranchMissesPerMI:</strong> Fallos de predicción por millón de instrucciones. Calculada como BranchMisses / (Instructions / 1e6). Indica la frecuencia de errores de predicción de saltos normalizada por el trabajo realizado.</li>
                                     </ul>
                                     <p>
                                         📈 Estas métricas te permiten analizar el comportamiento detallado de tu algoritmo, identificar cuellos de botella y optimizar el rendimiento general.

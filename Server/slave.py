@@ -16,7 +16,7 @@ STATIC_DIR = os.path.join(BASE_DIR, 'static')
 TEST_DIR = os.path.join(BASE_DIR, 'test')
 STATUS_DIR = os.path.join(BASE_DIR, 'status')
 RESULTS_DIR = os.path.join(BASE_DIR, 'results')
-DEFAULT_TIMEOUT = 2000  # segundos
+DEFAULT_TIMEOUT = 1000  # segundos
 # Crea los directorios si no existen
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(TEST_DIR, exist_ok=True)
