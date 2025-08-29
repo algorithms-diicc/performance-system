@@ -37,3 +37,886 @@
 → [ARGS] EXEC=./a.out | SIZE=20 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZEResults0.csv
 [2025-06-26 02:11:19] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8540585740SIZE.cpp | slave: Shenu
 [2025-06-26 02:25:17] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-07-25 11:50:52] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCS.cpp | slave: Shenu
+[2025-07-25 11:50:52] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
+[2025-07-25 11:53:14] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCSResults0.csv | slave: Shenu
+[2025-07-25 11:53:14] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCS.cpp | g++: OK | exec: OK | duración: 142.62s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCSResults0.csv
+[2025-07-25 11:53:14] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/1273409903LCS.cpp | slave: Shenu
+[2025-07-25 22:50:11] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMM.cpp | slave: Shenu
+[2025-07-25 22:50:12] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-25 22:50:37] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMMResults0.csv | slave: Shenu
+[2025-07-25 22:50:37] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMM.cpp | g++: OK | exec: OK | duración: 25.84s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMMResults0.csv
+[2025-07-25 22:50:37] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2488846829CAMM.cpp | slave: Shenu
+[2025-07-25 22:50:48] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMM.cpp | slave: Shenu
+[2025-07-25 22:50:49] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 4999, repeticiones: 30 | slave: Shenu
+[2025-07-25 22:51:19] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMMResults0.csv | slave: Shenu
+[2025-07-25 22:51:19] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMM.cpp | g++: OK | exec: OK | duración: 30.52s | slave: Shenu | input: 4999
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 4999 30 /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=4999 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMMResults0.csv
+[2025-07-25 22:51:19] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8334220067CAMM.cpp | slave: Shenu
+[2025-07-25 22:59:24] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZE.cpp | slave: Shenu
+[2025-07-25 22:59:24] [START_EXEC] Ejecutando test SIZE con tamaño: 1500, repeticiones: 30 | slave: Shenu
+[2025-07-25 22:59:54] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZEResults0.csv | slave: Shenu
+[2025-07-25 22:59:54] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZE.cpp | g++: OK | exec: OK | duración: 29.92s | slave: Shenu | input: 1500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 1500 30 /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=1500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZEResults0.csv
+[2025-07-25 22:59:54] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8342459457SIZE.cpp | slave: Shenu
+[2025-07-27 20:17:43] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZE.cpp | slave: Shenu
+[2025-07-27 20:17:44] [START_EXEC] Ejecutando test SIZE con tamaño: 300, repeticiones: 30 | slave: Shenu
+[2025-07-27 20:18:13] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZEResults0.csv | slave: Shenu
+[2025-07-27 20:18:13] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZE.cpp | g++: OK | exec: OK | duración: 29.82s | slave: Shenu | input: 300
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 300 30 /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=300 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZEResults0.csv
+[2025-07-27 20:18:13] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8853548396SIZE.cpp | slave: Shenu
+[2025-07-27 20:32:31] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMM.cpp | slave: Shenu
+[2025-07-27 20:32:32] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 3000, repeticiones: 15 | slave: Shenu
+[2025-07-27 20:33:22] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMMResults0.csv | slave: Shenu
+[2025-07-27 20:33:22] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMM.cpp | g++: OK | exec: OK | duración: 51.02s | slave: Shenu | input: 3000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 3000 15 /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=3000 | SAMPLES=15 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMMResults0.csv
+[2025-07-27 20:33:22] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2325356461CAMM.cpp | slave: Shenu
+[2025-07-27 20:54:08] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMM.cpp | slave: Shenu
+[2025-07-27 20:54:09] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 700, repeticiones: 20 | slave: Shenu
+[2025-07-27 20:54:25] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMMResults0.csv | slave: Shenu
+[2025-07-27 20:54:25] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMM.cpp | g++: OK | exec: OK | duración: 16.76s | slave: Shenu | input: 700
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 700 20 /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=700 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMMResults0.csv
+[2025-07-27 20:54:25] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12375971955CAMM.cpp | slave: Shenu
+[2025-07-27 21:03:03] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZE.cpp | slave: Shenu
+[2025-07-27 21:03:03] [START_EXEC] Ejecutando test SIZE con tamaño: 698, repeticiones: 30 | slave: Shenu
+[2025-07-27 21:03:31] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZEResults0.csv | slave: Shenu
+[2025-07-27 21:03:31] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZE.cpp | g++: OK | exec: OK | duración: 28.84s | slave: Shenu | input: 698
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 698 30 /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=698 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZEResults0.csv
+[2025-07-27 21:03:31] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3500642188SIZE.cpp | slave: Shenu
+[2025-07-27 22:49:14] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZE.cpp | slave: Shenu
+[2025-07-27 22:49:14] [START_EXEC] Ejecutando test SIZE con tamaño: 5002, repeticiones: 40 | slave: Shenu
+[2025-07-27 22:49:51] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZEResults0.csv | slave: Shenu
+[2025-07-27 22:49:51] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZE.cpp | g++: OK | exec: OK | duración: 37.73s | slave: Shenu | input: 5002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 5002 40 /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=5002 | SAMPLES=40 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZEResults0.csv
+[2025-07-27 22:49:51] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3748951842SIZE.cpp | slave: Shenu
+[2025-07-27 23:01:22] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMM.cpp | slave: Shenu
+[2025-07-27 23:01:23] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8000, repeticiones: 18 | slave: Shenu
+[2025-07-27 23:01:44] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMMResults0.csv | slave: Shenu
+[2025-07-27 23:01:44] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMM.cpp | g++: OK | exec: OK | duración: 21.89s | slave: Shenu | input: 8000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8000 18 /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8000 | SAMPLES=18 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMMResults0.csv
+[2025-07-27 23:01:44] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10404328516CAMM.cpp | slave: Shenu
+[2025-07-27 23:05:27] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCS.cpp | slave: Shenu
+[2025-07-27 23:05:27] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 890, repeticiones: 27 | slave: Shenu
+[2025-07-27 23:12:26] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCSResults0.csv | slave: Shenu
+[2025-07-27 23:12:26] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCS.cpp | g++: OK | exec: OK | duración: 419.30s | slave: Shenu | input: 890
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 890 27 /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=890 | SAMPLES=27 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCSResults0.csv
+[2025-07-27 23:12:26] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/13383828569LCS.cpp | slave: Shenu
+[2025-07-27 23:12:37] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZE.cpp | slave: Shenu
+[2025-07-27 23:12:38] [START_EXEC] Ejecutando test SIZE con tamaño: 1000, repeticiones: 31 | slave: Shenu
+[2025-07-27 23:13:08] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZEResults0.csv | slave: Shenu
+[2025-07-27 23:13:08] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZE.cpp | g++: OK | exec: OK | duración: 30.79s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 1000 31 /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=1000 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZEResults0.csv
+[2025-07-27 23:13:08] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4033327672SIZE.cpp | slave: Shenu
+[2025-07-27 23:13:19] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMM.cpp | slave: Shenu
+[2025-07-27 23:13:20] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-27 23:13:46] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMMResults0.csv | slave: Shenu
+[2025-07-27 23:13:46] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMM.cpp | g++: OK | exec: OK | duración: 26.91s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMMResults0.csv
+[2025-07-27 23:13:46] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2855119914CAMM.cpp | slave: Shenu
+[2025-07-27 23:13:57] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCS.cpp | slave: Shenu
+[2025-07-27 23:13:58] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-27 23:14:22] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCSResults0.csv | slave: Shenu
+[2025-07-27 23:14:22] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCS.cpp | g++: OK | exec: OK | duración: 24.94s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCSResults0.csv
+[2025-07-27 23:14:22] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8135516471LCS.cpp | slave: Shenu
+[2025-07-27 23:14:33] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMM.cpp | slave: Shenu
+[2025-07-27 23:14:34] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-27 23:14:59] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMMResults0.csv | slave: Shenu
+[2025-07-27 23:14:59] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMM.cpp | g++: OK | exec: OK | duración: 25.48s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMMResults0.csv
+[2025-07-27 23:14:59] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9472751938CAMM.cpp | slave: Shenu
+[2025-07-27 23:15:10] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCS.cpp | slave: Shenu
+[2025-07-27 23:15:11] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 890, repeticiones: 27 | slave: Shenu
+[2025-07-27 23:22:11] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCSResults0.csv | slave: Shenu
+[2025-07-27 23:22:11] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCS.cpp | g++: OK | exec: OK | duración: 420.45s | slave: Shenu | input: 890
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 890 27 /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=890 | SAMPLES=27 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCSResults0.csv
+[2025-07-27 23:22:11] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2166509832LCS.cpp | slave: Shenu
+[2025-07-27 23:22:22] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCS.cpp | slave: Shenu
+[2025-07-27 23:22:22] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-27 23:22:46] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCSResults0.csv | slave: Shenu
+[2025-07-27 23:22:46] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCS.cpp | g++: OK | exec: OK | duración: 24.25s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCSResults0.csv
+[2025-07-27 23:22:46] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7001842672LCS.cpp | slave: Shenu
+[2025-07-28 07:28:30] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCS.cpp | slave: Shenu
+[2025-07-28 07:28:31] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:38:34] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCSResults0.csv | slave: Shenu
+[2025-07-28 07:38:34] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCS.cpp | g++: OK | exec: OK | duración: 603.64s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCSResults0.csv
+[2025-07-28 07:38:34] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4668855500LCS.cpp | slave: Shenu
+[2025-07-28 07:38:45] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCS.cpp | slave: Shenu
+[2025-07-28 07:38:46] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:48:51] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCSResults0.csv | slave: Shenu
+[2025-07-28 07:48:51] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCS.cpp | g++: OK | exec: OK | duración: 605.36s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCSResults0.csv
+[2025-07-28 07:48:51] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9461915721LCS.cpp | slave: Shenu
+[2025-07-28 07:49:02] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMM.cpp | slave: Shenu
+[2025-07-28 07:49:03] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:49:28] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMMResults0.csv | slave: Shenu
+[2025-07-28 07:49:28] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMM.cpp | g++: OK | exec: OK | duración: 25.97s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMMResults0.csv
+[2025-07-28 07:49:28] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/5072240780CAMM.cpp | slave: Shenu
+[2025-07-28 07:49:39] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZE.cpp | slave: Shenu
+[2025-07-28 07:49:40] [START_EXEC] Ejecutando test SIZE con tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:50:08] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZEResults0.csv | slave: Shenu
+[2025-07-28 07:50:08] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZE.cpp | g++: OK | exec: OK | duración: 28.46s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZEResults0.csv
+[2025-07-28 07:50:08] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8288400828SIZE.cpp | slave: Shenu
+[2025-07-28 07:50:20] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZE.cpp | slave: Shenu
+[2025-07-28 07:50:20] [START_EXEC] Ejecutando test SIZE con tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:50:51] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZEResults0.csv | slave: Shenu
+[2025-07-28 07:50:51] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZE.cpp | g++: OK | exec: OK | duración: 30.91s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZEResults0.csv
+[2025-07-28 07:50:51] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6597913422SIZE.cpp | slave: Shenu
+[2025-07-28 07:50:51] [RESULT_SEND_ERROR] Error al enviar resultados a 152.74.52.200:60000 — [Errno 111] Connection refused | slave: Shenu
+[2025-07-28 07:53:46] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMM.cpp | slave: Shenu
+[2025-07-28 07:53:46] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 07:54:13] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMMResults0.csv | slave: Shenu
+[2025-07-28 07:54:13] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMM.cpp | g++: OK | exec: OK | duración: 26.80s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMMResults0.csv
+[2025-07-28 07:54:13] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3527382013CAMM.cpp | slave: Shenu
+[2025-07-28 13:57:55] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMM.cpp | slave: Shenu
+[2025-07-28 13:57:55] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 350, repeticiones: 28 | slave: Shenu
+[2025-07-28 13:58:10] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMMResults0.csv | slave: Shenu
+[2025-07-28 13:58:10] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMM.cpp | g++: OK | exec: OK | duración: 14.93s | slave: Shenu | input: 350
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 350 28 /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=350 | SAMPLES=28 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMMResults0.csv
+[2025-07-28 13:58:10] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11410440877CAMM.cpp | slave: Shenu
+[2025-07-28 14:14:06] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCS.cpp | slave: Shenu
+[2025-07-28 14:14:07] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1025, repeticiones: 15 | slave: Shenu
+[2025-07-28 14:14:14] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCSResults0.csv | slave: Shenu
+[2025-07-28 14:14:14] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCS.cpp | g++: OK | exec: OK | duración: 7.77s | slave: Shenu | input: 1025
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1025 15 /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1025 | SAMPLES=15 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCSResults0.csv
+[2025-07-28 14:14:14] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/5840463782LCS.cpp | slave: Shenu
+[2025-07-28 14:17:04] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMM.cpp | slave: Shenu
+[2025-07-28 14:17:05] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 14:17:25] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMMResults0.csv | slave: Shenu
+[2025-07-28 14:17:25] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMM.cpp | g++: OK | exec: OK | duración: 20.99s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMMResults0.csv
+[2025-07-28 14:17:25] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/610804308CAMM.cpp | slave: Shenu
+[2025-07-28 14:31:29] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCS.cpp | slave: Shenu
+[2025-07-28 14:31:29] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-07-28 14:31:52] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCSResults0.csv | slave: Shenu
+[2025-07-28 14:31:52] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCS.cpp | g++: OK | exec: OK | duración: 22.98s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCSResults0.csv
+[2025-07-28 14:31:52] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3434622346LCS.cpp | slave: Shenu
+[2025-07-28 15:07:47] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCS.cpp | slave: Shenu
+[2025-07-28 15:07:47] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 800, repeticiones: 20 | slave: Shenu
+[2025-07-28 15:12:06] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCSResults0.csv | slave: Shenu
+[2025-07-28 15:12:06] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCS.cpp | g++: OK | exec: OK | duración: 258.80s | slave: Shenu | input: 800
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 800 20 /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=800 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCSResults0.csv
+[2025-07-28 15:12:06] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10507809108LCS.cpp | slave: Shenu
+[2025-07-28 15:14:34] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMM.cpp | slave: Shenu
+[2025-07-28 15:14:35] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 5000, repeticiones: 20 | slave: Shenu
+[2025-07-28 15:14:55] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMMResults0.csv | slave: Shenu
+[2025-07-28 15:14:55] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMM.cpp | g++: OK | exec: OK | duración: 20.48s | slave: Shenu | input: 5000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 5000 20 /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=5000 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMMResults0.csv
+[2025-07-28 15:14:55] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7153867238CAMM.cpp | slave: Shenu
+[2025-08-03 18:29:44] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCS.cpp | slave: Shenu
+[2025-08-03 18:29:45] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-03 18:39:47] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCSResults0.csv | slave: Shenu
+[2025-08-03 18:39:47] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCS.cpp | g++: OK | exec: OK | duración: 603.08s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCSResults0.csv
+[2025-08-03 18:39:47] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3559695619LCS.cpp | slave: Shenu
+[2025-08-03 18:42:16] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCS.cpp | slave: Shenu
+[2025-08-03 18:42:16] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-03 18:42:41] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCSResults0.csv | slave: Shenu
+[2025-08-03 18:42:41] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCS.cpp | g++: OK | exec: OK | duración: 24.83s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCSResults0.csv
+[2025-08-03 18:42:41] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/1812131440LCS.cpp | slave: Shenu
+[2025-08-03 19:37:19] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMM.cpp | slave: Shenu
+[2025-08-03 19:37:19] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 2500, repeticiones: 15 | slave: Shenu
+[2025-08-03 19:37:33] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMMResults0.csv | slave: Shenu
+[2025-08-03 19:37:33] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMM.cpp | g++: OK | exec: OK | duración: 14.41s | slave: Shenu | input: 2500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 2500 15 /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=2500 | SAMPLES=15 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMMResults0.csv
+[2025-08-03 19:37:33] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3061218282CAMM.cpp | slave: Shenu
+[2025-08-03 19:42:02] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCS.cpp | slave: Shenu
+[2025-08-03 19:42:02] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 700, repeticiones: 20 | slave: Shenu
+[2025-08-03 19:45:22] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCSResults0.csv | slave: Shenu
+[2025-08-03 19:45:22] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCS.cpp | g++: OK | exec: OK | duración: 200.51s | slave: Shenu | input: 700
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 700 20 /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=700 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCSResults0.csv
+[2025-08-03 19:45:22] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11134190191LCS.cpp | slave: Shenu
+[2025-08-04 12:01:49] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMM.cpp | slave: Shenu
+[2025-08-04 12:01:50] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 5000, repeticiones: 20 | slave: Shenu
+[2025-08-04 12:02:10] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMMResults0.csv | slave: Shenu
+[2025-08-04 12:02:10] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMM.cpp | g++: OK | exec: OK | duración: 21.33s | slave: Shenu | input: 5000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 5000 20 /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=5000 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMMResults0.csv
+[2025-08-04 12:02:10] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2349809131CAMM.cpp | slave: Shenu
+[2025-08-04 12:05:53] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZE.cpp | slave: Shenu
+[2025-08-04 12:05:53] [START_EXEC] Ejecutando test SIZE con tamaño: 3000, repeticiones: 20 | slave: Shenu
+[2025-08-04 12:06:11] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZEResults0.csv | slave: Shenu
+[2025-08-04 12:06:11] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZE.cpp | g++: OK | exec: OK | duración: 18.12s | slave: Shenu | input: 3000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 3000 20 /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=3000 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZEResults0.csv
+[2025-08-04 12:06:11] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4403741710SIZE.cpp | slave: Shenu
+[2025-08-04 20:40:17] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCS.cpp | slave: Shenu
+[2025-08-04 20:40:18] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-04 20:40:40] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCSResults0.csv | slave: Shenu
+[2025-08-04 20:40:40] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCS.cpp | g++: OK | exec: OK | duración: 23.33s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCSResults0.csv
+[2025-08-04 20:40:40] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11442359060LCS.cpp | slave: Shenu
+[2025-08-04 20:41:39] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCS.cpp | slave: Shenu
+[2025-08-04 20:41:39] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-04 20:52:04] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCSResults0.csv | slave: Shenu
+[2025-08-04 20:52:04] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCS.cpp | g++: OK | exec: OK | duración: 625.92s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCSResults0.csv
+[2025-08-04 20:52:04] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8716919845LCS.cpp | slave: Shenu
+[2025-08-04 20:57:58] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCS.cpp | slave: Shenu
+[2025-08-04 20:57:59] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-04 20:58:21] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCSResults0.csv | slave: Shenu
+[2025-08-04 20:58:21] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCS.cpp | g++: OK | exec: OK | duración: 23.14s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCSResults0.csv
+[2025-08-04 20:58:21] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9018199044LCS.cpp | slave: Shenu
+[2025-08-06 12:17:42] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCS.cpp | slave: Shenu
+[2025-08-06 12:17:42] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 12:28:20] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCSResults0.csv | slave: Shenu
+[2025-08-06 12:28:20] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCS.cpp | g++: OK | exec: OK | duración: 638.62s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/826849811LCSResults0.csv
+[2025-08-06 12:28:20] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/826849811LCS.cpp | slave: Shenu
+[2025-08-06 12:28:42] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCS.cpp | slave: Shenu
+[2025-08-06 12:28:43] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 12:39:16] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCSResults0.csv | slave: Shenu
+[2025-08-06 12:39:16] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCS.cpp | g++: OK | exec: OK | duración: 634.21s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCSResults0.csv
+[2025-08-06 12:39:16] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12998940604LCS.cpp | slave: Shenu
+[2025-08-06 12:39:27] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCS.cpp | slave: Shenu
+[2025-08-06 12:39:28] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 12:49:54] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCSResults0.csv | slave: Shenu
+[2025-08-06 12:49:54] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCS.cpp | g++: OK | exec: OK | duración: 626.27s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCSResults0.csv
+[2025-08-06 12:49:54] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/5053314239LCS.cpp | slave: Shenu
+[2025-08-06 12:50:05] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMM.cpp | slave: Shenu
+[2025-08-06 12:50:06] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1004, repeticiones: 33 | slave: Shenu
+[2025-08-06 12:50:26] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMMResults0.csv | slave: Shenu
+[2025-08-06 12:50:26] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMM.cpp | g++: OK | exec: OK | duración: 20.72s | slave: Shenu | input: 1004
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1004 33 /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1004 | SAMPLES=33 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMMResults0.csv
+[2025-08-06 12:50:26] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10743251255CAMM.cpp | slave: Shenu
+[2025-08-06 12:50:37] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCS.cpp | slave: Shenu
+[2025-08-06 12:50:38] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 13:01:02] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCSResults0.csv | slave: Shenu
+[2025-08-06 13:01:02] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCS.cpp | g++: OK | exec: OK | duración: 624.85s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCSResults0.csv
+[2025-08-06 13:01:02] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7222900393LCS.cpp | slave: Shenu
+[2025-08-06 13:01:13] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCS.cpp | slave: Shenu
+[2025-08-06 13:01:14] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 13:11:40] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCSResults0.csv | slave: Shenu
+[2025-08-06 13:11:40] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCS.cpp | g++: OK | exec: OK | duración: 626.40s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCSResults0.csv
+[2025-08-06 13:11:40] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4213853012LCS.cpp | slave: Shenu
+[2025-08-06 13:11:53] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCS.cpp | slave: Shenu
+[2025-08-06 13:11:54] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1002, repeticiones: 31 | slave: Shenu
+[2025-08-06 13:22:18] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCSResults0.csv | slave: Shenu
+[2025-08-06 13:22:18] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCS.cpp | g++: OK | exec: OK | duración: 625.09s | slave: Shenu | input: 1002
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1002 31 /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1002 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCSResults0.csv
+[2025-08-06 13:22:18] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3262370847LCS.cpp | slave: Shenu
+[2025-08-06 13:22:32] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCS.cpp | slave: Shenu
+[2025-08-06 13:22:32] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 31 | slave: Shenu
+[2025-08-06 13:32:59] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCSResults0.csv | slave: Shenu
+[2025-08-06 13:32:59] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCS.cpp | g++: OK | exec: OK | duración: 627.73s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 31 /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=31 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/718751265LCSResults0.csv
+[2025-08-06 13:32:59] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/718751265LCS.cpp | slave: Shenu
+[2025-08-06 13:33:13] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCS.cpp | slave: Shenu
+[2025-08-06 13:33:13] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-06 13:43:26] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCSResults0.csv | slave: Shenu
+[2025-08-06 13:43:26] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCS.cpp | g++: OK | exec: OK | duración: 612.95s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCSResults0.csv
+[2025-08-06 13:43:26] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12574184979LCS.cpp | slave: Shenu
+[2025-08-07 19:45:02] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMM.cpp | slave: Shenu
+[2025-08-07 19:45:02] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 10000, repeticiones: 25 | slave: Shenu
+[2025-08-07 19:45:29] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMMResults0.csv | slave: Shenu
+[2025-08-07 19:45:29] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMM.cpp | g++: OK | exec: OK | duración: 27.57s | slave: Shenu | input: 10000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 10000 25 /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=10000 | SAMPLES=25 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMMResults0.csv
+[2025-08-07 19:45:29] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/838126498CAMM.cpp | slave: Shenu
+[2025-08-07 19:49:26] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCS.cpp | slave: Shenu
+[2025-08-07 19:49:27] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-07 19:59:36] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCSResults0.csv | slave: Shenu
+[2025-08-07 19:59:36] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCS.cpp | g++: OK | exec: OK | duración: 609.22s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCSResults0.csv
+[2025-08-07 19:59:36] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12815540369LCS.cpp | slave: Shenu
+[2025-08-08 14:09:44] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4575065091LCS.cpp | slave: Shenu
+[2025-08-08 14:09:44] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-08 14:43:04] [TIMEOUT] El script LCS excedió el tiempo límite | slave: Shenu
+[2025-08-08 14:43:04] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4575065091LCS.cpp | g++: OK | exec: FAIL | duración: 2000.45s | slave: Shenu | input: 2000 | error: El script LCS excedió el tiempo límite
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4575065091LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/4575065091LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4575065091LCSResults0.csv
+[2025-08-09 15:51:07] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCS.cpp | slave: Shenu
+[2025-08-09 15:51:08] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-09 16:01:22] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCSResults0.csv | slave: Shenu
+[2025-08-09 16:01:22] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCS.cpp | g++: OK | exec: OK | duración: 615.35s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCSResults0.csv
+[2025-08-09 16:01:22] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3544077409LCS.cpp | slave: Shenu
+[2025-08-09 16:15:59] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMM.cpp | slave: Shenu
+[2025-08-09 16:16:00] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-09 16:16:25] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMMResults0.csv | slave: Shenu
+[2025-08-09 16:16:25] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMM.cpp | g++: OK | exec: OK | duración: 25.26s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMMResults0.csv
+[2025-08-09 16:16:25] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2925408647CAMM.cpp | slave: Shenu
+[2025-08-09 16:16:36] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMM.cpp | slave: Shenu
+[2025-08-09 16:16:37] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-09 16:17:04] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMMResults0.csv | slave: Shenu
+[2025-08-09 16:17:04] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMM.cpp | g++: OK | exec: OK | duración: 27.23s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMMResults0.csv
+[2025-08-09 16:17:04] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/415129562CAMM.cpp | slave: Shenu
+[2025-08-10 15:43:13] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCS.cpp | slave: Shenu
+[2025-08-10 15:43:14] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 596, repeticiones: 30 | slave: Shenu
+[2025-08-10 15:46:46] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCSResults0.csv | slave: Shenu
+[2025-08-10 15:46:46] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCS.cpp | g++: OK | exec: OK | duración: 213.00s | slave: Shenu | input: 596
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 596 30 /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=596 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCSResults0.csv
+[2025-08-10 15:46:46] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9694611383LCS.cpp | slave: Shenu
+[2025-08-10 15:51:33] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMM.cpp | slave: Shenu
+[2025-08-10 15:51:33] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 400, repeticiones: 15 | slave: Shenu
+[2025-08-10 15:51:44] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMMResults0.csv | slave: Shenu
+[2025-08-10 15:51:44] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMM.cpp | g++: OK | exec: OK | duración: 11.34s | slave: Shenu | input: 400
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 400 15 /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=400 | SAMPLES=15 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMMResults0.csv
+[2025-08-10 15:51:44] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7010487428CAMM.cpp | slave: Shenu
+[2025-08-10 15:52:42] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZE.cpp | slave: Shenu
+[2025-08-10 15:52:42] [START_EXEC] Ejecutando test SIZE con tamaño: 600, repeticiones: 50 | slave: Shenu
+[2025-08-10 15:53:25] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZEResults0.csv | slave: Shenu
+[2025-08-10 15:53:25] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZE.cpp | g++: OK | exec: OK | duración: 43.57s | slave: Shenu | input: 600
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 600 50 /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=600 | SAMPLES=50 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZEResults0.csv
+[2025-08-10 15:53:25] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6243832665SIZE.cpp | slave: Shenu
+[2025-08-10 17:13:51] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCS.cpp | slave: Shenu
+[2025-08-10 17:13:51] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-10 17:24:00] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCSResults0.csv | slave: Shenu
+[2025-08-10 17:24:00] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCS.cpp | g++: OK | exec: OK | duración: 609.72s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCSResults0.csv
+[2025-08-10 17:24:00] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8520625792LCS.cpp | slave: Shenu
+[2025-08-10 19:58:13] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCS.cpp | slave: Shenu
+[2025-08-10 19:58:13] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 700, repeticiones: 20 | slave: Shenu
+[2025-08-10 20:01:35] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCSResults0.csv | slave: Shenu
+[2025-08-10 20:01:35] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCS.cpp | g++: OK | exec: OK | duración: 202.41s | slave: Shenu | input: 700
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 700 20 /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=700 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCSResults0.csv
+[2025-08-10 20:01:35] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11385962668LCS.cpp | slave: Shenu
+[2025-08-10 20:04:57] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMM.cpp | slave: Shenu
+[2025-08-10 20:04:57] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 3000, repeticiones: 19 | slave: Shenu
+[2025-08-10 20:05:14] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMMResults0.csv | slave: Shenu
+[2025-08-10 20:05:14] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMM.cpp | g++: OK | exec: OK | duración: 17.43s | slave: Shenu | input: 3000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 3000 19 /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=3000 | SAMPLES=19 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMMResults0.csv
+[2025-08-10 20:05:14] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6865537762CAMM.cpp | slave: Shenu
+[2025-08-10 20:11:36] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZE.cpp | slave: Shenu
+[2025-08-10 20:11:36] [START_EXEC] Ejecutando test SIZE con tamaño: 4000, repeticiones: 30 | slave: Shenu
+[2025-08-10 20:12:02] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZEResults0.csv | slave: Shenu
+[2025-08-10 20:12:02] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZE.cpp | g++: OK | exec: OK | duración: 26.48s | slave: Shenu | input: 4000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 4000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=4000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZEResults0.csv
+[2025-08-10 20:12:02] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9249981529SIZE.cpp | slave: Shenu
+[2025-08-10 21:54:59] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMM.cpp | slave: Shenu
+[2025-08-10 21:54:59] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 500, repeticiones: 20 | slave: Shenu
+[2025-08-10 21:55:16] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMMResults0.csv | slave: Shenu
+[2025-08-10 21:55:16] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMM.cpp | g++: OK | exec: OK | duración: 17.09s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 500 20 /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=500 | SAMPLES=20 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMMResults0.csv
+[2025-08-10 21:55:16] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10722355240CAMM.cpp | slave: Shenu
+[2025-08-10 22:18:54] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMM.cpp | slave: Shenu
+[2025-08-10 22:18:55] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8, repeticiones: 30 | slave: Shenu
+[2025-08-10 22:19:17] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMMResults0.csv | slave: Shenu
+[2025-08-10 22:19:17] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMM.cpp | g++: OK | exec: OK | duración: 22.84s | slave: Shenu | input: 8
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8 30 /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMMResults0.csv
+[2025-08-10 22:19:17] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9262998846CAMM.cpp | slave: Shenu
+[2025-08-10 22:41:59] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMM.cpp | slave: Shenu
+[2025-08-10 22:41:59] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-10 22:42:25] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMMResults0.csv | slave: Shenu
+[2025-08-10 22:42:25] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMM.cpp | g++: OK | exec: OK | duración: 25.93s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMMResults0.csv
+[2025-08-10 22:42:25] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3916495210CAMM.cpp | slave: Shenu
+[2025-08-10 22:51:33] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5970736638LCS.cpp | slave: Shenu
+[2025-08-10 22:51:33] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-10 23:01:10] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-10 23:01:28] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCS.cpp | slave: Shenu
+[2025-08-10 23:01:28] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
+[2025-08-10 23:04:01] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCSResults0.csv | slave: Shenu
+[2025-08-10 23:04:01] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCS.cpp | g++: OK | exec: OK | duración: 153.71s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCSResults0.csv
+[2025-08-10 23:04:01] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7654066809LCS.cpp | slave: Shenu
+[2025-08-10 23:17:01] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMM.cpp | slave: Shenu
+[2025-08-10 23:17:01] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 12347, repeticiones: 50 | slave: Shenu
+[2025-08-10 23:18:00] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMMResults0.csv | slave: Shenu
+[2025-08-10 23:18:00] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMM.cpp | g++: OK | exec: OK | duración: 58.79s | slave: Shenu | input: 12347
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 12347 50 /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=12347 | SAMPLES=50 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMMResults0.csv
+[2025-08-10 23:18:00] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6270209863CAMM.cpp | slave: Shenu
+[2025-08-11 00:11:21] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMM.cpp | slave: Shenu
+[2025-08-11 00:11:22] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-11 00:11:45] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMMResults0.csv | slave: Shenu
+[2025-08-11 00:11:45] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMM.cpp | g++: OK | exec: OK | duración: 23.73s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMMResults0.csv
+[2025-08-11 00:11:45] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12343657760CAMM.cpp | slave: Shenu
+[2025-08-13 15:03:12] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCS.cpp | slave: Shenu
+[2025-08-13 15:03:12] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 30, repeticiones: 60 | slave: Shenu
+[2025-08-13 15:03:59] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCSResults0.csv | slave: Shenu
+[2025-08-13 15:03:59] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCS.cpp | g++: OK | exec: OK | duración: 47.91s | slave: Shenu | input: 30
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 30 60 /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=30 | SAMPLES=60 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCSResults0.csv
+[2025-08-13 15:03:59] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12468288254LCS.cpp | slave: Shenu
+[2025-08-13 15:09:01] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZE.cpp | slave: Shenu
+[2025-08-13 15:09:01] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 100 | slave: Shenu
+[2025-08-13 15:09:54] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZEResults0.csv | slave: Shenu
+[2025-08-13 15:09:54] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZE.cpp | g++: OK | exec: OK | duración: 53.36s | slave: Shenu | input: 30
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 30 100 /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=100 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZEResults0.csv
+[2025-08-13 15:09:54] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/144962015SIZE.cpp | slave: Shenu
+[2025-08-13 17:49:00] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp | slave: Shenu
+[2025-08-13 17:49:00] [COMPILE_ERROR] /home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp: In function ‘std::string lcs(const std::string&, const std::string&)’:
+/home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp:39:5: error: ‘reverse’ was not declared in this scope
+   39 |     reverse(subseq.begin(), subseq.end());
+      |     ^~~~~~~
+ | slave: Shenu
+[2025-08-13 17:49:00] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp | g++: FAIL | exec: FAIL | duración: 0.32s | slave: Shenu | input: 1000 | error: /home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp: In function ‘std::string lcs(const std::string&, const std::string&)’:
+/home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp:39:5: error: ‘reverse’ was not declared in this scope
+   39 |     reverse(subseq.begin(), subseq.end());
+      |     ^~~~~~~
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4856402740LCS.cpp -o ./a.out
+→ [EXECUTE] N/A
+→ [ARGS] [No identificados o script especial]
+[2025-08-13 18:09:47] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCS.cpp | slave: Shenu
+[2025-08-13 18:09:47] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-13 18:19:53] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCSResults0.csv | slave: Shenu
+[2025-08-13 18:19:53] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCS.cpp | g++: OK | exec: OK | duración: 606.11s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCSResults0.csv
+[2025-08-13 18:19:53] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12812508836LCS.cpp | slave: Shenu
+[2025-08-13 18:21:23] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZE.cpp | slave: Shenu
+[2025-08-13 18:21:23] [START_EXEC] Ejecutando test SIZE con tamaño: 300, repeticiones: 30 | slave: Shenu
+[2025-08-13 18:21:48] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZEResults0.csv | slave: Shenu
+[2025-08-13 18:21:48] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZE.cpp | g++: OK | exec: OK | duración: 25.13s | slave: Shenu | input: 300
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 300 30 /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=300 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZEResults0.csv
+[2025-08-13 18:21:48] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/3766458844SIZE.cpp | slave: Shenu
+[2025-08-21 11:10:49] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/486385363LCS.cpp | slave: Shenu
+[2025-08-21 11:10:49] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 100000, repeticiones: 10 | slave: Shenu
+[2025-08-25 23:55:54] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCS.cpp | slave: Shenu
+[2025-08-25 23:55:56] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:05:54] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCSResults0.csv | slave: Shenu
+[2025-08-26 00:05:54] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCS.cpp | g++: OK | exec: OK | duración: 600.02s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCSResults0.csv
+[2025-08-26 00:05:54] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/1434795011LCS.cpp | slave: Shenu
+[2025-08-26 00:05:54] [RESULT_SEND_ERROR] Error al enviar resultados a 152.74.52.200:60000 — [Errno 111] Connection refused | slave: Shenu
+[2025-08-26 00:06:28] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCS.cpp | slave: Shenu
+[2025-08-26 00:06:29] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:09:02] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCSResults0.csv | slave: Shenu
+[2025-08-26 00:09:02] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCS.cpp | g++: OK | exec: OK | duración: 153.53s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCSResults0.csv
+[2025-08-26 00:09:02] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4319829124LCS.cpp | slave: Shenu
+[2025-08-26 00:12:56] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCS.cpp | slave: Shenu
+[2025-08-26 00:12:56] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:15:30] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCSResults0.csv | slave: Shenu
+[2025-08-26 00:15:30] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCS.cpp | g++: OK | exec: OK | duración: 153.48s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCSResults0.csv
+[2025-08-26 00:15:30] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4199054979LCS.cpp | slave: Shenu
+[2025-08-26 00:20:26] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCS.cpp | slave: Shenu
+[2025-08-26 00:20:27] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 500, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:23:00] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCSResults0.csv | slave: Shenu
+[2025-08-26 00:23:00] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCS.cpp | g++: OK | exec: OK | duración: 153.57s | slave: Shenu | input: 500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 500 30 /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCSResults0.csv
+[2025-08-26 00:23:00] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11238909835LCS.cpp | slave: Shenu
+[2025-08-26 00:24:42] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMM.cpp | slave: Shenu
+[2025-08-26 00:24:43] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:25:08] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMMResults0.csv | slave: Shenu
+[2025-08-26 00:25:08] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMM.cpp | g++: OK | exec: OK | duración: 26.57s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMMResults0.csv
+[2025-08-26 00:25:08] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/11774862623CAMM.cpp | slave: Shenu
+[2025-08-26 00:26:13] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZE.cpp | slave: Shenu
+[2025-08-26 00:26:14] [START_EXEC] Ejecutando test SIZE con tamaño: 30, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:26:38] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZEResults0.csv | slave: Shenu
+[2025-08-26 00:26:38] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZE.cpp | g++: OK | exec: OK | duración: 24.85s | slave: Shenu | input: 30
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 30 30 /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=30 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZEResults0.csv
+[2025-08-26 00:26:38] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7038634000SIZE.cpp | slave: Shenu
+[2025-08-26 00:32:08] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZE.cpp | slave: Shenu
+[2025-08-26 00:32:08] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:32:33] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZEResults0.csv | slave: Shenu
+[2025-08-26 00:32:33] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZE.cpp | g++: OK | exec: OK | duración: 25.47s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZEResults0.csv
+[2025-08-26 00:32:33] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/5506529474SIZE.cpp | slave: Shenu
+[2025-08-26 00:32:44] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6848165001SIZE.cpp | slave: Shenu
+[2025-08-26 00:32:45] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:43:51] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 00:44:06] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZE.cpp | slave: Shenu
+[2025-08-26 00:44:07] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:44:33] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZEResults0.csv | slave: Shenu
+[2025-08-26 00:44:33] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZE.cpp | g++: OK | exec: OK | duración: 26.24s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZEResults0.csv
+[2025-08-26 00:44:33] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9038491919SIZE.cpp | slave: Shenu
+[2025-08-26 00:44:44] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/1451371737SIZE.cpp | slave: Shenu
+[2025-08-26 00:44:44] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:56:41] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 00:56:54] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZE.cpp | slave: Shenu
+[2025-08-26 00:56:55] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 00:57:19] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZEResults0.csv | slave: Shenu
+[2025-08-26 00:57:19] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZE.cpp | g++: OK | exec: OK | duración: 24.94s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZEResults0.csv
+[2025-08-26 00:57:19] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6960652223SIZE.cpp | slave: Shenu
+[2025-08-26 00:57:30] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5284284651SIZE.cpp | slave: Shenu
+[2025-08-26 00:57:31] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 01:09:40] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 01:10:23] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZE.cpp | slave: Shenu
+[2025-08-26 01:10:23] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 01:10:48] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZEResults0.csv | slave: Shenu
+[2025-08-26 01:10:48] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZE.cpp | g++: OK | exec: OK | duración: 24.82s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZEResults0.csv
+[2025-08-26 01:10:48] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9199962134SIZE.cpp | slave: Shenu
+[2025-08-26 01:10:59] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZE.cpp | slave: Shenu
+[2025-08-26 01:10:59] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 01:32:43] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZEResults0.csv | slave: Shenu
+[2025-08-26 01:32:43] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZE.cpp | g++: OK | exec: OK | duración: 1304.20s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZEResults0.csv
+[2025-08-26 01:32:43] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9557664358SIZE.cpp | slave: Shenu
+[2025-08-26 01:44:39] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 01:44:50] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 02:06:29] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMM.cpp | slave: Shenu
+[2025-08-26 02:06:29] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-26 02:06:55] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMMResults0.csv | slave: Shenu
+[2025-08-26 02:06:55] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMM.cpp | g++: OK | exec: OK | duración: 26.41s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMMResults0.csv
+[2025-08-26 02:06:55] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9346850894CAMM.cpp | slave: Shenu
+[2025-08-26 02:07:56] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 02:09:46] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 02:10:24] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-26 12:55:00] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZE.cpp | slave: Shenu
+[2025-08-26 12:55:00] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 12:55:29] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZEResults0.csv | slave: Shenu
+[2025-08-26 12:55:29] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZE.cpp | g++: OK | exec: OK | duración: 29.43s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZEResults0.csv
+[2025-08-26 12:55:29] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12763370074SIZE.cpp | slave: Shenu
+[2025-08-26 12:55:41] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZE.cpp | slave: Shenu
+[2025-08-26 12:55:41] [START_EXEC] Ejecutando test SIZE con tamaño: 50, repeticiones: 30 | slave: Shenu
+[2025-08-26 13:17:27] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZEResults0.csv | slave: Shenu
+[2025-08-26 13:17:27] [SIZE] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZE.cpp | g++: OK | exec: OK | duración: 1305.70s | slave: Shenu | input: 50
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZE.cpp -o ./a.out
+→ [EXECUTE] bash measurescript5.sh ./a.out 50 30 /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZEResults0.csv
+→ [ARGS] EXEC=./a.out | SIZE=50 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZEResults0.csv
+[2025-08-26 13:17:27] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/308547369SIZE.cpp | slave: Shenu
+[2025-08-26 22:30:21] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5403439089LCS.cpp | slave: Shenu
+[2025-08-26 22:30:23] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 3000, repeticiones: 30 | slave: Shenu
+[2025-08-26 22:52:31] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCS.cpp | slave: Shenu
+[2025-08-26 22:52:32] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-26 23:06:55] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCSResults0.csv | slave: Shenu
+[2025-08-26 23:06:55] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCS.cpp | g++: OK | exec: OK | duración: 864.21s | slave: Shenu | input: 2000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/240262200LCSResults0.csv
+[2025-08-26 23:06:55] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/240262200LCS.cpp | slave: Shenu
+[2025-08-26 23:07:08] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCS.cpp | slave: Shenu
+[2025-08-26 23:07:09] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-26 23:20:32] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCSResults0.csv | slave: Shenu
+[2025-08-26 23:20:32] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCS.cpp | g++: OK | exec: OK | duración: 804.20s | slave: Shenu | input: 2000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCSResults0.csv
+[2025-08-26 23:20:32] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12532028028LCS.cpp | slave: Shenu
+[2025-08-26 23:20:44] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7641037699LCS.cpp | slave: Shenu
+[2025-08-26 23:20:44] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-26 23:54:04] [TIMEOUT] El script LCS excedió el tiempo límite | slave: Shenu
+[2025-08-26 23:54:04] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7641037699LCS.cpp | g++: OK | exec: FAIL | duración: 2000.44s | slave: Shenu | input: 2000 | error: El script LCS excedió el tiempo límite
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7641037699LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/7641037699LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7641037699LCSResults0.csv
+[2025-08-26 23:55:40] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCS.cpp | slave: Shenu
+[2025-08-26 23:55:43] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1500, repeticiones: 30 | slave: Shenu
+[2025-08-27 00:04:08] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCSResults0.csv | slave: Shenu
+[2025-08-27 00:04:08] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCS.cpp | g++: OK | exec: OK | duración: 508.14s | slave: Shenu | input: 1500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1500 30 /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCSResults0.csv
+[2025-08-27 00:04:08] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/7445935088LCS.cpp | slave: Shenu
+[2025-08-27 00:04:20] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCS.cpp | slave: Shenu
+[2025-08-27 00:04:21] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1500, repeticiones: 30 | slave: Shenu
+[2025-08-27 00:12:14] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCSResults0.csv | slave: Shenu
+[2025-08-27 00:12:14] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCS.cpp | g++: OK | exec: OK | duración: 474.13s | slave: Shenu | input: 1500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1500 30 /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCSResults0.csv
+[2025-08-27 00:12:14] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/6367015610LCS.cpp | slave: Shenu
+[2025-08-27 00:12:26] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCS.cpp | slave: Shenu
+[2025-08-27 00:12:26] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 1500, repeticiones: 30 | slave: Shenu
+[2025-08-27 00:36:19] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCSResults0.csv | slave: Shenu
+[2025-08-27 00:36:19] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCS.cpp | g++: OK | exec: OK | duración: 1433.21s | slave: Shenu | input: 1500
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 1500 30 /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=1500 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCSResults0.csv
+[2025-08-27 00:36:19] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/5097803295LCS.cpp | slave: Shenu
+[2025-08-27 03:13:13] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-27 15:39:40] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMM.cpp | slave: Shenu
+[2025-08-27 15:39:41] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8000, repeticiones: 30 | slave: Shenu
+[2025-08-27 15:40:05] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:40:05] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMM.cpp | g++: OK | exec: OK | duración: 24.99s | slave: Shenu | input: 8000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8000 30 /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMMResults0.csv
+[2025-08-27 15:40:05] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/781731675CAMM.cpp | slave: Shenu
+[2025-08-27 15:40:16] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMM.cpp | slave: Shenu
+[2025-08-27 15:40:18] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8000, repeticiones: 30 | slave: Shenu
+[2025-08-27 15:40:40] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:40:40] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMM.cpp | g++: OK | exec: OK | duración: 23.79s | slave: Shenu | input: 8000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8000 30 /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMMResults0.csv
+[2025-08-27 15:40:40] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/10990403097CAMM.cpp | slave: Shenu
+[2025-08-27 15:41:41] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMM.cpp | slave: Shenu
+[2025-08-27 15:41:43] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8000, repeticiones: 30 | slave: Shenu
+[2025-08-27 15:42:07] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:42:07] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMM.cpp | g++: OK | exec: OK | duración: 25.03s | slave: Shenu | input: 8000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMMResults0.csv
+[2025-08-27 15:42:07] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2520680925CAMM.cpp | slave: Shenu
+[2025-08-27 15:42:20] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMM.cpp | slave: Shenu
+[2025-08-27 15:42:21] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 8000, repeticiones: 30 | slave: Shenu
+[2025-08-27 15:42:45] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:42:45] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMM.cpp | g++: OK | exec: OK | duración: 25.16s | slave: Shenu | input: 8000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 8000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=8000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMMResults0.csv
+[2025-08-27 15:42:45] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9991137548CAMM.cpp | slave: Shenu
+[2025-08-27 15:44:49] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMM.cpp | slave: Shenu
+[2025-08-27 15:44:50] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 15000, repeticiones: 50 | slave: Shenu
+[2025-08-27 15:45:34] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:45:34] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMM.cpp | g++: OK | exec: OK | duración: 45.60s | slave: Shenu | input: 15000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 15000 50 /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=15000 | SAMPLES=50 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMMResults0.csv
+[2025-08-27 15:45:34] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/13058975192CAMM.cpp | slave: Shenu
+[2025-08-27 15:45:45] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMM.cpp | slave: Shenu
+[2025-08-27 15:45:47] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 15000, repeticiones: 50 | slave: Shenu
+[2025-08-27 15:46:42] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:46:42] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMM.cpp | g++: OK | exec: OK | duración: 56.67s | slave: Shenu | input: 15000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 15000 50 /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=15000 | SAMPLES=50 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMMResults0.csv
+[2025-08-27 15:46:42] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12753150315CAMM.cpp | slave: Shenu
+[2025-08-27 15:46:53] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMM.cpp | slave: Shenu
+[2025-08-27 15:46:54] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 15000, repeticiones: 50 | slave: Shenu
+[2025-08-27 15:47:36] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMMResults0.csv | slave: Shenu
+[2025-08-27 15:47:36] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMM.cpp | g++: OK | exec: OK | duración: 42.80s | slave: Shenu | input: 15000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 15000 50 /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=15000 | SAMPLES=50 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMMResults0.csv
+[2025-08-27 15:47:36] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4878397766CAMM.cpp | slave: Shenu
+[2025-08-27 16:02:06] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMM.cpp | slave: Shenu
+[2025-08-27 16:02:07] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 20000, repeticiones: 60 | slave: Shenu
+[2025-08-27 16:03:04] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMMResults0.csv | slave: Shenu
+[2025-08-27 16:03:04] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMM.cpp | g++: OK | exec: OK | duración: 58.12s | slave: Shenu | input: 20000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 20000 60 /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=20000 | SAMPLES=60 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMMResults0.csv
+[2025-08-27 16:03:04] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/272366530CAMM.cpp | slave: Shenu
+[2025-08-27 16:03:15] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMM.cpp | slave: Shenu
+[2025-08-27 16:03:16] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 20000, repeticiones: 60 | slave: Shenu
+[2025-08-27 16:04:35] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMMResults0.csv | slave: Shenu
+[2025-08-27 16:04:35] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMM.cpp | g++: OK | exec: OK | duración: 79.40s | slave: Shenu | input: 20000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 20000 60 /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=20000 | SAMPLES=60 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMMResults0.csv
+[2025-08-27 16:04:35] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/12160521819CAMM.cpp | slave: Shenu
+[2025-08-27 16:04:46] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMM.cpp | slave: Shenu
+[2025-08-27 16:04:47] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 20000, repeticiones: 60 | slave: Shenu
+[2025-08-27 16:05:39] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMMResults0.csv | slave: Shenu
+[2025-08-27 16:05:39] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMM.cpp | g++: OK | exec: OK | duración: 53.45s | slave: Shenu | input: 20000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 20000 60 /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=20000 | SAMPLES=60 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMMResults0.csv
+[2025-08-27 16:05:39] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2454215737CAMM.cpp | slave: Shenu
+[2025-08-27 17:53:14] [INTERRUPT] Ejecución detenida manualmente con Ctrl+C | slave: Shenu
+[2025-08-28 04:34:31] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMM.cpp | slave: Shenu
+[2025-08-28 04:34:32] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-28 04:34:53] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMMResults0.csv | slave: Shenu
+[2025-08-28 04:34:53] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMM.cpp | g++: OK | exec: OK | duración: 22.48s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMMResults0.csv
+[2025-08-28 04:34:53] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/2484025396CAMM.cpp | slave: Shenu
+[2025-08-28 04:35:05] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMM.cpp | slave: Shenu
+[2025-08-28 04:35:06] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-28 04:35:29] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMMResults0.csv | slave: Shenu
+[2025-08-28 04:35:29] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMM.cpp | g++: OK | exec: OK | duración: 24.02s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMMResults0.csv
+[2025-08-28 04:35:29] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9681461046CAMM.cpp | slave: Shenu
+[2025-08-28 04:35:40] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMM.cpp | slave: Shenu
+[2025-08-28 04:35:41] [START_EXEC] Ejecutando test CAMM con input: /home/perf/Desktop/performance-system/Server/input/numerical_input.txt, tamaño: 1000, repeticiones: 30 | slave: Shenu
+[2025-08-28 04:36:03] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMMResults0.csv | slave: Shenu
+[2025-08-28 04:36:03] [CAMM] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMM.cpp | g++: OK | exec: OK | duración: 23.54s | slave: Shenu | input: 1000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMM.cpp -o ./a.out
+→ [EXECUTE] bash measurescript3.sh ./a.out /home/perf/Desktop/performance-system/Server/input/numerical_input.txt 1000 30 /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMMResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/numerical_input.txt | SIZE=1000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMMResults0.csv
+[2025-08-28 04:36:03] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/9011082407CAMM.cpp | slave: Shenu
+[2025-08-28 04:41:58] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCS.cpp | slave: Shenu
+[2025-08-28 04:41:59] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-28 04:56:22] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCSResults0.csv | slave: Shenu
+[2025-08-28 04:56:22] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCS.cpp | g++: OK | exec: OK | duración: 864.38s | slave: Shenu | input: 2000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCSResults0.csv
+[2025-08-28 04:56:22] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/4758863796LCS.cpp | slave: Shenu
+[2025-08-28 04:56:34] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCS.cpp | slave: Shenu
+[2025-08-28 04:56:35] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-28 05:09:59] [EXEC_SUCCESS] Resultados guardados en: /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCSResults0.csv | slave: Shenu
+[2025-08-28 05:09:59] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCS.cpp | g++: OK | exec: OK | duración: 805.16s | slave: Shenu | input: 2000
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCSResults0.csv
+[2025-08-28 05:09:59] [TEST_DONE] Test finalizado para /home/perf/Desktop/performance-system/Server/webapp/test/8166191146LCS.cpp | slave: Shenu
+[2025-08-28 05:10:10] [START_COMPILE] Compilando /home/perf/Desktop/performance-system/Server/webapp/test/2524119289LCS.cpp | slave: Shenu
+[2025-08-28 05:10:10] [START_EXEC] Ejecutando test LCS con input: /home/perf/Desktop/performance-system/Server/input/english.50MB, tamaño: 2000, repeticiones: 30 | slave: Shenu
+[2025-08-28 05:43:30] [TIMEOUT] El script LCS excedió el tiempo límite | slave: Shenu
+[2025-08-28 05:43:30] [LCS] archivo: /home/perf/Desktop/performance-system/Server/webapp/test/2524119289LCS.cpp | g++: OK | exec: FAIL | duración: 2000.48s | slave: Shenu | input: 2000 | error: El script LCS excedió el tiempo límite
+→ [COMPILE] g++ -O3 /home/perf/Desktop/performance-system/Server/webapp/test/2524119289LCS.cpp -o ./a.out
+→ [EXECUTE] bash measurescript4.sh ./a.out /home/perf/Desktop/performance-system/Server/input/english.50MB 2000 30 /home/perf/Desktop/performance-system/Server/webapp/test/2524119289LCSResults0.csv
+→ [ARGS] EXEC=./a.out | INPUT=/home/perf/Desktop/performance-system/Server/input/english.50MB | SIZE=2000 | SAMPLES=30 | CSV=/home/perf/Desktop/performance-system/Server/webapp/test/2524119289LCSResults0.csv
