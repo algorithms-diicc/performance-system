@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import getUrl, { serverURL } from '../common/Constants.js';
 import "bootstrap/dist/css/bootstrap.min.css";
-import "./RenderForm.css";
+import "./RenderForm/RenderForm.css";
+
 
 function RenderDoubleForm({ tasksState }) {
   const [code, setCode] = useState("");

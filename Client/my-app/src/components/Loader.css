@@ -1,0 +1,57 @@
+.ps-loader-container {
+    height: 100vh;
+    width: 100%;
+    background: #0f172a;
+    /* azul oscuro sobrio */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    color: #cbd5f5;
+    letter-spacing: 0.03em;
+    user-select: none;
+}
+
+/* SVG Spinner */
+.ps-loader-circle {
+    width: 60px;
+    height: 60px;
+    animation: ps-rotate 1.6s linear infinite;
+}
+
+.ps-loader-path {
+    stroke: #38bdf8;
+    stroke-linecap: round;
+    animation: ps-dash 1.6s ease-in-out infinite;
+}
+
+/* Rotación completa */
+@keyframes ps-rotate {
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Efecto de carga: dash animado */
+@keyframes ps-dash {
+    0% {
+        stroke-dasharray: 1, 150;
+        stroke-dashoffset: 0;
+    }
+
+    50% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -35;
+    }
+
+    100% {
+        stroke-dasharray: 90, 150;
+        stroke-dashoffset: -125;
+    }
+}
+
+.ps-loader-text {
+    font-size: 0.9rem;
+    opacity: 0.75;
+}

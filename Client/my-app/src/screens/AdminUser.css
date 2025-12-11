@@ -1,0 +1,342 @@
+/* ============================================
+   ADMIN PAGE - DARK THEME CONSISTENT WITH APP
+   ============================================ */
+
+/* Fondo de la vista admin: usa el bg global */
+.admin-page {
+    background: var(--color-bg);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+}
+
+/* ------------ CARDS (filtros + tabla) ------------ */
+/* Panel más claro, efecto vidrio ligero */
+.admin-card {
+    background: rgba(17, 26, 46, 0.85);
+    border: 1px solid var(--color-border-soft);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-subtle);
+    backdrop-filter: blur(4px);
+}
+
+/* ------------ TITLES & TEXT ------------ */
+
+.app-title {
+    color: #f9fafb !important;
+}
+
+.admin-subtitle {
+    color: var(--color-text-muted);
+    font-size: 0.95rem;
+}
+
+/* labels y textos dentro de la página admin */
+.admin-page .form-label,
+.admin-page .app-label-sm {
+    color: var(--color-text-main);
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+.admin-text-main {
+    color: #e2e8f0;
+}
+
+.admin-meta {
+    color: var(--color-text-soft);
+}
+
+/* ============= BADGES RESUMEN (TOP) ============= */
+
+.badge-summary {
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radius-pill);
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    color: #e2e8f0;
+    backdrop-filter: blur(10px);
+}
+
+.badge-summary .summary-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    opacity: 0.8;
+}
+
+.badge-summary .summary-value {
+    font-weight: 700;
+    margin-left: 0.4rem;
+    color: #f8fafc;
+}
+
+.badge-summary-success {
+    background: rgba(16, 185, 129, 0.12);
+    border-color: rgba(16, 185, 129, 0.45);
+}
+
+.badge-summary-warning {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.45);
+}
+
+/* ============= INPUTS & SELECTS (FILTROS) ============= */
+
+.admin-page .form-control,
+.admin-page .form-select {
+    background: #0f172a !important;
+    border: 1px solid rgba(148, 163, 184, 0.3) !important;
+    color: #e5e7eb !important;
+    font-size: 0.9rem;
+}
+
+.admin-page .form-control::placeholder {
+    color: #6b7280;
+}
+
+.admin-page .form-control:focus,
+.admin-page .form-select:focus {
+    background: #0f172a !important;
+    border-color: #38bdf8 !important;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.45) !important;
+    color: #f9fafb;
+}
+
+/* ======================= TABLA ======================= */
+
+/* Quitamos fondos de Bootstrap en celdas */
+.admin-table.table> :not(caption)>*>* {
+    background-color: transparent !important;
+    color: #e2e8f0;
+}
+
+.admin-table {
+    background: transparent !important;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+/* Header: más claro que el fondo, buen contraste */
+.admin-table thead th {
+    background: rgba(17, 26, 46, 0.95) !important;
+    color: #e5e7eb !important;
+    border-bottom: 1px solid var(--color-border-soft) !important;
+    font-size: 0.8rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding-top: 0.85rem;
+    padding-bottom: 0.85rem;
+}
+
+/* Body filas: zebra visible pero sutil */
+.admin-table tbody tr {
+    background-color: #0f172a !important;
+    /* impar */
+    transition: background 0.18s ease, transform 0.06s ease;
+}
+
+.admin-table tbody tr:nth-child(even) {
+    background-color: #182133 !important;
+    /* par */
+}
+
+/* Hover celeste suave */
+.admin-table tbody tr:hover {
+    background: rgba(56, 189, 248, 0.08) !important;
+}
+
+/* Celdas: borde superior suave para evitar “línea blanca” */
+.admin-table td {
+    border-top: 1px solid rgba(148, 163, 184, 0.10) !important;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+}
+
+/* ======================= ROLE PILLS ======================= */
+
+.app-role-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.26rem 0.7rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.78rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+.app-role-pill--student {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.5);
+    color: #e0f2fe;
+}
+
+.app-role-pill--teacher {
+    background: rgba(129, 140, 248, 0.16);
+    border-color: rgba(129, 140, 248, 0.55);
+    color: #e0e7ff;
+}
+
+.app-role-pill--admin {
+    background: rgba(59, 130, 246, 0.22);
+    border-color: rgba(59, 130, 246, 0.65);
+    color: #dbeafe;
+}
+
+/* ======================= BADGES ESTADO ======================= */
+
+.app-status-badge {
+    font-size: 0.7rem;
+    padding: 0.28rem 0.65rem;
+    border-radius: var(--radius-pill);
+}
+
+.app-status-badge--success {
+    background: rgba(16, 185, 129, 0.20);
+    color: #4ade80;
+}
+
+.app-status-badge--warning {
+    background: rgba(245, 158, 11, 0.20);
+    color: #fbbf24;
+}
+
+.app-status-badge--error {
+    background: rgba(220, 38, 38, 0.20);
+    color: #f87171;
+}
+
+/* ======================= BOTONES ======================= */
+
+.admin-btn-light {
+    background: rgba(255, 255, 255, 0.04) !important;
+    border: 1px solid rgba(148, 163, 184, 0.4) !important;
+    color: #e5e7eb !important;
+    border-radius: 999px;
+}
+
+.admin-btn-light:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    border-color: #38bdf8 !important;
+    color: #bae6fd !important;
+}
+
+.admin-btn-outline {
+    border-radius: 999px;
+    color: #cbd5f5 !important;
+    border-color: rgba(148, 163, 184, 0.55) !important;
+}
+
+.admin-btn-outline:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* ======================= TABLE FOOTER ======================= */
+
+.admin-table-footer {
+    border-top: 1px solid rgba(148, 163, 184, 0.35);
+    background: rgba(15, 23, 42, 0.95);
+    color: #94a3b8;
+}
+
+/* ======================= SCROLLBAR ======================= */
+
+.admin-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+}
+
+.admin-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(148, 163, 184, 0.5);
+}
+
+/* ===================== FILTROS - BOTÓN MOSTRAR/OCULTAR ===================== */
+
+.admin-filters-toggle-btn {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.5);
+    background: rgba(15, 23, 42, 0.9);
+    color: #e5e7eb;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.9rem;
+    font-size: 0.8rem;
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.08s ease;
+}
+
+.admin-filters-toggle-btn:hover {
+    background: rgba(30, 64, 175, 0.9);
+    border-color: rgba(191, 219, 254, 0.8);
+    box-shadow: 0 10px 24px rgba(30, 64, 175, 0.7);
+    transform: translateY(-1px);
+}
+
+.admin-filters-toggle-icon {
+    font-size: 0.85rem;
+}
+
+/* Tarjeta de filtros ligeramente diferenciada (opcional) */
+.admin-filters-card {
+    border-color: rgba(148, 163, 184, 0.35);
+}
+
+/* ===================== INPUT CON ÍCONO BUSCAR ===================== */
+
+.admin-input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.admin-input-with-icon .admin-input-icon {
+    position: absolute;
+    left: 0.55rem;
+    font-size: 0.85rem;
+    color: #9ca3af;
+    pointer-events: none;
+}
+
+.admin-input-with-icon .admin-input {
+    padding-left: 1.7rem;
+    /* espacio para el icono */
+}
+
+/* ===================== BOTÓN LIMPIAR FILTROS ===================== */
+
+.admin-btn-clear-filters {
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.6);
+    background: rgba(15, 23, 42, 0.9);
+    color: #e5e7eb;
+    font-size: 0.8rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.9rem;
+    transition:
+        background 0.18s ease,
+        border-color 0.18s ease,
+        box-shadow 0.18s ease,
+        transform 0.08s ease;
+}
+
+.admin-btn-clear-filters:hover {
+    background: rgba(56, 189, 248, 0.12);
+    border-color: rgba(56, 189, 248, 0.9);
+    color: #e0f2fe;
+    box-shadow: 0 10px 24px rgba(8, 47, 73, 0.9);
+    transform: translateY(-1px);
+}
+
+.admin-clear-icon {
+    font-size: 0.9rem;
+}

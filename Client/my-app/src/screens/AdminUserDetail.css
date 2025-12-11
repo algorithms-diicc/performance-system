@@ -1,0 +1,514 @@
+/* =========================================
+   AdminUserDetail (vista detalle de usuario)
+   Scope: .admin-user-detail-page
+   ========================================= */
+
+.admin-user-detail-page {
+    /* app-page ya pone fondo, aquí afinamos un poco */
+    padding-top: 1.25rem;
+    padding-bottom: 1.5rem;
+}
+
+/* Tarjetas específicas de esta vista */
+.admin-user-detail-page .admin-card {
+    background:
+        radial-gradient(circle at top left,
+            rgba(148, 163, 184, 0.12),
+            transparent 55%) var(--color-surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-soft);
+    box-shadow: var(--shadow-subtle);
+}
+
+/* Estado de carga (skeleton) */
+.admin-user-detail-page .skeleton-card {
+    min-height: 220px;
+    border-radius: var(--radius-lg);
+    background: linear-gradient(90deg,
+            rgba(30, 41, 59, 0.9) 0%,
+            rgba(51, 65, 85, 0.9) 40%,
+            rgba(30, 41, 59, 0.9) 100%);
+    background-size: 200% 100%;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    animation: admin-skeleton-shimmer 1.2s linear infinite;
+}
+
+@keyframes admin-skeleton-shimmer {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
+}
+
+/* =========================
+   Header
+   ========================= */
+
+.admin-user-detail-page .app-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-main);
+}
+
+.admin-user-detail-page .admin-user-detail-subtitle {
+    font-size: 0.9rem;
+    line-height: 1.4;
+}
+
+.admin-user-detail-page .btn-link {
+    color: var(--color-text-muted);
+}
+
+.admin-user-detail-page .btn-link:hover,
+.admin-user-detail-page .btn-link:focus {
+    color: var(--color-primary);
+    text-decoration: none;
+}
+
+/* Bloque meta del header (estado + última actividad) */
+.admin-user-detail-page .admin-user-detail-meta {
+    text-align: right;
+}
+
+/* =========================
+   Texto dentro de las cards
+   (perfil + tabs + tablas + historial)
+   ========================= */
+
+.admin-user-detail-page .admin-card .card-title,
+.admin-user-detail-page .admin-card h4 {
+    color: var(--color-text-main);
+}
+
+.admin-user-detail-page .admin-card .text-muted {
+    /* forzamos el gris "muted" más claro del theme */
+    color: var(--color-text-muted) !important;
+}
+
+.admin-user-detail-page .admin-card .small {
+    /* por defecto, que sea legible */
+    color: var(--color-text-muted);
+}
+
+/* Perfil: labels y valores de dt/dd */
+.admin-user-detail-page .admin-card dl dt {
+    color: var(--color-text-muted);
+    font-weight: 500;
+}
+
+.admin-user-detail-page .admin-card dl dd {
+    color: var(--color-text-main);
+}
+
+/* Nombre y correo en la tarjeta de perfil */
+.admin-user-detail-page .user-detail-name {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.admin-user-detail-page .user-detail-email {
+    word-break: break-all;
+}
+
+.admin-user-detail-page .user-detail-meta {
+    margin-top: 0.5rem;
+}
+
+/* =========================
+   Tabs sección derecha
+   ========================= */
+
+.admin-user-detail-page .app-tabs {
+    border-bottom: 1px solid var(--color-border-soft);
+}
+
+.admin-user-detail-page .app-tabs .nav-link {
+    border: none;
+    border-radius: var(--radius-pill) var(--radius-pill) 0 0;
+    padding: 0.4rem 0.9rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-soft);
+    background-color: transparent;
+    transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.admin-user-detail-page .app-tabs .nav-link:hover {
+    color: var(--color-text-main);
+    background-color: rgba(148, 163, 184, 0.08);
+}
+
+.admin-user-detail-page .app-tabs .nav-link.active {
+    color: var(--color-primary);
+    background: linear-gradient(to top,
+            rgba(56, 189, 248, 0.16),
+            rgba(37, 99, 235, 0.12));
+    border-bottom: 2px solid transparent;
+}
+
+/* Contenedor de tabs: altura mínima para evitar “saltos” visuales */
+.admin-user-detail-page .tab-content {
+    min-height: 260px;
+}
+
+/* Animación suave al cambiar de tab (sólo sobre la activa) */
+.admin-user-detail-page .tab-pane.active {
+    animation: admin-tab-enter 0.18s ease-out;
+}
+
+@keyframes admin-tab-enter {
+    from {
+        opacity: 0;
+        transform: translateY(3px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* =========================
+   Perfil (columna izquierda)
+   ========================= */
+
+.admin-user-detail-page .user-detail-avatar {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background:
+        radial-gradient(circle at 30% 20%,
+            rgba(248, 250, 252, 0.16),
+            rgba(15, 23, 42, 0.4)),
+        linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #0b1120;
+    font-size: 2rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 18px 35px rgba(15, 23, 42, 0.9);
+}
+
+.admin-user-detail-page .user-detail-avatar span {
+    transform: translateY(2px);
+}
+
+/* =========================
+   Badges resumen (ejecuciones / submissions)
+   ========================= */
+
+.admin-user-detail-page .badge-summary {
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--color-border-soft);
+    padding: 0.35rem 0.6rem;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    /* centrado (fix) */
+    justify-content: center;
+    min-width: 70px;
+    text-align: center;
+    /* centrado (fix) */
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(12px);
+}
+
+.admin-user-detail-page .badge-summary-compact {
+    padding: 0.3rem 0.7rem;
+}
+
+.admin-user-detail-page .badge-summary .summary-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--color-text-soft);
+}
+
+.admin-user-detail-page .badge-summary .summary-value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--color-text-main);
+}
+
+.admin-user-detail-page .badge-summary-success {
+    border-color: rgba(34, 197, 94, 0.4);
+    background: radial-gradient(circle at top left,
+            rgba(34, 197, 94, 0.16),
+            rgba(15, 23, 42, 0.85));
+}
+
+.admin-user-detail-page .badge-summary-warning {
+    border-color: rgba(251, 191, 36, 0.45);
+    background: radial-gradient(circle at top left,
+            rgba(251, 191, 36, 0.16),
+            rgba(15, 23, 42, 0.9));
+}
+
+.admin-user-detail-page .badge-summary-error {
+    border-color: rgba(248, 113, 113, 0.45);
+    background: radial-gradient(circle at top left,
+            rgba(248, 113, 113, 0.16),
+            rgba(15, 23, 42, 0.9));
+}
+
+/* =========================
+   Tabla admin (ejecuciones / submissions)
+   ========================= */
+
+.admin-user-detail-page .admin-table-wrapper {
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-soft);
+    background-color: rgba(15, 23, 42, 0.8);
+}
+
+.admin-user-detail-page .admin-table {
+    margin-bottom: 0;
+}
+
+.admin-user-detail-page .admin-table thead th {
+    background-color: rgba(15, 23, 42, 0.95);
+    border-bottom-color: rgba(148, 163, 184, 0.5);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-soft);
+}
+
+.admin-user-detail-page .admin-table tbody tr {
+    transition: background-color 0.13s ease, transform 0.08s ease;
+}
+
+.admin-user-detail-page .admin-table tbody tr:hover {
+    background-color: rgba(56, 189, 248, 0.08);
+    transform: translateY(-1px);
+}
+
+.admin-user-detail-page .admin-table tbody td {
+    padding-top: 0.55rem;
+    padding-bottom: 0.55rem;
+    vertical-align: middle;
+}
+
+/* Footer tabla */
+.admin-user-detail-page .admin-table-footer {
+    border-top: 1px solid rgba(148, 163, 184, 0.25);
+    padding-bottom: 0.4rem;
+}
+
+/* Botones pequeños en tabla */
+.admin-user-detail-page .admin-table .btn-group-sm .btn {
+    font-size: 0.7rem;
+    padding-inline: 0.4rem;
+}
+
+/* =========================
+   Timeline / Historial
+   ========================= */
+
+.admin-user-detail-page .app-card-subtle {
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--radius-md);
+    border: 1px dashed var(--color-border-soft);
+}
+
+.admin-user-detail-page .app-timeline-wrapper {
+    overflow-y: auto;
+    max-height: 340px;
+    padding-right: 0.3rem;
+}
+
+/* Scrollbar timeline */
+.admin-user-detail-page .app-timeline-wrapper::-webkit-scrollbar {
+    width: 6px;
+}
+
+.admin-user-detail-page .app-timeline-wrapper::-webkit-scrollbar-thumb {
+    background-color: rgba(148, 163, 184, 0.7);
+    border-radius: 999px;
+}
+
+.admin-user-detail-page .app-timeline-wrapper::-webkit-scrollbar-track {
+    background-color: transparent;
+}
+
+.admin-user-detail-page .app-timeline-list {
+    margin: 0;
+}
+
+.admin-user-detail-page .app-timeline-item {
+    background-color: transparent;
+    border-color: rgba(148, 163, 184, 0.1);
+}
+
+/* acción del historial */
+.admin-user-detail-page .app-timeline-item .fw-semibold {
+    color: var(--color-text-main);
+}
+
+/* descripción del historial */
+.admin-user-detail-page .app-timeline-item p.small {
+    color: var(--color-text-muted);
+}
+
+.admin-user-detail-page .app-timeline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: radial-gradient(circle,
+            var(--color-primary),
+            var(--color-primary-light));
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0.18);
+}
+
+/* =========================
+   Modal de detalle de ejecución
+   ========================= */
+
+.admin-user-detail-page .app-modal-backdrop {
+    background-color: rgba(15, 23, 42, 0.75);
+    backdrop-filter: blur(6px);
+    z-index: 1050;
+}
+
+.admin-user-detail-page .app-modal {
+    background-color: var(--color-surface-elevated);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--color-border-soft);
+    box-shadow: var(--shadow-soft);
+    color: var(--color-text-main);
+}
+
+.admin-user-detail-page .app-modal .modal-header {
+    border-bottom: 1px solid var(--color-border-soft);
+}
+
+.admin-user-detail-page .app-modal .modal-footer {
+    border-top: 1px solid var(--color-border-soft);
+}
+
+.admin-user-detail-page .app-modal .modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Botón de cierre modal en dark mode */
+.admin-user-detail-page .app-modal .btn-close {
+    filter: invert(1) grayscale(80%);
+    opacity: 0.7;
+}
+
+.admin-user-detail-page .app-modal .btn-close:hover {
+    opacity: 1;
+}
+
+/* =========================
+   Controles / inputs pequeños
+   ========================= */
+
+.admin-user-detail-page .form-control.form-control-sm,
+.admin-user-detail-page .form-select.form-select-sm {
+    background-color: var(--color-surface-elevated);
+    border-radius: 0.6rem;
+    border: 1px solid rgba(148, 163, 184, 0.45);
+    color: var(--color-text-main);
+    font-size: 0.8rem;
+}
+
+.admin-user-detail-page .form-control.form-control-sm::placeholder {
+    color: var(--color-text-soft);
+}
+
+.admin-user-detail-page .form-control.form-control-sm:focus,
+.admin-user-detail-page .form-select.form-select-sm:focus {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.35);
+    outline: none;
+}
+
+/* =========================
+   Botones secundarios en dark theme (solo aquí)
+   ========================= */
+
+.admin-user-detail-page .btn-outline-secondary.btn-sm {
+    border-radius: var(--radius-pill);
+    border-color: rgba(148, 163, 184, 0.6);
+    color: var(--color-text-main);
+    font-size: 0.75rem;
+    padding-inline: 0.75rem;
+    padding-block: 0.25rem;
+    background-color: rgba(15, 23, 42, 0.4);
+    transition:
+        background-color 0.13s ease,
+        color 0.13s ease,
+        border-color 0.13s ease,
+        transform 0.06s ease;
+}
+
+.admin-user-detail-page .btn-outline-secondary.btn-sm:hover {
+    background: linear-gradient(135deg,
+            rgba(56, 189, 248, 0.14),
+            rgba(129, 140, 248, 0.16));
+    border-color: var(--color-primary);
+    color: #e5f6ff;
+    transform: translateY(-0.5px);
+}
+
+/* Botón peligro (bloquear usuario) */
+.admin-user-detail-page .btn-outline-danger.btn-sm {
+    border-radius: var(--radius-pill);
+    border-color: rgba(248, 113, 113, 0.8);
+    color: var(--color-error);
+    background-color: rgba(15, 23, 42, 0.4);
+    font-size: 0.75rem;
+}
+
+.admin-user-detail-page .btn-outline-danger.btn-sm:hover {
+    background-color: var(--color-error-soft);
+    color: #fecaca;
+}
+
+/* =========================
+   Responsivo
+   ========================= */
+
+@media (max-width: 991.98px) {
+    .admin-user-detail-page .user-detail-avatar {
+        width: 64px;
+        height: 64px;
+        font-size: 1.6rem;
+    }
+
+    .admin-user-detail-page .app-title {
+        font-size: 1.3rem;
+    }
+
+    .admin-user-detail-page .admin-table-wrapper {
+        max-height: 360px;
+    }
+
+    .admin-user-detail-page .app-timeline-wrapper {
+        max-height: 300px;
+    }
+
+    .admin-user-detail-page .admin-user-detail-meta {
+        text-align: left;
+        margin-top: 0.5rem;
+    }
+}
+
+/* =========================================
+   Fix: textos de header demasiado oscuros
+   ========================================= */
+
+/* Forzamos que cualquier .text-muted dentro de esta vista
+   use el gris claro del tema oscuro */
+.admin-user-detail-page .text-muted {
+    color: var(--color-text-muted) !important;
+}
