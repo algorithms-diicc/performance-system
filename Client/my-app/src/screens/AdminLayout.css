@@ -1,0 +1,5 @@
+.admin-shell{min-height:100vh;background:var(--color-bg)}
+.admin-shell-nav{display:flex;gap:.35rem;width:min(100% - 2rem,1660px);margin:0 auto;padding:.5rem 0;border-bottom:1px solid var(--color-border-soft)}
+.admin-shell-nav a{padding:.42rem .75rem;border-radius:.65rem;color:var(--color-text-muted);font-size:.8rem;font-weight:700;text-decoration:none}
+.admin-shell-nav a:hover{background:var(--color-surface-elevated);color:var(--color-text-main)}
+.admin-shell-nav a.active{background:var(--color-primary-soft);color:var(--color-primary)}

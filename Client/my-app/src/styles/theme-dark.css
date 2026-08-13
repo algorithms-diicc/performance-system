@@ -1,0 +1,102 @@
+/* ============================================================
+   Performance System — Dark Theme
+   ============================================================ */
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* Brand */
+    --ps-primary: #3b82f6;
+    --ps-primary-hover: #60a5fa;
+    --ps-primary-active: #2563eb;
+    --ps-primary-soft: rgba(59, 130, 246, 0.14);
+
+    --ps-accent: #22d3ee;
+    --ps-accent-soft: rgba(34, 211, 238, 0.12);
+
+    /* Backgrounds */
+    --ps-bg: #0b1220;
+
+    --ps-surface: #111827;
+    --ps-surface-subtle: #182235;
+    --ps-surface-elevated: #1e293b;
+    --ps-surface-hover: #172033;
+
+    /* Text */
+    --ps-text: #f8fafc;
+    --ps-text-secondary: #cbd5e1;
+    --ps-text-muted: #94a3b8;
+    --ps-text-inverse: #0f172a;
+
+    /* Borders */
+    --ps-border: #293548;
+    --ps-border-strong: #3b4a60;
+
+    --ps-divider: rgba(148, 163, 184, 0.18);
+
+    /* Semantic states */
+    --ps-success: #10b981;
+    --ps-success-soft: rgba(16, 185, 129, 0.13);
+
+    --ps-warning: #f59e0b;
+    --ps-warning-soft: rgba(245, 158, 11, 0.13);
+
+    --ps-danger: #ef4444;
+    --ps-danger-soft: rgba(239, 68, 68, 0.13);
+
+    --ps-info: #38bdf8;
+    --ps-info-soft: rgba(56, 189, 248, 0.13);
+
+    /* Focus */
+    --ps-focus-ring: rgba(96, 165, 250, 0.35);
+
+    /* Shadows */
+    --ps-shadow-sm:
+        0 1px 2px rgba(0, 0, 0, 0.28);
+
+    --ps-shadow-md:
+        0 10px 28px rgba(0, 0, 0, 0.34);
+
+    --ps-shadow-lg:
+        0 20px 50px rgba(0, 0, 0, 0.42);
+
+    /*
+   * Compatibilidad temporal con CSS antiguo.
+   */
+
+    --color-primary: var(--ps-primary);
+    --color-primary-dark: #0f172a;
+    --color-primary-light: #6366f1;
+
+    --color-bg: var(--ps-bg);
+
+    --color-surface: var(--ps-surface);
+
+    /*
+   * El antiguo dark theme utilizaba un fondo particularmente oscuro
+   * para ciertas superficies secundarias. Conservamos este alias
+   * temporalmente para no cambiar de golpe Admin/RenderForm.
+   */
+    --color-surface-soft: #0f172a;
+
+    --color-surface-elevated: var(--ps-surface-elevated);
+
+    --color-border-soft: var(--ps-border);
+    --color-border-strong: var(--ps-border-strong);
+
+    --color-text-main: var(--ps-text);
+    --color-text-muted: var(--ps-text-muted);
+    --color-text-soft: var(--ps-text-secondary);
+
+    --color-success: var(--ps-success);
+    --color-success-soft: var(--ps-success-soft);
+
+    --color-error: var(--ps-danger);
+    --color-error-soft: var(--ps-danger-soft);
+
+    --color-warning: var(--ps-warning);
+    --color-warning-soft: var(--ps-warning-soft);
+
+    --shadow-soft: var(--ps-shadow-lg);
+    --shadow-subtle: var(--ps-shadow-md);
+}

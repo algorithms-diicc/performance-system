@@ -1,5 +1,15 @@
-from flask import Flask, request, render_template, abort, url_for, redirect, make_response, jsonify
+from flask import (
+    Flask,
+    request,
+    render_template,
+    abort,
+    url_for,
+    redirect,
+    make_response,
+    jsonify,
+)
 from flask_cors import CORS
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import subprocess
@@ -11,231 +21,891 @@ import time
 from statistics import mean
 import sys
 import numpy as np
-import os 
+import os
 import shutil
 from datetime import datetime
 
-# === 📁 RUTAS ABSOLUTAS SEGURAS ===
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # carpeta Server/
-STATUS_DIR = os.path.join(BASE_DIR, "status")
-STATIC_DIR = os.path.join(BASE_DIR, "webapp", "static")
 
-# Crear directorios si no existen
+# ============================================================
+# CONFIGURACIÓN DE RUTAS
+# ============================================================
+
+# Server/
+BASE_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+# Server/status/
+STATUS_DIR = os.path.join(BASE_DIR, "status")
+
+# Server/webapp/static/
+STATIC_DIR = os.path.join(
+    BASE_DIR,
+    "webapp",
+    "static"
+)
+
 os.makedirs(STATUS_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-# === 🧠 Diccionario de códigos de error
+
+# ============================================================
+# CONFIGURACIÓN MASTER / SLAVE
+# ============================================================
+
+# local  -> ejecución en el mismo computador
+# remote -> ejecución contra el master definido por configuración
+EXECUTION_MODE = os.getenv(
+    "EXECUTION_MODE",
+    "local"
+).strip().lower()
+
+if EXECUTION_MODE not in {"local", "remote"}:
+    raise ValueError(
+        "EXECUTION_MODE debe tener el valor 'local' o 'remote'."
+    )
+
+DEFAULT_MASTER_HOST = (
+    "127.0.0.1"
+    if EXECUTION_MODE == "local"
+    else None
+)
+
+# Puede sobrescribirse también en modo local.
+MASTER_HOST = os.getenv(
+    "MASTER_HOST",
+    DEFAULT_MASTER_HOST
+)
+
+if EXECUTION_MODE == "remote" and not MASTER_HOST:
+    raise ValueError(
+        "MASTER_HOST es obligatorio cuando EXECUTION_MODE=remote."
+    )
+
+MASTER_SEND_PORT = int(
+    os.getenv("MASTER_SEND_PORT", "50000")
+)
+
+MASTER_RESULT_PORT = int(
+    os.getenv("MASTER_RESULT_PORT", "60000")
+)
+
+
+# ============================================================
+# CÓDIGOS DE ERROR
+# ============================================================
+
 ERROR_MESSAGES = {
-    100: "❌ Error de compilación del archivo recibido. Por favor, revise su código fuente.",
-    200: "⏰ El algoritmo superó el tiempo límite de ejecución.",
-    300: "📂 El archivo CSV no se generó correctamente.",
-    400: "⚠️ Error inesperado durante la ejecución del test.",
+    100: (
+        "❌ Error de compilación del archivo recibido. "
+        "Por favor, revise su código fuente."
+    ),
+    200: (
+        "⏰ El algoritmo superó el tiempo límite "
+        "de ejecución."
+    ),
+    300: (
+        "📂 El archivo CSV no se generó correctamente."
+    ),
+    400: (
+        "⚠️ Error inesperado durante la ejecución del test."
+    ),
 }
 
-# === 🔁 ESTADO GLOBAL ===
-activeS = 0  # medidores activos
 
-# === 🚀 FUNCIONES ===
+# ============================================================
+# ESTADO GLOBAL
+# ============================================================
 
+activeS = 0
+activeR = 0
+
+
+# ============================================================
+# ENVÍO DEL PROGRAMA AL SLAVE
+# ============================================================
 
 def send_manager(s, json_string, name):
+    """
+    Espera que uno o más slaves se conecten al puerto de envío
+    y les entrega el payload de ejecución.
+    """
+
     global activeS
-    s.settimeout(1.0)  # Chequeos más rápidos
-    max_wait = 60      # ⏳ Esperar hasta 60 segundos
-    elapsed = 0
+
+    s.settimeout(1.0)
+
+    max_wait_seconds = 60
+    start_time = time.time()
     counter = 0
 
-    while elapsed < max_wait:
+    print(
+        f"[📡 MASTER] Esperando slaves en "
+        f"{MASTER_HOST}:{MASTER_SEND_PORT}"
+    )
+
+    while time.time() - start_time < max_wait_seconds:
         try:
             conn, addr = s.accept()
-            th.Thread(target=send_program, args=(conn, json_string), daemon=True).start()
+
+            print(
+                f"[🔗 MASTER] Slave conectado desde "
+                f"{addr[0]}:{addr[1]}"
+            )
+
+            thread = th.Thread(
+                target=send_program,
+                args=(conn, json_string),
+                daemon=True,
+            )
+            thread.start()
+
             counter += 1
+
         except socket.timeout:
-            elapsed += 1
+            # Si al menos un slave recibió el programa,
+            # no es necesario continuar esperando.
             if counter > 0:
-                break  # ✅ Al menos una máquina ya recibió
-        time.sleep(1)
+                break
+
+        except OSError as e:
+            print(
+                f"[❌ MASTER SEND ERROR] "
+                f"Error esperando conexión del slave: {e}"
+            )
+            break
 
     if counter == 0:
-        print("❌ No measure machines available!", file=sys.stderr)
-        #code = payloadDict["error_code"]
-        #translated_msg = ERROR_MESSAGES.get(code, "❓ Error desconocido")
-#agregar este estado, y que sucede despues de esto
-        # Agregar al archivo de estado (frontend lo leerá) 
-        #escribir_estado(filename, translated_msg)
-        #escribir_estado(name, f"🚚 Enviando test al slave con tipo: {task_suffix}, input_size: {input_size}, repeticiones: {samples}.")
-        status_path = os.path.join(STATUS_DIR, name)
-        with open(status_path, 'w') as w:
-            w.write('ERROR: no machines available')
+        print(
+            "❌ No measure machines available!",
+            file=sys.stderr,
+        )
+
+        status_path = os.path.join(
+            STATUS_DIR,
+            name
+        )
+
+        try:
+            with open(status_path, "w") as w:
+                w.write(
+                    "ERROR: no machines available"
+                )
+        except OSError as e:
+            print(
+                f"[❌ STATUS ERROR] "
+                f"No se pudo escribir {status_path}: {e}"
+            )
 
     activeS = counter
 
 
 def send_program(conn, json_string):
+    """
+    Envía el payload JSON correspondiente a una ejecución.
+    """
+
     with conn:
-        conn.sendall(json_string.encode())
+        try:
+            conn.sendall(
+                json_string.encode("utf-8")
+            )
+
+            print(
+                "[📤 MASTER] Payload enviado al slave."
+            )
+
+        except OSError as e:
+            print(
+                f"[❌ MASTER] "
+                f"Error enviando payload: {e}"
+            )
+
+
+# ============================================================
+# RECEPCIÓN DE RESULTADOS DESDE EL SLAVE
+# ============================================================
 
 def recv_manager(s, name):
+    """
+    Espera resultados enviados por los slaves.
+    """
+
     global activeR
+
     counter = 0
     firsttime = True
+
+    # Espera amplia mientras el algoritmo está ejecutándose.
     s.settimeout(2000.0)
+
+    print(
+        f"[📡 MASTER] Esperando resultados en "
+        f"{MASTER_HOST}:{MASTER_RESULT_PORT}"
+    )
+
     while True:
         try:
             conn, addr = s.accept()
-            th.Thread(target=receive_data, args=(conn, counter,), daemon=True).start()
+
+            print(
+                f"[📥 MASTER] Resultado recibido desde "
+                f"{addr[0]}:{addr[1]}"
+            )
+
+            thread = th.Thread(
+                target=receive_data,
+                args=(conn, counter),
+                daemon=True,
+            )
+            thread.start()
+
             counter += 1
+
         except socket.timeout:
             if counter == 0:
-                print("No measure machines available!", file=sys.stderr)
-                status_path = os.path.join(STATUS_DIR, name)
-                with open(status_path, 'r+') as w:
-                    w.seek(0)
-                    w.write('ERROR: no machines available')
-                    w.truncate()
+                print(
+                    "No measure machines available!",
+                    file=sys.stderr,
+                )
+
+                status_path = os.path.join(
+                    STATUS_DIR,
+                    name
+                )
+
+                try:
+                    with open(status_path, "w") as w:
+                        w.write(
+                            "ERROR: no machines available"
+                        )
+
+                except OSError as e:
+                    print(
+                        f"[❌ STATUS ERROR] "
+                        f"No se pudo escribir estado: {e}"
+                    )
+
             break
+
+        except OSError as e:
+            print(
+                f"[❌ MASTER RECEIVE ERROR] {e}"
+            )
+            break
+
+        # Una vez recibido el primer resultado,
+        # esperamos solo unos segundos por posibles resultados extra.
         if firsttime:
             firsttime = False
             s.settimeout(5.0)
+
     activeR = counter
 
+
 def receive_data(conn, ident):
+    """
+    Procesa resultados enviados por un slave.
+
+    Puede recibir:
+    - CSV correctamente generado.
+    - JSON indicando error de ejecución.
+    """
+
     with conn:
-        #print(conn)
-        payload = b''
+        payload = b""
+
         while True:
-            data = conn.recv(1024)
-            #print(data)
+            try:
+                data = conn.recv(1024)
+            except OSError as e:
+                print(
+                    f"[❌ RECEIVE ERROR] {e}"
+                )
+                return
+
             if not data:
                 break
+
             payload += data
 
         if not payload:
-            print("Received empty payload, skipping JSON decoding.")
+            print(
+                "Received empty payload, "
+                "skipping JSON decoding."
+            )
             return
 
         try:
-            payloadDict = json.loads(payload.decode())
+            payloadDict = json.loads(
+                payload.decode("utf-8")
+            )
+
         except Exception as e:
-            print(f"❌ Error al decodificar JSON: {e}")
+            print(
+                f"❌ Error al decodificar JSON: {e}"
+            )
             return
-        
-        filename = payloadDict.get("name", "unnamed")
-        codename = filename.replace("Results", "")
+
+        filename = payloadDict.get(
+            "name",
+            "unnamed"
+        )
+
+        codename = filename.replace(
+            "Results",
+            ""
+        )
+
+        # CORE-06C-3: provenance enviada por el nodo ejecutor.
+        hardware_snapshot = payloadDict.get("hardware_snapshot")
+
+        if isinstance(hardware_snapshot, dict) and hardware_snapshot:
+            try:
+                from .repositories import execution_repository
+
+                execution_repository.store_hardware_snapshot_by_codename(
+                    codename,
+                    hardware_snapshot,
+                )
+
+                print(
+                    f"[🧩 MASTER] hardware_snapshot persistido "
+                    f"para {codename}"
+                )
+
+            except Exception as exc:
+                print(
+                    f"[WARN MASTER] No fue posible persistir "
+                    f"hardware_snapshot para {codename}: {exc}"
+                )
+
+        # ----------------------------------------------------
+        # RESULTADO CORRECTO
+        # ----------------------------------------------------
+
         if "results" in payloadDict:
-            # ✅ Es un CSV
-            escribir_estado(codename, "✅ Test ejecutado correctamente. Resultados CSV recibidos.")
-            filename_csv = filename + str(ident) + ".csv"
-            result_path = os.path.join(STATIC_DIR, filename_csv)
-            with open(result_path, 'w') as f:
-                f.write(payloadDict["results"])
-            print(f"[{ident}] ✅ Resultado CSV guardado en: {result_path}")
-            # ✅ Notificar finalización al Server (para serve_next_inline)
-            status_path = os.path.join(STATUS_DIR, codename)
-            with open(status_path, 'w') as w:
-                w.write('DONE')
 
-        #filename = payloadDict["name"] + str(ident) + ".csv"
-        #result_path = os.path.join(STATIC_DIR, filename)
+            escribir_estado(
+                codename,
+                (
+                    "✅ Test ejecutado correctamente. "
+                    "Resultados CSV recibidos."
+                ),
+            )
+
+            filename_csv = (
+                filename
+                + str(ident)
+                + ".csv"
+            )
+
+            result_path = os.path.join(
+                STATIC_DIR,
+                filename_csv
+            )
+
+            try:
+                with open(
+                    result_path,
+                    "w",
+                    encoding="utf-8",
+                ) as f:
+
+                    f.write(
+                        payloadDict["results"]
+                    )
+
+            except OSError as e:
+                print(
+                    f"[❌ CSV WRITE ERROR] {e}"
+                )
+                return
+
+            print(
+                f"[{ident}] ✅ Resultado CSV "
+                f"guardado en: {result_path}"
+            )
+
+            status_path = os.path.join(
+                STATUS_DIR,
+                codename
+            )
+
+            try:
+                with open(status_path, "w") as w:
+                    w.write("DONE")
+
+            except OSError as e:
+                print(
+                    f"[❌ STATUS ERROR] {e}"
+                )
+
+        # ----------------------------------------------------
+        # ERROR DEVUELTO POR EL SLAVE
+        # ----------------------------------------------------
+
         elif "error_code" in payloadDict:
-            # ❗ Es un JSON de error
+
             code = payloadDict["error_code"]
-            translated_msg = ERROR_MESSAGES.get(code, "❓ Error desconocido")
 
-            # Agregar al archivo de estado (frontend lo leerá)
-            escribir_estado(filename, translated_msg)
-            status_path = os.path.join(STATUS_DIR, filename)
-            with open(status_path, 'w') as w:
-                w.write(f'ERROR: {translated_msg}')
-            print(f"[{ident}] ⚠️ Error recibido: {translated_msg} | Guardado en {STATIC_DIR}")
+            translated_msg = ERROR_MESSAGES.get(
+                code,
+                "❓ Error desconocido",
+            )
 
-def escribir_estado(codename, msg, tipo="INFO", error_code=None):
+            escribir_estado(
+                codename,
+                translated_msg,
+                tipo="ERROR",
+                error_code=code,
+            )
+
+            status_path = os.path.join(
+                STATUS_DIR,
+                codename
+            )
+
+            try:
+                with open(status_path, "w") as w:
+                    w.write(
+                        f"ERROR: {translated_msg}"
+                    )
+
+            except OSError as e:
+                print(
+                    f"[❌ STATUS ERROR] {e}"
+                )
+
+            print(
+                f"[{ident}] ⚠️ Error recibido: "
+                f"{translated_msg}"
+            )
+
+        else:
+            print(
+                "[⚠️ MASTER] Payload recibido sin "
+                "'results' ni 'error_code'."
+            )
+
+
+# ============================================================
+# ESTADOS PARA EL FRONTEND
+# ============================================================
+
+def escribir_estado(
+    codename,
+    msg,
+    tipo="INFO",
+    error_code=None,
+):
     """
-    Registra un mensaje en el archivo <codename>_status.json dentro de STATIC_DIR.
-    Si el tipo es ERROR, se incluye 'status': 'ERROR' y 'error_code'.
-    """
-    path = os.path.join(STATIC_DIR, f"{codename}_status.json")
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    Registra mensajes de progreso en:
 
-    # Si el archivo ya existe, lo cargamos
+    Server/webapp/static/<codename>_status.json
+    """
+
+    path = os.path.join(
+        STATIC_DIR,
+        f"{codename}_status.json"
+    )
+
+    timestamp = datetime.now().strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
     if os.path.exists(path):
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(
+                path,
+                "r",
+                encoding="utf-8",
+            ) as f:
+
                 data = json.load(f)
+
         except Exception:
             data = {}
+
     else:
         data = {}
 
-    # Asegurar que exista el arreglo de mensajes
     if "messages" not in data:
         data["messages"] = []
 
-    # Agregar el nuevo mensaje
-    data["messages"].append({
-        "time": timestamp,
-        "msg": msg
-    })
+    data["messages"].append(
+        {
+            "time": timestamp,
+            "msg": msg,
+        }
+    )
 
-    # Si es error, se marca como tal
     if tipo == "ERROR":
         data["status"] = "ERROR"
         data["error_code"] = error_code
 
-    # Guardar el archivo actualizado
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
+    try:
+        with open(
+            path,
+            "w",
+            encoding="utf-8",
+        ) as f:
 
-        
-def slave_serve(file_dir, name, cmd, input_size, samples):
-    port = 50000
-    port2 = 60000
-    host = '152.74.52.200'
-    print(file_dir, name, cmd)
+            json.dump(
+                data,
+                f,
+                indent=2,
+                ensure_ascii=False,
+            )
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s2 = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    except OSError as e:
+        print(
+            f"[❌ STATUS JSON ERROR] "
+            f"No se pudo escribir {path}: {e}"
+        )
+
+
+# ============================================================
+# MASTER DE EJECUCIÓN
+# ============================================================
+
+def _load_measurement_snapshot(codename):
+    # Obtiene desde PostgreSQL el protocolo experimental persistido.
+    # Ejecuciones legacy sin snapshot retornan {}.
+    try:
+        from .repositories.execution_repository import (
+            get_execution_by_codename,
+        )
+
+        execution = get_execution_by_codename(codename)
+        execution_config = execution.get("execution_config") or {}
+
+        if not isinstance(execution_config, dict):
+            return {}
+
+        measurement = execution_config.get("measurement") or {}
+        if not isinstance(measurement, dict):
+            return {}
+
+        return measurement
+
+    except Exception as exc:
+        print(
+            "[WARN MASTER] No fue posible cargar measurement snapshot "
+            f"para {codename}: {exc}"
+        )
+        return {}
+
+
+def slave_serve(
+    file_dir,
+    name,
+    cmd,
+    input_size,
+    samples,
+):
+    """
+    Crea los sockets utilizados para comunicarse
+    con el slave.
+
+    50000:
+        entrega código y parámetros al slave.
+
+    60000:
+        recibe resultados desde el slave.
+    """
+
+    host = MASTER_HOST
+    port = MASTER_SEND_PORT
+    port2 = MASTER_RESULT_PORT
+
+    # CORE-06A-5B: PostgreSQL es la fuente de verdad del protocolo
+    # experimental para ejecuciones nuevas.
+    measurement = _load_measurement_snapshot(name)
+
+    print("")
+    print("========================================")
+    print(" PERFORMANCE SYSTEM - MASTER EXECUTION")
+    print("========================================")
+    print(
+        f"[🔧 MASTER] execution mode: "
+        f"{EXECUTION_MODE}"
+    )
+    print(
+        f"[🔧 MASTER] host: {host}"
+    )
+    print(
+        f"[🔧 MASTER] send port: {port}"
+    )
+    print(
+        f"[🔧 MASTER] result port: {port2}"
+    )
+    print(
+        f"[📄 MASTER] archivo: {file_dir}"
+    )
+    print(
+        f"[🧪 MASTER] nombre tarea: {name}"
+    )
+    print("========================================")
+    print("")
+
+    # --------------------------------------------------------
+    # Abrir sockets
+    # --------------------------------------------------------
 
     while True:
+
+        s = None
+        s2 = None
+
         try:
-            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s2.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-            s.bind((host, port))
-            s2.bind((host, port2))
+
+            s = socket.socket(
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+            )
+
+            s2 = socket.socket(
+                socket.AF_INET,
+                socket.SOCK_STREAM,
+            )
+
+            s.setsockopt(
+                socket.SOL_SOCKET,
+                socket.SO_REUSEADDR,
+                1,
+            )
+
+            s2.setsockopt(
+                socket.SOL_SOCKET,
+                socket.SO_REUSEADDR,
+                1,
+            )
+
+            s.bind(
+                (host, port)
+            )
+
+            s2.bind(
+                (host, port2)
+            )
+
             s.listen(5)
             s2.listen(5)
 
-            with open(file_dir, 'r') as f:
-                code = f.read()
-            task_suffix = ''
-            for possible in ['LCS', 'CAMM', 'CAMMR', 'CAMMS', 'CAMMSO', 'SIZE']:
-                if name.endswith(possible):
-                    task_suffix = possible
-                    break
-            m = {"name": name, "cmd": cmd, "code": code, "input_size": input_size, "samples": samples}
-            escribir_estado(name, "📨 Archivo recibido correctamente.")
-            escribir_estado(name, f"🚚 Enviando test al slave con tipo: {task_suffix}, input_size: {input_size}, repeticiones: {samples}.")
-            print('m: ', m)
-            json_string = json.dumps(m)
-            print('json_string: ', json_string)
+            print(
+                f"[✅ MASTER] Socket abierto: "
+                f"{host}:{port}"
+            )
 
-            sendmng = th.Thread(target=send_manager, args=(s, json_string, name,), daemon=True)
-            sendmng.start()
+            print(
+                f"[✅ MASTER] Socket abierto: "
+                f"{host}:{port2}"
+            )
 
-            recvmng = th.Thread(target=recv_manager, args=(s2, name,), daemon=True)
-            recvmng.start()
-
-            sendmng.join()
-            print("Socket 1 disconnected!")
-            recvmng.join()
-            print("Socket 2 disconnected!")
-
-            s.close()
-            s2.close()
             break
-        except OSError:
-            time.sleep(1)
+
+        except OSError as e:
+
+            print(
+                f"[❌ SOCKET ERROR] "
+                f"No fue posible abrir "
+                f"{host}:{port}/{port2}"
+            )
+
+            print(
+                f"[❌ SOCKET ERROR] {e}"
+            )
+
+            if s is not None:
+                try:
+                    s.close()
+                except Exception:
+                    pass
+
+            if s2 is not None:
+                try:
+                    s2.close()
+                except Exception:
+                    pass
+
+            print(
+                "[🔁 MASTER] Reintentando "
+                "en 2 segundos..."
+            )
+
+            time.sleep(2)
+
+    try:
+
+        # ----------------------------------------------------
+        # Leer código fuente
+        # ----------------------------------------------------
+
+        try:
+            with open(
+                file_dir,
+                "r",
+                encoding="utf-8",
+            ) as f:
+
+                code = f.read()
+
+        except OSError as e:
+
+            print(
+                f"[❌ FILE ERROR] "
+                f"No se pudo leer {file_dir}: {e}"
+            )
+
+            return
+
+        # ----------------------------------------------------
+        # Detectar tipo de prueba
+        # ----------------------------------------------------
+
+        task_suffix = ""
+
+        possible_tasks = [
+            "CAMMSO",
+            "CAMMS",
+            "CAMMR",
+            "CAMM",
+            "LCS",
+            "SIZE",
+        ]
+
+        for possible in possible_tasks:
+            if name.endswith(possible):
+                task_suffix = possible
+                break
+
+        if not task_suffix:
+            print(
+                f"[⚠️ MASTER] "
+                f"No se pudo determinar "
+                f"el tipo de tarea: {name}"
+            )
+
+        # ----------------------------------------------------
+        # Construir payload
+        # ----------------------------------------------------
+
+        payload = {
+            "name": name,
+            "cmd": cmd,
+            "code": code,
+            "input_size": input_size,
+            "samples": samples,
+            "measurement": measurement,
+        }
+
+        escribir_estado(
+            name,
+            "📨 Archivo recibido correctamente.",
+        )
+
+        escribir_estado(
+            name,
+            (
+                f"🚚 Enviando test al slave "
+                f"con tipo: {task_suffix}, "
+                f"input_size: {input_size}, "
+                f"repeticiones: {samples}."
+            ),
+        )
+
+        print(
+            "[📦 MASTER] Payload preparado:"
+        )
+
+        print(
+            json.dumps(
+                {
+                    "name": name,
+                    "cmd": cmd,
+                    "input_size": input_size,
+                    "samples": samples,
+                    "measurement": measurement,
+                    "code_size": len(code),
+                },
+                indent=2,
+            )
+        )
+
+        json_string = json.dumps(
+            payload
+        )
+
+        # ----------------------------------------------------
+        # Thread que entrega el programa
+        # ----------------------------------------------------
+
+        sendmng = th.Thread(
+            target=send_manager,
+            args=(
+                s,
+                json_string,
+                name,
+            ),
+            daemon=True,
+        )
+
+        # ----------------------------------------------------
+        # Thread que espera el resultado
+        # ----------------------------------------------------
+
+        recvmng = th.Thread(
+            target=recv_manager,
+            args=(
+                s2,
+                name,
+            ),
+            daemon=True,
+        )
+
+        sendmng.start()
+        recvmng.start()
+
+        sendmng.join()
+
+        print(
+            "[🔌 MASTER] "
+            "Canal de envío finalizado."
+        )
+
+        recvmng.join()
+
+        print(
+            "[🔌 MASTER] "
+            "Canal de recepción finalizado."
+        )
+
+    finally:
+
+        try:
+            s.close()
+        except Exception:
+            pass
+
+        try:
+            s2.close()
+        except Exception:
+            pass
+
+        print(
+            "[🔒 MASTER] Sockets cerrados."
+        )
+
+
+# ============================================================
+# SEGURIDAD
+# ============================================================
 
 def security_check():
+    """
+    Pendiente:
+    validaciones adicionales de seguridad
+    para código recibido.
+    """
     pass
-

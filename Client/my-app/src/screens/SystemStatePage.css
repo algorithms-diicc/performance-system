@@ -1,0 +1,188 @@
+/* CORE-05E-1 — 404 / 403 / 500 */
+
+.system-state-page {
+  min-height: calc(100vh - 56px);
+  background:
+    radial-gradient(
+      circle at 50% 6%,
+      color-mix(in srgb, var(--ps-primary) 10%, transparent),
+      transparent 34rem
+    ),
+    var(--ps-bg);
+  color: var(--ps-text);
+}
+
+.system-state-main {
+  display: grid;
+  place-items: center;
+  min-height: calc(100vh - 112px);
+  padding: 2.5rem 1rem 4rem;
+}
+
+.system-state-card {
+  position: relative;
+  width: min(680px, 100%);
+  overflow: hidden;
+  padding: 2.25rem;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--radius-lg, 18px);
+  background: var(--ps-surface);
+  box-shadow: var(--ps-shadow-sm);
+  text-align: center;
+}
+
+.system-state-code {
+  position: absolute;
+  top: -0.45rem;
+  right: 1.1rem;
+  color: color-mix(in srgb, var(--ps-text) 5%, transparent);
+  font-size: clamp(5rem, 18vw, 9rem);
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.08em;
+  pointer-events: none;
+  user-select: none;
+}
+
+.system-state-icon {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 62px;
+  height: 62px;
+  margin: 0 auto 1rem;
+  border: 1px solid var(--ps-primary);
+  border-radius: 18px;
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+}
+
+.system-state-page--warning .system-state-icon {
+  border-color: var(--ps-warning);
+  background: var(--ps-warning-soft);
+  color: var(--ps-warning);
+}
+
+.system-state-page--danger .system-state-icon {
+  border-color: var(--ps-danger);
+  background: var(--ps-danger-soft);
+  color: var(--ps-danger);
+}
+
+.system-state-eyebrow {
+  position: relative;
+  z-index: 1;
+  display: block;
+  color: var(--ps-primary);
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.system-state-page--warning .system-state-eyebrow {
+  color: var(--ps-warning);
+}
+
+.system-state-page--danger .system-state-eyebrow {
+  color: var(--ps-danger);
+}
+
+.system-state-card h1 {
+  position: relative;
+  z-index: 1;
+  margin: 0.35rem 0 0;
+  color: var(--ps-text);
+  font-size: clamp(2rem, 5vw, 3rem);
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.system-state-description {
+  position: relative;
+  z-index: 1;
+  max-width: 540px;
+  margin: 1rem auto 0;
+  color: var(--ps-text-secondary);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.system-state-helper {
+  position: relative;
+  z-index: 1;
+  max-width: 520px;
+  margin: 0.65rem auto 0;
+  color: var(--ps-text-secondary);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.system-state-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+  margin-top: 1.5rem;
+}
+
+.system-state-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  min-height: 42px;
+  padding: 0.58rem 0.92rem;
+  border: 1px solid var(--ps-border);
+  border-radius: 10px;
+  font: inherit;
+  font-size: 0.87rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.system-state-button--primary {
+  border-color: var(--ps-primary);
+  background: var(--ps-primary);
+  color: #fff;
+}
+
+.system-state-button--primary:hover {
+  color: #fff;
+  filter: brightness(1.06);
+  text-decoration: none;
+}
+
+.system-state-button--secondary {
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text);
+}
+
+.system-state-button--secondary:hover {
+  border-color: var(--ps-primary);
+  color: var(--ps-primary);
+  text-decoration: none;
+}
+
+@media (max-width: 520px) {
+  .system-state-main {
+    align-items: start;
+    padding-top: 1.5rem;
+  }
+
+  .system-state-card {
+    padding: 1.5rem 1rem;
+  }
+
+  .system-state-actions {
+    display: grid;
+  }
+
+  .system-state-button {
+    width: 100%;
+  }
+}

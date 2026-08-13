@@ -1,16 +1,39 @@
-// src/screens/RenderForm/components/HeaderSection.js
 import React from "react";
+import { Gauge } from "lucide-react";
 
-function HeaderSection({ title, subtitle, rightContent }) {
+function HeaderSection({
+  title,
+  subtitle,
+  rightContent,
+}) {
   return (
-    <div className="inicio-header">
-      <div className="inicio-header-left">
-        <h1 className="inicio-title">{title}</h1>
-        {subtitle && (
-          <p className="inicio-subtitle">
-            {subtitle}
-          </p>
-        )}
+    <header className="inicio-header">
+      <div className="inicio-header-main">
+        <div
+          className="inicio-header-icon"
+          aria-hidden="true"
+        >
+          <Gauge
+            size={23}
+            strokeWidth={1.9}
+          />
+        </div>
+
+        <div className="inicio-header-left">
+          <span className="inicio-header-eyebrow">
+            Experimento de rendimiento
+          </span>
+
+          <h1 className="inicio-title">
+            {title}
+          </h1>
+
+          {subtitle && (
+            <p className="inicio-subtitle">
+              {subtitle}
+            </p>
+          )}
+        </div>
       </div>
 
       {rightContent && (
@@ -18,7 +41,7 @@ function HeaderSection({ title, subtitle, rightContent }) {
           {rightContent}
         </div>
       )}
-    </div>
+    </header>
   );
 }
 

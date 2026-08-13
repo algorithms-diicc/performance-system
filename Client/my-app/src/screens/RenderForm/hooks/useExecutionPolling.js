@@ -1,87 +1,188 @@
-// src/hooks/useExecutionPolling.js
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { serverURL } from "../../../common/Constants.js"; // ✅ ruta corregida
+import { serverURL } from "../../../common/Constants.js";
+import { friendlyRequestError } from "../../../common/requestErrorModel";
+import {
+  aggregatePollingState,
+  indexExecutionRecords,
+  normalizeExecutionSnapshot,
+} from "./executionPollingModel";
 
-/**
- * Hook responsable de:
- * - Consultar periódicamente el estado de cada código en fileList
- * - Construir la estructura de mensajes por archivo
- * - Indicar cuándo todos los archivos terminaron (allDone = true)
- *
- * No toca isSubmitting ni check directamente: eso lo maneja el contenedor.
- */
-function useExecutionPolling(fileList, intervalMs = 3000) {
+function useExecutionPolling(
+  fileList,
+  executionRecords,
+  intervalMs = 3000
+) {
   const [messages, setMessages] = useState([]);
+  const [executionFiles, setExecutionFiles] = useState([]);
   const [allDone, setAllDone] = useState(false);
+  const [allTerminal, setAllTerminal] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  const [firstErrorMessage, setFirstErrorMessage] =
+    useState("");
+  const [requestError, setRequestError] = useState("");
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
-    if (!fileList || fileList.length === 0) {
+    if (!Array.isArray(fileList) || fileList.length === 0) {
       setMessages([]);
+      setExecutionFiles([]);
       setAllDone(false);
+      setAllTerminal(false);
+      setHasError(false);
+      setFirstErrorMessage("");
+      setRequestError("");
+      return;
+    }
+
+    const recordsByCodename =
+      indexExecutionRecords(executionRecords);
+
+    const missingPublicId = fileList.some((codename) => {
+      const record = recordsByCodename.get(codename);
+      return !record?.publicId;
+    });
+
+    if (missingPublicId) {
+      setMessages([]);
+      setExecutionFiles([]);
+      setAllDone(false);
+      setAllTerminal(false);
+      setHasError(true);
+      setFirstErrorMessage(
+        "El servidor no devolvió el identificador persistente de la ejecución."
+      );
+      setRequestError("");
       return;
     }
 
     let cancelled = false;
+    let timeoutId = null;
 
-    const poll = () => {
-      const requests = fileList.map((code) =>
-        axios
-          .get(`${serverURL}status/${code}_status.json`, {
-            headers: { "Cache-Control": "no-cache" },
-          })
-          .then((res) => ({
-            codename: code,
+    const poll = async () => {
+      setRequestError("");
+
+      const requests = fileList.map(async (codename) => {
+        const descriptor = recordsByCodename.get(codename);
+
+        try {
+          const response = await axios.get(
+            `${serverURL}api/executions/${encodeURIComponent(
+              descriptor.publicId
+            )}`,
+            {
+              withCredentials: true,
+              headers: {
+                "Cache-Control": "no-cache",
+                Pragma: "no-cache",
+              },
+            }
+          );
+
+          return normalizeExecutionSnapshot(
+            response.data?.execution || {},
+            descriptor
+          );
+        } catch (error) {
+          return {
+            publicId: descriptor.publicId,
+            codename,
             originalName:
-              res.data.files && res.data.files.length > 0
-                ? res.data.files[0].original_filename
-                : code,
-            messages: res.data.messages || [],
-          }))
-          .catch(() => null)
+              descriptor.originalFilename || codename,
+            status: "",
+            state: "",
+            stateVersion: 0,
+            terminal: false,
+            taskType: "",
+            inputSize: null,
+            samples: null,
+            messages: [],
+            resultsReady: false,
+            hasError: false,
+            errorMessage: "",
+            resultAvailable: false,
+            resultsUrl: null,
+            failure: null,
+            unavailable: true,
+            requestStatus: error?.response?.status || null,
+            requestError: friendlyRequestError(
+              error,
+              "No fue posible consultar el estado de la ejecución.",
+              {
+                404: "La ejecución consultada ya no está disponible.",
+              }
+            ),
+          };
+        }
+      });
+
+      const results = await Promise.all(requests);
+      if (cancelled) return;
+
+      setExecutionFiles(results);
+
+      setMessages(
+        results.map((item) => ({
+          publicId: item.publicId,
+          codename: item.codename,
+          originalName: item.originalName,
+          status: item.status,
+          state: item.state,
+          messages: item.messages,
+        }))
       );
 
-      Promise.all(requests).then((results) => {
-        if (cancelled) return;
+      const everySnapshotAvailable =
+        results.length === fileList.length &&
+        results.every((item) => !item.unavailable);
 
-        let allMessages = [];
-        let done = true;
+      if (everySnapshotAvailable) {
+        const aggregate = aggregatePollingState(results);
 
-        results.forEach((res) => {
-          if (res && Array.isArray(res.messages)) {
-            allMessages.push({
-              codename: res.codename,
-              originalName: res.originalName,
-              messages: res.messages,
-            });
+        setAllDone(aggregate.allDone);
+        setAllTerminal(aggregate.allTerminal);
+        setHasError(aggregate.hasError);
+        setFirstErrorMessage(aggregate.firstErrorMessage);
 
-            const isDone = res.messages.some((m) =>
-              m.msg.includes("✅ Resultados listos.")
-            );
-            if (!isDone) done = false;
-          }
-        });
-
-        if (allMessages.length > 0) {
-          setMessages(allMessages);
+        if (!aggregate.allTerminal && !cancelled) {
+          timeoutId = window.setTimeout(poll, intervalMs);
         }
-
-        // Solo marcamos done cuando hay mensajes y todos llegaron a “Resultados listos”
-        setAllDone(allMessages.length > 0 && done);
-      });
+      } else {
+        setAllDone(false);
+        setAllTerminal(false);
+        setHasError(false);
+        setFirstErrorMessage("");
+        setRequestError(
+          results.find((item) => item.unavailable)?.requestError ||
+            "No fue posible consultar el estado de la ejecución."
+        );
+      }
     };
 
-    // Primera consulta inmediata
     poll();
-    const id = setInterval(poll, intervalMs);
 
     return () => {
       cancelled = true;
-      clearInterval(id);
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
     };
-  }, [fileList, intervalMs]);
+  }, [fileList, executionRecords, intervalMs, retryToken]);
 
-  return { messages, allDone };
+  const retryPolling = () => {
+    setRetryToken((value) => value + 1);
+  };
+
+  return {
+    messages,
+    executionFiles,
+    allDone,
+    allTerminal,
+    hasError,
+    firstErrorMessage,
+    requestError,
+    retryPolling,
+  };
 }
 
 export default useExecutionPolling;

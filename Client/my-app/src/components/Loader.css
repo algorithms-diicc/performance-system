@@ -1,14 +1,14 @@
 .ps-loader-container {
     height: 100vh;
     width: 100%;
-    background: #0f172a;
+    background: var(--ps-bg);
     /* azul oscuro sobrio */
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 1.2rem;
-    color: #cbd5f5;
+    color: var(--ps-text-secondary);
     letter-spacing: 0.03em;
     user-select: none;
 }
@@ -21,7 +21,7 @@
 }
 
 .ps-loader-path {
-    stroke: #38bdf8;
+    stroke: var(--ps-primary);
     stroke-linecap: round;
     animation: ps-dash 1.6s ease-in-out infinite;
 }

@@ -1,12 +1,17 @@
 import os
 import psycopg2
 from psycopg2.extras import RealDictCursor
+from dotenv import load_dotenv
+
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 DB_HOST = os.getenv("DB_HOST", "localhost")
 DB_PORT = os.getenv("DB_PORT", "5432")
 DB_NAME = os.getenv("DB_NAME", "performance_system")
 DB_USER = os.getenv("DB_USER", "perf_user")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "clipita")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
 
 def get_connection():
     conn = psycopg2.connect(

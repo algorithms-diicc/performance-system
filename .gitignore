@@ -1,14 +1,104 @@
-.vscode
+# ============================================================
+# Performance System
+# Archivos locales, generados y runtime
+# ============================================================
+
+# ----------------------------
+# IDE / sistema operativo
+# ----------------------------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# ----------------------------
+# Secretos y configuración local
+# ----------------------------
+.env
+.env.*
+!.env.example
+
 token.txt
-Server/webapp/static/*
-Server/webapp/status/*
-Server/webapp/template/*
-Server/webapp/test/*
+credentials.json
+secrets.json
+
+# ----------------------------
+# Python
+# ----------------------------
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# Entornos virtuales
+.venv/
+venv/
+venv-*/
+env/
+Server/.env/
+
+# ----------------------------
+# Node / React
+# ----------------------------
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build React generado
+Client/my-app/build/
+
+# Copia del build que Flask sirve en producción.
+# Se genera/sincroniza durante build/deploy.
+Server/webapp/frontend/
+
+# ----------------------------
+# Runtime de Performance System
+# ----------------------------
+Server/status/
+Server/uploads/
+Server/results/
+Server/logs/
+Server/test/
+
+# Resultados/runtime servidos por Flask
+Server/webapp/static/
+
+# ----------------------------
+# Binarios y artefactos de compilación
+# ----------------------------
+a.out
+*.out
+
+# ----------------------------
+# Respaldos temporales
+# ----------------------------
+*.bak
+*.save
+*~
+
+# ----------------------------
+# Archivos temporales de medición
+# ----------------------------
+*.csv.tmp
+*.csv.tmp.*
+
+# Inputs generados o pesados
 Server/input/english.50MB
 Server/input/numerical_input.txt
 Server/input/numerical_input_same.txt
 Server/input/numerical_input_semi_sorted.txt
-Server/utils/static
+
+# Runtime histórico
+Server/utils/static/
+Server/utils/zips/
+
+# ----------------------------
+# Archivos locales de arranque
+# ----------------------------
 startup.sh
-*.csv.tmp
-Server/utils/zips/*

@@ -1,4 +1,5 @@
 import os
+import secrets
 import uuid
 from datetime import datetime, timedelta
 
@@ -43,6 +44,17 @@ GOOGLE_REDIRECT_URI = os.getenv(
 
 # Scopes que se piden a Google (identidad + email + perfil)
 GOOGLE_SCOPES = os.getenv("GOOGLE_SCOPES", "openid email profile")
+OAUTH_HTTP_TIMEOUT_SECONDS = max(
+    1,
+    int(os.getenv("OAUTH_HTTP_TIMEOUT_SECONDS", "10")),
+)
+
+SESSION_COOKIE_NAME = "session_id"
+OAUTH_STATE_COOKIE_NAME = "oauth_state"
+OAUTH_STATE_MAX_AGE_SECONDS = max(
+    60,
+    int(os.getenv("OAUTH_STATE_MAX_AGE_SECONDS", "600")),
+)
 
 # Dominios permitidos para los correos (política de negocio tuya)
 ALLOWED_DOMAINS = [
@@ -63,7 +75,33 @@ TOKEN_URL = "https://oauth2.googleapis.com/token"
 JWKS_URL = "https://www.googleapis.com/oauth2/v3/certs"
 
 
-def build_auth_url():
+def _env_flag(name, default=False):
+    raw = os.getenv(name)
+    if raw is None:
+        return bool(default)
+    return raw.strip().casefold() in {"1", "true", "yes", "on"}
+
+
+def session_cookie_secure():
+    """HTTPS se habilita en Point 9; esta bandera permite activarlo sin código."""
+    return _env_flag("SESSION_COOKIE_SECURE", False)
+
+
+def generate_oauth_state():
+    return secrets.token_urlsafe(32)
+
+
+def oauth_state_matches(expected, received):
+    expected = str(expected or "")
+    received = str(received or "")
+    return bool(
+        expected
+        and received
+        and secrets.compare_digest(expected, received)
+    )
+
+
+def build_auth_url(state):
     """
     Construye la URL a la que redirigimos al usuario para que se loguee con Google.
 
@@ -71,7 +109,8 @@ def build_auth_url():
     - Armamos la URL con client_id, redirect_uri, scopes, etc.
     - Hacemos redirect(login_url).
     """
-    state = str(uuid.uuid4())  # opcional para proteger contra ataques CSRF
+    if not state:
+        raise ValueError("OAuth state es obligatorio.")
     import urllib.parse
 
     params = {
@@ -104,7 +143,11 @@ def exchange_code_for_token(code: str):
         "code": code,
         "redirect_uri": GOOGLE_REDIRECT_URI,
     }
-    resp = requests.post(TOKEN_URL, data=data)
+    resp = requests.post(
+        TOKEN_URL,
+        data=data,
+        timeout=OAUTH_HTTP_TIMEOUT_SECONDS,
+    )
     resp.raise_for_status()  # lanza excepción si la respuesta es 4xx/5xx
     return resp.json()
 
@@ -305,14 +348,15 @@ def create_session_for_user(user_id: int, response):
     cur.close()
     conn.close()
 
-    # Configurar cookie segura (en producción: secure=True con HTTPS)
+    # Secure se activa por configuración al desplegar HTTPS en Point 9.
     response.set_cookie(
-        "session_id",
+        SESSION_COOKIE_NAME,
         session_id,
         httponly=True,
-        secure=False,  # TODO: cambiar a True en producción con HTTPS
+        secure=session_cookie_secure(),
         samesite="Lax",
         expires=expires_at,
+        path="/",
     )
 
     return response
@@ -328,7 +372,7 @@ def get_current_user():
     - Si no existe o está inactiva, devuelve None.
     - Si existe, devuelve la fila combinada (usuario + sesión).
     """
-    session_id = request.cookies.get("session_id")
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
     if not session_id:
         return None
 
@@ -340,7 +384,10 @@ def get_current_user():
         SELECT s.id as session_id, s.expires_at, u.*
         FROM sessions s
         JOIN users u ON u.id = s.user_id
-        WHERE s.id = %s AND s.is_active = TRUE;
+        WHERE s.id = %s
+          AND s.is_active = TRUE
+          AND s.expires_at > NOW()
+          AND u.is_active = TRUE;
         """,
         (session_id,),
     )
@@ -351,5 +398,5 @@ def get_current_user():
     if not row:
         return None
 
-    # Podrías validar acá que expires_at > NOW() si quieres
+    # La consulta ya exige sesión vigente y usuario activo.
     return row

@@ -1,0 +1,96 @@
+/* CORE-05E-2 — InlineState */
+
+.inline-state {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  width: 100%;
+  padding: 1rem;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--radius-md, 12px);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text);
+}
+
+.inline-state__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+}
+
+.inline-state__body {
+  min-width: 0;
+}
+
+.inline-state__body strong {
+  display: block;
+  color: var(--ps-text);
+  font-size: 0.9rem;
+}
+
+.inline-state__body p {
+  margin: 0.25rem 0 0;
+  color: var(--ps-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.inline-state__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  margin-top: 0.7rem;
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--ps-border);
+  border-radius: 8px;
+  background: var(--ps-surface);
+  color: var(--ps-text);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inline-state__action:hover {
+  border-color: var(--ps-primary);
+  color: var(--ps-primary);
+}
+
+.inline-state--warning .inline-state__icon {
+  background: var(--ps-warning-soft);
+  color: var(--ps-warning);
+}
+
+.inline-state--danger .inline-state__icon {
+  background: var(--ps-danger-soft);
+  color: var(--ps-danger);
+}
+
+.inline-state--neutral .inline-state__icon {
+  background: var(--ps-surface);
+  color: var(--ps-text-secondary);
+}
+
+.inline-state--compact {
+  padding: 0.8rem;
+}
+
+.inline-state--compact .inline-state__icon {
+  width: 34px;
+  height: 34px;
+}
+
+.inline-state__spin {
+  animation: inline-state-spin 0.9s linear infinite;
+}
+
+@keyframes inline-state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

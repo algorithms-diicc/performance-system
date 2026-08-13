@@ -1,7 +1,14 @@
 // src/screens/RenderForm/RenderFormPage.js
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
+import { serverURL } from "../../common/Constants.js";
+import { friendlyRequestError } from "../../common/requestErrorModel";
+import {
+  buildExecutionSearch,
+  buildRecoveredExecutionState,
+  parseExecutionPublicIds,
+} from "./recovery/executionRecoveryModel";
 
 import HeaderSection from "./components/HeaderSection";
 import TestNameAndUploadCard from "./components/TestNameAndUploadCard";
@@ -9,6 +16,7 @@ import TestTypeAndParamsCard from "./components/TestTypeAndParamsCard";
 import MeasurementAndProfileSection from "./components/MeasurementAndProfileSection";
 import StatusPanel from "./components/StatusPanel";
 import OverviewModal from "./components/OverviewModal";
+import AcademicCourseCard from "./components/AcademicCourseCard";
 
 import getTask, {
   numericalInputOptions,
@@ -24,7 +32,7 @@ import "./RenderForm.css";
 /**
  * Clave usada para guardar el borrador en localStorage.
  */
-const RENDER_FORM_DRAFT_KEY = "renderFormDraft_v1";
+const RENDER_FORM_DRAFT_KEY = "renderFormDraft_v2";
 
 /**
  * Parámetros por defecto por tipo de test
@@ -47,46 +55,59 @@ const inputSizePresets = {
 const samplesPresets = [10, 20, 30];
 
 /**
- * Info de la máquina medidora
+ * El backend actual no ofrece selección de hardware.
+ * Por eso el entorno se presenta como información y no como un selector.
  */
-const machineOptions = [
-  {
-    id: "medidora",
-    name: "Máquina medidora principal",
-    description: "CPU Intel i5-9400 · 23GB RAM · Linux Mint 22.",
-  },
-  {
-    id: "local",
-    name: "Ejecución local (mock)",
-    description: "Solo para pruebas de interfaz. No registra métricas reales.",
-    disabled: true,
-  },
-];
+const executionEnvironment = {
+  name: "Entorno de medición administrado",
+  badge: "Automático",
+  description:
+    "Performance System enviará la prueba al nodo de medición configurado para esta instalación.",
+  note:
+    "La selección manual de hardware se habilitará cuando exista soporte real en el backend.",
+};
 
 /**
- * Perfiles de ejecución
+ * Perfiles pedagógicos.
+ *
+ * En el contrato actual solo controlan "samples".
+ * El backend no recibe el nombre del perfil: recibe el valor concreto.
  */
 const executionProfiles = [
   {
     id: "rapido",
     name: "Rápido",
-    description: "Menos repeticiones, ideal para pruebas preliminares.",
+    badge: "Exploración",
+    samples: 10,
+    description:
+      "Útil para comprobar rápidamente el comportamiento general antes de realizar una medición más extensa.",
   },
   {
     id: "equilibrado",
     name: "Equilibrado",
-    description: "Buen balance entre tiempo y precisión de las métricas.",
+    badge: "Recomendado",
+    samples: 30,
+    description:
+      "Balance entre tiempo de ejecución y estabilidad de las mediciones. Es la opción recomendada para uso general.",
   },
   {
     id: "exhaustivo",
     name: "Exhaustivo",
-    description: "Más repeticiones para obtener mediciones más estables.",
+    badge: "Mayor estabilidad",
+    samples: 50,
+    description:
+      "Aumenta las repeticiones para observar con mayor estabilidad la variabilidad entre mediciones.",
+  },
+  {
+    id: "personalizado",
+    name: "Personalizado",
+    badge: "Control manual",
+    samples: null,
+    description:
+      "Permite definir manualmente el número de repeticiones por punto de medición.",
   },
 ];
 
-/**
- * Contrato oficial de perfiles: solo afecta "samples"
- */
 const EXECUTION_PROFILE_SAMPLES = {
   rapido: 10,
   equilibrado: 30,
@@ -94,31 +115,70 @@ const EXECUTION_PROFILE_SAMPLES = {
 };
 
 /**
- * Subtítulos cortos por tipo de test (solo UI)
+ * Nombres pedagógicos. Los IDs internos se conservan porque forman parte
+ * del contrato existente con el backend.
  */
-const taskSubtitles = {
-  lcs: "Mide algoritmos sobre texto grande usando english.50MB.",
-  camm: "Evalúa rendimiento con arreglos numéricos grandes.",
-  size: "Prueba variando un parámetro entero de entrada.",
+const taskDisplayNames = {
+  lcs: "Entrada de texto",
+  camm: "Datos numéricos",
+  size: "Tamaño parametrizado",
 };
 
-/**
- * Iconos por tipo de test
- */
+const taskSubtitles = {
+  lcs:
+    "Analiza algoritmos que procesan texto utilizando el dataset english.50MB.",
+  camm:
+    "Analiza algoritmos sobre colecciones numéricas con distintas distribuciones.",
+  size:
+    "Analiza algoritmos cuyo tamaño de problema se entrega como argumento entero.",
+};
+
+const taskDescriptions = {
+  lcs:
+    "El motor evalúa el programa con tamaños crecientes de entrada tomados desde el dataset de texto. Cada punto se repite según el perfil de medición seleccionado.",
+  camm:
+    "El motor evalúa el programa con conjuntos numéricos de tamaño creciente. Puedes elegir la distribución de los datos para estudiar cómo afecta al comportamiento del algoritmo.",
+  size:
+    "El motor ejecuta el programa con valores crecientes del parámetro de entrada. Es útil cuando el algoritmo genera o administra sus datos a partir de un tamaño recibido como argumento.",
+};
+
 const taskIcons = {
   lcs: "📝",
   camm: "🔢",
   size: "📏",
 };
 
-/**
- * Badges informativos por tipo de test
- */
 const taskBadges = {
-  lcs: "Texto · english.50MB",
-  camm: "150.000 números",
+  lcs: "Dataset de texto",
+  camm: "Dataset numérico",
   size: "Argumento entero",
 };
+
+const inputSizeHelp = {
+  lcs:
+    "Cantidad máxima de líneas de texto que alcanzará el benchmark.",
+  camm:
+    "Cantidad máxima de valores numéricos que alcanzará el benchmark.",
+  size:
+    "Valor máximo que se entregará al programa como tamaño del problema.",
+};
+
+/**
+ * Corrige solamente la presentación de etiquetas; los valores internos
+ * CAMMR / CAMMSO / CAMMS se conservan.
+ */
+const numericalInputOptionsUI = numericalInputOptions.map((option) => {
+  const labels = {
+    cammr: "Números aleatorios",
+    cammso: "Números semiordenados",
+    camms: "Números iguales",
+  };
+
+  return {
+    ...option,
+    label: labels[option.value] || option.label,
+  };
+});
 
 /**
  * Límites por tipo de test para inputSize y samples.
@@ -138,29 +198,40 @@ const PARAM_LIMITS = {
   },
 };
 
-function RenderFormPage() {
+function RenderFormPage({ currentUser }) {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ======= Estado general del formulario =======
   const [testName, setTestName] = useState("");
   const [selectedTaskType, setSelectedTaskType] = useState("");
   const [inputSize, setInputSize] = useState(1000);
   const [samples, setSamples] = useState(30);
-  const [samplesIsDirty, setSamplesIsDirty] = useState(false);
   const [paramErrors, setParamErrors] = useState({
     inputSize: "",
     samples: "",
   });
 
   const [dataType, setDataType] = useState("");
-  const [selectedMachine, setSelectedMachine] = useState("medidora");
   const [executionProfile, setExecutionProfile] = useState("equilibrado");
 
   const [fileList, setFileList] = useState([]);
-  const [check, setCheck] = useState(true); // controla botón "Ver estadísticas"
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
+  const [submissionError, setSubmissionError] = useState("");
+  const [executionSnapshot, setExecutionSnapshot] = useState(null);
+  const submitRequestLockRef = useRef(false);
+
+  // ======= Contexto académico CORE-07F-5 =======
+  const [activeCourses, setActiveCourses] = useState([]);
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [courseSelectionRequired, setCourseSelectionRequired] =
+    useState(false);
+  const [courseContextLoading, setCourseContextLoading] = useState(true);
+  const [courseContextError, setCourseContextError] = useState("");
+  const [courseContextReloadToken, setCourseContextReloadToken] =
+    useState(0);
 
   // ======= Análisis de .zip (hook dedicado) =======
   const {
@@ -178,7 +249,196 @@ function RenderFormPage() {
   } = useZipAnalysis();
 
   // ======= Polling de estado para cada archivo (hook dedicado) =======
-  const { messages, allDone } = useExecutionPolling(fileList);
+  const {
+    messages,
+    executionFiles,
+    allDone,
+    allTerminal,
+    hasError,
+    firstErrorMessage,
+    requestError: pollingRequestError,
+    retryPolling,
+  } = useExecutionPolling(
+    fileList,
+    executionSnapshot?.executions
+  );
+
+  // ======= CORE-07F-5: cursos activos del estudiante =======
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadActiveCourses = async () => {
+      try {
+        setCourseContextLoading(true);
+        setCourseContextError("");
+
+        const response = await axios.get(
+          `${serverURL}api/student/courses`,
+          {
+            withCredentials: true,
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }
+        );
+
+        if (cancelled) return;
+
+        const items = Array.isArray(response.data?.items)
+          ? response.data.items
+          : [];
+
+        const requiresSelection =
+          response.data?.selectionRequired === true ||
+          items.length > 1;
+
+        setActiveCourses(items);
+        setCourseSelectionRequired(requiresSelection);
+
+        setSelectedCourseId((previous) => {
+          if (items.length === 0) {
+            return "";
+          }
+
+          if (items.length === 1) {
+            return String(
+              response.data?.autoSelectedCourseId ??
+              items[0].id
+            );
+          }
+
+          const previousStillExists = items.some(
+            (course) =>
+              String(course.id) === String(previous)
+          );
+
+          return previousStillExists
+            ? String(previous)
+            : "";
+        });
+      } catch (error) {
+        if (cancelled) return;
+
+        setActiveCourses([]);
+        setSelectedCourseId("");
+        setCourseSelectionRequired(false);
+
+        setCourseContextError(
+          friendlyRequestError(
+            error,
+            "No fue posible consultar tus cursos activos."
+          )
+        );
+      } finally {
+        if (!cancelled) {
+          setCourseContextLoading(false);
+        }
+      }
+    };
+
+    loadActiveCourses();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [courseContextReloadToken]);
+
+
+  // ======= CORE-04D-3: recuperación persistente desde la URL =======
+  useEffect(() => {
+    const publicIds = parseExecutionPublicIds(location.search);
+
+    if (publicIds.length === 0) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const restoreExecution = async () => {
+      try {
+        const responses = await Promise.all(
+          publicIds.map((publicId) =>
+            axios.get(
+              `${serverURL}api/executions/${encodeURIComponent(publicId)}`,
+              {
+                withCredentials: true,
+                headers: {
+                  "Cache-Control": "no-cache",
+                  Pragma: "no-cache",
+                },
+              }
+            )
+          )
+        );
+
+        if (cancelled) return;
+
+        const snapshots = responses
+          .map((response) => response.data?.execution || null)
+          .filter(Boolean);
+
+        const recovered = buildRecoveredExecutionState(snapshots);
+
+        if (!recovered) {
+          setSubmissionError(
+            "No fue posible reconstruir la ejecución guardada."
+          );
+          return;
+        }
+
+        setExecutionSnapshot(recovered.executionSnapshot);
+        setFileList(recovered.fileList);
+        setShowOverview(false);
+        setSubmissionError("");
+        setIsSubmitting(!recovered.allTerminal);
+
+        const first = recovered.firstSnapshot;
+
+        if (first?.submissionTitle) {
+          setTestName(first.submissionTitle);
+        }
+        if (first?.inputSize !== null && first?.inputSize !== undefined) {
+          setInputSize(first.inputSize);
+        }
+        if (first?.samples !== null && first?.samples !== undefined) {
+          setSamples(first.samples);
+        }
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "❌ Error al recuperar ejecución persistente:",
+          error
+        );
+
+        const status = error?.response?.status;
+        if (status === 401) {
+          setSubmissionError(
+            "Tu sesión expiró. Inicia sesión nuevamente para recuperar la ejecución."
+          );
+        } else if (status === 403) {
+          setSubmissionError(
+            "No tienes permiso para recuperar esta ejecución."
+          );
+        } else if (status === 404) {
+          setSubmissionError(
+            "La ejecución indicada en la URL ya no existe."
+          );
+        } else {
+          setSubmissionError(
+            "No fue posible recuperar la ejecución desde el servidor."
+          );
+        }
+      }
+    };
+
+    restoreExecution();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [location.search]);
 
   // ======= Carga de borrador inicial desde localStorage =======
   useEffect(() => {
@@ -196,14 +456,12 @@ function RenderFormPage() {
         inputSize: savedInputSize,
         samples: savedSamples,
         dataType: savedDataType = "",
-        selectedMachine: savedMachine = "medidora",
         executionProfile: savedProfile = "equilibrado",
       } = draft;
 
       setTestName(savedTestName);
       setSelectedTaskType(savedTaskType || "");
       setDataType(savedDataType);
-      setSelectedMachine(savedMachine);
       setExecutionProfile(savedProfile);
 
       if (savedTaskType && PARAM_LIMITS[savedTaskType]) {
@@ -245,20 +503,19 @@ function RenderFormPage() {
         );
       }
 
-      setSamplesIsDirty(false);
       setParamErrors({ inputSize: "", samples: "" });
     } catch (e) {
       console.error("Error al cargar configuración previa del test:", e);
     }
   }, []);
 
-  // Cuando todos los archivos terminen, se detiene el “modo ejecutando”
+  // Cuando todos los archivos llegan a un estado terminal,
+  // se detiene el modo de ejecución.
   useEffect(() => {
-    if (allDone && fileList.length > 0) {
-      setCheck(false);
+    if (allTerminal && fileList.length > 0) {
       setIsSubmitting(false);
     }
-  }, [allDone, fileList.length]);
+  }, [allTerminal, fileList.length]);
 
   // ======= Guardado automático de borrador en localStorage =======
   useEffect(() => {
@@ -278,7 +535,6 @@ function RenderFormPage() {
             ? samples
             : null,
         dataType,
-        selectedMachine,
         executionProfile,
       };
 
@@ -295,7 +551,6 @@ function RenderFormPage() {
     inputSize,
     samples,
     dataType,
-    selectedMachine,
     executionProfile,
   ]);
 
@@ -345,35 +600,46 @@ function RenderFormPage() {
   const handleSamplesChange = (e) => {
     const raw = e.target.value;
     const value = raw === "" ? "" : Number(raw);
+
     setSamples(value);
-    setSamplesIsDirty(true);
+    setExecutionProfile("personalizado");
     validateParam("samples", raw);
   };
 
   const handleSamplesSliderChange = (e) => {
     const value = Number(e.target.value);
+
     setSamples(value);
-    setSamplesIsDirty(true);
+    setExecutionProfile("personalizado");
     validateParam("samples", value);
   };
 
-  // ======= Selección de tipo de test =======
+  // ======= Selección de tipo de benchmark =======
   const handleTaskChange = (taskId) => {
     if (selectedTaskType !== taskId) {
-      // Si cambio de tipo de test, reseteo dataType
       setDataType("");
     }
 
     setSelectedTaskType(taskId);
 
     const params = defaultParams[taskId];
+
     if (params) {
       setInputSize(params.inputSize);
-      setSamples(params.samples);
-      setSamplesIsDirty(false);
+
+      const profileSamples =
+        EXECUTION_PROFILE_SAMPLES[executionProfile];
+
+      if (typeof profileSamples === "number") {
+        setSamples(profileSamples);
+      } else if (
+        typeof samples !== "number" ||
+        Number.isNaN(samples)
+      ) {
+        setSamples(params.samples);
+      }
     }
 
-    // Limpio errores al cambiar de test
     setParamErrors({
       inputSize: "",
       samples: "",
@@ -384,26 +650,30 @@ function RenderFormPage() {
     setDataType(type);
   };
 
-  // ======= Perfiles de ejecución ↔ parámetros =======
+  // ======= Perfil de medición ↔ samples =======
   const handleExecutionProfileChange = (profileId) => {
     setExecutionProfile(profileId);
 
-    const suggestedSamples = EXECUTION_PROFILE_SAMPLES[profileId];
+    const suggestedSamples =
+      EXECUTION_PROFILE_SAMPLES[profileId];
+
+    if (typeof suggestedSamples !== "number") {
+      return;
+    }
+
     const limits = getLimits("samples");
 
-    // Solo aplicamos el valor sugerido si el usuario todavía no “ensució” samples
-    if (!samplesIsDirty && typeof suggestedSamples === "number") {
-      let newSamples = suggestedSamples;
+    let newSamples = suggestedSamples;
 
-      if (limits) {
-        if (newSamples < limits.min) newSamples = limits.min;
-        if (newSamples > limits.max) newSamples = limits.max;
-      }
-
-      setSamples(newSamples);
-      validateParam("samples", newSamples);
-      setSamplesIsDirty(false);
+    if (limits) {
+      newSamples = Math.min(
+        limits.max,
+        Math.max(limits.min, newSamples)
+      );
     }
+
+    setSamples(newSamples);
+    validateParam("samples", newSamples);
   };
 
   // ======= Reset completo del formulario =======
@@ -412,16 +682,21 @@ function RenderFormPage() {
     setSelectedTaskType("");
     setInputSize(1000);
     setSamples(30);
-    setSamplesIsDirty(false);
     setParamErrors({ inputSize: "", samples: "" });
     setDataType("");
-    setSelectedMachine("medidora");
     setExecutionProfile("equilibrado");
 
     setFileList([]);
-    setCheck(true);
     setIsSubmitting(false);
     setShowOverview(false);
+    setSubmissionError("");
+    if (location.search) {
+      navigate(
+        { pathname: location.pathname, search: "" },
+        { replace: true }
+      );
+    }
+    setExecutionSnapshot(null);
 
     // reset de archivo (.zip)
     resetZipAnalysis();
@@ -464,12 +739,36 @@ function RenderFormPage() {
       alert("Selecciona el tipo de datos para CAMM antes de ejecutar.");
       return;
     }
+    if (courseContextLoading) {
+      alert("Espera mientras se carga tu contexto académico.");
+      return;
+    }
+    if (courseContextError) {
+      alert(
+        "No podemos iniciar la ejecución hasta verificar tus cursos activos."
+      );
+      return;
+    }
+    if (courseSelectionRequired && !selectedCourseId) {
+      alert("Selecciona el curso correspondiente antes de ejecutar.");
+      return;
+    }
 
     setShowOverview(true);
   };
 
   const handleConfirmExecution = () => {
     if (!file || !selectedTaskType) return;
+
+    /*
+     * Bloqueo sincrónico adicional al estado isSubmitting.
+     *
+     * React actualiza el estado de forma asíncrona, por lo que dos clics
+     * extremadamente rápidos podrían entrar al handler antes del rerender.
+     * El ref se actualiza inmediatamente y evita crear dos submissions.
+     */
+    if (submitRequestLockRef.current) return;
+    submitRequestLockRef.current = true;
 
     const bodyFormData = new FormData();
     bodyFormData.append("file", file, file.name);
@@ -482,23 +781,51 @@ function RenderFormPage() {
     bodyFormData.append("input_size", safeInputSize);
     bodyFormData.append("samples", safeSamples);
 
-    if (selectedTaskType) {
-      bodyFormData.append("task_type", getTask(selectedTaskType));
-    }
-    if (dataType) {
-      bodyFormData.append("data_type", dataType);
-    }
-    if (testName) {
-      bodyFormData.append("test_name", testName);
-    }
-    bodyFormData.append("machine_profile", selectedMachine);
-    bodyFormData.append("execution_profile", executionProfile);
+    const taskKeyForBackend =
+      selectedTaskType === "camm" && dataType
+        ? dataType
+        : selectedTaskType;
 
-    // TODO: cuando tengas auth real, reemplazar por el email del usuario logueado
-    bodyFormData.append("username", "admin@inf.udec.cl (mock)");
+    bodyFormData.append(
+      "task_type",
+      getTask(taskKeyForBackend)
+    );
 
+    bodyFormData.append(
+      "title",
+      (testName || "").trim() || file.name
+    );
+
+    if (selectedCourseId) {
+      bodyFormData.append(
+        "course_id",
+        selectedCourseId
+      );
+    }
+
+    if (location.search) {
+      navigate(
+        { pathname: location.pathname, search: "" },
+        { replace: true }
+      );
+    }
+
+    setExecutionSnapshot({
+      testName,
+      fileName: file.name,
+      taskTitle: getTaskTitle(),
+      inputSize,
+      inputSizeLabel: getInputSizeLabel(),
+      samples,
+      samplesLabel: `${samples} por punto`,
+      profileLabel: getExecutionProfileLabel(),
+      environmentLabel: getEnvironmentLabel(),
+      dataTypeLabel: getDataTypeLabel(),
+      courseLabel: getSelectedCourseLabel(),
+    });
+
+    setSubmissionError("");
     setIsSubmitting(true);
-    setCheck(true);
     setFileList([]);
     setShowOverview(false);
 
@@ -507,24 +834,107 @@ function RenderFormPage() {
       url: baseURL,
       data: bodyFormData,
       headers: { "Content-Type": "multipart/form-data" },
+      withCredentials: true,
     })
       .then((response) => {
-        const queuedFiles = response.data.cpp_files_queued;
-        if (queuedFiles && queuedFiles.length > 0 && queuedFiles[0].length > 0) {
+        const executionRecords = Array.isArray(
+          response.data?.executions
+        )
+          ? response.data.executions
+          : [];
+
+        const queuedFiles =
+          executionRecords.length > 0
+            ? executionRecords
+                .map((execution) => execution.codename)
+                .filter(Boolean)
+            : response.data?.cpp_files_queued || [];
+
+        if (
+          queuedFiles.length > 0 &&
+          queuedFiles[0]?.length > 0
+        ) {
+          setExecutionSnapshot((previous) => ({
+            ...(previous || {}),
+            submissionId: response.data?.submissionId ?? null,
+            executions: executionRecords,
+          }));
+
+          const executionSearch = buildExecutionSearch(executionRecords);
+
+          navigate(
+            {
+              pathname: location.pathname,
+              search: executionSearch,
+            },
+            { replace: true }
+          );
+
           setFileList(queuedFiles);
         } else {
-          console.error("No se encontraron archivos en la respuesta del backend.");
+          console.error(
+            "No se encontraron ejecuciones en la respuesta del backend."
+          );
+          setSubmissionError(
+            "El servidor registró la solicitud, pero no devolvió ejecuciones en cola."
+          );
           setIsSubmitting(false);
         }
       })
       .catch((error) => {
         console.error("❌ Error al enviar archivo:", error);
+
+        const status = error?.response?.status;
+
+        if (!error?.response) {
+          setSubmissionError(
+            "No pudimos conectar con el servidor. Verifica que el backend esté disponible e inténtalo nuevamente."
+          );
+        } else if (status === 401) {
+          setSubmissionError(
+            "Tu sesión expiró. Inicia sesión nuevamente antes de enviar el análisis."
+          );
+        } else if (status === 403) {
+          setSubmissionError(
+            "Tu cuenta no tiene permisos para registrar este análisis."
+          );
+        } else if (status === 413) {
+          setSubmissionError(
+            "El archivo enviado supera el tamaño permitido por el servidor."
+          );
+        } else {
+          setSubmissionError(
+            "No fue posible registrar el análisis en el servidor. Inténtalo nuevamente."
+          );
+        }
+
         setIsSubmitting(false);
+      })
+      .finally(() => {
+        submitRequestLockRef.current = false;
       });
   };
 
   const handleCancelOverview = () => {
     setShowOverview(false);
+  };
+
+  /**
+   * Limpia únicamente el estado de la ejecución anterior.
+   * Conserva el formulario para que el estudiante pueda corregir
+   * código/parámetros y volver a intentar.
+   */
+  const handlePrepareRetry = () => {
+    setFileList([]);
+    setSubmissionError("");
+    if (location.search) {
+      navigate(
+        { pathname: location.pathname, search: "" },
+        { replace: true }
+      );
+    }
+    setExecutionSnapshot(null);
+    setIsSubmitting(false);
   };
 
   const handleGoToResults = () => {
@@ -537,83 +947,35 @@ function RenderFormPage() {
     });
   };
 
-  // ======= Estado global (chip) del panel derecho =======
-  const getGlobalStatusChip = () => {
-    // Si no hay nada en ejecución y no estamos enviando, no mostramos chip
-    if (!fileList.length && !isSubmitting) {
-      return null;
-    }
-
-    let hasTimeout = false;
-    let hasCompileError = false;
-    let hasError = false;
-
-    messages.forEach((group) => {
-      (group.messages || []).forEach((m) => {
-        const text = (m.msg || "").toLowerCase();
-        if (text.includes("timeout") || text.includes("tiempo límite excedido")) {
-          hasTimeout = true;
-        } else if (
-          text.includes("compilación") ||
-          text.includes("compilation") ||
-          text.includes("error de compilación")
-        ) {
-          hasCompileError = true;
-        } else if (text.includes("error") || text.includes("❌")) {
-          hasError = true;
-        }
-      });
-    });
-
-    if (hasTimeout) {
-      return {
-        label: "Timeout / ejecución muy lenta",
-        className: "status-chip status-chip-error",
-      };
-    }
-
-    if (hasCompileError) {
-      return {
-        label: "Error de compilación",
-        className: "status-chip status-chip-error",
-      };
-    }
-
-    if (hasError) {
-      return {
-        label: "Error detectado",
-        className: "status-chip status-chip-error",
-      };
-    }
-
-    if (!check && fileList.length > 0) {
-      return {
-        label: "Resultados listos",
-        className: "status-chip status-chip-done",
-      };
-    }
-
-    if (isSubmitting || fileList.length > 0) {
-      return {
-        label: "Ejecutando…",
-        className: "status-chip status-chip-running",
-      };
-    }
-
-    return null;
-  };
-
-  const statusChip = getGlobalStatusChip();
-
   // ======= Utilitarios para el modal =======
-  const getTaskTitle = () => {
-    const t = tasks.find((task) => task.id === selectedTaskType);
-    return t ? t.title : "-";
-  };
+  const getTaskTitle = () =>
+    taskDisplayNames[selectedTaskType] || "-";
 
-  const getMachineLabel = () => {
-    const m = machineOptions.find((opt) => opt.id === selectedMachine);
-    return m ? m.name : "-";
+  const getEnvironmentLabel = () =>
+    executionEnvironment.name;
+
+  const getInputSizeLabel = () => {
+    if (
+      inputSize === "" ||
+      inputSize === null ||
+      inputSize === undefined
+    ) {
+      return "—";
+    }
+
+    if (selectedTaskType === "lcs") {
+      return `${inputSize} líneas`;
+    }
+
+    if (selectedTaskType === "camm") {
+      return `${inputSize} valores`;
+    }
+
+    if (selectedTaskType === "size") {
+      return String(inputSize);
+    }
+
+    return String(inputSize);
   };
 
   const getExecutionProfileLabel = () => {
@@ -623,9 +985,33 @@ function RenderFormPage() {
 
   const getDataTypeLabel = () => {
     if (!dataType) return "No aplica";
-    const opt = numericalInputOptions.find((o) => o.value === dataType);
+    const opt = numericalInputOptionsUI.find((o) => o.value === dataType);
     return opt ? opt.label : dataType;
   };
+
+  const getSelectedCourse = () => {
+    if (!selectedCourseId) {
+      return null;
+    }
+
+    return activeCourses.find(
+      (course) =>
+        String(course.id) ===
+        String(selectedCourseId)
+    ) || null;
+  };
+
+
+  const getSelectedCourseLabel = () => {
+    const course = getSelectedCourse();
+
+    if (!course) {
+      return "Sin curso asociado";
+    }
+
+    return `${course.code} · ${course.academicYear}-${course.academicTerm}`;
+  };
+
 
   const hasParamErrors = Boolean(
     paramErrors.inputSize || paramErrors.samples
@@ -636,33 +1022,82 @@ function RenderFormPage() {
     isSubmitting ||
     hasParamErrors ||
     !!fileError ||
+    courseContextLoading ||
+    !!courseContextError ||
+    (courseSelectionRequired && !selectedCourseId) ||
     (selectedTaskType === "camm" && !dataType);
 
   const currentInputLimits = getLimits("inputSize");
   const currentSamplesLimits = getLimits("samples");
 
+  const liveSummary = {
+    testName,
+    fileName: file ? file.name : "",
+    taskTitle:
+      selectedTaskType
+        ? getTaskTitle()
+        : "",
+    inputSize,
+    inputSizeLabel:
+      selectedTaskType
+        ? getInputSizeLabel()
+        : "—",
+    samples,
+    samplesLabel:
+      selectedTaskType
+        ? `${samples} por punto`
+        : "—",
+    profileLabel: getExecutionProfileLabel(),
+    environmentLabel: getEnvironmentLabel(),
+    dataTypeLabel: getDataTypeLabel(),
+    courseLabel: getSelectedCourseLabel(),
+  };
+
+  const statusSummary =
+    fileList.length > 0 ||
+    isSubmitting ||
+    submissionError
+      ? executionSnapshot || liveSummary
+      : liveSummary;
+
   return (
-    <div className="inicio-container">
+    <div className="rf-page inicio-container">
       {/* Header superior */}
       <HeaderSection
-        title="Configurar experimento de rendimiento"
-        subtitle="Sube tu código y define cómo se medirá su rendimiento."
+        title="Nuevo análisis de rendimiento"
+        subtitle="Sube una implementación y configura cómo Performance System evaluará su comportamiento."
       />
 
       <form onSubmit={handleOpenOverview}>
         {/* Encabezado de paso dentro del cuerpo */}
         <div className="rf-step-header">
-          <span className="rf-step-kicker">Paso 1</span>
-          <h2 className="rf-step-title">Preparar ejecución</h2>
+          <span className="rf-step-kicker">Configuración</span>
+          <h2 className="rf-step-title">Prepara tu experimento</h2>
           <p className="rf-step-description">
-            Sube el código en formato <code>.zip</code>, selecciona el tipo de
-            test y ajusta los parámetros principales.
+            Selecciona el código, el tipo de benchmark y los parámetros de
+            medición. Podrás revisar toda la configuración antes de iniciar
+            la ejecución.
           </p>
         </div>
 
         <div className="rf-main-layout">
           {/* =================== COLUMNA IZQUIERDA: CONFIGURACIÓN =================== */}
           <div className="rf-main-left">
+            {/* CORE-07F-5: contexto académico */}
+            <AcademicCourseCard
+              courses={activeCourses}
+              loading={courseContextLoading}
+              error={courseContextError}
+              selectedCourseId={selectedCourseId}
+              selectionRequired={courseSelectionRequired}
+              onCourseChange={setSelectedCourseId}
+              onRetry={() =>
+                setCourseContextReloadToken(
+                  (value) => value + 1
+                )
+              }
+            />
+
             {/* Bloque: Nombre del test + upload de archivo */}
             <TestNameAndUploadCard
               testName={testName}
@@ -693,20 +1128,22 @@ function RenderFormPage() {
               paramErrors={paramErrors}
               inputSizePresets={inputSizePresets}
               samplesPresets={samplesPresets}
-              numericalInputOptions={numericalInputOptions}
+              numericalInputOptions={numericalInputOptionsUI}
               dataType={dataType}
               onDataTypeChange={handleDataTypeChange}
+              taskDisplayNames={taskDisplayNames}
               taskSubtitles={taskSubtitles}
+              taskDescriptions={taskDescriptions}
               taskIcons={taskIcons}
               taskBadges={taskBadges}
+              inputSizeHelp={inputSizeHelp}
               paramLimits={PARAM_LIMITS}
+              executionProfile={getExecutionProfileLabel()}
             />
 
             {/* Bloque: Sistema de medición + perfil de ejecución */}
             <MeasurementAndProfileSection
-              machineOptions={machineOptions}
-              selectedMachine={selectedMachine}
-              onMachineChange={setSelectedMachine}
+              executionEnvironment={executionEnvironment}
               executionProfiles={executionProfiles}
               executionProfile={executionProfile}
               onExecutionProfileChange={handleExecutionProfileChange}
@@ -717,37 +1154,23 @@ function RenderFormPage() {
           <StatusPanel
             fileList={fileList}
             messages={messages}
-            statusChip={statusChip}
-            check={check}
+            executionFiles={executionFiles}
+            isSubmitting={isSubmitting}
+            allDone={allDone}
+            allTerminal={allTerminal}
+            hasError={hasError}
+            submissionError={submissionError}
+            firstErrorMessage={firstErrorMessage}
+            pollingRequestError={pollingRequestError}
+            summary={statusSummary}
+            isSubmitDisabled={isSubmitDisabled}
             onGoToResults={handleGoToResults}
+            onReset={handleResetForm}
+            onPrepareRetry={handlePrepareRetry}
+            onRetryPolling={retryPolling}
           />
         </div>
 
-        {/* Barra inferior de acciones */}
-        <div className="rf-footer-bar">
-          <button
-            type="button"
-            className="secondary-button"
-            onClick={handleResetForm}
-          >
-            Resetear formulario
-          </button>
-
-          <button
-            type="submit"
-            className={`submit-button ${
-              isSubmitDisabled ? "disabled" : ""
-            }`}
-            disabled={isSubmitDisabled}
-          >
-            {isSubmitting ? "Ejecutando test..." : "Revisar y ejecutar"}
-          </button>
-
-          <p className="run-hint">
-            Se mostrará un resumen con los parámetros seleccionados antes de
-            ejecutar el test en la máquina medidora.
-          </p>
-        </div>
       </form>
 
       {/* =================== MODAL DE OVERVIEW =================== */}
@@ -764,9 +1187,15 @@ function RenderFormPage() {
         samples={samples}
         sampleLimits={currentSamplesLimits}
         dataTypeLabel={getDataTypeLabel()}
-        machineLabel={getMachineLabel()}
+        environmentLabel={getEnvironmentLabel()}
         executionProfileLabel={getExecutionProfileLabel()}
-        username="admin@inf.udec.cl (mock)"
+        courseLabel={getSelectedCourseLabel()}
+        username={
+          currentUser?.email ||
+          currentUser?.username ||
+          currentUser?.name ||
+          ""
+        }
       />
     </div>
   );

@@ -1,456 +1,963 @@
-/* ================================
-   Navbar principal - tema oscuro Performance System
-   ================================ */
+/* ============================================================
+   PERFORMANCE SYSTEM — NAVBAR
+
+   Este componente utiliza únicamente variables del
+   Design System.
+
+   Light / Dark quedan controlados por los theme files.
+   ============================================================ */
+
+
+/* ============================================================
+   NAVBAR ROOT
+   ============================================================ */
 
 .app-navbar {
-  background: linear-gradient(90deg, #0f172a, #111827, #1e293b);
-  padding: 0.45rem 0;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.35);
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.8);
+  position: sticky;
+
+  top: 0;
+
+  z-index: var(--ps-z-navbar);
+
+  width: 100%;
+
+  min-height: var(--ps-navbar-height);
+
+  background: var(--ps-surface);
+
+  border-bottom:
+    1px solid var(--ps-border);
+
+  box-shadow:
+    var(--ps-shadow-sm);
+
+  color: var(--ps-text);
+
+  transition:
+    background-color var(--ps-transition-normal),
+    border-color var(--ps-transition-normal),
+    color var(--ps-transition-normal),
+    box-shadow var(--ps-transition-normal);
 }
+
+
+/* ============================================================
+   INNER LAYOUT
+
+   Desktop:
+      brand | navigation | actions
+
+   El grid mantiene la navegación realmente centrada aunque
+   el nombre del usuario sea largo.
+   ============================================================ */
 
 .app-navbar-inner {
-  padding: 0 1.5rem;
+  position: relative;
+
+  width: 100%;
+
+  max-width:
+    var(--ps-content-max-width);
+
+  min-height:
+    var(--ps-navbar-height);
+
+  margin: 0 auto;
+
+  padding:
+    0 var(--ps-content-padding-x);
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(220px, 1fr) auto minmax(220px, 1fr);
+
+  align-items: center;
+
+  gap: var(--ps-space-4);
 }
 
-/* ================================
-   Brand
-   ================================ */
+
+/* ============================================================
+   BRAND
+   ============================================================ */
 
 .app-navbar-brand {
+  justify-self: start;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: var(--ps-space-3);
+
+  min-width: 0;
+
+  color: var(--ps-text);
+
   text-decoration: none;
+
+  border-radius:
+    var(--ps-radius-md);
+
+  transition:
+    color var(--ps-transition-fast),
+    opacity var(--ps-transition-fast);
 }
+
+
+.app-navbar-brand:hover {
+  color: var(--ps-text);
+
+  opacity: 0.88;
+}
+
 
 .app-navbar-logo {
-  filter: brightness(240%) contrast(120%);
+  width: 32px;
+
+  height: 32px;
+
+  flex: 0 0 auto;
+
+  object-fit: contain;
 }
+
 
 .app-navbar-brand-text {
-  font-weight: 600;
-  font-size: 1.1rem;
-  letter-spacing: 0.02em;
-  color: #f9fafb;
+  color: inherit;
+
+  font-size:
+    var(--ps-font-size-lg);
+
+  font-weight: 700;
+
+  line-height: 1;
+
+  letter-spacing: -0.015em;
+
+  white-space: nowrap;
 }
 
-/* ================================
-   Toggler (mobile)
-   ================================ */
 
-.app-navbar-toggler {
-  border-color: rgba(148, 163, 184, 0.6);
-}
-
-.app-navbar-toggler .navbar-toggler-icon {
-  filter: invert(100%);
-}
-
-/* ================================
-   Menú central
-   ================================ */
+/* ============================================================
+   DESKTOP NAVIGATION
+   ============================================================ */
 
 .app-navbar-menu {
-  min-height: 42px;
+  justify-self: center;
+
   display: flex;
+
   align-items: center;
+
   justify-content: center;
+
+  gap: var(--ps-space-2);
 }
 
-/* ------- LINKS CENTRALES (Subir código / ¿Cómo funciona?) ------- */
+
+/* ============================================================
+   NAV LINK
+   ============================================================ */
 
 .app-nav-link {
   position: relative;
+
   display: inline-flex;
+
   align-items: center;
+
   justify-content: center;
-  gap: 0.35rem;
-  color: rgba(248, 250, 252, 0.92);
-  font-weight: 500;
-  font-size: 0.96rem;
-  padding: 0.55rem 0.9rem;
-  border: none;
+
+  gap: 0.45rem;
+
+  min-height: 40px;
+
+  padding:
+    0.55rem 0.8rem;
+
+  color:
+    var(--ps-text-secondary);
+
   background: transparent;
-  border-radius: 0;
+
+  border:
+    1px solid transparent;
+
+  border-radius:
+    var(--ps-radius-md);
+
+  font-size:
+    var(--ps-font-size-sm);
+
+  font-weight: 600;
+
+  line-height: 1;
+
   text-decoration: none;
+
   white-space: nowrap;
+
   transition:
-    color 0.18s ease,
-    transform 0.1s ease,
-    opacity 0.18s ease;
+    color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast),
+    border-color var(--ps-transition-fast),
+    transform var(--ps-transition-fast);
 }
 
-.app-nav-link-icon {
-  font-size: 1.05rem;
-  line-height: 1;
-  transform: translateY(-1px);
+
+.app-nav-link:hover {
+  color:
+    var(--ps-text);
+
+  background:
+    var(--ps-surface-subtle);
+
+  border-color:
+    var(--ps-border);
 }
 
-.app-nav-link-label {
-  line-height: 1;
+
+.app-nav-link.is-active {
+  color:
+    var(--ps-primary);
+
+  background:
+    var(--ps-primary-soft);
+
+  border-color:
+    transparent;
 }
 
-/* Subrayado celeste sutil (tabs-like) */
-.app-nav-link::after {
+
+/* Barra inferior del elemento activo */
+
+.app-nav-link.is-active::after {
   content: "";
+
   position: absolute;
-  left: 0.9rem;
-  right: 0.9rem;
-  bottom: 0.15rem;
+
+  left: 20%;
+
+  right: 20%;
+
+  bottom: -1px;
+
   height: 2px;
-  border-radius: 999px;
-  background: linear-gradient(90deg,
-      rgba(56, 189, 248, 0),
-      rgba(129, 140, 248, 0));
-  opacity: 0;
-  transform: scaleX(0.4);
-  transform-origin: center;
-  transition:
-    opacity 0.18s ease,
-    transform 0.18s ease,
-    background 0.18s ease;
+
+  border-radius:
+    var(--ps-radius-pill);
+
+  background:
+    var(--ps-primary);
 }
 
-/* Hover: texto celeste + subrayado suave */
-.app-nav-link:hover,
-.app-nav-link:focus-visible {
-  color: #38bdf8;
-  /* celeste como en los tabs */
-  transform: translateY(-1px);
-  outline: none;
-}
 
-.app-nav-link:hover::after,
-.app-nav-link:focus-visible::after {
-  background: linear-gradient(90deg,
-      rgba(56, 189, 248, 0.9),
-      rgba(129, 140, 248, 0.9));
-  opacity: 1;
-  transform: scaleX(1);
-}
+/* ============================================================
+   RIGHT ACTIONS
+   ============================================================ */
 
-/* Estado activo (ruta actual) */
-.app-nav-item-active .app-nav-link {
-  color: #38bdf8;
-}
+.app-navbar-actions {
+  justify-self: end;
 
-.app-nav-item-active .app-nav-link::after {
-  background: linear-gradient(90deg,
-      rgba(56, 189, 248, 0.9),
-      rgba(129, 140, 248, 0.9));
-  opacity: 1;
-  transform: scaleX(1);
-}
-
-/* ================================
-   Derecha: toggle tema + notificaciones + usuario
-   ================================ */
-
-.app-navbar-right {
   display: flex;
+
   align-items: center;
-  gap: 0.5rem;
+
+  justify-content: flex-end;
+
+  gap: var(--ps-space-2);
+
+  min-width: 0;
 }
 
-/* ------- BOTÓN CAMBIAR TEMA ------- */
 
-.app-theme-toggle-btn {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.7);
-  background: rgba(15, 23, 42, 0.9);
-  color: #e5e7eb;
-  width: 32px;
-  height: 32px;
-  font-size: 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+/* ============================================================
+   GENERIC NAVBAR ICON BUTTON
+   ============================================================ */
+
+.app-navbar-icon-button {
+  flex: 0 0 auto;
+
+  width: 38px;
+
+  height: 38px;
+
   padding: 0;
-  transition:
-    background 0.18s ease,
-    border 0.18s ease,
-    transform 0.1s ease,
-    box-shadow 0.18s ease;
-}
 
-.app-theme-toggle-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  border-color: rgba(255, 255, 255, 0.35);
-  transform: translateY(-1px);
-  box-shadow: 0 8px 22px rgba(255, 255, 255, 0.12);
-}
-
-/* ------- CAMPANA DE NOTIFICACIONES ------- */
-
-.app-navbar-notifications-btn {
-  position: relative;
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.7);
-  background: rgba(15, 23, 42, 0.95);
-  color: #e5e7eb;
-  width: 34px;
-  height: 34px;
-  font-size: 1rem;
   display: inline-flex;
+
   align-items: center;
+
   justify-content: center;
+
+  color:
+    var(--ps-text-secondary);
+
+  background:
+    var(--ps-surface-subtle);
+
+  border:
+    1px solid var(--ps-border);
+
+  border-radius:
+    var(--ps-radius-md);
+
   cursor: pointer;
-  padding: 0;
+
   transition:
-    background 0.18s ease,
-    border 0.18s ease,
-    transform 0.1s ease,
-    box-shadow 0.18s ease;
+    color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast),
+    border-color var(--ps-transition-fast),
+    transform var(--ps-transition-fast),
+    box-shadow var(--ps-transition-fast);
 }
 
-.app-navbar-notifications-btn:hover {
-  background: radial-gradient(circle at 30% 20%, #38bdf8, #020617);
-  border-color: rgba(191, 219, 254, 0.95);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 28px rgba(30, 64, 175, 0.85);
+
+.app-navbar-icon-button:hover {
+  color:
+    var(--ps-primary);
+
+  background:
+    var(--ps-primary-soft);
+
+  border-color:
+    var(--ps-primary);
+
+  transform:
+    translateY(-1px);
+
+  box-shadow:
+    var(--ps-shadow-sm);
 }
 
-.app-navbar-notifications-icon {
-  line-height: 1;
-}
 
-.app-navbar-notifications-badge {
-  position: absolute;
-  top: -3px;
-  right: -2px;
-  min-width: 17px;
-  height: 17px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: #f97316;
-  color: #0b1120;
-  font-size: 0.68rem;
-  font-weight: 700;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 0 2px #020617;
-}
-
-/* ================================
-   Menú usuario
-   ================================ */
+/* ============================================================
+   USER MENU
+   ============================================================ */
 
 .app-user-menu-wrapper {
   position: relative;
+
+  min-width: 0;
 }
+
 
 .app-user-menu-toggle {
-  border-radius: 999px;
-  border: 1px solid rgba(148, 163, 184, 0.65);
-  padding: 6px 12px;
-  font-size: 0.83rem;
-  background: radial-gradient(circle at top left, #1d4ed8, #020617);
-  color: #ffffff;
-  display: inline-flex;
+  max-width: 315px;
+
+  min-height: 42px;
+
+  padding:
+    0.3rem 0.45rem;
+
+  display: flex;
+
   align-items: center;
-  min-height: 36px;
-  gap: 0.45rem;
+
+  gap: var(--ps-space-2);
+
+  color:
+    var(--ps-text);
+
+  background:
+    var(--ps-surface-subtle);
+
+  border:
+    1px solid var(--ps-border);
+
+  border-radius:
+    var(--ps-radius-pill);
+
   cursor: pointer;
+
   transition:
-    background 0.2s ease,
-    border 0.2s ease,
-    box-shadow 0.2s ease,
-    transform 0.08s ease;
+    background-color var(--ps-transition-fast),
+    border-color var(--ps-transition-fast),
+    box-shadow var(--ps-transition-fast);
 }
 
-.app-user-menu-toggle:hover:not(:disabled) {
-  background: radial-gradient(circle at top left, #38bdf8, #020617);
-  border-color: rgba(248, 250, 252, 0.85);
-  box-shadow: 0 14px 30px rgba(30, 64, 175, 0.8);
-  transform: translateY(-1px);
+
+.app-user-menu-toggle:hover {
+  background:
+    var(--ps-primary-soft);
+
+  border-color:
+    var(--ps-primary);
+
+  box-shadow:
+    var(--ps-shadow-sm);
 }
 
-.app-user-menu-toggle:disabled {
-  opacity: 0.7;
-  cursor: default;
+
+/* ============================================================
+   USER AVATAR
+   ============================================================ */
+
+.app-user-avatar,
+.app-user-dropdown-avatar {
+  flex: 0 0 auto;
+
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background:
+    var(--ps-primary-soft);
+
+  color:
+    var(--ps-primary);
+
+  border:
+    1px solid var(--ps-primary);
+
+  border-radius:
+    var(--ps-radius-pill);
+
+  font-weight: 700;
 }
 
-/* Avatar */
+
 .app-user-avatar {
   width: 32px;
+
   height: 32px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(191, 219, 254, 0.5);
-  font-size: 0.83rem;
-  font-weight: 600;
-  color: #e5e7eb;
+
+  font-size:
+    var(--ps-font-size-xs);
 }
 
-/* Info usuario */
-.app-user-info .app-user-name {
-  font-weight: 600;
-  color: #f9fafb;
+
+.app-user-dropdown-avatar {
+  width: 38px;
+
+  height: 38px;
+
+  font-size:
+    var(--ps-font-size-sm);
 }
 
-.app-user-info .app-user-email {
-  font-size: 0.74rem;
-  color: #cbd5f5;
-  opacity: 0.9;
+
+/* ============================================================
+   USER SUMMARY
+   ============================================================ */
+
+.app-user-info {
+  min-width: 0;
+
+  max-width: 220px;
+
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-start;
+
+  text-align: left;
 }
 
-/* Flecha */
-.app-user-menu-icon {
-  font-size: 0.75rem;
-  transition: transform 0.2s ease;
+
+.app-user-name,
+.app-user-email {
+  width: 100%;
+
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
 }
 
-.app-user-menu-icon.rotate {
-  transform: rotate(180deg);
+
+.app-user-name {
+  color:
+    var(--ps-text);
+
+  font-size:
+    var(--ps-font-size-sm);
+
+  font-weight: 650;
+
+  line-height: 1.2;
 }
 
-/* ================================
-   Dropdown usuario
-   ================================ */
+
+.app-user-email {
+  margin-top: 2px;
+
+  color:
+    var(--ps-text-muted);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  line-height: 1.2;
+}
+
+
+/* ============================================================
+   CHEVRON
+   ============================================================ */
+
+.app-user-chevron {
+  flex: 0 0 auto;
+
+  color:
+    var(--ps-text-muted);
+
+  transition:
+    transform var(--ps-transition-normal);
+}
+
+
+.app-user-chevron.is-open {
+  transform:
+    rotate(180deg);
+}
+
+
+/* ============================================================
+   DROPDOWN
+   ============================================================ */
 
 .app-user-dropdown-menu {
-  min-width: 280px;
-  padding: 0.4rem 0;
-  border-radius: 14px;
-  border: 1px solid rgba(148, 163, 184, 0.6);
-  background: #020617;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.9);
-  margin-top: 0.4rem;
+  position: absolute;
+
+  top: calc(100% + 10px);
+
+  right: 0;
+
+  z-index:
+    var(--ps-z-dropdown);
+
+  width: min(340px,
+      calc(100vw - 2rem));
+
+  padding:
+    var(--ps-space-2);
+
+  background:
+    var(--ps-surface-elevated);
+
+  border:
+    1px solid var(--ps-border);
+
+  border-radius:
+    var(--ps-radius-lg);
+
+  box-shadow:
+    var(--ps-shadow-lg);
+
+  color:
+    var(--ps-text);
+
+  animation:
+    appUserDropdownEnter 130ms ease-out;
 }
+
+
+@keyframes appUserDropdownEnter {
+
+  from {
+    opacity: 0;
+
+    transform:
+      translateY(-4px);
+  }
+
+  to {
+    opacity: 1;
+
+    transform:
+      translateY(0);
+  }
+
+}
+
+
+/* ============================================================
+   DROPDOWN HEADER
+   ============================================================ */
 
 .app-user-dropdown-header {
   display: flex;
+
   align-items: center;
-  padding: 0.6rem 1rem 0.4rem;
+
+  gap: var(--ps-space-3);
+
+  padding:
+    var(--ps-space-3);
 }
 
-.app-user-dropdown-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(191, 219, 254, 0.5);
-  color: #e5e7eb;
-  font-size: 0.86rem;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 0.7rem;
-}
 
 .app-user-dropdown-info {
+  min-width: 0;
+
   display: flex;
+
   flex-direction: column;
+
+  gap: 2px;
 }
+
+
+.app-user-dropdown-name,
+.app-user-dropdown-email {
+  overflow: hidden;
+
+  white-space: nowrap;
+
+  text-overflow: ellipsis;
+}
+
 
 .app-user-dropdown-name {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: #f9fafb;
+  color:
+    var(--ps-text);
+
+  font-size:
+    var(--ps-font-size-sm);
+
+  font-weight: 700;
 }
+
 
 .app-user-dropdown-email {
-  font-size: 0.78rem;
-  color: #cbd5f5;
+  color:
+    var(--ps-text-muted);
+
+  font-size:
+    var(--ps-font-size-xs);
 }
+
 
 .app-user-dropdown-role {
-  font-size: 0.7rem;
-  color: #93c5fd;
+  margin-top:
+    var(--ps-space-1);
+
+  width: fit-content;
+
+  padding:
+    0.15rem 0.45rem;
+
+  color:
+    var(--ps-primary);
+
+  background:
+    var(--ps-primary-soft);
+
+  border-radius:
+    var(--ps-radius-pill);
+
+  font-size:
+    0.68rem;
+
+  font-weight: 700;
 }
 
-/* Items */
+
+/* ============================================================
+   DROPDOWN DIVIDER
+   ============================================================ */
+
+.app-user-dropdown-divider {
+  height: 1px;
+
+  margin:
+    var(--ps-space-1) var(--ps-space-2);
+
+  background:
+    var(--ps-divider);
+}
+
+
+/* ============================================================
+   DROPDOWN ITEM
+   ============================================================ */
+
 .app-user-dropdown-item {
-  display: flex;
-  align-items: center;
-  gap: 0.45rem;
-  font-size: 0.9rem;
-  color: #e5e7eb;
-  padding: 0.55rem 1rem;
   width: 100%;
+
+  min-height: 40px;
+
+  padding:
+    0.55rem 0.65rem;
+
+  display: flex;
+
+  align-items: center;
+
+  gap: var(--ps-space-2);
+
+  color:
+    var(--ps-text-secondary);
+
+  background:
+    transparent;
+
+  border: 0;
+
+  border-radius:
+    var(--ps-radius-sm);
+
+  font-size:
+    var(--ps-font-size-sm);
+
+  font-weight: 500;
+
+  text-align: left;
+
   cursor: pointer;
+
   transition:
-    background 0.16s ease,
-    color 0.16s ease;
+    color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast);
 }
 
-.app-user-dropdown-item:hover {
-  background: rgba(15, 23, 42, 0.9);
-  color: #fff;
+
+.app-user-dropdown-item:hover:not(:disabled) {
+  color:
+    var(--ps-text);
+
+  background:
+    var(--ps-surface-subtle);
 }
 
-/* Icono izquierdo en item */
-.app-user-dropdown-icon {
-  width: 1.1rem;
-  text-align: center;
-}
 
-/* Item deshabilitado ("Próximamente") */
+/* ============================================================
+   DISABLED
+   ============================================================ */
+
 .app-user-dropdown-item-disabled {
-  opacity: 0.6;
+  color:
+    var(--ps-text-muted);
+
+  opacity: 0.72;
+
   cursor: not-allowed;
 }
 
-.app-user-dropdown-item-disabled:hover {
-  background: transparent;
-}
 
 .app-user-badge-soon {
   margin-left: auto;
-  font-size: 0.7rem;
-  padding: 0.05rem 0.45rem;
-  border-radius: 999px;
-  background: rgba(148, 163, 184, 0.25);
-  color: #e5e7eb;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+
+  padding:
+    0.12rem 0.4rem;
+
+  color:
+    var(--ps-text-muted);
+
+  background:
+    var(--ps-surface-subtle);
+
+  border:
+    1px solid var(--ps-border);
+
+  border-radius:
+    var(--ps-radius-pill);
+
+  font-size:
+    0.62rem;
+
+  font-weight: 700;
+
+  letter-spacing:
+    0.04em;
+
+  text-transform:
+    uppercase;
 }
 
-/* Logout */
+
+/* ============================================================
+   LOGOUT
+   ============================================================ */
+
 .app-user-dropdown-item-logout {
-  color: #fecaca;
+  color:
+    var(--ps-danger);
 }
 
-.app-user-dropdown-item-logout:hover {
-  background: rgba(127, 29, 29, 0.9);
-  color: #fee2e2;
+
+.app-user-dropdown-item-logout:hover:not(:disabled) {
+  color:
+    var(--ps-danger);
+
+  background:
+    var(--ps-danger-soft);
 }
 
-/* Divider */
-.dropdown-divider {
-  border-top: 1px solid rgba(55, 65, 81, 0.85);
-  margin: 0.3rem 0;
+
+/* ============================================================
+   MOBILE MENU BUTTON
+   ============================================================ */
+
+.app-navbar-mobile-toggle {
+  display: none;
 }
 
-/* ================================
-   Responsive
-   ================================ */
 
-@media (max-width: 992px) {
+/* ============================================================
+   MOBILE NAVIGATION PANEL
+   ============================================================ */
+
+.app-navbar-mobile-menu {
+  display: none;
+}
+
+
+/* ============================================================
+   RESPONSIVE — TABLET
+   ============================================================ */
+
+@media (max-width: 1050px) {
+
   .app-navbar-inner {
-    padding: 0 1rem;
+    grid-template-columns:
+      minmax(190px, 1fr) auto minmax(190px, 1fr);
   }
 
-  .app-navbar-menu {
-    margin-bottom: 0.5rem;
+
+  .app-user-info {
+    max-width: 150px;
   }
 
-  .app-navbar-right {
-    justify-content: flex-end;
-  }
 }
 
-@media (max-width: 768px) {
-  .app-user-info {
-    display: none !important;
+
+/* ============================================================
+   RESPONSIVE — MOBILE
+   ============================================================ */
+
+@media (max-width: 860px) {
+
+  .app-navbar-inner {
+    grid-template-columns:
+      minmax(0, 1fr) auto;
+
+    min-height:
+      var(--ps-navbar-height);
+
+    row-gap: 0;
   }
+
 
   .app-navbar-menu {
-    justify-content: center;
+    display: none;
   }
 
-  .app-nav-link {
-    text-align: center;
+
+  .app-navbar-actions {
+    grid-column: 2;
   }
+
+
+  .app-navbar-mobile-toggle {
+    display: inline-flex;
+  }
+
+
+  .app-navbar-mobile-menu {
+    grid-column:
+      1 / -1;
+
+    display: flex;
+
+    flex-direction: column;
+
+    gap:
+      var(--ps-space-1);
+
+    margin-top:
+      var(--ps-space-2);
+
+    padding:
+      var(--ps-space-2) 0 var(--ps-space-3);
+
+    border-top:
+      1px solid var(--ps-divider);
+  }
+
+
+  .app-nav-link-mobile {
+    width: 100%;
+
+    justify-content:
+      flex-start;
+
+    padding:
+      0.7rem 0.8rem;
+  }
+
+
+  .app-nav-link-mobile.is-active::after {
+    display: none;
+  }
+
+}
+
+
+/* ============================================================
+   SMALL MOBILE
+   ============================================================ */
+
+@media (max-width: 600px) {
+
+  .app-navbar-inner {
+    padding:
+      0 var(--ps-space-3);
+  }
+
+
+  .app-navbar-brand-text {
+    font-size:
+      var(--ps-font-size-md);
+  }
+
+
+  .app-navbar-logo {
+    width: 28px;
+
+    height: 28px;
+  }
+
+
+  .app-user-info {
+    display: none;
+  }
+
+
+  .app-user-menu-toggle {
+    padding:
+      0.25rem;
+  }
+
+
+  .app-user-chevron {
+    display: none;
+  }
+
+
+  .app-navbar-actions {
+    gap:
+      var(--ps-space-1);
+  }
+
+}
+
+
+/* ============================================================
+   VERY SMALL
+   ============================================================ */
+
+@media (max-width: 420px) {
+
+  .app-navbar-brand-text {
+    display: none;
+  }
+
 }

@@ -1,8 +1,14 @@
-const isDev = !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+// CORE-06B-2: contrato científico de métricas/UI.
+const isDev =
+    !process.env.NODE_ENV ||
+    process.env.NODE_ENV === "development";
 
-export const serverURL = isDev ? "http://127.0.0.1:5000/" : "/";
+export const serverURL =
+    isDev ? "http://localhost:5000/" : "/";
+
 export const baseURL = serverURL + "sendcode";
 export const statusURL = serverURL + "checkstatus/";
+
 export default function getTask(taskState) {
     console.log("taskstate", taskState);
     if (taskState === 'lcs')
@@ -23,28 +29,27 @@ export default function getTask(taskState) {
 }
 
 export const tasks = [
-
     {
         id: 'lcs',
         title: 'Text input',
-        description: `Prueba con entrada de texto, usando un archivo de English50MB. Se realizan 30 incrementos hasta el tamaño del input. En cada incremento se ejecuta el algoritmo la cantidad de veces seleccionada por el usuario.`
+        description: `Prueba con entrada de texto, usando un archivo de English50MB. Se evalúan 10 tamaños de entrada distribuidos hasta el máximo configurado. Para cada tamaño se realizan las repeticiones definidas por el perfil de ejecución seleccionado.`
     },
     {
         id: 'camm',
         title: 'Numerical input',
-        description: `Prueba con entrada numérica, proveniente de un archivo con 150.000 valores. Se realizan 30 incrementos hasta el tamaño del input. Cada uno se repite según el número definido por el usuario.`
+        description: `Prueba con entrada numérica, proveniente de un archivo con 150.000 valores. Se evalúan 10 tamaños de entrada distribuidos hasta el máximo configurado. Para cada tamaño se realizan las repeticiones definidas por el perfil de ejecución seleccionado.`
     },
     {
         id: 'size',
         title: 'Input size',
-        description: `Prueba con entrada numérica única como argumento. Se realizan 30 incrementos del valor de entrada, y cada uno se repite tantas veces como defina el usuario.`
+        description: `Prueba con entrada numérica única como argumento. Se evalúan 10 tamaños de entrada distribuidos hasta el máximo configurado. Para cada tamaño se realizan las repeticiones definidas por el perfil de ejecución seleccionado.`
     }
 ];
 
 export const numericalInputOptions = [
-    { value: 'cammr', label: 'Numeros aleatoreos' },
-    { value: 'cammso', label: 'Numeros semi-ordenados' },
-    { value: 'camms', label: 'Numeros iguales' },
+    { value: 'cammr', label: 'Números aleatorios' },
+    { value: 'cammso', label: 'Números semiordenados' },
+    { value: 'camms', label: 'Números iguales' },
 ];
 
 export const METRIC_DESCRIPTIONS = {
@@ -88,10 +93,10 @@ export const METRIC_DESCRIPTIONS = {
         "Cantidad de fallos al escribir en la LLC (Last Level Cache).\nCuando ocurre un fallo, se debe escribir directamente en la memoria RAM, lo que es mucho más lento y costoso.\nMinimizar estos fallos implica un mejor diseño de estructuras de datos y un acceso más coherente a la memoria.",
 
     CacheReferences:
-        "Número total de accesos a cualquier nivel de caché (lecturas + escrituras).\nEsta métrica muestra la intensidad del uso de la jerarquía de memoria rápida.\nUn programa bien optimizado tendrá muchas referencias exitosas y pocos fallos, lo que mejora tanto la velocidad como el consumo energético.",
+        "Referencias de caché reportadas por el contador genérico de rendimiento del sistema.\nRepresentan actividad de caché según la semántica que expone el PMU del procesador; su correspondencia exacta con un nivel concreto puede variar entre arquitecturas.\nSe interpreta principalmente junto con CacheMisses y no como un conteo universal de todos los accesos a todos los niveles de caché.",
 
     CacheMisses:
-        "Número total de fallos de caché (todos los niveles).\nUn fallo significa que el dato no está disponible en ninguna caché y debe buscarse en la RAM.\nCada fallo implica un gran costo en latencia y energía.\nReducir los fallos de caché es uno de los objetivos clave en optimización de algoritmos.",
+        "Fallos de caché reportados por el contador genérico de rendimiento del sistema.\nLa correspondencia exacta del evento depende de la arquitectura y del PMU, por lo que no debe interpretarse automáticamente como la suma de fallos de todos los niveles ni como una garantía de acceso posterior a RAM.\nSe utiliza junto con CacheReferences para estudiar la proporción de fallos observada por el contador disponible.",
 
     PageFaults:
         "Cantidad de fallos de página.\nSe producen cuando el proceso accede a una página de memoria que no está en la RAM y necesita ser cargada desde disco.\nLos fallos de página son una señal de que el programa está utilizando más memoria de la que puede mantener activa, lo que degrada drásticamente el rendimiento.",
@@ -100,13 +105,13 @@ export const METRIC_DESCRIPTIONS = {
         "Cantidad de fallos de página 'mayores'.\nEstos requieren que el sistema operativo cargue datos desde disco o swap.\nSon extremadamente costosos en tiempo y afectan negativamente el rendimiento general.\nReducir el uso excesivo de memoria y optimizar el acceso ayuda a disminuir estos fallos.",
 
     EnergyPkg:
-        "Energía total consumida por el paquete completo del CPU (Package).\nIncluye todos los núcleos, caches integradas y controladores internos.\nPermite evaluar el impacto energético global del programa y comparar implementaciones en términos de eficiencia energética.",
+        "Energía registrada por el dominio físico CPU Package durante la ventana de medición del benchmark (J).\nLa lectura corresponde al dominio energético expuesto por la plataforma y no atribuye de forma exclusiva ese consumo al proceso del estudiante.\nSolo se muestra cuando el backend de medición entrega muestras numéricas válidas.",
 
     EnergyCores:
-        "Energía consumida únicamente por los núcleos de ejecución del CPU.\nSirve para entender el costo energético directo de las operaciones de cómputo puras.\nIdeal para comparar si un algoritmo es más 'ligero' en términos de uso de CPU.",
+        "Energía registrada por el dominio físico de núcleos CPU durante la ventana de medición del benchmark (J), cuando dicho dominio está expuesto por la plataforma y es accesible al backend.\nNo debe interpretarse como energía exclusiva del proceso ni como una medida disponible en todo hardware.",
 
     EnergyRAM:
-        "Energía consumida por la memoria RAM durante la ejecución.\nUn alto consumo suele estar asociado a algoritmos que mueven o procesan grandes volúmenes de datos.\nOptimizar el uso de estructuras de datos y reducir accesos innecesarios a memoria ayuda a disminuir este consumo.",
+        "Energía registrada por el dominio de memoria/DRAM durante la ventana de medición del benchmark (J), únicamente cuando la plataforma expone ese dominio y el backend puede medirlo.\nLa ausencia de esta métrica se representa como no disponible; nunca se sustituye por cero.",
 
     StartTime:
         "Hora exacta en la que se inició la ejecución del programa.\nPermite rastrear cuándo se realizó la prueba y correlacionar con otros experimentos o estados del sistema.",
@@ -121,7 +126,7 @@ export const METRIC_DESCRIPTIONS = {
         "Instructions Per Cycle (IPC), o Instrucciones por Ciclo.\nCalculado como Instructions / CpuCycles.\nMide cuántas instrucciones se ejecutan en promedio por ciclo de CPU.\nUn IPC alto indica un mejor aprovechamiento del procesador y mayor eficiencia.\nEste valor depende del tipo de tarea y de cómo el compilador y el CPU gestionan el flujo de instrucciones.",
 
     CacheMissRate:
-        "Tasa de fallos de caché.\nCalculada como CacheMisses / CacheReferences.\nIndica qué porcentaje de los accesos a la caché no encontró el dato necesario y debió buscarlo en la memoria RAM.\nUna tasa baja refleja un uso eficiente de la jerarquía de caché y un algoritmo bien optimizado en acceso a memoria.",
+        "Tasa de fallos de caché.\nCalculada como CacheMisses / CacheReferences.\nExpresa la proporción entre los fallos y las referencias reportadas por los contadores genéricos disponibles en ese hardware.\nUna tasa menor puede indicar un patrón de acceso más favorable, pero su interpretación debe considerar la arquitectura y la semántica del PMU utilizado.",
 
     BranchMissRate:
         "Tasa de fallos en predicción de bifurcaciones.\nCalculada como BranchMisses / Branches.\nRefleja qué tan bien el procesador logra predecir los saltos en el flujo del programa (if, loops).\nUna tasa baja significa menor penalización y mayor aprovechamiento del pipeline, lo que se traduce en mejor rendimiento.",
@@ -146,7 +151,9 @@ export const METRIC_CATEGORIES = {
     CPU: ["Instructions", "CpuCycles", "TaskClock", "CpuClock", "Branches", "BranchMisses", "BranchMissesPerMI", "IPC"],
     Memoria: ["LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses", "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores", "CacheReferences", "CacheMisses", "CacheMissRate", "CacheMissesPerMI"],
     Sistema: ["PageFaults", "MajorFaults"],
-    Tiempo: ["StartTime", "EndTime", "DurationTime"],
+    // CORE-06B-2: StartTime/EndTime son metadatos de trazabilidad,
+    // no métricas de rendimiento del dashboard.
+    Tiempo: ["DurationTime"],
     Energía: ["EnergyPkg", "EnergyCores", "EnergyRAM"],
     "Predicción de Flujo": ["BranchMissRate"]
 };

@@ -1,5 +1,3 @@
-// src/screens/RenderForm/components/OverviewModal.js
-import React from "react";
 
 function OverviewModal({
   visible,
@@ -14,8 +12,9 @@ function OverviewModal({
   samples,
   sampleLimits,
   dataTypeLabel,
-  machineLabel,
+  environmentLabel,
   executionProfileLabel,
+  courseLabel,
   username,
 }) {
   if (!visible) return null;
@@ -24,64 +23,73 @@ function OverviewModal({
     <div className="rf-modal-backdrop">
       <div className="rf-modal">
         <div className="rf-modal-header">
-          <h3>Resumen del test</h3>
+          <h3>Revisar experimento</h3>
           <p>
-            Revisa los datos principales antes de enviar el código a la máquina
-            medidora.
+            Confirma la configuración antes de enviar el código al entorno de
+            ejecución.
           </p>
         </div>
 
         <div className="rf-modal-body">
           <div className="rf-modal-grid">
             <div className="rf-modal-section">
-              <h4>Información general</h4>
+              <h4>Experimento</h4>
+
               <dl>
-                <dt>Nombre del test</dt>
+                <dt>Nombre</dt>
                 <dd>{testName || "(sin nombre)"}</dd>
 
                 <dt>Archivo</dt>
-                <dd>{fileName || "Ningún archivo seleccionado"}</dd>
+                <dd>
+                  {fileName ||
+                    "Ningún archivo seleccionado"}
+                </dd>
 
-                <dt>Tipo de test</dt>
+                <dt>Benchmark</dt>
                 <dd>{taskTitle || "-"}</dd>
               </dl>
             </div>
 
             <div className="rf-modal-section">
               <h4>Parámetros</h4>
+
               <dl>
-                <dt>Tamaño máximo de entrada</dt>
+                <dt>Tamaño máximo</dt>
                 <dd>
                   {inputSize}
                   {inputLimits
-                    ? ` (entre ${inputLimits.min} y ${inputLimits.max})`
+                    ? ` (rango ${inputLimits.min}–${inputLimits.max})`
                     : ""}
                 </dd>
 
-                <dt>Repeticiones por incremento</dt>
+                <dt>Repeticiones por punto</dt>
                 <dd>
                   {samples}
                   {sampleLimits
-                    ? ` (entre ${sampleLimits.min} y ${sampleLimits.max})`
+                    ? ` (rango ${sampleLimits.min}–${sampleLimits.max})`
                     : ""}
                 </dd>
 
-                <dt>Tipo de datos (CAMM)</dt>
+                <dt>Distribución de datos</dt>
                 <dd>{dataTypeLabel}</dd>
               </dl>
             </div>
 
             <div className="rf-modal-section">
-              <h4>Entorno de medición</h4>
-              <dl>
-                <dt>Máquina</dt>
-                <dd>{machineLabel}</dd>
+              <h4>Medición</h4>
 
-                <dt>Perfil de ejecución</dt>
+              <dl>
+                <dt>Entorno</dt>
+                <dd>{environmentLabel}</dd>
+
+                <dt>Perfil</dt>
                 <dd>{executionProfileLabel}</dd>
 
+                <dt>Curso</dt>
+                <dd>{courseLabel || "Sin curso asociado"}</dd>
+
                 <dt>Usuario</dt>
-                <dd>{username}</dd>
+                <dd>{username || "Sesión autenticada"}</dd>
               </dl>
             </div>
           </div>
@@ -95,13 +103,16 @@ function OverviewModal({
           >
             Volver y editar
           </button>
+
           <button
             type="button"
             className="rf-modal-primary"
             onClick={onConfirm}
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Ejecutando…" : "Confirmar y ejecutar"}
+            {isSubmitting
+              ? "Enviando…"
+              : "Confirmar y ejecutar"}
           </button>
         </div>
       </div>

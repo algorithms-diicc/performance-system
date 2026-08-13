@@ -1,0 +1,95 @@
+/* ============================================================
+   Performance System — Light Theme
+   ============================================================ */
+
+:root[data-theme="light"] {
+    color-scheme: light;
+
+    /* Brand */
+    --ps-primary: #2563eb;
+    --ps-primary-hover: #1d4ed8;
+    --ps-primary-active: #1e40af;
+    --ps-primary-soft: rgba(37, 99, 235, 0.10);
+
+    --ps-accent: #0891b2;
+    --ps-accent-soft: rgba(8, 145, 178, 0.10);
+
+    /* Backgrounds */
+    --ps-bg: #f6f8fc;
+
+    --ps-surface: #ffffff;
+    --ps-surface-subtle: #f0f4f8;
+    --ps-surface-elevated: #ffffff;
+    --ps-surface-hover: #f8fafc;
+
+    /* Text */
+    --ps-text: #0f172a;
+    --ps-text-secondary: #475569;
+    --ps-text-muted: #64748b;
+    --ps-text-inverse: #f8fafc;
+
+    /* Borders */
+    --ps-border: #d7e0ea;
+    --ps-border-strong: #bcc8d6;
+
+    --ps-divider: rgba(100, 116, 139, 0.18);
+
+    /* Semantic states */
+    --ps-success: #059669;
+    --ps-success-soft: rgba(5, 150, 105, 0.10);
+
+    --ps-warning: #d97706;
+    --ps-warning-soft: rgba(217, 119, 6, 0.10);
+
+    --ps-danger: #dc2626;
+    --ps-danger-soft: rgba(220, 38, 38, 0.10);
+
+    --ps-info: #0284c7;
+    --ps-info-soft: rgba(2, 132, 199, 0.10);
+
+    /* Focus */
+    --ps-focus-ring: rgba(37, 99, 235, 0.28);
+
+    /* Shadows */
+    --ps-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
+
+    --ps-shadow-md:
+        0 8px 24px rgba(15, 23, 42, 0.08);
+
+    --ps-shadow-lg:
+        0 18px 45px rgba(15, 23, 42, 0.12);
+
+    /*
+   * Compatibilidad temporal con CSS antiguo.
+   * Estos aliases se eliminarán cuando todas las vistas estén migradas.
+   */
+
+    --color-primary: var(--ps-primary);
+    --color-primary-dark: #0f172a;
+    --color-primary-light: #4f46e5;
+
+    --color-bg: var(--ps-bg);
+
+    --color-surface: var(--ps-surface);
+    --color-surface-soft: var(--ps-surface-subtle);
+    --color-surface-elevated: var(--ps-surface-elevated);
+
+    --color-border-soft: var(--ps-border);
+    --color-border-strong: var(--ps-border-strong);
+
+    --color-text-main: var(--ps-text);
+    --color-text-muted: var(--ps-text-muted);
+    --color-text-soft: var(--ps-text-secondary);
+
+    --color-success: var(--ps-success);
+    --color-success-soft: var(--ps-success-soft);
+
+    --color-error: var(--ps-danger);
+    --color-error-soft: var(--ps-danger-soft);
+
+    --color-warning: var(--ps-warning);
+    --color-warning-soft: var(--ps-warning-soft);
+
+    --shadow-soft: var(--ps-shadow-lg);
+    --shadow-subtle: var(--ps-shadow-md);
+}

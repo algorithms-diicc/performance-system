@@ -1,608 +1,1792 @@
 import socket
 import json
+
+try:
+    from .hardware_snapshot import collect_hardware_snapshot
+except ImportError:
+    from hardware_snapshot import collect_hardware_snapshot
 import subprocess as sub
 import time
-#from slave_utils import *
 import os
 import signal
 import sys
+import shlex
+
 from utils.logger import log_admin, log_admin_stage
 
 
+# ============================================================
+# CONFIGURACIÓN GENERAL
+# ============================================================
 
-# === CONFIGURACION DE RUTAS ===
-BASE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'webapp')
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
-TEST_DIR = os.path.join(BASE_DIR, 'test')
-STATUS_DIR = os.path.join(BASE_DIR, 'status')
-RESULTS_DIR = os.path.join(BASE_DIR, 'results')
-DEFAULT_TIMEOUT = 1000  # segundos
-# Crea los directorios si no existen
+SERVER_DIR = os.path.dirname(os.path.abspath(__file__))
+WEBAPP_DIR = os.path.join(SERVER_DIR, "webapp")
+
+STATIC_DIR = os.path.join(WEBAPP_DIR, "static")
+TEST_DIR = os.path.join(SERVER_DIR, "test")
+STATUS_DIR = os.path.join(SERVER_DIR, "status")
+
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(TEST_DIR, exist_ok=True)
 os.makedirs(STATUS_DIR, exist_ok=True)
-os.makedirs(RESULTS_DIR, exist_ok=True)
 
-HOST = '152.74.52.200'  # The server's hostname or IP address
-PORT = 50000       # The port used by the server
+DEFAULT_TIMEOUT = int(os.getenv("SLAVE_TIMEOUT", "1000"))
+COMPILE_TIMEOUT_SECONDS = max(
+    1,
+    int(os.getenv("COMPILE_TIMEOUT_SECONDS", "30")),
+)
+REMOTE_SSH_TIMEOUT_SECONDS = max(
+    1,
+    int(os.getenv("REMOTE_SSH_TIMEOUT_SECONDS", "15")),
+)
+
+
+# ============================================================
+# CONFIGURACIÓN LOCAL / REMOTA
+# ============================================================
+
+SLAVE_MODE = os.getenv("SLAVE_MODE", "local").strip().lower()
+
+if SLAVE_MODE not in {"local", "remote"}:
+    raise ValueError(
+        "SLAVE_MODE debe tener el valor 'local' o 'remote'."
+    )
+
+# En local, por defecto el master está en esta misma máquina.
+# En remoto, la dirección debe entregarse mediante configuración.
+DEFAULT_MASTER_HOST = (
+    "127.0.0.1"
+    if SLAVE_MODE == "local"
+    else None
+)
+
+# MASTER_HOST puede sobrescribirse también en modo local.
+MASTER_HOST = os.getenv(
+    "MASTER_HOST",
+    DEFAULT_MASTER_HOST
+)
+
+if SLAVE_MODE == "remote" and not MASTER_HOST:
+    raise ValueError(
+        "MASTER_HOST es obligatorio cuando SLAVE_MODE=remote."
+    )
+
+MASTER_SEND_PORT = int(
+    os.getenv("MASTER_SEND_PORT", "50000")
+)
+
+MASTER_RESULT_PORT = int(
+    os.getenv("MASTER_RESULT_PORT", "60000")
+)
+
+
+# Configuración SSH usada solo en modo remoto.
+# Usuario, host y ruta pertenecen al entorno de despliegue,
+# no al código fuente.
+REMOTE_SSH_TARGET = os.getenv("REMOTE_SSH_TARGET")
+REMOTE_STATUS_DIR = os.getenv("REMOTE_STATUS_DIR")
+
+if SLAVE_MODE == "remote":
+    if not REMOTE_SSH_TARGET:
+        raise ValueError(
+            "REMOTE_SSH_TARGET es obligatorio cuando SLAVE_MODE=remote."
+        )
+    if not REMOTE_STATUS_DIR:
+        raise ValueError(
+            "REMOTE_STATUS_DIR es obligatorio cuando SLAVE_MODE=remote."
+        )
+
+
+QUEUE_POLL_SECONDS = int(
+    os.getenv("QUEUE_POLL_SECONDS", "10")
+)
+
+QUEUE_RECENT_SECONDS = int(
+    os.getenv("QUEUE_RECENT_SECONDS", "300")
+)
+
+
+# ============================================================
+# UTILIDADES
+# ============================================================
+
+def command_text(args):
+    """
+    Convierte una lista de argumentos a una representación
+    legible para logs.
+    """
+    return shlex.join(
+        [str(arg) for arg in args]
+    )
+
+
+def executable_path(codename):
+    """
+    Genera un ejecutable único por tarea.
+
+    Evita usar siempre ./a.out, ya que eso podría producir
+    colisiones entre ejecuciones.
+    """
+    return os.path.join(
+        SERVER_DIR,
+        f"{codename}.out"
+    )
+
+
+def cleanup_files(*paths):
+    """
+    Elimina archivos temporales si existen.
+    """
+    for path in paths:
+
+        if not path:
+            continue
+
+        if not os.path.exists(path):
+            continue
+
+        try:
+            os.remove(path)
+            print(
+                f"[🧹 Eliminado] {path}"
+            )
+
+        except OSError as e:
+
+            log_admin_stage(
+                "CLEANUP_ERROR",
+                f"No se pudo eliminar {path} — {e}"
+            )
+
+            print(
+                f"[⚠️ No se pudo eliminar "
+                f"{path}: {e}]"
+            )
+
+
+# ============================================================
+# COMUNICACIÓN MASTER -> SLAVE
+# ============================================================
 
 def connect_to_server(host, port):
-    """Establece conexión con el servidor principal."""
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    """
+    Se conecta al master.
+
+    Si el master aún no está disponible, crea un nuevo socket
+    y vuelve a intentarlo después de algunos segundos.
+    """
+
     while True:
+
+        sock = socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        )
+
         try:
-            print(f"[🌐 Intentando conectar a {host}:{port}]")
-            s.connect((host, port))
-            print("✅ Connected to the server")
-            return s
-        except ConnectionRefusedError:
-            print('[🕐 Esperando conexión con el servidor]')
+
+            sock.settimeout(10)
+
+            print(
+                f"[🌐 Intentando conectar "
+                f"a {host}:{port}]"
+            )
+
+            sock.connect(
+                (host, port)
+            )
+
+            sock.settimeout(None)
+
+            print(
+                f"[✅ Conectado al master "
+                f"{host}:{port}]"
+            )
+
+            return sock
+
+        except OSError as e:
+
+            try:
+                sock.close()
+            except Exception:
+                pass
+
+            print(
+                f"[🕐 Master no disponible: {e}. "
+                f"Reintentando en 5 segundos...]"
+            )
+
             time.sleep(5)
 
-def receive_payload(s):
-    """Recibe datos JSON desde el servidor."""
-    payload = b''
+
+def receive_payload(sock):
+    """
+    Recibe completamente el payload JSON enviado por el master.
+    """
+
+    payload = b""
+
     while True:
+
         try:
-            data = s.recv(1024)
-            if not data:
-                break
-            payload += data
+            data = sock.recv(4096)
+
         except ConnectionResetError:
             break
-    return json.loads(payload.decode())
 
-def write_code_to_file(name_request, code): 
-    """Escribe el código recibido en un archivo .cpp dentro de test/ y registra ruta."""
-    name = name_request + ".cpp"
-    full_path = os.path.join(TEST_DIR, name)
+        if not data:
+            break
 
-    try:
-        with open(full_path, 'w') as f:
-            f.write(code)
-        print(f"[✔️ write_code_to_file] Código guardado exitosamente en: {full_path}")
-    except Exception as e:
-        log_admin_stage("FILE_WRITE_ERROR", f"No se pudo escribir {full_path} — {e}")
-        print(f"[❌ write_code_to_file] Error al guardar el archivo {full_path}: {e}")
-        return None
+        payload += data
 
-    return full_path
+    if not payload:
+        raise ValueError(
+            "Se recibió un payload vacío desde el master."
+        )
 
-
-def compile_and_execute(name):
-    """
-    Compila y ejecuta el código fuente con un test simple (tipo none).
-    Se usa para pruebas generales sin input externo.
-    """
-    print(f"[⚙️ Compilación] Iniciando compilación de: {name}")
-    compile_process = sub.run(["g++", name], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True)
-
-    if compile_process.returncode != 0:
-        print(f"[❌ Error de compilación] {compile_process.stderr}")
-        return None
-
-    print(f"[✔️ Compilación exitosa] Ejecutando ./a.out con script measurescript2.sh")
-    try:
-        exec_process = sub.run([
-            "bash", "measurescript2.sh", "./a.out"
-        ], stdout=sub.PIPE, stderr=sub.PIPE, universal_newlines=True, timeout=DEFAULT_TIMEOUT)
-
-        if exec_process.returncode != 0:
-            print(f"[❌ Error en ejecución] {exec_process.stderr}")
-            return None
-
-        # Solo tomar la primera línea (el nombre del archivo CSV generado)
-        output_lines = exec_process.stdout.strip().splitlines()
-        csv_filename = output_lines[0] if output_lines else None
-        print(f"[📊 Resultado parcial] {csv_filename}")
-        return csv_filename
-
-    except sub.TimeoutExpired:
-        print("[⏰ Timeout] La ejecución excedió el límite de tiempo")
-        return None
-
-def cae_lcs(name, input_size, samples):
-    """
-    Compila y ejecuta el código para tareas tipo LCS (Text Input).
-    Utiliza como entrada el archivo input/english.50MB y genera un .csv con métricas.
-    """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    input_dir = os.path.join(base_dir, "input")
-    output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
-    os.makedirs(output_dir, exist_ok=True)
-
-    codename = os.path.basename(name).split('.')[0]
-    executable = "./a.out"
-    input_file = os.path.join(input_dir, "english.50MB")
-    csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
-
-
-    compile_cmd = f"g++ -O3 {name} -o {executable}"
-    exec_cmd = f"bash measurescript4.sh {executable} {input_file} {input_size} {samples} {csv_output}"
-
-    t0 = time.time()
-    log_admin_stage("START_COMPILE", f"Compilando {name}")
-    print(f"[⚙️ LCS] Compilando {name} ...")
-
- 
-
-    compile_result = sub.run(
-        compile_cmd.split(), 
-        stdout=sub.PIPE,
-        stderr=sub.PIPE,
-        universal_newlines=True
+    return json.loads(
+        payload.decode("utf-8")
     )
 
-    if compile_result.returncode != 0:
+
+# ============================================================
+# ARCHIVO C/C++
+# ============================================================
+
+def write_code_to_file(name_request, code):
+    """
+    Guarda el código recibido en:
+
+        Server/test/<nombre>.cpp
+    """
+
+    safe_name = os.path.basename(
+        name_request
+    )
+
+    full_path = os.path.join(
+        TEST_DIR,
+        f"{safe_name}.cpp"
+    )
+
+    try:
+
+        with open(
+            full_path,
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            file.write(code)
+
+        print(
+            f"[✔️ Código guardado en: "
+            f"{full_path}]"
+        )
+
+        return full_path
+
+    except Exception as e:
+
+        log_admin_stage(
+            "FILE_WRITE_ERROR",
+            (
+                f"No se pudo escribir "
+                f"{full_path} — {e}"
+            )
+        )
+
+        print(
+            f"[❌ Error guardando "
+            f"{full_path}: {e}]"
+        )
+
+        return None
+
+
+# ============================================================
+# COMPILACIÓN + MEDICIÓN
+# ============================================================
+
+def _measurement_positive_int(value, field):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        raise ValueError(
+            f"measurement.{field} debe ser un entero."
+        )
+
+    if parsed <= 0:
+        raise ValueError(
+            f"measurement.{field} debe ser mayor que 0."
+        )
+
+    return parsed
+
+
+def build_measurement_environment(measurement):
+    # Si measurement no existe, conserva compatibilidad legacy.
+    env = os.environ.copy()
+
+    if not isinstance(measurement, dict) or not measurement:
+        return env
+
+    points = _measurement_positive_int(
+        measurement.get("points"),
+        "points",
+    )
+    warmups = _measurement_positive_int(
+        measurement.get("warmup_rounds"),
+        "warmup_rounds",
+    )
+
+    perf_scope = str(
+        measurement.get("perf_scope") or ""
+    ).strip().lower()
+
+    if perf_scope not in {"process", "system-wide"}:
+        raise ValueError(
+            "measurement.perf_scope debe ser 'process' o 'system-wide'."
+        )
+
+    single_fallback = measurement.get(
+        "single_event_fallback",
+        True,
+    )
+    if not isinstance(single_fallback, bool):
+        raise ValueError(
+            "measurement.single_event_fallback debe ser booleano."
+        )
+
+    env["INCREMENTS"] = str(points)
+    env["WARMUP_ROUNDS"] = str(warmups)
+    env["PERF_SYSTEM_WIDE"] = (
+        "1" if perf_scope == "system-wide" else "0"
+    )
+    env["PERF_SINGLE_FALLBACK"] = (
+        "1" if single_fallback else "0"
+    )
+
+    return env
+
+
+def run_benchmark(
+    test_type,
+    source_file,
+    input_size,
+    samples,
+    measure_script_name,
+    measure_args,
+    measurement=None,
+):
+    """
+    Función común para LCS, CAMM y SIZE.
+
+    1. Compila el archivo C++.
+    2. Ejecuta el measurescript correspondiente.
+    3. Comprueba que se genere un CSV.
+    4. Devuelve la ruta del CSV o un código de error.
+    """
+
+    codename = os.path.splitext(
+        os.path.basename(source_file)
+    )[0]
+
+    executable = executable_path(
+        codename
+    )
+
+    output_dir = os.path.join(
+        STATIC_DIR,
+        codename
+    )
+
+    os.makedirs(
+        output_dir,
+        exist_ok=True
+    )
+
+    csv_output = os.path.join(
+        output_dir,
+        f"{codename}Results0.csv"
+    )
+
+    measure_script = os.path.join(
+        SERVER_DIR,
+        measure_script_name
+    )
+
+    measurement_env = build_measurement_environment(
+        measurement
+    )
+
+    if isinstance(measurement, dict) and measurement:
+        print(
+            "[🔬 Measurement snapshot] "
+            + json.dumps(
+                measurement,
+                sort_keys=True,
+            )
+        )
+
+
+    # --------------------------------------------------------
+    # Comando de compilación
+    # --------------------------------------------------------
+
+    compile_cmd = [
+        "g++",
+        "-O3",
+        source_file,
+        "-o",
+        executable
+    ]
+
+
+    # --------------------------------------------------------
+    # Comando de medición
+    # --------------------------------------------------------
+
+    exec_cmd = [
+        "bash",
+        measure_script,
+        executable,
+        *[
+            str(argument)
+            for argument in measure_args
+        ],
+        csv_output
+    ]
+
+
+    compile_cmd_text = command_text(
+        compile_cmd
+    )
+
+    exec_cmd_text = command_text(
+        exec_cmd
+    )
+
+
+    t0 = time.time()
+
+
+    # ========================================================
+    # COMPILACIÓN
+    # ========================================================
+
+    log_admin_stage(
+        "START_COMPILE",
+        f"Compilando {source_file}"
+    )
+
+    print(
+        f"[⚙️ {test_type}] "
+        f"Compilando:"
+    )
+
+    print(
+        compile_cmd_text
+    )
+
+
+    try:
+        compile_result = sub.run(
+            compile_cmd,
+            stdout=sub.PIPE,
+            stderr=sub.PIPE,
+            text=True,
+            cwd=SERVER_DIR,
+            timeout=COMPILE_TIMEOUT_SECONDS,
+        )
+    except sub.TimeoutExpired:
         duration = time.time() - t0
-        print(f"[❌ Error de compilación] {compile_result.stderr}")
-        log_admin_stage("COMPILE_ERROR", compile_result.stderr)
-        log_admin("LCS", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
+        error = (
+            "La compilación excedió el tiempo límite de "
+            f"{COMPILE_TIMEOUT_SECONDS} segundos."
+        )
+        print(f"[⏰ Timeout de compilación] {error}")
+        log_admin_stage("COMPILE_TIMEOUT", error)
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            "N/A",
+            False,
+            False,
+            duration,
+            error_msg=error,
+            input_val=input_size,
+        )
+        cleanup_files(executable)
+        return {
+            "name": codename,
+            "error_code": 100,
+        }
+
+
+    if compile_result.returncode != 0:
+
+        duration = (
+            time.time() - t0
+        )
+
+        error = (
+            compile_result.stderr.strip()
+        )
+
+        print(
+            "[❌ Error de compilación]"
+        )
+
+        print(error)
+
+
+        log_admin_stage(
+            "COMPILE_ERROR",
+            error
+        )
+
+
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            "N/A",
+            False,
+            False,
+            duration,
+            error_msg=error,
+            input_val=input_size
+        )
+
+
         return {
             "name": codename,
             "error_code": 100
         }
 
 
+    # ========================================================
+    # EJECUCIÓN
+    # ========================================================
 
-    log_admin_stage("START_EXEC", f"Ejecutando test LCS con input: {input_file}, tamaño: {input_size}, repeticiones: {samples}")
-    print(f"[🚀 LCS] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
+    log_admin_stage(
+        "START_EXEC",
+        (
+            f"Ejecutando {test_type}: "
+            f"tamaño={input_size}, "
+            f"repeticiones={samples}"
+        )
+    )
 
-  
+
+    print(
+        f"[🚀 {test_type}] "
+        f"Ejecutando:"
+    )
+
+    print(
+        exec_cmd_text
+    )
+
+
     try:
+
         exec_result = sub.run(
-            exec_cmd.split(), 
+            exec_cmd,
             stdout=sub.PIPE,
             stderr=sub.PIPE,
-            universal_newlines=True,
-            timeout=DEFAULT_TIMEOUT
+            text=True,
+            timeout=DEFAULT_TIMEOUT,
+            cwd=SERVER_DIR,
+            env=measurement_env,
         )
 
-        if exec_result.returncode != 0:
-            print(f"[❌ Error ejecución] {exec_result.stderr}")
-            duration = time.time() - t0
-            log_admin_stage("EXEC_ERROR", exec_result.stderr)
-            log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 400  # Error inesperado de ejecución
-            }
-
-
-        if not os.path.exists(csv_output):
-            print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
-            duration = time.time() - t0
-            msg = f"No se generó el archivo de resultados: {csv_output}"
-            log_admin_stage("CSV_ERROR", msg)
-            log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 300
-            }
-
-
-        duration = time.time() - t0
-        log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
-        log_admin("LCS", name, compile_cmd, exec_cmd, True, True, duration, input_val=input_size)
-        print(f"[✔️ LCS] Resultados guardados en: {csv_output}")
-        log_admin_stage("TEST_DONE", f"Test finalizado para {name}")
 
     except sub.TimeoutExpired:
-        print("[⏰ Timeout] El script LCS excedió el tiempo límite")
-        duration = time.time() - t0
-        msg = "El script LCS excedió el tiempo límite"
-        log_admin_stage("TIMEOUT", msg)
-        log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
+
+        duration = (
+            time.time() - t0
+        )
+
+        msg = (
+            f"El test {test_type} "
+            f"excedió el límite de "
+            f"{DEFAULT_TIMEOUT} segundos."
+        )
+
+
+        print(
+            f"[⏰ Timeout] {msg}"
+        )
+
+
+        log_admin_stage(
+            "TIMEOUT",
+            msg
+        )
+
+
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            exec_cmd_text,
+            True,
+            False,
+            duration,
+            error_msg=msg,
+            input_val=input_size
+        )
+
+
         return {
             "name": codename,
-            "error_code": 200,  
+            "error_code": 200
         }
 
+
     except Exception as e:
-        duration = time.time() - t0
-        log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_lcs: {e}")
-        log_admin("LCS", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
+
+        duration = (
+            time.time() - t0
+        )
+
+        msg = (
+            f"Fallo inesperado "
+            f"en {test_type}: {e}"
+        )
+
+
+        print(
+            f"[❌ Error inesperado] "
+            f"{msg}"
+        )
+
+
+        log_admin_stage(
+            "UNEXPECTED_ERROR",
+            msg
+        )
+
+
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            exec_cmd_text,
+            True,
+            False,
+            duration,
+            error_msg=str(e),
+            input_val=input_size
+        )
+
+
         return {
             "name": codename,
             "error_code": 400
         }
 
+
+    # ========================================================
+    # ERROR DEVUELTO POR EL SCRIPT
+    # ========================================================
+
+    if exec_result.returncode != 0:
+
+        duration = (
+            time.time() - t0
+        )
+
+
+        error_detail = (
+            f"returncode="
+            f"{exec_result.returncode}; "
+            f"stdout="
+            f"{exec_result.stdout.strip()}; "
+            f"stderr="
+            f"{exec_result.stderr.strip()}"
+        )
+
+
+        print("")
+        print(
+            f"========== ERROR "
+            f"{test_type} =========="
+        )
+
+        print(
+            f"Return code: "
+            f"{exec_result.returncode}"
+        )
+
+        print(
+            f"Comando: "
+            f"{exec_cmd_text}"
+        )
+
+        print(
+            "STDOUT:"
+        )
+
+        print(
+            exec_result.stdout
+        )
+
+        print(
+            "STDERR:"
+        )
+
+        print(
+            exec_result.stderr
+        )
+
+        print(
+            "================================="
+        )
+
+        print("")
+
+
+        log_admin_stage(
+            "EXEC_ERROR",
+            error_detail
+        )
+
+
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            exec_cmd_text,
+            True,
+            False,
+            duration,
+            error_msg=error_detail,
+            input_val=input_size
+        )
+
+
+        return {
+            "name": codename,
+            "error_code": 400
+        }
+
+
+    # ========================================================
+    # VALIDACIÓN DEL CSV
+    # ========================================================
+
+    if (
+        not os.path.isfile(csv_output)
+        or
+        os.path.getsize(csv_output) == 0
+    ):
+
+        duration = (
+            time.time() - t0
+        )
+
+        msg = (
+            f"No se generó un CSV válido: "
+            f"{csv_output}"
+        )
+
+
+        print(
+            f"[❌ CSV] {msg}"
+        )
+
+
+        log_admin_stage(
+            "CSV_ERROR",
+            msg
+        )
+
+
+        log_admin(
+            test_type,
+            source_file,
+            compile_cmd_text,
+            exec_cmd_text,
+            True,
+            False,
+            duration,
+            error_msg=msg,
+            input_val=input_size
+        )
+
+
+        return {
+            "name": codename,
+            "error_code": 300
+        }
+
+
+    # ========================================================
+    # ÉXITO
+    # ========================================================
+
+    duration = (
+        time.time() - t0
+    )
+
+
+    log_admin_stage(
+        "EXEC_SUCCESS",
+        (
+            f"Resultados guardados en: "
+            f"{csv_output}"
+        )
+    )
+
+
+    log_admin(
+        test_type,
+        source_file,
+        compile_cmd_text,
+        exec_cmd_text,
+        True,
+        True,
+        duration,
+        input_val=input_size
+    )
+
+
+    log_admin_stage(
+        "TEST_DONE",
+        (
+            f"Test finalizado para "
+            f"{source_file}"
+        )
+    )
+
+
+    print(
+        f"[✔️ {test_type}] "
+        f"Resultados guardados en: "
+        f"{csv_output}"
+    )
+
+
     return csv_output
 
 
+# ============================================================
+# LCS
+# ============================================================
 
-def cae_camm(name, input_size, samples, task):
-    """
-    Compila y ejecuta el código para tareas tipo CAMM (Numerical Input).
-    Utiliza diferentes archivos de entrada según la subvariante (CAMMS, CAMMSO, CAMMR, etc).
-    """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    input_dir = os.path.join(base_dir, "input")
-    output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
-    os.makedirs(output_dir, exist_ok=True)
+def cae_lcs(
+    name,
+    input_size,
+    samples,
+    measurement=None,
+):
 
-    codename = os.path.basename(name).split('.')[0]
-    executable = "./a.out"
-    csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
+    input_file = os.path.join(
+        SERVER_DIR,
+        "input",
+        "english.50MB"
+    )
 
-    if task == 'CAMMS':
-        input_file = os.path.join(input_dir, "numerical_input_same.txt")
-    elif task == 'CAMMSO':
-        input_file = os.path.join(input_dir, "numerical_input_semi_sorted.txt")
+
+    return run_benchmark(
+        test_type="LCS",
+        source_file=name,
+        input_size=input_size,
+        samples=samples,
+        measure_script_name="measurescript4.sh",
+        measure_args=[
+            input_file,
+            input_size,
+            samples
+        ]
+        ,
+        measurement=measurement
+    )
+
+
+# ============================================================
+# CAMM
+# ============================================================
+
+def cae_camm(
+    name,
+    input_size,
+    samples,
+    task,
+    measurement=None,
+):
+
+    input_dir = os.path.join(
+        SERVER_DIR,
+        "input"
+    )
+
+
+    if task.endswith(
+        "CAMMSO"
+    ):
+
+        input_file = os.path.join(
+            input_dir,
+            "numerical_input_semi_sorted.txt"
+        )
+
+
+    elif task.endswith(
+        "CAMMS"
+    ):
+
+        input_file = os.path.join(
+            input_dir,
+            "numerical_input_same.txt"
+        )
+
+
     else:
-        input_file = os.path.join(input_dir, "numerical_input.txt")
 
-    compile_cmd = f"g++ -O3 {name} -o {executable}"
-    exec_cmd = f"bash measurescript3.sh {executable} {input_file} {input_size} {samples} {csv_output}"
-
-    t0 = time.time()
-    log_admin_stage("START_COMPILE", f"Compilando {name}")
-
-    print(f"[⚙️ CAMM] Compilando {name} ...")
-    compile_result = sub.run(
-        compile_cmd.split(),
-        stdout=sub.PIPE,
-        stderr=sub.PIPE,
-        universal_newlines=True
-    )
-    if compile_result.returncode != 0:
-        duration = time.time() - t0
-        print(f"[❌ Error de compilación] {compile_result.stderr}")
-        log_admin_stage("COMPILE_ERROR", compile_result.stderr)
-        log_admin("CAMM", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 100
-        }
-
-    log_admin_stage("START_EXEC", f"Ejecutando test CAMM con input: {input_file}, tamaño: {input_size}, repeticiones: {samples}")
-    print(f"[🚀 CAMM] Ejecutando script de medición con input {input_file} y {samples} repeticiones por cada incremento")
-
-    try:
-        exec_result = sub.run(
-            exec_cmd.split(),
-            stdout=sub.PIPE,
-            stderr=sub.PIPE,
-            universal_newlines=True,
-            timeout=DEFAULT_TIMEOUT
+        input_file = os.path.join(
+            input_dir,
+            "numerical_input.txt"
         )
 
-        if exec_result.returncode != 0:
-            print(f"[❌ Error ejecución] {exec_result.stderr}")
-            duration = time.time() - t0
-            log_admin_stage("EXEC_ERROR", exec_result.stderr)
-            log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 400  # Error inesperado de ejecución
-            }
 
-
-        if not os.path.exists(csv_output):
-            print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
-            duration = time.time() - t0
-            msg = f"No se generó el archivo de resultados: {csv_output}"
-            log_admin_stage("CSV_ERROR", msg)
-            log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 300
-            }
-
-
-        print(f"[✔️ CAMM] Resultados guardados en: {csv_output}")
-        duration = time.time() - t0
-        log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
-        log_admin("CAMM", name, compile_cmd, exec_cmd, True, True, duration, input_val=input_size)
-        log_admin_stage("TEST_DONE", f"Test finalizado para {name}")
-
-    except sub.TimeoutExpired:
-        print("[⏰ Timeout] El script CAMM excedió el tiempo límite")
-        duration = time.time() - t0
-        msg = "El script CAMM excedió el tiempo límite"
-        log_admin_stage("TIMEOUT", msg)
-        log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 200,  
-        }
-    except Exception as e:
-        duration = time.time() - t0
-        log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_camm: {e}")
-        log_admin("CAMM", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 400
-        }
-
-    return csv_output
-
-
-def cae_size(name, input_size, samples):
-    """
-    Compila y ejecuta el código para tareas tipo SIZE (Input Size).
-    Este test ejecuta el algoritmo pasando como argumento un entero
-    y mide el rendimiento utilizando el script measurescript5.sh.
-    """
-    base_dir = os.path.dirname(os.path.abspath(__file__))
-    output_dir = os.path.join(STATIC_DIR, name.split('.')[0])
-    os.makedirs(output_dir, exist_ok=True)
-
-    codename = os.path.basename(name).split('.')[0]
-    executable = "./a.out"
-    csv_output = os.path.join(output_dir, f"{name.split('.')[0]}Results0.csv")
-
-    compile_cmd = f"g++ -O3 {name} -o {executable}"
-    exec_cmd = f"bash measurescript5.sh {executable} {input_size} {samples} {csv_output}"
-
-    t0 = time.time()
-    log_admin_stage("START_COMPILE", f"Compilando {name}")
-
-    print(f"[⚙️ SIZE] Compilando {name} ...")
-    compile_result = sub.run(
-        compile_cmd.split(),
-        stdout=sub.PIPE,
-        stderr=sub.PIPE,
-        universal_newlines=True
+    return run_benchmark(
+        test_type="CAMM",
+        source_file=name,
+        input_size=input_size,
+        samples=samples,
+        measure_script_name="measurescript3.sh",
+        measure_args=[
+            input_file,
+            input_size,
+            samples
+        ]
+        ,
+        measurement=measurement
     )
-    compile_ok = compile_result.returncode == 0
 
-    if not compile_ok:
-        duration = time.time() - t0
-        print(f"[❌ Error de compilación] {compile_result.stderr}")
-        log_admin_stage("COMPILE_ERROR", compile_result.stderr)
-        log_admin("SIZE", name, compile_cmd, "N/A", False, False, duration, error_msg=compile_result.stderr, input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 100
-        }
 
-    log_admin_stage("START_EXEC", f"Ejecutando test SIZE con tamaño: {input_size}, repeticiones: {samples}")
-    print(f"[🚀 SIZE] Ejecutando script de medición con input size {input_size} y {samples} repeticiones por cada incremento")
+# ============================================================
+# SIZE
+# ============================================================
+
+def cae_size(
+    name,
+    input_size,
+    samples,
+    measurement=None,
+):
+
+    return run_benchmark(
+        test_type="SIZE",
+        source_file=name,
+        input_size=input_size,
+        samples=samples,
+        measure_script_name="measurescript5.sh",
+        measure_args=[
+            input_size,
+            samples
+        ]
+        ,
+        measurement=measurement
+    )
+
+
+# ============================================================
+# ENVÍO DE RESULTADOS
+# ============================================================
+
+def send_results(
+    host,
+    port,
+    name_request,
+    result_name,
+    measurement=None
+):
 
     try:
-        exec_result = sub.run(
-            exec_cmd.split(),
-            stdout=sub.PIPE,
-            stderr=sub.PIPE,
-            universal_newlines=True,
-            timeout=DEFAULT_TIMEOUT
-        )
 
-        exec_ok = exec_result.returncode == 0
-        if not exec_ok:
-            print(f"[❌ Error ejecución] {exec_result.stderr}")
-            duration = time.time() - t0
-            log_admin_stage("EXEC_ERROR", exec_result.stderr)
-            log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=exec_result.stderr, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 400  # Error inesperado de ejecución
-            }
-        if not os.path.exists(csv_output):
-            print(f"[❌ Error] No se generó el archivo de resultados: {csv_output}")
-            duration = time.time() - t0
-            msg = f"No se generó el archivo de resultados: {csv_output}"
-            log_admin_stage("CSV_ERROR", msg)
-            log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-            return {
-                "name": codename,
-                "error_code": 300
-            }
+        with open(
+            result_name,
+            "r",
+            encoding="utf-8"
+        ) as file:
 
-        duration = time.time() - t0
-        log_admin_stage("EXEC_SUCCESS", f"Resultados guardados en: {csv_output}")
-        log_admin("SIZE", name, compile_cmd, exec_cmd, True, True, duration, input_val=input_size)
-        print(f"[✔️ SIZE] Resultados guardados en: {csv_output}")
-        log_admin_stage("TEST_DONE", f"Test finalizado para {name}")
+            results = file.read()
 
-    except sub.TimeoutExpired:
-        print("[⏰ Timeout] El script SIZE excedió el tiempo límite")
-        duration = time.time() - t0
-        msg = "El script SIZE excedió el tiempo límite"
-        log_admin_stage("TIMEOUT", msg)
-        log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=msg, input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 200,  
-        }
-
-    except Exception as e:
-        duration = time.time() - t0
-        log_admin_stage("UNEXPECTED_ERROR", f"Fallo inesperado en cae_size: {e}")
-        log_admin("SIZE", name, compile_cmd, exec_cmd, True, False, duration, error_msg=str(e), input_val=input_size)
-        return {
-            "name": codename,
-            "error_code": 400
-        }
-
-    return csv_output
-
-def send_results(host, port2, name_request, result_name):
-    """
-    Envía el archivo de resultados generado (.csv) al servidor maestro a través de un socket.
-    host: IP del servidor que escucha los resultados (normalmente 127.0.0.1).
-    port: puerto 60000 donde el servidor recibe los resultados.
-    name_request: nombre base del archivo (sin extensión).
-    result_name: ruta completa al archivo .csv con los resultados a enviar.
-    """
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s2:
-            s2.connect((host, port2))
-            print(f"[📤 Enviando resultados] Archivo: {result_name} => {host}:{port2}")
-            with open(result_name, 'r') as f:
-                results = f.read()
-
-            # Construimos el payload en formato JSON
-            payload = {
-                "name": name_request + "Results",
-                "results": results
-            }
-
-            # Enviamos el contenido serializado
-            s2.sendall(json.dumps(payload).encode())
-            print("[✔️ Resultados enviados correctamente]")
 
     except FileNotFoundError:
-        log_admin_stage("RESULT_SEND_ERROR", f"No se encontró el archivo de resultados: {result_name}")
-        print(f"[❌ Error al enviar resultados] Archivo no encontrado: {result_name}")
-    except Exception as e:
-        log_admin_stage("RESULT_SEND_ERROR", f"Error al enviar resultados a {host}:{port2} — {e}")
-        print(f"[❌ Error al enviar resultados] {e}")
 
-def cleanup_files(*files):
-    """
-    Elimina archivos especificados después de la ejecución del test.
-    Este paso es útil para liberar espacio y evitar acumulación de archivos temporales.
+        log_admin_stage(
+            "RESULT_SEND_ERROR",
+            (
+                f"No se encontró el archivo "
+                f"{result_name}"
+            )
+        )
 
-    Parámetros:
-    *files -- Lista de archivos a eliminar (ej. .cpp, .out, .csv)
-    """
-    print(f"[🧹 Cleanup] Eliminando archivos: {', '.join(files)}")
+        print(
+            f"[❌ Resultado no encontrado: "
+            f"{result_name}]"
+        )
+
+        return False
+
+
+    payload = {
+        "name": (
+            name_request
+            + "Results"
+        ),
+        "results": results,
+        "hardware_snapshot": collect_hardware_snapshot(
+            measurement=measurement,
+        ),
+    }
+
+
     try:
-        sub.run(["rm"] + list(files), timeout=15)
-        print("[✔️ Cleanup] Archivos eliminados correctamente")
-    except Exception as e:
-        log_admin_stage("CLEANUP_ERROR", f"No se pudieron eliminar archivos: {', '.join(files)} — {e}")
-        print(f"[❌ Cleanup error] No se pudieron eliminar archivos: {e}")
+
+        with socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        ) as sock:
+
+            sock.settimeout(15)
+
+            sock.connect(
+                (host, port)
+            )
+
+            sock.sendall(
+                json.dumps(
+                    payload
+                ).encode("utf-8")
+            )
+
+
+        print(
+            f"[✔️ Resultados enviados "
+            f"a {host}:{port}]"
+        )
+
+        return True
+
+
+    except OSError as e:
+
+        log_admin_stage(
+            "RESULT_SEND_ERROR",
+            (
+                f"Error enviando resultados "
+                f"a {host}:{port} — {e}"
+            )
+        )
+
+        print(
+            f"[❌ Error enviando "
+            f"resultados: {e}]"
+        )
+
+        return False
+
+
+def send_json_result(
+    host,
+    port,
+    error_dict,
+    measurement=None,
+):
+    error_dict = dict(error_dict)
+    error_dict["hardware_snapshot"] = collect_hardware_snapshot(
+        measurement=measurement,
+    )
+
+    try:
+
+        with socket.socket(
+            socket.AF_INET,
+            socket.SOCK_STREAM
+        ) as sock:
+
+            sock.settimeout(15)
+
+            sock.connect(
+                (host, port)
+            )
+
+            sock.sendall(
+                json.dumps(
+                    error_dict
+                ).encode("utf-8")
+            )
+
+
+        print(
+            f"[📤 JSON de error enviado] "
+            f"{error_dict}"
+        )
+
+        return True
+
+
+    except OSError as e:
+
+        log_admin_stage(
+            "RESULT_SEND_ERROR",
+            (
+                f"Error enviando JSON "
+                f"a {host}:{port} — {e}"
+            )
+        )
+
+        print(
+            f"[❌ Error enviando "
+            f"JSON de error: {e}]"
+        )
+
+        return False
+
+
+# ============================================================
+# COLA LOCAL
+# ============================================================
+
+def local_queue_has_recent_task():
+
+    now = time.time()
+
+
+    try:
+
+        files = os.listdir(
+            STATUS_DIR
+        )
+
+
+    except OSError as e:
+
+        print(
+            f"[⚠️ No se pudo leer "
+            f"{STATUS_DIR}: {e}]"
+        )
+
+        return None
+
+
+    for filename in files:
+
+        path = os.path.join(
+            STATUS_DIR,
+            filename
+        )
+
+
+        if not os.path.isfile(path):
+            continue
+
+
+        try:
+
+            age = (
+                now
+                - os.path.getmtime(path)
+            )
+
+
+            if age > QUEUE_RECENT_SECONDS:
+                continue
+
+
+            with open(
+                path,
+                "r",
+                encoding="utf-8"
+            ) as file:
+
+                content = file.read()
+
+
+            if "IN QUEUE" in content:
+
+                return filename
+
+
+        except OSError:
+            continue
+
+
+    return None
+
+
+# ============================================================
+# COLA REMOTA
+# ============================================================
+
+def remote_queue_has_recent_task():
+
+    recent_minutes = max(
+        1,
+        (
+            QUEUE_RECENT_SECONDS + 59
+        ) // 60
+    )
+
+
+    remote_cmd = (
+        f"find "
+        f"{shlex.quote(REMOTE_STATUS_DIR)} "
+        f"-type f "
+        f"-mmin -{recent_minutes} "
+        f"-exec grep -l "
+        f"'IN QUEUE' {{}} +"
+    )
+
+
+    try:
+        result = sub.run(
+            [
+                "ssh",
+                REMOTE_SSH_TARGET,
+                remote_cmd
+            ],
+            stdout=sub.PIPE,
+            stderr=sub.PIPE,
+            text=True,
+            timeout=REMOTE_SSH_TIMEOUT_SECONDS,
+        )
+    except sub.TimeoutExpired:
+        print(
+            "[⚠️ SSH] La consulta de la cola remota excedió el tiempo límite."
+        )
+        return None
+
+
+    if result.returncode != 0:
+
+        error = (
+            result.stderr.strip()
+        )
+
+        if error:
+
+            print(
+                f"[⚠️ SSH] {error}"
+            )
+
+        return None
+
+
+    output = (
+        result.stdout.strip()
+    )
+
+
+    if not output:
+        return None
+
+
+    first_result = (
+        output.splitlines()[0]
+    )
+
+
+    return os.path.basename(
+        first_result
+    )
+
+
+# ============================================================
+# ESPERA DE TAREA
+# ============================================================
 
 def wait_until_recent_in_queue():
-    """
-    Espera hasta detectar al menos un archivo en el servidor con:
-    - Contenido igual a 'IN QUEUE'
-    - Modificado en los últimos 5 minutos
 
-    Esto evita conectar cuando hay archivos viejos o tareas ya procesadas.
-    """
-    print("[⏳ Esperando tareas recientes con estado IN QUEUE...]")
+    print(
+        f"[⏳ Esperando IN QUEUE | "
+        f"modo={SLAVE_MODE} | "
+        f"master="
+        f"{MASTER_HOST}:"
+        f"{MASTER_SEND_PORT}]"
+    )
+
+
     while True:
+
         try:
-            cmd = [
-                "ssh", "jose@performance.inf.udec.cl",
-                "find /home/jose/performance-system/Server/status -type f -mmin -5 -exec grep -l 'IN QUEUE' {} +"
-            ]
-            result = sub.run(cmd, stdout=sub.PIPE, stderr=sub.PIPE)
-            output = result.stdout.decode().strip()
 
-            if output:
-                print("[✔️ Tarea IN QUEUE reciente detectada. Conectando al servidor...]")
-                break
+            if SLAVE_MODE == "local":
+
+                filename = (
+                    local_queue_has_recent_task()
+                )
+
             else:
-                print("[🔁 Nada nuevo. Revisando de nuevo en 10 segundos...]")
+
+                filename = (
+                    remote_queue_has_recent_task()
+                )
+
+
+            if filename:
+
+                print(
+                    f"[✔️ Tarea IN QUEUE "
+                    f"detectada: {filename}]"
+                )
+
+                return filename
+
+
+            print(
+                f"[🔁 Nada nuevo. "
+                f"Revisando en "
+                f"{QUEUE_POLL_SECONDS} "
+                f"segundos...]"
+            )
+
+
         except Exception as e:
-            log_admin_stage("QUEUE_MONITOR_ERROR", f"Error verificando IN QUEUE recientes: {e}")
-            print(f"[⚠️ Error verificando IN QUEUE recientes]: {e}")
-        time.sleep(10)
 
-def enviar_json_error(codename, code, message):
-    error_payload = {
-        "name": codename,
-        "error": True,
-        "error_code": code,
-        "message": message
-    }    
-def send_json_result(host, port, error_dict):
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            s.connect((host, port))
-            s.sendall(json.dumps(error_dict).encode())
-            print(f"[❌ JSON error enviado] {error_dict}")
-    except Exception as e:
-        print(f"[❌ ERROR al enviar JSON de error] {e}")
+            log_admin_stage(
+                "QUEUE_MONITOR_ERROR",
+                (
+                    f"Error verificando "
+                    f"cola — {e}"
+                )
+            )
 
-# === FUNCION PRINCIPAL DE EJECUCION ===
+            print(
+                f"[⚠️ Error verificando "
+                f"cola: {e}]"
+            )
+
+
+        time.sleep(
+            QUEUE_POLL_SECONDS
+        )
+
+
+# ============================================================
+# MAIN
+# ============================================================
+
 def main():
-    """
-    Ciclo principal del Slave.
-    - Se conecta al servidor maestro.
-    - Recibe el payload con nombre, código, input_size y tipo de tarea.
-    - Compila y ejecuta según el tipo de test.
-    - Envía los resultados y elimina archivos temporales.
-    """
+
+    print(
+        "========================================"
+    )
+
+    print(
+        " PERFORMANCE SYSTEM - SLAVE"
+    )
+
+    print(
+        "========================================"
+    )
+
+    print(
+        f"[🔧 Modo] "
+        f"{SLAVE_MODE}"
+    )
+
+    print(
+        f"[🔧 Master envío] "
+        f"{MASTER_HOST}:"
+        f"{MASTER_SEND_PORT}"
+    )
+
+    print(
+        f"[🔧 Master resultados] "
+        f"{MASTER_HOST}:"
+        f"{MASTER_RESULT_PORT}"
+    )
+
+    print(
+        f"[🔧 Timeout] "
+        f"{DEFAULT_TIMEOUT} segundos"
+    )
+
+    print(
+        "========================================"
+    )
+
+
     while True:
-        payload_dict = None
-        filename = None
-        result_name = None
-        task_type = None
+
+        # Esperar hasta que exista una tarea
         wait_until_recent_in_queue()
 
-        with connect_to_server(HOST, PORT) as s:
-            try:
-                payload_dict = receive_payload(s)
-            except json.JSONDecodeError as e:
-                log_admin_stage("JSON_ERROR", f"Payload inválido recibido desde {HOST}:{PORT} — {e}")
-                print(f"[❌ ERROR] Payload JSON inválido recibido: {e}")
-                continue
-            except Exception as e:
-                log_admin_stage("UNEXPECTED_ERROR", f"Error inesperado al recibir payload: {e}")
-                print(f"[❌ ERROR inesperado] {e}")
-                continue
 
-        print(f"[📦 Payload recibido]\n{json.dumps(payload_dict, indent=2)}")
-        print(f"[🔧 Configuración] Timeout por defecto: {DEFAULT_TIMEOUT} segundos")
+        # ----------------------------------------------------
+        # RECIBIR PAYLOAD
+        # ----------------------------------------------------
 
-        # Guardar código en archivo local
-        filename = write_code_to_file(payload_dict["name"], payload_dict["code"])
+        try:
+
+            with connect_to_server(
+                MASTER_HOST,
+                MASTER_SEND_PORT
+            ) as sock:
+
+                payload_dict = (
+                    receive_payload(sock)
+                )
+
+
+        except json.JSONDecodeError as e:
+
+            log_admin_stage(
+                "JSON_ERROR",
+                (
+                    f"Payload inválido "
+                    f"— {e}"
+                )
+            )
+
+            print(
+                f"[❌ Payload JSON "
+                f"inválido: {e}]"
+            )
+
+            time.sleep(
+                QUEUE_POLL_SECONDS
+            )
+
+            continue
+
+
+        except Exception as e:
+
+            log_admin_stage(
+                "UNEXPECTED_ERROR",
+                (
+                    f"Error recibiendo "
+                    f"payload — {e}"
+                )
+            )
+
+            print(
+                f"[❌ Error recibiendo "
+                f"payload: {e}]"
+            )
+
+            time.sleep(
+                QUEUE_POLL_SECONDS
+            )
+
+            continue
+
+
+        # ----------------------------------------------------
+        # VALIDAR PAYLOAD
+        # ----------------------------------------------------
+
+        if (
+            "name" not in payload_dict
+            or
+            "code" not in payload_dict
+        ):
+
+            print(
+                "[❌ Payload incompleto: "
+                "faltan 'name' y/o 'code'.]"
+            )
+
+            time.sleep(
+                QUEUE_POLL_SECONDS
+            )
+
+            continue
+
+
+        print(
+            "[📦 Payload recibido]"
+        )
+
+        print(
+            json.dumps(
+                {
+                    "name":
+                        payload_dict.get(
+                            "name"
+                        ),
+
+                    "cmd":
+                        payload_dict.get(
+                            "cmd"
+                        ),
+
+                    "input_size":
+                        payload_dict.get(
+                            "input_size"
+                        ),
+
+                    "samples":
+                        payload_dict.get(
+                            "samples"
+                        ),
+
+                    "code_size":
+                        len(
+                            payload_dict.get(
+                                "code",
+                                ""
+                            )
+                        )
+                },
+                indent=2
+            )
+        )
+
+
+        # ----------------------------------------------------
+        # GUARDAR CÓDIGO
+        # ----------------------------------------------------
+
+        filename = write_code_to_file(
+            payload_dict["name"],
+            payload_dict["code"]
+        )
+
+
         if filename is None:
-            log_admin_stage("FATAL_WRITE_ERROR", f"No se pudo guardar el archivo para {payload_dict['name']}")
-            print(f"[❌ ABORTADO] No se pudo guardar el archivo, se omite test.")
+
+            time.sleep(
+                QUEUE_POLL_SECONDS
+            )
+
             continue
 
-        print(f"DEBUG filename: '{filename}'")
 
-        input_size = payload_dict.get("input_size", 10000)  # Valor por defecto: 10000
-        samples = payload_dict.get("samples", "30")
-        result_name = None
-        task_type = "UNKNOWN"
+        task_name = str(
+            payload_dict["name"]
+        )
 
-        # Determinar tipo de test según nombre del archivo (uno solo se ejecuta)
-        if "LCS" in payload_dict["name"]:
-            print(f"[🧩 Test detectado: LCS] Ejecutando cae_lcs")
-            task_type = "LCS"
-            result_name = cae_lcs(filename, input_size, samples)
 
-        elif "SIZE" in payload_dict["name"]:
-            print(f"[🧩 Test detectado: SIZE] Ejecutando cae_size")
-            task_type = "SIZE"
-            result_name = cae_size(filename, input_size, samples)
+        input_size = (
+            payload_dict.get(
+                "input_size",
+                10000
+            )
+        )
 
-        elif "CAMM" in payload_dict["name"]:
-            print(f"[🧩 Test detectado: CAMM] Ejecutando cae_camm")
-            task_type = "CAMM"
-            result_name = cae_camm(filename, input_size, samples, payload_dict["name"])
+
+        samples = (
+            payload_dict.get(
+                "samples",
+                30
+            )
+        )
+
+        measurement = payload_dict.get(
+            "measurement"
+        )
+
+
+        codename = os.path.splitext(
+            os.path.basename(filename)
+        )[0]
+
+
+        executable = executable_path(
+            codename
+        )
+
+
+        # ----------------------------------------------------
+        # SELECCIONAR TEST
+        # ----------------------------------------------------
+
+        if "LCS" in task_name:
+
+            print(
+                "[🧩 Test detectado: LCS]"
+            )
+
+            result_name = cae_lcs(
+                filename,
+                input_size,
+                samples,
+                measurement=measurement,
+            )
+
+
+        elif "SIZE" in task_name:
+
+            print(
+                "[🧩 Test detectado: SIZE]"
+            )
+
+            result_name = cae_size(
+                filename,
+                input_size,
+                samples,
+                measurement=measurement,
+            )
+
+
+        elif "CAMM" in task_name:
+
+            print(
+                "[🧩 Test detectado: CAMM]"
+            )
+
+            result_name = cae_camm(
+                filename,
+                input_size,
+                samples,
+                task_name,
+                measurement=measurement,
+            )
+
 
         else:
-            print(f"[⚠️ Test no identificado en nombre: {payload_dict['name']}] Se omite ejecución.")
-            log_admin_stage("UNKNOWN_TEST_TYPE", f"Archivo recibido sin tipo identificable: {payload_dict['name']}")
+
+            print(
+                f"[⚠️ Test no "
+                f"identificado: "
+                f"{task_name}]"
+            )
+
+
+            log_admin_stage(
+                "UNKNOWN_TEST_TYPE",
+                (
+                    f"Tarea sin tipo "
+                    f"identificable: "
+                    f"{task_name}"
+                )
+            )
+
+
+            cleanup_files(
+                filename,
+                executable
+            )
+
+
+            time.sleep(
+                QUEUE_POLL_SECONDS
+            )
+
             continue
 
-        # Eliminar archivos temporales: fuente .cpp y ejecutable
-        filename = filename.replace(" ", "")
-        cleanup_files(filename, 'a.out')
+
+        # ----------------------------------------------------
+        # LIMPIAR FUENTE Y EJECUTABLE
+        # ----------------------------------------------------
+
+        cleanup_files(
+            filename,
+            executable
+        )
 
 
-        if isinstance(result_name, dict) and "error_code" in result_name:
-            send_json_result(HOST, 60000, result_name)  # nueva función simple
+        # ----------------------------------------------------
+        # DEVOLVER RESULTADO
+        # ----------------------------------------------------
+
+        if (
+            isinstance(
+                result_name,
+                dict
+            )
+            and
+            "error_code"
+            in result_name
+        ):
+
+            send_json_result(
+                MASTER_HOST,
+                MASTER_RESULT_PORT,
+                result_name,
+                measurement=measurement,
+            )
+
+
         elif result_name:
-            send_results(HOST, 60000, payload_dict["name"], result_name)
-            cleanup_files(result_name)
-            print(f"[✅ Resultado final enviado para {payload_dict['name']}]\n")
+
+            sent = send_results(
+                MASTER_HOST,
+                MASTER_RESULT_PORT,
+                task_name,
+                result_name,
+                measurement=measurement,
+            )
+
+
+            if sent:
+
+                cleanup_files(
+                    result_name
+                )
+
+                print(
+                    f"[✅ Resultado final "
+                    f"enviado para "
+                    f"{task_name}]"
+                )
+
+
         else:
-            log_admin_stage("RESULT_NOT_GENERATED", f"No se generaron resultados para {payload_dict['name']}")
-            print(f"[❌ No se generaron resultados para {payload_dict['name']}]\n")
 
-        time.sleep(10)
+            log_admin_stage(
+                "RESULT_NOT_GENERATED",
+                (
+                    f"No se generaron "
+                    f"resultados para "
+                    f"{task_name}"
+                )
+            )
+
+            print(
+                f"[❌ No se generaron "
+                f"resultados para "
+                f"{task_name}]"
+            )
 
 
+        time.sleep(
+            QUEUE_POLL_SECONDS
+        )
 
-def handle_sigint(signal_num, frame):
-    log_admin_stage("INTERRUPT", "Ejecución detenida manualmente con Ctrl+C")
-    print("\n[⛔ Interrumpido por el usuario]")
+
+# ============================================================
+# CTRL+C
+# ============================================================
+
+def handle_sigint(
+    signal_num,
+    frame
+):
+
+    log_admin_stage(
+        "INTERRUPT",
+        (
+            "Ejecución detenida "
+            "manualmente con Ctrl+C"
+        )
+    )
+
+    print(
+        "\n[⛔ Slave detenido "
+        "por el usuario]"
+    )
+
     sys.exit(0)
 
-signal.signal(signal.SIGINT, handle_sigint)
+
+signal.signal(
+    signal.SIGINT,
+    handle_sigint
+)
 
 
 if __name__ == "__main__":
     main()
-

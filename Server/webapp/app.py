@@ -1,6 +1,7 @@
 from flask import (
     Flask,
     request,
+    g,
     render_template,
     abort,
     url_for,
@@ -10,9 +11,10 @@ from flask import (
     send_from_directory,
 )
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 import matplotlib.pyplot as plt
 import pandas as pd
-import subprocess
+import shutil
 import random
 import socket
 import json
@@ -23,12 +25,24 @@ from statistics import mean
 import sys
 import numpy as np
 import os
+import re
+from pathlib import Path, PurePosixPath
 
 from .dataProcessing import *
 from .socketUtils import *
 
 
-from .utils.api_errors import APIError
+from .utils.api_errors import (
+    APIError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+)
+from .utils.auth_decorators import (
+    admin_required,
+    get_user_role_name,
+    login_required,
+)
 from ..db_connection import get_connection  
 
 
@@ -39,6 +53,39 @@ from .routes.submissions_routes import submissions_bp
 from .routes.metrics_routes import metrics_bp
 from .routes.admin_access_requests_routes import admin_access_requests_bp
 from .routes.admin_audit_log_routes import admin_audit_log_bp
+from .routes.results_routes import results_bp
+from .routes.execution_status_routes import execution_status_bp
+from .routes.teacher_courses_routes import teacher_courses_bp
+
+from .services.execution_creation_service import (
+    InvalidExecutionRequest,
+    create_submission_bundle,
+)
+from .services.execution_state_service import mark_failed
+from .services.execution_pipeline_service import (
+    combined_result_path,
+    read_legacy_outcome,
+    result_bundle_exists,
+)
+from .services.worker_execution_service import (
+    get_execution_context,
+    mark_processing_failed,
+    mark_worker_completed,
+    mark_worker_failed,
+    mark_worker_started,
+    persist_worker_outcome,
+)
+from .services.upload_service import (
+    UploadValidationError,
+    remove_stored_upload,
+    store_and_inspect_zip,
+)
+from .services.execution_access_service import (
+    ExecutionAccessForbidden,
+    ExecutionAccessNotFound,
+    assert_execution_viewer,
+)
+from .repositories.submission_repository import update_submission_status
 
 
 
@@ -51,6 +98,7 @@ STATUS_DIR = os.path.join(BASE_DIR, "status")
 INPUT_DIR = os.path.join(BASE_DIR, "input")
 STATIC_DIR = os.path.join(BASE_DIR, "webapp", "static")
 RESULTS_DIR = os.path.join(BASE_DIR, "results")
+UPLOAD_DIR = os.path.join(BASE_DIR, "uploads")
 
 # Asegurar que existan
 os.makedirs(TEST_DIR, exist_ok=True)
@@ -58,18 +106,63 @@ os.makedirs(STATUS_DIR, exist_ok=True)
 os.makedirs(INPUT_DIR, exist_ok=True)
 os.makedirs(STATIC_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Ruta al frontend compilado
 FRONTEND_DIR = os.path.join(BASE_DIR, "webapp", "frontend")
 
 # Initialize the Flask app
-app = Flask(__name__, static_folder=FRONTEND_DIR, static_url_path="")
+# El frontend compilado se sirve explícitamente mediante serve_frontend().
+# No se registra la ruta estática automática de Flask porque entraría en
+# conflicto con las rutas client-side de React Router (/profile, /login, etc.).
+app = Flask(__name__, static_folder=None)
 
-# 🔐 Clave secreta para sesiones (leyendo de .env si existe)
-app.secret_key = os.getenv("FLASK_SECRET_KEY", "dev-secret")
+# No se conserva ningún secreto de aplicación dentro del repositorio.
+app.secret_key = os.getenv("FLASK_SECRET_KEY")
+app.config["MAX_CONTENT_LENGTH"] = max(
+    1,
+    int(os.getenv("MAX_UPLOAD_REQUEST_BYTES", str(12 * 1024 * 1024))),
+)
+STATUS_AUTO_CLEANUP_ENABLED = os.getenv(
+    "STATUS_AUTO_CLEANUP_ENABLED",
+    "0",
+).strip().casefold() in {"1", "true", "yes", "on"}
+STATUS_RETENTION_LIMIT = max(
+    1,
+    int(os.getenv("STATUS_RETENTION_LIMIT", "50")),
+)
 
 # Enable Cross-Origin Resource Sharing (CORS)
-CORS(app)
+CORS_ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        "http://127.0.0.1:3000,http://localhost:3000",
+    ).split(",")
+    if origin.strip()
+]
+if "*" in CORS_ALLOWED_ORIGINS:
+    raise RuntimeError(
+        "CORS_ORIGINS no puede contener '*' cuando se aceptan credenciales."
+    )
+CORS(
+    app,
+    supports_credentials=True,
+    origins=CORS_ALLOWED_ORIGINS,
+)
+
+
+@app.after_request
+def add_application_security_headers(response):
+    """Cabeceras compatibles con React y los iframes Plotly same-origin."""
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "SAMEORIGIN")
+    response.headers.setdefault("Referrer-Policy", "same-origin")
+    response.headers.setdefault(
+        "Permissions-Policy",
+        "camera=(), microphone=(), geolocation=()",
+    )
+    return response
 
 # =========================
 # Manejadores globales de error
@@ -81,6 +174,35 @@ def handle_api_error(exc: APIError):
     Maneja errores de negocio/validación definidos en api_errors.py.
     """
     return exc.to_response()
+
+
+@app.errorhandler(HTTPException)
+def handle_http_error(exc: HTTPException):
+    """Evita que Flask entregue páginas HTML para errores HTTP."""
+    status = int(exc.code or 500)
+    messages = {
+        400: "La solicitud no tiene un formato válido.",
+        401: "Debes iniciar sesión para acceder a este recurso.",
+        403: "No tienes permisos para acceder a este recurso.",
+        404: "El recurso solicitado no existe.",
+        405: "El método solicitado no está permitido para este recurso.",
+        413: "El archivo enviado supera el tamaño permitido.",
+    }
+    message = messages.get(
+        status,
+        "Error interno del servidor."
+        if status >= 500
+        else "No fue posible completar la solicitud.",
+    )
+
+    return jsonify(
+        {
+            "error": {
+                "message": message,
+                "code": "HTTP_{}".format(status),
+            }
+        }
+    ), status
 
 
 @app.errorhandler(Exception)
@@ -111,30 +233,78 @@ app.register_blueprint(submissions_bp)
 app.register_blueprint(metrics_bp)
 app.register_blueprint(admin_access_requests_bp)
 app.register_blueprint(admin_audit_log_bp)
+app.register_blueprint(results_bp)
+app.register_blueprint(execution_status_bp)
+app.register_blueprint(teacher_courses_bp)
 
 # Create an empty list to store measurement queue items
 queuelist = []
 # statusdict = OrderedDict()
 # Define routes and their respective functions
 
+CODENAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+STATUS_FILENAME_RE = re.compile(
+    r"^(?P<codename>[A-Za-z0-9_-]+)(?:_status|Results_status)\.json$"
+)
+
+
+def _assert_execution_access(codename):
+    codename = str(codename or "")
+    if not CODENAME_RE.fullmatch(codename):
+        raise NotFoundError("La ejecución solicitada no existe.")
+
+    role_name = get_user_role_name(g.current_user)
+    try:
+        return assert_execution_viewer(
+            codename=codename,
+            current_user_id=g.current_user["id"],
+            current_role_name=role_name,
+        )
+    except ExecutionAccessNotFound:
+        raise NotFoundError("La ejecución solicitada no existe.")
+    except ExecutionAccessForbidden:
+        raise ForbiddenError(
+            "No tienes permiso para acceder a esta ejecución."
+        )
+
+
+def _codename_from_static_path(filename):
+    normalized = str(filename or "").replace("\\", "/")
+    path = PurePosixPath(normalized)
+    if (
+        not normalized
+        or path.is_absolute()
+        or ".." in path.parts
+        or not path.parts
+    ):
+        raise NotFoundError("El archivo solicitado no existe.")
+
+    codename = path.parts[0]
+    _assert_execution_access(codename)
+    return codename
+
 
 @app.route("/hola", methods=["GET"])
+@login_required
+@admin_required
 def hola():
-    t = subprocess.run(
-        ["ls", "status"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-    )
-    return str(t.stdout)
+    return jsonify({"ok": True}), 200
 
 
 @app.route("/<code>/mean")
+@login_required
 def jsonifyMean(code):
+    _assert_execution_access(code)
     df = pd.DataFrame()
     dicc = {}
     try:
-        df = pd.read_csv("static/" + code + "/" + code + "ResultsFinal.csv")
+        df = pd.read_csv(
+            os.path.join(
+                STATIC_DIR,
+                code,
+                code + "ResultsFinal.csv",
+            )
+        )
     except FileNotFoundError:
         abort(404)
 
@@ -153,7 +323,9 @@ def jsonifyMean(code):
 
 # Route to check the status of a code execution
 @app.route("/checkstatus/<code>", methods=["GET"])
+@login_required
 def tmr(code):
+    _assert_execution_access(code)
     try:
         status_path = os.path.join(STATUS_DIR, code)
         with open(status_path, "r+", newline="\n") as temp:
@@ -168,6 +340,8 @@ def tmr(code):
 
 # Route to check the status of measurement machines
 @app.route("/checkmeasurers", methods=["GET"])
+@login_required
+@admin_required
 def check():
     if abs(activeR - activeS) != 0:
         return "Algunos medidores no responden!", 200
@@ -176,7 +350,13 @@ def check():
 
 
 @app.route("/status/<filename>")
+@login_required
 def serve_status_json(filename):
+    match = STATUS_FILENAME_RE.fullmatch(str(filename or ""))
+    if not match:
+        raise NotFoundError("El estado solicitado no existe.")
+    _assert_execution_access(match.group("codename"))
+
     full_path = os.path.join(STATIC_DIR, filename)  # ANTES era STATUS_DIR
     if not os.path.exists(full_path):
         abort(404)
@@ -186,113 +366,281 @@ def serve_status_json(filename):
             return jsonify(data)
         except Exception as e:
             print(f"❌ Error al parsear JSON desde {filename}:", e)
-            return make_response("Error al leer archivo de estado", 500)
+            return jsonify(
+                {
+                    "error": {
+                        "message": "No fue posible leer el estado solicitado.",
+                        "code": "STATUS_READ_ERROR",
+                    }
+                }
+            ), 500
 
 
 
 @app.route("/sendcode", methods=["POST"])
+@login_required
 def cap_code():
-    # 1) Validar que venga la parte "file" en el formulario
-    if "file" not in request.files:
-        print("bad request, no file")
-        return "No file part", 400
+    """
+    CORE-04B-2.
 
-    file = request.files["file"]
+    PostgreSQL registra Submission + Executions antes de que el trabajo
+    entre a la cola legacy.
+    """
+    file = request.files.get("file")
+    if file is None:
+        raise ValidationError(
+            "Debe adjuntar un archivo ZIP.",
+            extra={"field": "file"},
+        )
+
     task_type = request.form.get("task_type", "")
-    input_size = request.form.get("input_size", 10000)
-    samples = request.form.get("samples", default="30")
-    username = request.form.get("username", "")
+    input_size = request.form.get("input_size", "10000")
+    samples = request.form.get("samples", "30")
+    course_id = (
+        request.form.get("course_id")
+        or request.form.get("courseId")
+        or None
+    )
 
-    # 2) Validación robusta de archivo
-    if file is None or file.filename is None or file.filename.strip() == "":
-        # Aquí evitamos que el linter reclame por posible None
-        return "No selected file", 400
+    title = (request.form.get("title") or "").strip()
+    if not title:
+        title = "{} - {}".format(
+            task_type or "Análisis",
+            (file.filename or "upload.zip").strip(),
+        )
 
-    filename = file.filename.strip()
+    stored_upload = None
+    bundle = None
 
-    # 3) Debe ser un ZIP (case-insensitive)
-    if not filename.lower().endswith(".zip"):
-        return "Invalid file type", 400
+    try:
+        stored_upload = store_and_inspect_zip(
+            file,
+            UPLOAD_DIR,
+        )
 
-    print("Zip package received!")
-    temp_zip_path = os.path.join(BASE_DIR, "temp_upload.zip")
-    file.save(temp_zip_path)
+        source_specs = [
+            {"original_filename": source.original_filename}
+            for source in stored_upload.sources
+        ]
 
-    with zipfile.ZipFile(temp_zip_path, "r") as zip_ref:
-        cpp_dirs_onZip = []
-        names_onZip = []
-        fileNames = []
+        bundle = create_submission_bundle(
+            user_id=g.current_user["id"],
+            title=title,
+            archive_path=os.path.relpath(
+                stored_upload.stored_path,
+                BASE_DIR,
+            ),
+            archive_sha256=stored_upload.sha256,
+            benchmark=task_type,
+            input_size=input_size,
+            samples=samples,
+            source_specs=source_specs,
+            course_id=course_id,
+            compiler_flags="-O3",
+            language="C++",
+        )
 
-        for file_info in zip_ref.infolist():
-            if file_info.filename.endswith(".cpp"):
-                unique_id = str(random.randint(0, 13458345324))
-                tag = (
-                    task_type
-                    if task_type in ["CAMM", "CAMMR", "CAMMS", "CAMMSO", "LCS", "SIZE"]
-                    else ""
+    except (UploadValidationError, InvalidExecutionRequest) as exc:
+        if stored_upload is not None:
+            remove_stored_upload(stored_upload.stored_path)
+        raise ValidationError(str(exc))
+
+    except Exception:
+        if bundle is None and stored_upload is not None:
+            remove_stored_upload(stored_upload.stored_path)
+        raise
+
+    cpp_dirs_on_zip = []
+    names_on_zip = []
+    file_names = []
+    created_artifacts = []
+
+    try:
+        for source, execution in zip(
+            stored_upload.sources,
+            bundle["executions"],
+        ):
+            codename = execution["codename"]
+
+            status_json_path = os.path.join(
+                STATIC_DIR,
+                codename + "_status.json",
+            )
+            cpp_file_dir = os.path.join(
+                TEST_DIR,
+                codename + ".cpp",
+            )
+            status_file_path = os.path.join(
+                STATUS_DIR,
+                codename,
+            )
+
+            status_data = {
+                "status": "IN QUEUE",
+                "username": (
+                    g.current_user.get("email")
+                    or g.current_user.get("full_name")
+                    or ""
+                ),
+                "task_type": task_type,
+                "input_size": input_size,
+                "samples": samples,
+                "submission_id": bundle["submission"]["id"],
+                "execution_public_id": execution["public_id"],
+                "files": [
+                    {
+                        "codename": codename,
+                        "original_filename": source.original_filename,
+                    }
+                ],
+            }
+
+            with open(
+                status_json_path,
+                "w",
+                encoding="utf-8",
+            ) as handle:
+                json.dump(
+                    status_data,
+                    handle,
+                    indent=4,
+                    ensure_ascii=False,
                 )
-                name = unique_id + tag
-                status_json_path = os.path.join(STATIC_DIR, name + "_status.json")
+            created_artifacts.append(status_json_path)
 
-                # Crear estructura inicial
-                data = {
-                    "status": "IN QUEUE",
-                    "username": username,
-                    "task_type": task_type,
-                    "input_size": input_size,
-                    "samples": samples,
-                    "files": [
-                        {
-                            "codename": name,
-                            "original_filename": os.path.basename(file_info.filename),
-                        }
-                    ],
-                }
+            with open(
+                cpp_file_dir,
+                "w",
+                encoding="utf-8",
+                newline="\n",
+            ) as handle:
+                handle.write(source.content)
+            created_artifacts.append(cpp_file_dir)
 
-                with open(status_json_path, "w") as f:
-                    json.dump(data, f, indent=4)
+            with open(
+                status_file_path,
+                "w",
+                encoding="utf-8",
+                newline="\n",
+            ) as handle:
+                handle.write("IN QUEUE")
+            created_artifacts.append(status_file_path)
 
-                escribir_estado(name, "📦 Archivo añadido a la cola de espera.")
-                print("✅ JSON inicial creado:", status_json_path)
+            escribir_estado(
+                codename,
+                "📦 Archivo añadido a la cola de espera.",
+            )
 
-                cpp_file_dir = os.path.join(TEST_DIR, name + ".cpp")
-                print(cpp_file_dir)
-                outputfile = os.path.join(TEST_DIR, name + ".out")
-                statusfile = os.path.join(STATUS_DIR, name)
-
-                with open(cpp_file_dir, "w", newline="\n") as f:
-                    f.writelines(
-                        [line.decode("utf-8") for line in zip_ref.open(file_info)]
-                    )
-
-                with open(statusfile, "w", newline="\n") as st:
-                    st.write("IN QUEUE")
-
-                cpp_dirs_onZip.append(cpp_file_dir)
-                names_onZip.append(name)
-                fileNames.append(file_info.filename)
+            cpp_dirs_on_zip.append(cpp_file_dir)
+            names_on_zip.append(codename)
+            file_names.append(source.original_filename)
 
         queuelist.append(
             [
-                cpp_dirs_onZip,
-                names_onZip,
+                cpp_dirs_on_zip,
+                names_on_zip,
                 "-O3",
                 task_type,
                 input_size,
                 samples,
-                fileNames,
+                file_names,
             ]
         )
 
-    os.remove(temp_zip_path)
+    except Exception as exc:
+        for execution in bundle["executions"]:
+            try:
+                mark_failed(
+                    execution["public_id"],
+                    failure_stage="INFRASTRUCTURE",
+                    error_code="QUEUE_ENQUEUE_FAILED",
+                    error_message=str(exc),
+                )
+            except Exception as state_exc:
+                print(
+                    "❌ No se pudo marcar execution como FAILED:",
+                    execution["public_id"],
+                    state_exc,
+                )
 
-    return jsonify({"cpp_files_queued": names_onZip, "task_type": task_type}), 200
+        try:
+            update_submission_status(
+                bundle["submission"]["id"],
+                "ERROR",
+            )
+        except Exception as submission_exc:
+            print(
+                "❌ No se pudo actualizar submission a ERROR:",
+                submission_exc,
+            )
+
+        for artifact_path in created_artifacts:
+            try:
+                os.remove(artifact_path)
+            except FileNotFoundError:
+                pass
+            except Exception:
+                pass
+
+        return jsonify(
+            {
+                "error": {
+                    "code": "QUEUE_ENQUEUE_FAILED",
+                    "message": (
+                        "El análisis fue registrado, pero no pudo "
+                        "incorporarse a la cola de ejecución."
+                    ),
+                },
+                "submissionId": bundle["submission"]["id"],
+                "executions": [
+                    {
+                        "publicId": row["public_id"],
+                        "codename": row["codename"],
+                        "state": "FAILED",
+                    }
+                    for row in bundle["executions"]
+                ],
+            }
+        ), 503
+
+    return jsonify(
+        {
+            "submissionId": bundle["submission"]["id"],
+            "status": "QUEUED",
+            "taskType": task_type,
+            "archiveSha256": stored_upload.sha256,
+            "cpp_files_queued": names_on_zip,
+            "executions": [
+                {
+                    "publicId": execution["public_id"],
+                    "codename": execution["codename"],
+                    "originalFilename": source.original_filename,
+                    "state": execution["execution_state"],
+                }
+                for source, execution in zip(
+                    stored_upload.sources,
+                    bundle["executions"],
+                )
+            ],
+        }
+    ), 202
 
 
 def serve_next_inline():
-    """Process and serve the next inline item from the queue, uno a la vez esperando que termine cada archivo."""
+    """
+    Procesa el siguiente bundle y sincroniza el lifecycle real con PostgreSQL.
+
+    PostgreSQL:
+      QUEUED -> RUNNING -> PROCESSING -> COMPLETED
+                  |            |
+                  +----------> FAILED
+
+    Server/status se conserva sólo como señal técnica transitoria del pipeline.
+    """
     if not queuelist:
-        print("Error: queuelist está vacío, no hay elementos para procesar.")
+        print(
+            "Error: queuelist está vacío, no hay elementos para procesar."
+        )
         return
 
     next_inline = queuelist.pop()
@@ -301,109 +649,290 @@ def serve_next_inline():
         print("Error: next_inline no tiene la estructura esperada.")
         return
 
-    cpp_paths, names, opt_cmd, task_type, input_size, samples, file_names = next_inline
+    (
+        cpp_paths,
+        names,
+        opt_cmd,
+        task_type,
+        input_size,
+        samples,
+        file_names,
+    ) = next_inline[:7]
 
-    for file_num in range(len(names)):
-        codename = names[file_num]
+    successful_names = []
+    successful_file_names = []
+    failed_count = 0
+
+    max_wait = int(
+        os.getenv("MASTER_EXECUTION_TIMEOUT_SECONDS", "2000")
+    )
+
+    for file_num, codename in enumerate(names):
         status_file_path = os.path.join(STATUS_DIR, codename)
 
-        # Verifica si el estado está marcado como IN QUEUE
-        with open(status_file_path, "r") as r:
-            estado = r.read()
-            if estado != "IN QUEUE":
-                continue
+        try:
+            with open(
+                status_file_path,
+                "r",
+                encoding="utf-8",
+            ) as status_file:
+                initial_status = status_file.read().strip()
+        except OSError as exc:
+            print(
+                "❌ No se pudo leer status de {}: {}".format(
+                    codename, exc
+                )
+            )
+            failed_count += 1
+            continue
+
+        if initial_status != "IN QUEUE":
+            print(
+                "⚠️ {} no estaba IN QUEUE; estado={!r}. Se omite.".format(
+                    codename, initial_status
+                )
+            )
+            continue
+
         os.utime(status_file_path, None)
-        # Enviar tarea al slave
-        slave_serve(cpp_paths[file_num], codename, opt_cmd, input_size, samples)
 
-        print(f"⏳ Esperando que finalice la ejecución de {codename}...")
-        MAX_WAIT = 2000  # segundos
-        waited = 0
+        # Persistencia: QUEUED -> RUNNING.
+        mark_worker_started(codename)
 
-        while True:
+        try:
+            slave_serve(
+                cpp_paths[file_num],
+                codename,
+                opt_cmd,
+                input_size,
+                samples,
+            )
+        except Exception as exc:
+            message = "Fallo en la comunicación Master/Slave: {}".format(exc)
+
             try:
-                with open(status_file_path, "r") as r2:
-                    estado_final = r2.read()
-                    if estado_final == "DONE" or estado_final.startswith("ERROR"):
-                        break
-            except Exception:
+                with open(
+                    status_file_path,
+                    "w",
+                    encoding="utf-8",
+                ) as status_file:
+                    status_file.write(
+                        "ERROR: master/slave communication failure"
+                    )
+            except OSError:
                 pass
 
+            mark_worker_failed(
+                codename,
+                failure_stage="INFRASTRUCTURE",
+                error_code="MASTER_SLAVE_ERROR",
+                error_message=message,
+            )
+            escribir_estado(
+                codename,
+                "❌ {}".format(message),
+                tipo="ERROR",
+            )
+            failed_count += 1
+            continue
+
+        print(
+            "⏳ Esperando que finalice la ejecución de {}...".format(
+                codename
+            )
+        )
+
+        waited = 0
+        outcome = read_legacy_outcome(
+            codename,
+            STATUS_DIR,
+            STATIC_DIR,
+        )
+
+        while outcome.kind not in ("SUCCESS", "FAILED"):
             time.sleep(2)
             waited += 2
 
-            if waited >= MAX_WAIT:
-                with open(status_file_path, "w") as w:
-                    w.write("ERROR: timeout exceeded")
+            if waited >= max_wait:
+                with open(
+                    status_file_path,
+                    "w",
+                    encoding="utf-8",
+                ) as status_file:
+                    status_file.write("ERROR: timeout exceeded")
+
                 escribir_estado(
                     codename,
-                    "❌ ERROR DETECTADO: La ejecución del test tomó más de 10 minutos. Revisa el algoritmo o reduce el tamaño de entrada.",
+                    (
+                        "❌ ERROR DETECTADO: se agotó el tiempo máximo "
+                        "de espera del Master."
+                    ),
+                    tipo="ERROR",
                 )
-                print(f"⏱️ Timeout alcanzado para {codename} (más de 10 minutos)")
+
+            outcome = read_legacy_outcome(
+                codename,
+                STATUS_DIR,
+                STATIC_DIR,
+            )
+
+            if waited >= max_wait:
                 break
-        print(f"✅ Finalizado: {codename} → {estado_final}")
 
-    # Si todo salió bien, generar gráficos
-    error_count = 0
-    for file_num in range(len(names)):
-        status_file_path = os.path.join(STATUS_DIR, names[file_num])
-        with open(status_file_path, "r+") as r:
-            final_status = r.read()
-            if final_status.startswith("ERROR"):
-                print(f"⚠️ Fallo en test {codename} → {final_status}")
-            if final_status == "ERROR: no machines available":
-                escribir_estado(
-                    names[file_num], "❌ ERROR DETECTADO: No hay máquinas disponibles."
+        print(
+            "✅ Finalizado pipeline worker: {} → {}".format(
+                codename,
+                outcome.status_text,
+            )
+        )
+
+        persisted = persist_worker_outcome(codename, outcome)
+
+        if persisted["execution_state"] == "PROCESSING":
+            successful_names.append(codename)
+            successful_file_names.append(file_names[file_num])
+        else:
+            failed_count += 1
+
+    # Post-procesamiento sólo para ejecuciones cuyo worker terminó bien.
+    if successful_names:
+        for codename in successful_names:
+            escribir_estado(codename, "📊 Generando gráficos...")
+
+        try:
+            graph_results(
+                successful_names,
+                successful_file_names,
+                input_size,
+            )
+        except Exception as exc:
+            message = "Falló graph_results: {}".format(exc)
+            for codename in successful_names:
+                mark_processing_failed(
+                    codename,
+                    error_code="GRAPH_PROCESSING_ERROR",
+                    error_message=message,
                 )
-                error_count += 1
-            else:
-                r.seek(0)
-                r.write("DONE")
-                r.truncate()
+                escribir_estado(
+                    codename,
+                    "❌ {}".format(message),
+                    tipo="ERROR",
+                )
+            failed_count += len(successful_names)
+            successful_names = []
 
-    if error_count == 0:
-        for name in names:
-            escribir_estado(name, "📊 Generando gráficos...")
-        graph_results(names, file_names, input_size)
-        for name in names:
-            escribir_estado(name, "✅ Resultados listos.")
+    if successful_names and not result_bundle_exists(
+        successful_names,
+        STATIC_DIR,
+    ):
+        message = (
+            "El post-procesamiento terminó sin producir CombinedResults.csv."
+        )
+        for codename in successful_names:
+            mark_processing_failed(
+                codename,
+                error_code="RESULT_ARTIFACT_MISSING",
+                error_message=message,
+            )
+            escribir_estado(
+                codename,
+                "❌ {}".format(message),
+                tipo="ERROR",
+            )
+        failed_count += len(successful_names)
+        successful_names = []
+
+    if successful_names:
+        absolute_result_path = combined_result_path(
+            successful_names,
+            STATIC_DIR,
+        )
+        persisted_result_path = os.path.relpath(
+            absolute_result_path,
+            BASE_DIR,
+        )
+
+        for codename in successful_names:
+            completed = mark_worker_completed(
+                codename,
+                result_path=persisted_result_path,
+            )
+            escribir_estado(codename, "✅ Resultados listos.")
+            print(
+                "💾 PostgreSQL: {} → {} (v{})".format(
+                    codename,
+                    completed["execution_state"],
+                    completed["state_version"],
+                )
+            )
+
+    # Compatibilidad temporal con submissions.status.
+    if names:
+        try:
+            first_execution = get_execution_context(names[0])
+            submission_status = (
+                "finished" if failed_count == 0 else "ERROR"
+            )
+            update_submission_status(
+                first_execution["submission_id"],
+                submission_status,
+            )
+        except Exception as exc:
+            print(
+                "⚠️ No se pudo sincronizar submission.status: {}".format(
+                    exc
+                )
+            )
+
 
 
 def get_status_file_count():
     """Return the count of files in the 'status' directory."""
-    s = subprocess.run(
-        "ls status| wc -l",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-        shell=True,
+    return sum(
+        1
+        for item in Path(STATUS_DIR).iterdir()
+        if item.is_file()
     )
-    return int(s.stdout)
 
 
 def get_oldest_status_file():
     """Return the path of the oldest file in the 'status' directory."""
-    s2 = subprocess.run(
-        "find status -type f -printf '%T+ %p\n' | sort | head -1",
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        universal_newlines=True,
-        shell=True,
-    )
-    temp = s2.stdout.split()
-    return temp[1]
+    candidates = [
+        item
+        for item in Path(STATUS_DIR).iterdir()
+        if item.is_file()
+    ]
+    if not candidates:
+        return None
+    return str(min(candidates, key=lambda item: item.stat().st_mtime))
+
+
+def _status_path(file_path):
+    path = Path(file_path).resolve()
+    status_root = Path(STATUS_DIR).resolve()
+    if path.parent != status_root or not CODENAME_RE.fullmatch(path.name):
+        raise ValueError("Ruta de estado fuera del directorio permitido.")
+    return path
 
 
 def remove_status_file(file_path):
     """Remove the specified file."""
-    print("Removed element " + file_path + "! from status files", file=sys.stderr)
-    subprocess.run(["/bin/rm", file_path], timeout=15)
+    path = _status_path(file_path)
+    print("Removed element " + str(path) + "! from status files", file=sys.stderr)
+    path.unlink(missing_ok=True)
 
 
 def remove_associated_static_file(file_path):
     """Remove the associated static file for a given status file."""
-    temp2 = file_path.split("/")
-    subprocess.run(["/bin/rm", "static/" + temp2[1], "-rf"], timeout=15)
+    codename = _status_path(file_path).name
+    target = (Path(STATIC_DIR) / codename).resolve()
+    static_root = Path(STATIC_DIR).resolve()
+    if target.parent != static_root:
+        raise ValueError("Ruta static fuera del directorio permitido.")
+    if target.is_dir():
+        shutil.rmtree(target)
+    elif target.exists():
+        target.unlink()
 
 
 def is_queue_empty():
@@ -416,13 +945,18 @@ def queue_manager():
     while True:
         if is_queue_empty():
             print("🔁 Cola vacía. Esperando nuevos archivos...")
-            if get_status_file_count() >= 50:
+            if (
+                STATUS_AUTO_CLEANUP_ENABLED
+                and get_status_file_count() >= STATUS_RETENTION_LIMIT
+            ):
                 print(
-                    "⚠️ Muchas tareas pendientes en estado. Limpiando la más antigua..."
+                    "⚠️ Límite de estados alcanzado. "
+                    "Limpiando el más antiguo por configuración explícita..."
                 )
                 oldest_file = get_oldest_status_file()
-                remove_status_file(oldest_file)
-                remove_associated_static_file(oldest_file)
+                if oldest_file is not None:
+                    remove_status_file(oldest_file)
+                    remove_associated_static_file(oldest_file)
             time.sleep(10)
         else:
             print("📦 Procesando nueva tanda de archivos desde la cola...")
@@ -433,6 +967,8 @@ def queue_manager():
 def start_background_thread():
     """Lanza el hilo de gestión de cola al iniciar el servidor."""
     print("🔁 Iniciando hilo de gestión de cola...")
+    if not STATUS_AUTO_CLEANUP_ENABLED:
+        print("🛡️ Limpieza automática de estados: desactivada.")
     th.Thread(target=queue_manager, daemon=True).start()
 
 
@@ -443,12 +979,16 @@ start_background_thread()
 #   RUTAS PARA ARCHIVOS Y FRONTEND
 # ================================
 @app.route("/files/<path:filename>")
+@login_required
 def serve_static_file(filename):
+    _codename_from_static_path(filename)
     return send_from_directory(STATIC_DIR, filename)
 
 
 @app.route("/files/<codename>")
+@login_required
 def list_files_in_dir(codename):
+    _assert_execution_access(codename)
     path = os.path.join(STATIC_DIR, codename)
     if not os.path.isdir(path):
         abort(404)
@@ -459,6 +999,9 @@ def list_files_in_dir(codename):
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
 def serve_frontend(path):
+    if path == "api" or path.startswith("api/"):
+        abort(404)
+
     full_path = os.path.join(FRONTEND_DIR, path)
     if path != "" and os.path.exists(full_path):
         return send_from_directory(FRONTEND_DIR, path)
@@ -468,6 +1011,8 @@ def serve_frontend(path):
 
 
 @app.route("/api/health/db", methods=["GET"])
+@login_required
+@admin_required
 def health_db():
     try:
         conn = get_connection()
@@ -480,20 +1025,9 @@ def health_db():
         cur.close()
         conn.close()
 
-        # row puede ser dict (RealDictCursor) o tupla.
-        # Cubrimos ambas posibilidades y evitamos KeyError.
-        if row is None:
-            db_time = None
-        elif isinstance(row, dict):
-            db_time = str(row.get("db_time"))
-        else:
-            # Tupla u otro tipo indexable
-            db_time = str(row[0])
-
         return jsonify(
             {
                 "ok": True,
-                "db_time": db_time,
             }
         ), 200
 
@@ -502,7 +1036,10 @@ def health_db():
         return jsonify(
             {
                 "ok": False,
-                "error": str(e),
+                "error": {
+                    "message": "La base de datos no está disponible.",
+                    "code": "DATABASE_UNAVAILABLE",
+                },
             }
         ), 500
 
@@ -511,4 +1048,9 @@ def health_db():
 # Si se ejecuta directamente con python app.py (modo desarrollo)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", debug=True)
+    debug_enabled = os.getenv("FLASK_DEBUG", "0").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+    app.run(host="0.0.0.0", debug=debug_enabled)

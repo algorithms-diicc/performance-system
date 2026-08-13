@@ -1,6 +1,5 @@
-// Client/my-app/src/App.js
-
 import React, { useEffect, useState } from "react";
+
 import {
   BrowserRouter,
   Routes,
@@ -12,202 +11,492 @@ import {
 import RenderForm from "./screens/RenderForm";
 import RenderImage from "./screens/RenderImage";
 import Navbar from "./common/Navbar";
-import TaskPage from "./screens/TaskPage";
-import RenderDoubleForm from "./screens/RenderDobuleForm";
+import {
+  canAccessTeacherArea,
+  isAdminUser,
+} from "./common/userAccessModel";
 import TutorialPage from "./screens/TutorialPage";
+import ProfilePage from "./screens/ProfilePage";
+import SystemStatePage from "./screens/SystemStatePage";
 import Login from "./screens/Login";
 
-// Administración de usuarios
 import AdminUser from "./screens/AdminUser";
 import AdminUserDetail from "./screens/AdminUserDetail";
+import AdminLayout from "./screens/AdminLayout";
+import AdminAccessRequests from "./screens/AdminAccessRequests";
+import AdminAuditLog from "./screens/AdminAuditLog";
+
+import TeacherLayout from "./screens/TeacherLayout";
+import TeacherCourses from "./screens/TeacherCourses";
+import TeacherCourseDetail from "./screens/TeacherCourseDetail";
+import TeacherStudentDetail from "./screens/TeacherStudentDetail";
 
 import Loader from "./components/Loader";
+import AppErrorBoundary from "./components/AppErrorBoundary";
 
-/* ================================================
-   Wrapper del Navbar: oculto en /login y si no hay sesión
-   ================================================ */
-const NavbarWrapper = ({ tasksState, isAuthenticated }) => {
+
+/* ============================================================
+   NAVBAR WRAPPER
+
+   La navbar:
+   - no aparece en /login;
+   - no aparece si no hay sesión;
+   - recibe el usuario desde App.
+
+   App será desde ahora la fuente de verdad de la sesión.
+   ============================================================ */
+
+const NavbarWrapper = ({
+  currentUser,
+  onLogout,
+}) => {
+
   const location = useLocation();
 
-  // No mostrar navbar en /login ni cuando no hay sesión todavía
-  if (location.pathname === "/login") return null;
-  if (!isAuthenticated) return null;
-
-  return <Navbar tasksState={tasksState} />;
-};
-
-/* ================================================
-   Núcleo de la app (usa hooks)
-   ================================================ */
-const AppInner = () => {
-  const [tasksState, setTasksState] = useState({
-    lcs: false,
-    camm: false,
-  });
-
-  const [authChecked, setAuthChecked] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    document.title = "Performance System";
-  }, []);
-
-  // Chequeo global de sesión al arrancar la app
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch("/api/auth/me", {
-          credentials: "include",
-        });
-
-        if (res.ok) {
-          setIsAuthenticated(true);
-        } else {
-          setIsAuthenticated(false);
-        }
-      } catch (err) {
-        console.error("Error comprobando sesión:", err);
-        setIsAuthenticated(false);
-      } finally {
-        setAuthChecked(true);
-      }
-    };
-
-    checkAuth();
-  }, []);
-
-  const handleTaskToggle = (taskId, value) => {
-    setTasksState((prev) => ({
-      ...prev,
-      [taskId]: value,
-    }));
-  };
-
-  // 🔒 Mientras NO sepamos si hay sesión, no mostramos rutas
-  if (!authChecked) {
-    return <Loader />;
+  if (location.pathname === "/login") {
+    return null;
   }
 
-  // A partir de aquí ya sabemos si hay o no usuario autenticado
+  if (!currentUser) {
+    return null;
+  }
+
+  return (
+    <Navbar
+      currentUser={currentUser}
+      onLogout={onLogout}
+    />
+  );
+};
+
+
+/* ============================================================
+   APP INNER
+   ============================================================ */
+
+const AppInner = () => {
+
+  /* ----------------------------------------------------------
+     Autenticación
+
+     Ya no mantenemos:
+       isAuthenticated + user por separado.
+
+     currentUser:
+       null    → no autenticado
+       objeto  → autenticado
+     ---------------------------------------------------------- */
+
+  const [currentUser, setCurrentUser] = useState(null);
+
+  const [authChecked, setAuthChecked] =
+    useState(false);
+
+
+  /* ==========================================================
+     DOCUMENT TITLE
+     ========================================================== */
+
+  useEffect(() => {
+
+    document.title =
+      "Performance System";
+
+  }, []);
+
+
+  /* ==========================================================
+     CHECK SESSION
+     ========================================================== */
+
+  useEffect(() => {
+
+    let mounted = true;
+
+
+    const checkAuth = async () => {
+
+      try {
+
+        const response = await fetch(
+          "/api/auth/me",
+          {
+            credentials: "include",
+          }
+        );
+
+
+        if (!response.ok) {
+
+          if (mounted) {
+            setCurrentUser(null);
+          }
+
+          return;
+        }
+
+
+        const data =
+          await response.json();
+
+
+        /*
+         * Permitimos tanto:
+         *
+         * { id, email, ... }
+         *
+         * como:
+         *
+         * { user: { ... } }
+         *
+         * para no acoplar innecesariamente React
+         * al formato exacto del endpoint.
+         */
+
+        const user =
+          data?.user ?? data;
+
+
+        if (mounted) {
+          setCurrentUser(user);
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Error comprobando sesión:",
+          error
+        );
+
+
+        if (mounted) {
+          setCurrentUser(null);
+        }
+
+      } finally {
+
+        if (mounted) {
+          setAuthChecked(true);
+        }
+
+      }
+
+    };
+
+
+    checkAuth();
+
+
+    return () => {
+      mounted = false;
+    };
+
+  }, []);
+
+
+  /* ==========================================================
+     LOGOUT
+
+     Navbar ejecuta el POST.
+     Cuando termina nos informa y App elimina la sesión local.
+
+     Al desaparecer currentUser las rutas protegidas
+     redirigen automáticamente a /login.
+     ========================================================== */
+
+  const handleLogout = () => {
+
+    setCurrentUser(null);
+
+  };
+
+
+  /* ==========================================================
+     LOADER INICIAL
+     ========================================================== */
+
+  if (!authChecked) {
+
+    return <Loader />;
+
+  }
+
+
+  const isAuthenticated =
+    Boolean(currentUser);
+
+  const isAdmin =
+    isAdminUser(currentUser);
+
+  const canSupervise =
+    canAccessTeacherArea(currentUser);
+
+
+  /* ==========================================================
+     ROUTES
+     ========================================================== */
+
   return (
     <>
       <NavbarWrapper
-        tasksState={tasksState}
-        isAuthenticated={isAuthenticated}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
 
+
       <Routes>
-        {/* LOGIN:
-            - Si NO está autenticado → muestra <Login />
-            - Si SÍ está autenticado → redirige a "/" */}
+
+        {/* ====================================================
+            LOGIN
+            ==================================================== */}
+
         <Route
           path="/login"
           element={
-            isAuthenticated ? <Navigate to="/" replace /> : <Login />
+            isAuthenticated
+              ? (
+                <Navigate
+                  to="/"
+                  replace
+                />
+              )
+              : (
+                <Login />
+              )
           }
         />
 
-        {/* INICIO:
-            - Si está autenticado → RenderForm
-            - Si NO → /login */}
+
+        {/* ====================================================
+            NUEVO ANÁLISIS
+            ==================================================== */}
+
         <Route
           path="/"
           element={
-            isAuthenticated ? (
-              <RenderForm />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated
+              ? (
+                <RenderForm />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
           }
         />
 
-        {/* Página de tareas */}
-        <Route
-          path="/taskpage"
-          element={
-            isAuthenticated ? (
-              <TaskPage
-                onTaskToggle={handleTaskToggle}
-                tasksState={tasksState}
-              />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
 
-        {/* Comparación de ejecuciones */}
-        <Route
-          path="/compare"
-          element={
-            isAuthenticated ? (
-              <RenderDoubleForm tasksState={tasksState} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
+        {/* ====================================================
+            RESULTADO / CÓDIGO
+            ==================================================== */}
 
-        {/* Mostrar imagen/código por nombre */}
         <Route
           path="/code/:codename"
           element={
-            isAuthenticated ? (
-              <RenderImage />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated
+              ? (
+                <RenderImage />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
           }
         />
 
-        {/* Tutorial y ejemplos */}
+
+        {/* ====================================================
+            AYUDA
+            ==================================================== */}
+
         <Route
           path="/tutorial"
           element={
-            isAuthenticated ? (
-              <TutorialPage />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated
+              ? (
+                <TutorialPage />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
           }
         />
 
-        {/* Administración de usuarios */}
+
+        {/* ====================================================
+            MI PERFIL
+            ==================================================== */}
+
         <Route
-          path="/admin/users"
+          path="/profile"
           element={
-            isAuthenticated ? (
-              <AdminUser />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated
+              ? (
+                <ProfilePage />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
           }
         />
 
+
+        {/* ====================================================
+            SUPERVISIÓN DOCENTE
+            ==================================================== */}
+
         <Route
-          path="/admin/users/:id"
+          path="/teacher"
           element={
-            isAuthenticated ? (
-              <AdminUserDetail />
-            ) : (
-              <Navigate to="/login" replace />
-            )
+            isAuthenticated
+              ? (
+                canSupervise
+                  ? <TeacherLayout />
+                  : <Navigate to="/403" replace />
+              )
+              : <Navigate to="/login" replace />
+          }
+        >
+          <Route
+            index
+            element={
+              <Navigate
+                to="courses"
+                replace
+              />
+            }
+          />
+          <Route
+            path="courses"
+            element={<TeacherCourses />}
+          />
+          <Route
+            path="courses/:courseId"
+            element={<TeacherCourseDetail />}
+          />
+          <Route
+            path="courses/:courseId/students/:userId"
+            element={<TeacherStudentDetail />}
+          />
+        </Route>
+
+
+        {/* ADMINISTRACIÓN */}
+
+        <Route
+          path="/admin"
+          element={
+            isAuthenticated
+              ? (isAdmin ? <AdminLayout /> : <Navigate to="/403" replace />)
+              : <Navigate to="/login" replace />
+          }
+        >
+          <Route index element={<Navigate to="users" replace />} />
+          <Route path="users" element={<AdminUser />} />
+          <Route path="users/:id" element={<AdminUserDetail />} />
+          <Route path="access-requests" element={<AdminAccessRequests />} />
+          <Route path="audit-log" element={<AdminAuditLog />} />
+        </Route>
+
+        {/* ====================================================
+            ESTADOS GLOBALES
+            ==================================================== */}
+
+        <Route
+          path="/403"
+          element={
+            isAuthenticated
+              ? (
+                <SystemStatePage
+                  statusCode="403"
+                />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
           }
         />
+
+
+        <Route
+          path="/500"
+          element={
+            isAuthenticated
+              ? (
+                <SystemStatePage
+                  statusCode="500"
+                />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
+
+        {/* ====================================================
+            RUTA DESCONOCIDA
+            ==================================================== */}
+
+        <Route
+          path="*"
+          element={
+            isAuthenticated
+              ? (
+                <SystemStatePage
+                  statusCode="404"
+                />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
       </Routes>
     </>
   );
 };
 
-/* ================================================
-   Componente raíz: envuelve todo con BrowserRouter
-   ================================================ */
+
+/* ============================================================
+   ROOT
+   ============================================================ */
+
 const App = () => {
+
   return (
     <BrowserRouter>
-      <AppInner />
+
+      <AppErrorBoundary>
+
+        <AppInner />
+
+      </AppErrorBoundary>
+
     </BrowserRouter>
   );
+
 };
+
 
 export default App;

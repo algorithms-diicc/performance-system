@@ -1,4 +1,5 @@
 import os
+import json
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -43,9 +44,224 @@ metric_y_labels = {
     "CacheMissesPerMI": "Fallos de caché por millón de instrucciones"
 }
 
-# === ⚖️ Filtrado por IQR (activable) — AÑADIDO ===
-USE_IQR_FILTER = True        # Pon False para desactivar el filtrado IQR
-MIN_N_AFTER_IQR = 5          # Si tras filtrar quedan <5, no se filtra
+# CORE-06D-4: el HTML legacy conserva todas las muestras.
+# El IQR deja de filtrar silenciosamente observaciones; la API canónica
+# lo reporta como diagnóstico descriptivo.
+USE_IQR_FILTER = False
+MIN_N_AFTER_IQR = 5
+
+
+AVAILABILITY_FILENAME = "MetricAvailability.json"
+# CORE-06B-2: contrato científico de disponibilidad/IQR.
+_DERIVED_AVAILABILITY_SPECS = {
+    "IPC": ("Instructions", "CpuCycles"),
+    "CacheMissRate": ("CacheMisses", "CacheReferences"),
+    "BranchMissRate": ("BranchMisses", "Branches"),
+    "BranchMissesPerMI": ("BranchMisses", "Instructions"),
+    "CacheMissesPerMI": ("NormalizedCacheMisses", "NormalizedInstructions"),  # CORE-06B-4
+}
+_AVAILABILITY_META_COLUMNS = {
+    "Increment",
+    "InputSize",
+    "StartTime",
+    "EndTime",
+    # CORE-06B-4: operandos auxiliares; no son métricas del dashboard.
+    "NormalizedInstructions",
+    "NormalizedCacheMisses",
+    "source",
+}
+_UNSUPPORTED_MARKERS = {
+    "<not-supported>",
+    "<not supported>",
+}
+_NOT_COUNTED_MARKERS = {
+    "<not-counted>",
+    "<not counted>",
+}
+
+
+def _classify_availability_series(series):
+    counts = {
+        "rows_total": int(len(series)),
+        "numeric": 0,
+        "unsupported": 0,
+        "not_counted": 0,
+        "missing": 0,
+    }
+
+    for value in series.tolist():
+        if pd.isna(value):
+            counts["missing"] += 1
+            continue
+
+        text = str(value).strip()
+        normalized = text.lower()
+
+        if not text or normalized in {"nan", "none", "null"}:
+            counts["missing"] += 1
+        elif normalized in _UNSUPPORTED_MARKERS:
+            counts["unsupported"] += 1
+        elif normalized in _NOT_COUNTED_MARKERS:
+            counts["not_counted"] += 1
+        elif pd.notnull(pd.to_numeric(text, errors="coerce")):
+            counts["numeric"] += 1
+        else:
+            counts["missing"] += 1
+
+    return counts
+
+
+def _collect_source_availability(df):
+    result = {}
+
+    for metric in df.columns:
+        if metric in _AVAILABILITY_META_COLUMNS:
+            continue
+
+        result[metric] = _classify_availability_series(
+            df[metric]
+        )
+
+    return result
+
+
+def _availability_value_state(value):
+    """Clasifica un valor crudo antes de convertir marcadores perf a NaN."""
+    if pd.isna(value):
+        return "missing", None
+
+    text = str(value).strip()
+    normalized = text.lower()
+
+    if not text or normalized in {"nan", "none", "null"}:
+        return "missing", None
+
+    if normalized in _UNSUPPORTED_MARKERS:
+        return "unsupported", None
+
+    if normalized in _NOT_COUNTED_MARKERS:
+        return "not_counted", None
+
+    number = pd.to_numeric(text, errors="coerce")
+    if pd.isna(number):
+        return "missing", None
+
+    return "numeric", float(number)
+
+
+def _collect_derived_availability(df):
+    """
+    Propaga disponibilidad a métricas derivadas fila por fila.
+
+    Una derivada sólo es numérica cuando ambos operandos son numéricos y
+    el denominador es > 0. Si un operando está unsupported/not-counted,
+    la derivada conserva esa causa.
+    """
+    result = {}
+
+    for metric, (numerator_name, denominator_name) in (
+        _DERIVED_AVAILABILITY_SPECS.items()
+    ):
+        if (
+            numerator_name not in df.columns
+            or denominator_name not in df.columns
+        ):
+            # CORE-06B-4: raws históricos (25 columnas) no contienen la
+            # pareja simultánea necesaria para CacheMissesPerMI.
+            if metric == "CacheMissesPerMI":
+                result[metric] = {
+                    "rows_total": int(len(df)),
+                    "numeric": 0,
+                    "unsupported": 0,
+                    "not_counted": 0,
+                    "missing": int(len(df)),
+                }
+            continue
+
+        counts = {
+            "rows_total": int(len(df)),
+            "numeric": 0,
+            "unsupported": 0,
+            "not_counted": 0,
+            "missing": 0,
+        }
+
+        for numerator_raw, denominator_raw in zip(
+            df[numerator_name].tolist(),
+            df[denominator_name].tolist(),
+        ):
+            numerator_state, numerator = _availability_value_state(
+                numerator_raw
+            )
+            denominator_state, denominator = _availability_value_state(
+                denominator_raw
+            )
+
+            states = {numerator_state, denominator_state}
+
+            if "unsupported" in states:
+                counts["unsupported"] += 1
+            elif "not_counted" in states:
+                counts["not_counted"] += 1
+            elif "missing" in states:
+                counts["missing"] += 1
+            elif denominator is None or denominator <= 0:
+                counts["missing"] += 1
+            elif numerator is None:
+                counts["missing"] += 1
+            else:
+                counts["numeric"] += 1
+
+        result[metric] = counts
+
+    return result
+
+
+def _merge_availability_totals(target, source_metrics):
+    for metric, counts in source_metrics.items():
+        current = target.setdefault(
+            metric,
+            {
+                "rows_total": 0,
+                "numeric": 0,
+                "unsupported": 0,
+                "not_counted": 0,
+                "missing": 0,
+            },
+        )
+
+        for key in current:
+            current[key] += int(counts.get(key, 0))
+
+
+def _write_availability_sidecar(output_dir, sources, totals):
+    payload = {
+        "schema_version": "1.0",
+        "description": (
+            "Disponibilidad de métricas capturada antes de convertir "
+            "marcadores de perf a NaN."
+        ),
+        "sources": sources,
+        "metrics": totals,
+    }
+
+    path = os.path.join(
+        output_dir,
+        AVAILABILITY_FILENAME,
+    )
+
+    with open(path, "w", encoding="utf-8") as handle:
+        json.dump(
+            payload,
+            handle,
+            indent=2,
+            ensure_ascii=False,
+        )
+
+    print(
+        "[✅] Disponibilidad de métricas guardada:",
+        path,
+    )
 
 def iqr_stats(series, min_n=5):
     """
@@ -60,9 +276,23 @@ def iqr_stats(series, min_n=5):
     lower = q1 - 1.5 * iqr
     upper = q3 + 1.5 * iqr
     s2 = s[(s >= lower) & (s <= upper)]
-    if s2.empty:  # evitar quedarnos totalmente sin datos
-        s2 = s
-    return pd.Series({"mean": s2.mean(), "std": s2.std(ddof=1), "n": s2.size, "filtered": True})
+
+    # CORE-06B-2: el filtrado sólo se conserva cuando quedan al menos
+    # min_n observaciones; si no, se usa la muestra original.
+    if s2.size < min_n:
+        return pd.Series({
+            "mean": s.mean(),
+            "std": s.std(ddof=1),
+            "n": s.size,
+            "filtered": False,
+        })
+
+    return pd.Series({
+        "mean": s2.mean(),
+        "std": s2.std(ddof=1),
+        "n": s2.size,
+        "filtered": True,
+    })
 
 def read_csv_data(name):
     print(f"📥 Buscando CSV para {name} en {STATIC_DIR}")
@@ -170,10 +400,30 @@ def graph_results(names, fileNames, input_size):
     print("📊 Iniciando generación de gráficos combinados en HTML con Plotly...")
 
     dataframes = []
+    availability_sources = {}
+    availability_totals = {}
 
     for name, fname in zip(names, fileNames):
         try:
             df, filename = read_csv_data(name)
+
+            # Capturar la causa de indisponibilidad ANTES de convertir
+            # <not-counted> a NaN. Esto permite distinguir posteriormente
+            # "no soportado", "no contabilizado" y "sin datos".
+            source_availability = _collect_source_availability(df)
+
+            # CORE-06B-2: las derivadas heredan la causa de indisponibilidad
+            # de sus operandos antes de perder los marcadores perf.
+            source_availability.update(
+                _collect_derived_availability(df)
+            )
+
+            availability_sources[fname] = source_availability
+            _merge_availability_totals(
+                availability_totals,
+                source_availability,
+            )
+
             df = df.replace('<not-counted>', np.nan)
             df = df.copy()
             df['InputSize'] = pd.to_numeric(df['InputSize'], errors='coerce')
@@ -204,13 +454,40 @@ def graph_results(names, fileNames, input_size):
                     miss_b = pd.to_numeric(df['BranchMisses'], errors='coerce')
                     df['BranchMissesPerMI'] = np.where(instr > 0, (miss_b / instr) * 1e6, np.nan)
 
-                if 'CacheMisses' in df.columns:
-                    miss_c = pd.to_numeric(df['CacheMisses'], errors='coerce')
-                    df['CacheMissesPerMI'] = np.where(instr > 0, (miss_c / instr) * 1e6, np.nan)
+            # CORE-06B-4:
+            # CacheMissesPerMI usa exclusivamente operandos de una misma
+            # ejecución perf.
+            if (
+                'NormalizedInstructions' in df.columns
+                and 'NormalizedCacheMisses' in df.columns
+            ):
+                normalized_instr = pd.to_numeric(
+                    df['NormalizedInstructions'],
+                    errors='coerce',
+                )
+                normalized_misses = pd.to_numeric(
+                    df['NormalizedCacheMisses'],
+                    errors='coerce',
+                )
+                df['CacheMissesPerMI'] = np.where(
+                    normalized_instr > 0,
+                    (normalized_misses / normalized_instr) * 1e6,
+                    np.nan,
+                )
+            else:
+                df['CacheMissesPerMI'] = np.nan
 
-                for col in ['BranchMissesPerMI', 'CacheMissesPerMI']:
-                    if col in df.columns:
-                        df[col].replace([np.inf, -np.inf], np.nan, inplace=True)
+            for col in ['BranchMissesPerMI', 'CacheMissesPerMI']:
+                if col in df.columns:
+                    df[col].replace([np.inf, -np.inf], np.nan, inplace=True)
+
+            # Operandos auxiliares: permanecen en Results0.csv como evidencia,
+            # pero no se exponen en CombinedResults/dashboard.
+            df.drop(
+                columns=['NormalizedInstructions', 'NormalizedCacheMisses'],
+                errors='ignore',
+                inplace=True,
+            )
 
             df['source'] = fname
             dataframes.append(df)
@@ -243,4 +520,11 @@ def graph_results(names, fileNames, input_size):
     combined_csv_path = os.path.join(output_dir, "CombinedResults.csv")
     all_data.to_csv(combined_csv_path, index=False)
     print(f"[✅] CSV combinado guardado en: {combined_csv_path}")
+
+    _write_availability_sidecar(
+        output_dir,
+        availability_sources,
+        availability_totals,
+    )
+
     print("✅ ¡Gráficos combinados generados correctamente!")

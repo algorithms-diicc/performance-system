@@ -1,0 +1,424 @@
+/* ============================================================
+   Performance System — Global Styles
+
+   Base común para toda la aplicación.
+
+   Evitamos aplicar estilos agresivos globalmente sobre:
+   table
+   td
+   img
+   h1
+   aside
+   etc.
+
+   Cada componente deberá optar explícitamente por sus clases.
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    background: var(--ps-bg);
+
+    scroll-behavior: smooth;
+}
+
+body,
+#root {
+    min-height: 100vh;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+
+    font-family: var(--ps-font-sans);
+
+    font-size: var(--ps-font-size-md);
+
+    line-height: var(--ps-line-height-normal);
+
+    background: var(--ps-bg);
+
+    color: var(--ps-text);
+
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+
+    transition:
+        background-color var(--ps-transition-normal),
+        color var(--ps-transition-normal);
+}
+
+
+/* ============================================================
+   FORM ELEMENTS
+   ============================================================ */
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+
+button,
+a,
+input,
+select,
+textarea {
+    -webkit-tap-highlight-color: transparent;
+}
+
+
+/* ============================================================
+   LINKS
+   ============================================================ */
+
+a {
+    color: var(--ps-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    color: var(--ps-primary-hover);
+}
+
+
+/* ============================================================
+   CODE
+   ============================================================ */
+
+code,
+pre,
+kbd,
+samp {
+    font-family: var(--ps-font-mono);
+}
+
+
+/* ============================================================
+   SELECTION
+   ============================================================ */
+
+::selection {
+    background: var(--ps-primary-soft);
+    color: var(--ps-text);
+}
+
+
+/* ============================================================
+   ACCESSIBILITY / FOCUS
+   ============================================================ */
+
+:focus-visible {
+    outline: 3px solid var(--ps-focus-ring);
+    outline-offset: 2px;
+}
+
+
+/* ============================================================
+   PAGE PRIMITIVES
+   ============================================================ */
+
+.ps-page,
+.app-page {
+    min-height: calc(100vh - var(--ps-navbar-height));
+
+    padding:
+        var(--ps-content-padding-y) var(--ps-content-padding-x);
+
+    background: var(--ps-bg);
+
+    color: var(--ps-text);
+}
+
+
+.ps-container {
+    width: min(100%,
+            var(--ps-content-max-width));
+
+    margin: 0 auto;
+}
+
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+
+.ps-card,
+.app-card {
+    background: var(--ps-surface);
+
+    border: 1px solid var(--ps-border);
+
+    border-radius: var(--ps-radius-lg);
+
+    box-shadow: var(--ps-shadow-sm);
+
+    color: var(--ps-text);
+}
+
+
+.ps-card--elevated {
+    background: var(--ps-surface-elevated);
+
+    box-shadow: var(--ps-shadow-md);
+}
+
+
+/* ============================================================
+   TYPOGRAPHY
+   ============================================================ */
+
+.ps-page-title,
+.app-title {
+    margin: 0;
+
+    color: var(--ps-text);
+
+    font-size: clamp(1.5rem,
+            2vw,
+            2rem);
+
+    font-weight: 700;
+
+    line-height: var(--ps-line-height-tight);
+
+    letter-spacing: -0.02em;
+}
+
+
+.ps-section-title {
+    margin: 0;
+
+    color: var(--ps-text);
+
+    font-size: var(--ps-font-size-lg);
+
+    font-weight: 650;
+
+    line-height: var(--ps-line-height-tight);
+}
+
+
+.ps-text-muted {
+    color: var(--ps-text-muted);
+}
+
+
+.ps-label,
+.app-label-sm {
+    color: var(--ps-text-muted);
+
+    font-size: var(--ps-font-size-xs);
+
+    font-weight: 700;
+
+    letter-spacing: 0.065em;
+
+    text-transform: uppercase;
+}
+
+
+/* ============================================================
+   EXISTING TABLE COMPATIBILITY
+
+   Solo se aplica cuando una vista utiliza explícitamente
+   .app-table.
+   ============================================================ */
+
+.app-table-wrapper {
+    max-height: 420px;
+
+    overflow: auto;
+
+    border-radius: var(--ps-radius-md);
+}
+
+
+.app-table {
+    width: 100%;
+
+    color: var(--ps-text);
+
+    border-collapse: collapse;
+}
+
+
+.app-table thead {
+    position: sticky;
+
+    top: 0;
+
+    z-index: 1;
+
+    background: var(--ps-surface);
+}
+
+
+.app-table thead th {
+    padding: 0.75rem 1rem;
+
+    background: var(--ps-surface);
+
+    color: var(--ps-text-muted);
+
+    border-bottom: 1px solid var(--ps-border);
+
+    font-size: 0.8rem;
+
+    font-weight: 700;
+
+    letter-spacing: 0.04em;
+
+    text-transform: uppercase;
+}
+
+
+.app-table tbody td {
+    padding: 0.75rem 1rem;
+
+    color: var(--ps-text);
+
+    border-top: 1px solid var(--ps-divider);
+
+    font-size: 0.9rem;
+
+    vertical-align: middle;
+}
+
+
+.app-table tbody tr:hover {
+    background: var(--ps-primary-soft);
+}
+
+
+/* ============================================================
+   STATUS BADGES
+
+   Se mantienen porque AdminUser ya utiliza estas clases.
+   ============================================================ */
+
+.app-status-badge {
+    display: inline-flex;
+
+    align-items: center;
+
+    gap: 0.35rem;
+
+    padding: 0.25rem 0.55rem;
+
+    border-radius: var(--ps-radius-pill);
+
+    font-size: 0.7rem;
+
+    font-weight: 700;
+}
+
+
+.app-status-badge--success {
+    background: var(--ps-success-soft);
+
+    color: var(--ps-success);
+}
+
+
+.app-status-badge--warning {
+    background: var(--ps-warning-soft);
+
+    color: var(--ps-warning);
+}
+
+
+.app-status-badge--error {
+    background: var(--ps-danger-soft);
+
+    color: var(--ps-danger);
+}
+
+
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
+
+* {
+    scrollbar-width: thin;
+
+    scrollbar-color:
+        var(--ps-border-strong) transparent;
+}
+
+
+*::-webkit-scrollbar {
+    width: 9px;
+
+    height: 9px;
+}
+
+
+*::-webkit-scrollbar-thumb {
+    background: var(--ps-border-strong);
+
+    border: 2px solid transparent;
+
+    border-radius: var(--ps-radius-pill);
+
+    background-clip: padding-box;
+}
+
+
+*::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+
+/* ============================================================
+   SCREEN READER ONLY
+   ============================================================ */
+
+.ps-sr-only {
+    position: absolute;
+
+    width: 1px;
+    height: 1px;
+
+    padding: 0;
+
+    margin: -1px;
+
+    overflow: hidden;
+
+    clip: rect(0, 0, 0, 0);
+
+    white-space: nowrap;
+
+    border: 0;
+}
+
+
+/* ============================================================
+   REDUCED MOTION
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+
+        animation-iteration-count: 1 !important;
+
+        transition-duration: 0.01ms !important;
+    }
+}

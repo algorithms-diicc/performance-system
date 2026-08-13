@@ -5,70 +5,116 @@ from flask import g
 
 from .api_errors import AuthError, ForbiddenError
 from ...auth import get_current_user
+from ...db_connection import get_connection
+
+
+def get_user_role_name(user):
+    """
+    Devuelve el nombre canónico del rol de un usuario autenticado.
+
+    CORE-07F-3:
+    - evita depender de IDs numéricos hardcodeados;
+    - reutiliza role_name si el objeto de sesión ya lo incluye;
+    - si no, resuelve users.role_id -> roles.name.
+    """
+    if not user:
+        return None
+
+    role_name = user.get("role_name")
+    if role_name:
+        return str(role_name)
+
+    role_id = user.get("role_id")
+    if role_id is None:
+        return None
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name FROM roles WHERE id = %s;",
+                (role_id,),
+            )
+            row = cur.fetchone()
+    finally:
+        conn.close()
+
+    if not row:
+        return None
+
+    if isinstance(row, dict):
+        return row.get("name")
+
+    return row[0]
 
 
 def login_required(fn):
     """
-    Decorador para exigir usuario autenticado.
-
-    - Usa get_current_user() para leer la cookie 'session_id' y buscar el usuario.
-    - Si no hay sesión o es inválida → AuthError(401).
-    - Si hay, guarda el usuario en flask.g.current_user.
-
-    Ejemplo:
-
-    @some_bp.route("/api/profile", methods=["GET"])
-    @login_required
-    def profile():
-        user = g.current_user
-        ...
+    Exige un usuario autenticado y lo deja en flask.g.current_user.
     """
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user = get_current_user()
         if not user:
-            raise AuthError("Debes iniciar sesión para acceder a este recurso.")
+            raise AuthError(
+                "Debes iniciar sesión para acceder a este recurso."
+            )
 
         g.current_user = user
         return fn(*args, **kwargs)
 
     return wrapper
+
+
+def role_required(*allowed_role_names):
+    """
+    Factory de autorización por nombre de rol.
+
+    Ejemplo:
+        @role_required("Teacher", "Admin")
+    """
+    allowed = {
+        str(role_name).strip().casefold()
+        for role_name in allowed_role_names
+        if str(role_name).strip()
+    }
+
+    if not allowed:
+        raise ValueError("role_required necesita al menos un rol.")
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user = getattr(g, "current_user", None)
+            if not user:
+                user = get_current_user()
+
+            if not user:
+                raise AuthError(
+                    "Debes iniciar sesión para acceder a este recurso."
+                )
+
+            role_name = get_user_role_name(user)
+            if not role_name or role_name.casefold() not in allowed:
+                raise ForbiddenError(
+                    "No tienes permisos para acceder a esta sección."
+                )
+
+            g.current_user = user
+            g.current_role_name = role_name
+            return fn(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
 
 
 def admin_required(fn):
-    """
-    Decorador para exigir que el usuario tenga rol 'Admin'.
+    """Exige el rol Admin sin depender de ADMIN_ROLE_ID."""
+    return role_required("Admin")(fn)
 
-    ⚠ IMPORTANTE:
-    - Actualmente se verifica por role_id (numérico).
-    - Ajusta ADMIN_ROLE_ID según tu BD (ej: 2 si tu Admin tiene id=2).
 
-    Idealmente en el futuro podemos verificar por nombre de rol ('Admin'),
-    pero para esta versión basta con el ID.
-    """
-
-    @wraps(fn)
-    def wrapper(*args, **kwargs):
-        # Reutilizar g.current_user si ya lo puso @login_required
-        user = getattr(g, "current_user", None)
-        if not user:
-            user = get_current_user()
-
-        if not user:
-            # No hay sesión
-            raise AuthError("Debes iniciar sesión para acceder a este recurso.")
-
-        role_id = user.get("role_id")
-
-        # ⬇️ Ajusta ESTE valor según tu BD
-        ADMIN_ROLE_ID = 2  # antes estaba en 1
-
-        if role_id != ADMIN_ROLE_ID:
-            raise ForbiddenError("No tienes permisos para acceder a esta sección.")
-
-        # Nos aseguramos de que g.current_user esté seteado
-        g.current_user = user
-        return fn(*args, **kwargs)
-
-    return wrapper
+def teacher_or_admin_required(fn):
+    """Permite supervisión académica a Teacher y administración global a Admin."""
+    return role_required("Teacher", "Admin")(fn)

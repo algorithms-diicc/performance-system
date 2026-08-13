@@ -1,5 +1,9 @@
 # server/webapp/routes/auth_routes.py
 
+import os
+import re
+from urllib.parse import urlencode
+
 from flask import (
     Blueprint,
     redirect,
@@ -15,6 +19,12 @@ from ...auth import (
     decode_id_token,
     get_or_create_user_from_claims,
     create_session_for_user,
+    generate_oauth_state,
+    oauth_state_matches,
+    session_cookie_secure,
+    SESSION_COOKIE_NAME,
+    OAUTH_STATE_COOKIE_NAME,
+    OAUTH_STATE_MAX_AGE_SECONDS,
 )
 
 from ..utils.db_utils import db_cursor
@@ -24,6 +34,106 @@ from ..utils.auth_decorators import login_required
 # Blueprint de autenticación
 # OJO: SIN url_prefix, así las rutas públicas son exactamente las que declaramos abajo.
 auth_bp = Blueprint("auth", __name__)
+
+EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+
+
+def _request_object():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise ValidationError(
+            "El cuerpo de la solicitud debe ser un objeto JSON.",
+        )
+    return data
+
+
+def _text_field(data, field, max_length, required=False, lower=False):
+    value = data.get(field, "")
+    if value is None:
+        value = ""
+    if not isinstance(value, str):
+        raise ValidationError(
+            "El valor indicado no tiene un formato válido.",
+            extra={"field": field},
+        )
+
+    value = value.strip()
+    if required and not value:
+        raise ValidationError(
+            "Debe completar este campo.",
+            extra={"field": field},
+        )
+    if len(value) > max_length:
+        raise ValidationError(
+            "El valor indicado supera el largo permitido.",
+            extra={"field": field, "max_length": max_length},
+        )
+    return value.lower() if lower else value
+
+
+def _frontend_login_redirect(code, message, email=None):
+    """
+    Devuelve los errores OAuth al login React en lugar de mostrar texto/HTML
+    crudo desde Flask.
+
+    En desarrollo el frontend vive en localhost:3000. En producción, Point 9
+    definirá FRONTEND_LOGIN_URL con la URL pública definitiva.
+    """
+    base_url = os.getenv(
+        "FRONTEND_LOGIN_URL",
+        "http://localhost:3000/login",
+    ).strip()
+
+    params = {
+        "auth_status": "error",
+        "auth_code": code,
+        "auth_message": message,
+    }
+    if email:
+        params["auth_email"] = email
+
+    separator = "&" if "?" in base_url else "?"
+    return redirect(
+        "{}{}{}".format(
+            base_url,
+            separator,
+            urlencode(params),
+        )
+    )
+
+
+def _business_auth_error_code(message):
+    normalized = str(message or "").casefold()
+
+    if "dominio permitido" in normalized:
+        return "EXTERNAL_DOMAIN"
+    if "no existe una cuenta registrada" in normalized:
+        return "ACCESS_REQUIRED"
+    if "aún no ha sido aprobada" in normalized:
+        return "ACCESS_PENDING"
+    if "aun no ha sido aprobada" in normalized:
+        return "ACCESS_PENDING"
+    if "deshabilitada" in normalized:
+        return "ACCOUNT_DISABLED"
+
+    return "ACCESS_DENIED"
+
+
+def _clear_oauth_state(response):
+    response.delete_cookie(
+        OAUTH_STATE_COOKIE_NAME,
+        path="/auth",
+        secure=session_cookie_secure(),
+        httponly=True,
+        samesite="Lax",
+    )
+    return response
+
+
+def _oauth_login_redirect(code, message, email=None):
+    return _clear_oauth_state(
+        _frontend_login_redirect(code, message, email=email)
+    )
 
 
 @auth_bp.route("/auth/login", methods=["GET"])
@@ -37,77 +147,96 @@ def auth_login():
     Resultado esperado:
       - Respuesta 302 (redirect) hacia la página de login de Google.
     """
-    login_url = build_auth_url()
-    print("➡️ Redirigiendo a Google login:", login_url)
-    return redirect(login_url)
+    state = generate_oauth_state()
+    response = redirect(build_auth_url(state))
+    response.set_cookie(
+        OAUTH_STATE_COOKIE_NAME,
+        state,
+        max_age=OAUTH_STATE_MAX_AGE_SECONDS,
+        httponly=True,
+        secure=session_cookie_secure(),
+        samesite="Lax",
+        path="/auth",
+    )
+    return response
 
 
 @auth_bp.route("/auth/callback", methods=["GET"])
 def auth_callback():
     """
-    Endpoint de callback para Google OAuth.
+    Callback OAuth de Google.
 
-    Google redirige a esta URL después del login:
-      /auth/callback?code=...&state=...
-
-    Flujo:
-      1. Lee 'code' de la query.
-      2. Llama a exchange_code_for_token(code).
-      3. Decodifica id_token con decode_id_token.
-      4. Busca o crea usuario en BD con get_or_create_user_from_claims.
-      5. Crea sesión y setea cookie 'session_id'.
-      6. Redirige al frontend (por ahora '/').
-
-    Ejemplo de prueba rápida:
-      - No se prueba directamente con Postman.
-      - El frontend llama a /auth/login, Google redirige de vuelta a /auth/callback.
+    CORE-08B-1:
+    - los errores esperables vuelven al login React con feedback visible;
+    - no se muestran excepciones internas ni texto crudo al usuario;
+    - el login exitoso conserva el flujo existente.
     """
+    received_state = request.args.get("state")
+    expected_state = request.cookies.get(OAUTH_STATE_COOKIE_NAME)
+    if not oauth_state_matches(expected_state, received_state):
+        return _oauth_login_redirect(
+            "INVALID_OAUTH_STATE",
+            "La solicitud de inicio de sesión expiró o no es válida. Intenta nuevamente.",
+        )
+
     error = request.args.get("error")
     if error:
-        error_description = request.args.get("error_description", "")
-        print("❌ Error devuelto por Google:", error, error_description)
-        return make_response(
-            f"Error en login de Google: {error} - {error_description}", 400
+        return _oauth_login_redirect(
+            "GOOGLE_AUTH_ERROR",
+            "No fue posible completar el inicio de sesión con Google.",
         )
 
     code = request.args.get("code")
     if not code:
-        print("❌ Falta parámetro 'code' en /auth/callback")
-        return make_response("Falta parámetro 'code' en callback", 400)
+        return _oauth_login_redirect(
+            "MISSING_AUTH_CODE",
+            "Google no entregó la información necesaria para iniciar sesión.",
+        )
+
+    claims = {}
 
     try:
-        # 1) Intercambiar code por tokens
         token_data = exchange_code_for_token(code)
         id_token = token_data.get("id_token")
+
         if not id_token:
-            print("❌ No se recibió id_token desde Google")
-            return make_response("No se recibió id_token desde Google", 400)
+            return _oauth_login_redirect(
+                "MISSING_ID_TOKEN",
+                "No fue posible validar tu identidad con Google.",
+            )
 
-        # 2) Decodificar id_token
         claims = decode_id_token(id_token)
-        print("✅ Claims decodificados:", claims)
 
-        # 3) Obtener o crear usuario en BD (según reglas INF/UDEC)
         user = get_or_create_user_from_claims(claims)
-        print("✅ Usuario en BD:", user)
 
-        # 4) Crear sesión y setear cookie
         from flask import redirect as flask_redirect
 
-        resp = flask_redirect("/")  # o la ruta del frontend (ej: "/app")
+        resp = flask_redirect("/")
         resp = create_session_for_user(user["id"], resp)
+        return _clear_oauth_state(resp)
 
-        print("✅ Sesión creada y cookie seteada")
-        return resp
+    except ValueError as exc:
+        message = str(exc)
+        return _oauth_login_redirect(
+            _business_auth_error_code(message),
+            message,
+            email=claims.get("email"),
+        )
 
-    except ValueError as ve:
-        # Errores de negocio (dominios no permitidos, cuenta inactiva, etc.)
-        print("⚠️ Error de negocio en /auth/callback:", ve)
-        return make_response(str(ve), 403)
-
-    except Exception as e:
-        print("❌ Error en /auth/callback:", e)
-        return make_response(f"Error en el proceso de login: {str(e)}", 500)
+    except Exception as exc:
+        print(
+            "[AUTH CALLBACK ERROR]",
+            type(exc).__name__,
+            str(exc),
+        )
+        return _oauth_login_redirect(
+            "LOGIN_ERROR",
+            (
+                "No fue posible completar el inicio de sesión. "
+                "Intenta nuevamente."
+            ),
+            email=claims.get("email"),
+        )
 
 
 @auth_bp.route("/api/auth/me", methods=["GET"])
@@ -197,28 +326,35 @@ def public_create_access_request():
         }
       }
     """
-    data = request.get_json(silent=True) or {}
+    data = _request_object()
 
-    full_name = data.get("full_name", "").strip()
-    email = data.get("email", "").strip().lower()
-    professor_email = data.get("professor_email", "").strip()
-    course_code = data.get("course_code", "").strip()
-    message = data.get("message", "").strip()
+    full_name = _text_field(data, "full_name", 200, required=True)
+    email = _text_field(
+        data,
+        "email",
+        320,
+        required=True,
+        lower=True,
+    )
+    professor_email = _text_field(
+        data,
+        "professor_email",
+        320,
+        required=True,
+        lower=True,
+    )
+    course_code = _text_field(data, "course_code", 80)
+    message = _text_field(data, "message", 2000)
 
     # Validaciones básicas
-    if not full_name:
+    if not EMAIL_RE.fullmatch(email):
         raise ValidationError(
-            "Debe indicar el nombre completo.",
-            extra={"field": "full_name"},
-        )
-    if not email:
-        raise ValidationError(
-            "Debe indicar el correo.",
+            "Debe indicar un correo institucional válido.",
             extra={"field": "email"},
         )
-    if not professor_email:
+    if not EMAIL_RE.fullmatch(professor_email):
         raise ValidationError(
-            "Debe indicar el correo del profesor responsable.",
+            "Debe indicar un correo válido para el profesor responsable.",
             extra={"field": "professor_email"},
         )
 
@@ -379,16 +515,10 @@ def create_audit_log_entry():
       }
     """
     user = g.current_user
-    data = request.get_json(silent=True) or {}
+    data = _request_object()
 
-    action = data.get("action", "").strip()
-    description = data.get("description", "").strip() or None
-
-    if not action:
-        raise ValidationError(
-            "Debe indicar la acción a registrar.",
-            extra={"field": "action"},
-        )
+    action = _text_field(data, "action", 100, required=True)
+    description = _text_field(data, "description", 2000) or None
 
     with db_cursor() as (conn, cur):
         cur.execute(
@@ -417,68 +547,42 @@ def create_audit_log_entry():
 
 
 @auth_bp.route("/api/auth/logout", methods=["POST"])
+@auth_bp.route("/auth/logout", methods=["POST"])
 @handle_api_errors
-@login_required
 def auth_logout():
     """
-    Cierra la sesión actual del usuario.
+    Cierra la sesión de forma idempotente.
 
-    Qué hace:
-      - Lee la cookie 'session_id'.
-      - Marca la sesión como inactiva en la tabla 'sessions' (is_active = FALSE).
-      - Elimina la cookie en la respuesta (expira inmediatamente).
-
-    Ejemplo de uso (Postman / frontend):
-      POST http://localhost:5000/api/auth/logout
-      Headers:
-        Cookie: session_id=<valor_actual>
-
-    Respuesta (200) típica:
-      {
-        "message": "Sesión cerrada correctamente.",
-        "code": "LOGOUT_OK"
-      }
-
-    Si ya no había cookie o la sesión no existía:
-      {
-        "message": "No había sesión activa.",
-        "code": "NO_ACTIVE_SESSION"
-      }
+    CORE-08B-1:
+    - mantiene /api/auth/logout como endpoint canónico;
+    - conserva /auth/logout como alias de compatibilidad;
+    - invalida la sesión en PostgreSQL cuando existe;
+    - elimina siempre la cookie, incluso si la sesión ya expiró/no existe.
     """
-    # 1) Leer el session_id de la cookie
-    session_id = request.cookies.get("session_id")
+    session_id = request.cookies.get(SESSION_COOKIE_NAME)
 
-    if not session_id:
-        # No hay cookie → para el backend ya está "deslogueado"
-        resp = jsonify(
-            {
-                "message": "No había sesión activa.",
-                "code": "NO_ACTIVE_SESSION",
-            }
-        )
-        # Aun así, nos aseguramos de limpiar la cookie por si acaso
-        resp.set_cookie("session_id", "", expires=0)
-        return resp, 200
+    if session_id:
+        with db_cursor() as (conn, cur):
+            cur.execute(
+                """
+                UPDATE sessions
+                SET is_active = FALSE
+                WHERE id = %s;
+                """,
+                (session_id,),
+            )
 
-    # 2) Marcar la sesión como inactiva en BD
-    with db_cursor() as (conn, cur):
-        cur.execute(
-            """
-            UPDATE sessions
-            SET is_active = FALSE
-            WHERE id = %s;
-            """,
-            (session_id,),
-        )
-
-    # 3) Construir respuesta y limpiar cookie
     resp = jsonify(
         {
             "message": "Sesión cerrada correctamente.",
             "code": "LOGOUT_OK",
         }
     )
-    # Expirar cookie en el navegador
-    resp.set_cookie("session_id", "", expires=0)
-
+    resp.delete_cookie(
+        SESSION_COOKIE_NAME,
+        path="/",
+        secure=session_cookie_secure(),
+        httponly=True,
+        samesite="Lax",
+    )
     return resp, 200

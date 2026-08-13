@@ -1,74 +1,171 @@
 import random
 import sys
+from pathlib import Path
 
-bottomRand = 0
-topRand = 1000
 
-def generate_semi_sorted_numbers(quantity):
-    maxSortedRangeSize = 100
-    semi_sorted_numbers = []
+BASE_DIR = Path(__file__).resolve().parent
+
+BOTTOM_RAND = 0.0
+TOP_RAND = 1000.0
+
+# Semilla fija del dataset oficial de desarrollo.
+# Permite regenerar exactamente los mismos inputs numéricos.
+DEFAULT_SEED = 20260811
+
+OPTION_SEED_OFFSET = {
+    "r": 0,
+    "s": 1,
+    "so": 2,
+}
+
+OUTPUT_FILES = {
+    "r": "numerical_input.txt",
+    "s": "numerical_input_same.txt",
+    "so": "numerical_input_semi_sorted.txt",
+}
+
+
+def generate_semi_sorted_numbers(quantity, rng):
+    """
+    Genera bloques internamente ordenados y luego mezcla el orden
+    de los bloques completos.
+
+    La implementación legacy reutilizaba por error el tamaño del
+    último bloque para reconstruir todos los rangos. Aquí cada bloque
+    conserva su tamaño real.
+    """
+    max_sorted_range_size = 100
+    runs = []
     remaining = quantity
 
     while remaining > 0:
-        size = min(random.randint(1, maxSortedRangeSize), remaining)
-        bottomRand = random.uniform(0, 500)  
-        topRand = random.uniform(bottomRand, 1000) 
-        sub_range = [random.uniform(bottomRand, topRand) for _ in range(size)]
-        sub_range.sort()
-        semi_sorted_numbers.extend(sub_range)
+        size = min(
+            rng.randint(1, max_sorted_range_size),
+            remaining,
+        )
+
+        bottom = rng.uniform(0.0, 500.0)
+        top = rng.uniform(bottom, TOP_RAND)
+
+        run = [
+            rng.uniform(bottom, top)
+            for _ in range(size)
+        ]
+
+        run.sort()
+        runs.append(run)
         remaining -= size
 
-    range_starts = [0]
-    while len(range_starts) < len(semi_sorted_numbers):
-        next_start = range_starts[-1] + size
-        if next_start < len(semi_sorted_numbers):
-            range_starts.append(next_start)
-        else:
-            break
+    rng.shuffle(runs)
 
-    random.shuffle(range_starts)  
-
-    shuffled_semi_sorted = []
-    for start in range_starts:
-        end = start + size
-        shuffled_semi_sorted.extend(semi_sorted_numbers[start:end])
-
-    return shuffled_semi_sorted
+    return [
+        value
+        for run in runs
+        for value in run
+    ]
 
 
+def generate_numbers(option, quantity, output_dir=BASE_DIR):
+    if option not in OUTPUT_FILES:
+        raise ValueError(
+            "option debe ser una de: r, s, so"
+        )
 
-def generate_numbers(option, quantity):
-    filename = "numerical_input.txt"
-    
+    if not isinstance(quantity, int) or quantity <= 0:
+        raise ValueError(
+            "quantity debe ser un entero mayor que 0"
+        )
+
+    output_dir = Path(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    seed = (
+        DEFAULT_SEED
+        + OPTION_SEED_OFFSET[option]
+    )
+
+    rng = random.Random(seed)
+
+    filename = output_dir / OUTPUT_FILES[option]
+
     if option == "r":
-        filename = "numerical_input.txt"
-        with open(filename, 'w') as f:
-            for _ in range(quantity):
-                f.write(f"{random.uniform(bottomRand, topRand):.2f}\n")
-
-    elif option == "so":
-            filename = "numerical_input_semi_sorted.txt"
-            with open(filename, 'w') as f:
-                semi_sorted_numbers = generate_semi_sorted_numbers(quantity)
-                for num in semi_sorted_numbers:
-                    f.write(f"{num:.2f}\n")
+        values = [
+            rng.uniform(BOTTOM_RAND, TOP_RAND)
+            for _ in range(quantity)
+        ]
 
     elif option == "s":
-        filename = "numerical_input_same.txt"
-        with open(filename, 'w') as f:
-            repeat_num = random.uniform(bottomRand, topRand)
-            for _ in range(quantity):
-                f.write(f"{repeat_num:.2f}\n")
+        repeat_num = rng.uniform(
+            BOTTOM_RAND,
+            TOP_RAND,
+        )
+        values = [repeat_num] * quantity
 
     else:
-        print("Invalid option")
-        return
-    print(f"File {filename} generated with {quantity} numbers.")
+        values = generate_semi_sorted_numbers(
+            quantity,
+            rng,
+        )
 
-# Example usage
-if len(sys.argv) != 3:
-    print("Usage: python script_name.py [option] [quantity], options = [s:same, so: semi ordenado, r: random]")
-else:
+    temp_filename = filename.with_suffix(
+        filename.suffix + ".part"
+    )
+
+    try:
+        with open(
+            temp_filename,
+            "w",
+            encoding="utf-8",
+            newline="\n",
+        ) as output:
+            for value in values:
+                output.write(
+                    f"{value:.2f}\n"
+                )
+
+        temp_filename.replace(filename)
+
+    except Exception:
+        if temp_filename.exists():
+            temp_filename.unlink()
+        raise
+
+    print(
+        f"File {filename.name} generated with "
+        f"{quantity} numbers "
+        f"(seed={seed})."
+    )
+
+    return filename
+
+
+def main():
+    if len(sys.argv) != 3:
+        print(
+            "Usage: python generate_num.py "
+            "[option] [quantity], "
+            "options = [s:same, so:semi ordenado, r:random]"
+        )
+        return 2
+
     option = sys.argv[1]
-    quantity = int(sys.argv[2])
-    generate_numbers(option, quantity)
+
+    try:
+        quantity = int(sys.argv[2])
+        generate_numbers(
+            option,
+            quantity,
+        )
+
+    except (TypeError, ValueError) as error:
+        print(
+            f"ERROR: {error}",
+            file=sys.stderr,
+        )
+        return 2
+
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

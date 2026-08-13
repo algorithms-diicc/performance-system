@@ -359,6 +359,12 @@
     color: #fecaca;
 }
 
+.login-alert--info {
+    border-color: rgba(96, 165, 250, 0.8);
+    box-shadow: 0 10px 28px rgba(59, 130, 246, 0.28);
+    color: #bfdbfe;
+}
+
 /* ===================== GRID DEL FORMULARIO (@udec.cl) ===================== */
 
 .login-form--grid {

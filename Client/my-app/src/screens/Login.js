@@ -1,9 +1,10 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { requestJson } from "../common/requestErrorModel";
 import "./Login.css";
 
 const Login = () => {
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Estado para el botón de Google
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -18,14 +19,64 @@ const Login = () => {
   const [requestErrors, setRequestErrors] = useState({});
   const [requestSubmitting, setRequestSubmitting] = useState(false);
   const [requestFeedback, setRequestFeedback] = useState(null); // { type, text }
+  const [authFeedback, setAuthFeedback] = useState(null);
+
+  // =========================================================
+  // Feedback devuelto por /auth/callback
+  // =========================================================
+  useEffect(() => {
+    const status = searchParams.get("auth_status");
+    if (!status) return;
+
+    const code = searchParams.get("auth_code") || "LOGIN_ERROR";
+    const message =
+      searchParams.get("auth_message") ||
+      "No fue posible completar el inicio de sesión.";
+    const email = (searchParams.get("auth_email") || "").trim();
+
+    const informationalCodes = new Set([
+      "ACCESS_REQUIRED",
+      "ACCESS_PENDING",
+    ]);
+
+    setAuthFeedback({
+      type: informationalCodes.has(code) ? "info" : "error",
+      text: message,
+    });
+
+    if (
+      email.toLowerCase().endsWith("@udec.cl") &&
+      !email.toLowerCase().endsWith("@inf.udec.cl")
+    ) {
+      setRequestEmail(email);
+    }
+
+    // El mensaje permanece en estado React, pero evitamos que F5
+    // vuelva a reproducir una alerta OAuth ya atendida.
+    window.history.replaceState(
+      window.history.state,
+      "",
+      "/login"
+    );
+  }, [searchParams]);
 
   // =========================
   // Handler: Login con Google
   // =========================
   const handleGoogleLogin = () => {
     setGoogleLoading(true);
-    // Para desarrollo local con backend en 5000:
-    window.location.href = "http://localhost:5000/auth/login";
+
+    const configuredApiOrigin =
+      process.env.REACT_APP_API_ORIGIN?.trim();
+
+    const apiOrigin = (
+      configuredApiOrigin ||
+      (process.env.NODE_ENV === "development"
+        ? "http://localhost:5000"
+        : "")
+    ).replace(/\/$/, "");
+
+    window.location.assign(`${apiOrigin}/auth/login`);
   };
 
   // ==========================================
@@ -67,33 +118,26 @@ const Login = () => {
     setRequestSubmitting(true);
 
     try {
-      const response = await fetch("/api/public/access-requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await requestJson(
+        "/api/public/access-requests",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            full_name: fullName,
+            email: requestEmail,
+            professor_email: professorEmail,
+            course_code: courseCode,
+            message,
+          }),
         },
-        body: JSON.stringify({
-          full_name: fullName,
-          email: requestEmail,
-          professor_email: professorEmail,
-          course_code: courseCode,
-          message,
-        }),
-      });
-
-      let data = {};
-      try {
-        data = await response.json();
-      } catch (_) {
-        // Si no viene JSON, dejamos data vacío
-      }
-
-      if (!response.ok) {
-        const errorMsg =
-          (data && data.error) ||
-          "Ocurrió un error al enviar la solicitud. Intenta nuevamente.";
-        throw new Error(errorMsg);
-      }
+        {
+          fallback:
+            "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
+        }
+      );
 
       // Éxito: limpiamos campos y mostramos mensaje
       setFullName("");
@@ -110,16 +154,17 @@ const Login = () => {
           "Cuando tu cuenta sea aprobada, podrás ingresar usando 'Continuar con Google' con el mismo correo @udec.cl.",
       });
     } catch (err) {
+      const apiError = err?.payload?.error;
       setRequestFeedback({
-        type: "error",
-        text: err?.message || "Error al enviar la solicitud.",
+        type: apiError?.status === "PENDING" ? "info" : "error",
+        text:
+          err?.message ||
+          "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
       });
     } finally {
       setRequestSubmitting(false);
     }
   };
-
-  const hasValidationErrors = Object.keys(requestErrors).length > 0;
 
   return (
     <div className="login-page">
@@ -176,6 +221,19 @@ const Login = () => {
             </p>
           </header>
 
+          {authFeedback && (
+            <div
+              className={`login-alert ${
+                authFeedback.type === "info"
+                  ? "login-alert--info"
+                  : "login-alert--error"
+              }`}
+              role="status"
+            >
+              {authFeedback.text}
+            </div>
+          )}
+
           {/* Botón de Google */}
           <div className="login-oauth">
             <button
@@ -214,7 +272,9 @@ const Login = () => {
               className={`login-alert ${
                 requestFeedback.type === "success"
                   ? "login-alert--success"
-                  : "login-alert--error"
+                  : requestFeedback.type === "info"
+                    ? "login-alert--info"
+                    : "login-alert--error"
               }`}
             >
               {requestFeedback.text}
