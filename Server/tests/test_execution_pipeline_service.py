@@ -7,6 +7,7 @@ from pathlib import Path
 from Server.webapp.services.execution_pipeline_service import (
     classify_status_text,
     combined_result_path,
+    execution_result_path,
     map_worker_error,
     read_legacy_outcome,
     result_bundle_exists,
@@ -82,9 +83,33 @@ class ExecutionPipelineServiceTests(unittest.TestCase):
             o = read_legacy_outcome(codename, status_dir, static_dir)
             self.assertEqual(o.kind, "SUCCESS")
 
-    def test_combined_result_path_matches_current_contract(self):
-        p = combined_result_path(["firstLCS", "secondLCS"], "/tmp/static")
-        self.assertEqual(p, "/tmp/static/secondLCS/CombinedResults.csv")
+    def test_execution_result_path_is_independent_per_execution(self):
+        first = execution_result_path("firstLCS", "/tmp/static")
+        second = execution_result_path("secondLCS", "/tmp/static")
+
+        self.assertEqual(
+            first,
+            "/tmp/static/firstLCS/CombinedResults.csv",
+        )
+        self.assertEqual(
+            second,
+            "/tmp/static/secondLCS/CombinedResults.csv",
+        )
+        self.assertNotEqual(first, second)
+
+    def test_combined_result_path_accepts_single_execution(self):
+        p = combined_result_path(["firstLCS"], "/tmp/static")
+        self.assertEqual(
+            p,
+            "/tmp/static/firstLCS/CombinedResults.csv",
+        )
+
+    def test_combined_result_path_rejects_multi_execution_bundle(self):
+        with self.assertRaises(ValueError):
+            combined_result_path(
+                ["firstLCS", "secondLCS"],
+                "/tmp/static",
+            )
 
     def test_result_bundle_exists(self):
         with tempfile.TemporaryDirectory() as tmp:

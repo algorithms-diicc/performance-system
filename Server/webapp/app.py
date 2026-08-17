@@ -63,7 +63,7 @@ from .services.execution_creation_service import (
 )
 from .services.execution_state_service import mark_failed
 from .services.execution_pipeline_service import (
-    combined_result_path,
+    execution_result_path,
     read_legacy_outcome,
     result_bundle_exists,
 )
@@ -794,41 +794,43 @@ def serve_next_inline():
         else:
             failed_count += 1
 
-    # Post-procesamiento sólo para ejecuciones cuyo worker terminó bien.
-    if successful_names:
-        for codename in successful_names:
-            escribir_estado(codename, "📊 Generando gráficos...")
+    # MULTI-01: post-procesamiento canónico e independiente por Execution.
+    # La medición del bundle sigue siendo serial; sólo se evita que varias
+    # executions compartan el mismo artefacto CombinedResults.csv.
+    completed_names = []
+
+    for codename, original_filename in zip(
+        successful_names,
+        successful_file_names,
+    ):
+        escribir_estado(codename, "📊 Generando gráficos...")
 
         try:
             graph_results(
-                successful_names,
-                successful_file_names,
+                [codename],
+                [original_filename],
                 input_size,
             )
         except Exception as exc:
             message = "Falló graph_results: {}".format(exc)
-            for codename in successful_names:
-                mark_processing_failed(
-                    codename,
-                    error_code="GRAPH_PROCESSING_ERROR",
-                    error_message=message,
-                )
-                escribir_estado(
-                    codename,
-                    "❌ {}".format(message),
-                    tipo="ERROR",
-                )
-            failed_count += len(successful_names)
-            successful_names = []
+            mark_processing_failed(
+                codename,
+                error_code="GRAPH_PROCESSING_ERROR",
+                error_message=message,
+            )
+            escribir_estado(
+                codename,
+                "❌ {}".format(message),
+                tipo="ERROR",
+            )
+            failed_count += 1
+            continue
 
-    if successful_names and not result_bundle_exists(
-        successful_names,
-        STATIC_DIR,
-    ):
-        message = (
-            "El post-procesamiento terminó sin producir CombinedResults.csv."
-        )
-        for codename in successful_names:
+        if not result_bundle_exists([codename], STATIC_DIR):
+            message = (
+                "El post-procesamiento terminó sin producir "
+                "CombinedResults.csv para la ejecución."
+            )
             mark_processing_failed(
                 codename,
                 error_code="RESULT_ARTIFACT_MISSING",
@@ -839,12 +841,11 @@ def serve_next_inline():
                 "❌ {}".format(message),
                 tipo="ERROR",
             )
-        failed_count += len(successful_names)
-        successful_names = []
+            failed_count += 1
+            continue
 
-    if successful_names:
-        absolute_result_path = combined_result_path(
-            successful_names,
+        absolute_result_path = execution_result_path(
+            codename,
             STATIC_DIR,
         )
         persisted_result_path = os.path.relpath(
@@ -852,19 +853,21 @@ def serve_next_inline():
             BASE_DIR,
         )
 
-        for codename in successful_names:
-            completed = mark_worker_completed(
+        completed = mark_worker_completed(
+            codename,
+            result_path=persisted_result_path,
+        )
+        escribir_estado(codename, "✅ Resultados listos.")
+        print(
+            "💾 PostgreSQL: {} → {} (v{})".format(
                 codename,
-                result_path=persisted_result_path,
+                completed["execution_state"],
+                completed["state_version"],
             )
-            escribir_estado(codename, "✅ Resultados listos.")
-            print(
-                "💾 PostgreSQL: {} → {} (v{})".format(
-                    codename,
-                    completed["execution_state"],
-                    completed["state_version"],
-                )
-            )
+        )
+        completed_names.append(codename)
+
+    successful_names = completed_names
 
     # Compatibilidad temporal con submissions.status.
     if names:

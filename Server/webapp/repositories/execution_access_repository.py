@@ -14,6 +14,7 @@ def get_execution_access_row_by_codename(codename, conn=None):
                     e.codename,
                     e.execution_state,
                     e.result_available,
+                    e.result_path,
                     e.hardware_snapshot,
                     s.id AS submission_id,
                     s.user_id AS owner_user_id,

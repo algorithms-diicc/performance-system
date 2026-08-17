@@ -18,6 +18,7 @@ import {
 import TutorialPage from "./screens/TutorialPage";
 import ProfilePage from "./screens/ProfilePage";
 import SystemStatePage from "./screens/SystemStatePage";
+import SubmissionOverviewPage from "./screens/SubmissionOverviewPage";
 import Login from "./screens/Login";
 
 import AdminUser from "./screens/AdminUser";
@@ -298,6 +299,22 @@ const AppInner = () => {
             isAuthenticated
               ? (
                 <RenderImage />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
+        <Route
+          path="/submissions/:submissionId"
+          element={
+            isAuthenticated
+              ? (
+                <SubmissionOverviewPage />
               )
               : (
                 <Navigate

@@ -74,12 +74,19 @@ function StatusPanel({
   const hasExecution =
     Array.isArray(fileList) && fileList.length > 0;
 
+  const hasCompletedResults =
+    Array.isArray(executionFiles) &&
+    executionFiles.some(
+      (execution) => execution?.resultsReady === true
+    );
+
   const mode = getPanelMode({
     hasExecution,
     isSubmitting,
     allDone,
     allTerminal,
     hasError,
+    hasCompletedResults,
     submissionError,
     pollingRequestError,
   });
@@ -138,6 +145,19 @@ function StatusPanel({
 
       {mode === "completed" && (
         <CompletedPanel
+          summary={summary}
+          messages={messages}
+          showTechnicalDetails={showTechnicalDetails}
+          onToggleTechnical={() =>
+            setShowTechnicalDetails((prev) => !prev)
+          }
+          onGoToResults={onGoToResults}
+          onReset={onReset}
+        />
+      )}
+
+      {mode === "partial" && (
+        <PartialPanel
           summary={summary}
           messages={messages}
           showTechnicalDetails={showTechnicalDetails}
@@ -368,6 +388,72 @@ function CompletedPanel({
         >
           <BarChart3 size={17} />
           Ver resultados
+        </button>
+
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onReset}
+        >
+          <RotateCcw size={15} />
+          Nuevo análisis
+        </button>
+      </div>
+
+      <TechnicalDetails
+        messages={messages}
+        open={showTechnicalDetails}
+        onToggle={onToggleTechnical}
+      />
+    </>
+  );
+}
+
+function PartialPanel({
+  summary,
+  messages,
+  showTechnicalDetails,
+  onToggleTechnical,
+  onGoToResults,
+  onReset,
+}) {
+  return (
+    <>
+      <PanelHeader
+        kicker="Parcial"
+        title="Análisis parcialmente completado"
+        description="Algunas implementaciones terminaron correctamente y otras requieren revisión."
+        icon={<AlertTriangle size={20} />}
+        chip={{
+          label: "Resultados parciales",
+          className:
+            "status-chip status-chip-error",
+        }}
+      />
+
+      <div className="rf-error-callout">
+        <AlertTriangle size={22} />
+
+        <div>
+          <strong>Hay resultados disponibles</strong>
+          <p>
+            Puedes revisar las ejecuciones completadas sin repetir
+            las que ya finalizaron correctamente. El experimento
+            mostrará también qué implementación falló.
+          </p>
+        </div>
+      </div>
+
+      <CompactExecutionSummary summary={summary} />
+
+      <div className="rf-status-actions">
+        <button
+          type="button"
+          className="submit-button"
+          onClick={onGoToResults}
+        >
+          <BarChart3 size={17} />
+          Ver resultados disponibles
         </button>
 
         <button
@@ -734,6 +820,7 @@ function getPanelMode({
   allDone,
   allTerminal,
   hasError,
+  hasCompletedResults,
   submissionError,
   pollingRequestError,
 }) {
@@ -751,6 +838,14 @@ function getPanelMode({
 
   if (allDone) {
     return "completed";
+  }
+
+  if (
+    allTerminal &&
+    hasError &&
+    hasCompletedResults
+  ) {
+    return "partial";
   }
 
   if (allTerminal && hasError) {

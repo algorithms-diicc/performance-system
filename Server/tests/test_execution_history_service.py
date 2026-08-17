@@ -102,6 +102,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             "execution_id": 60,
             "public_id": "uuid",
             "codename": "abcLCS",
+            "original_filename": "solucion.cpp",
             "submission_id": 56,
             "submission_title": "LCS",
             "execution_state": "FAILED",
@@ -120,6 +121,25 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
         self.assertEqual(payload["rawStatus"], "FAILED")
         self.assertEqual(payload["status"], "Error")
         self.assertEqual(payload["durationMs"], 2000)
+        self.assertEqual(
+            payload["originalFilename"],
+            "solucion.cpp",
+        )
+
+    def test_serializer_falls_back_to_codename_for_original_filename(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 61,
+                "codename": "fallbackSIZE",
+                "submission_id": 56,
+                "execution_state": "COMPLETED",
+                "result_available": True,
+            }
+        )
+        self.assertEqual(
+            payload["originalFilename"],
+            "fallbackSIZE",
+        )
 
     def test_summary_keeps_legacy_alias(self):
         summary = summary_from_aggregate(

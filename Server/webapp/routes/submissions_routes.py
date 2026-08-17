@@ -542,6 +542,7 @@ def get_submission_executions(submission_id: int):
               e.finished_at,
               e.duration_ms,
               e.result_available,
+              e.execution_config->>'original_filename' AS original_filename,
               s.title AS submission_title,
               hp.name AS hardware_name
             """ + base_sql + """

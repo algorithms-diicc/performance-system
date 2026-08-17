@@ -153,20 +153,34 @@ def read_legacy_outcome(codename, status_dir, static_dir):
     )
 
 
-def combined_result_path(names, static_dir):
-    """
-    Reproduce el contrato actual de graph_results():
-      output_dir = static/<names[-1]>
-      result     = CombinedResults.csv
-    """
-    if not names:
-        raise ValueError("names no puede estar vacío.")
+def execution_result_path(codename, static_dir):
+    """Ruta canónica del resultado procesado de UNA Execution."""
+    normalized = str(codename or "").strip()
+    if not normalized:
+        raise ValueError("codename no puede estar vacío.")
 
     return str(
         Path(static_dir)
-        / names[-1]
+        / normalized
         / "CombinedResults.csv"
     )
+
+
+def combined_result_path(names, static_dir):
+    """
+    Compatibilidad temporal para callers legacy.
+
+    MULTI-01: un resultado canónico pertenece a una única Execution.
+    Por ello este helper rechaza bundles con más de un codename.
+    """
+    if not names:
+        raise ValueError("names no puede estar vacío.")
+    if len(names) != 1:
+        raise ValueError(
+            "CombinedResults.csv canónico requiere exactamente una Execution."
+        )
+
+    return execution_result_path(names[0], static_dir)
 
 
 def result_bundle_exists(names, static_dir):

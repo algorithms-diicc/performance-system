@@ -38,6 +38,15 @@ WEBAPP_DIR = os.path.dirname(
     os.path.dirname(os.path.abspath(__file__))
 )
 STATIC_DIR = os.path.join(WEBAPP_DIR, "static")
+SERVER_DIR = os.path.dirname(WEBAPP_DIR)
+
+
+class ExecutionResultsNotReady(Exception):
+    """La Execution todavía no posee un resultado publicable."""
+
+
+class ExecutionResultContractMismatch(Exception):
+    """La referencia persistida no coincide con el artefacto de la Execution."""
 
 
 def _assert_current_user_can_view(codename):
@@ -50,6 +59,64 @@ def _assert_current_user_can_view(codename):
         current_user_id=g.current_user["id"],
         current_role_name=role_name,
     )
+
+
+def _assert_canonical_result_reference(
+    codename,
+    execution_row,
+    static_dir=None,
+    server_dir=None,
+):
+    """
+    MULTI-01: una ruta /executions/<codename>/... sólo puede publicar
+    el artefacto canónico persistido para ESA Execution.
+
+    No existe fallback a artefactos de siblings ni compatibilidad con bundles
+    multi-CPP históricos. Los datos de prueba legacy pueden regenerarse.
+    """
+    if (
+        execution_row.get("execution_state") != "COMPLETED"
+        or execution_row.get("result_available") is not True
+    ):
+        raise ExecutionResultsNotReady(
+            "La ejecución todavía no posee resultados publicables."
+        )
+
+    persisted_result_path = str(
+        execution_row.get("result_path") or ""
+    ).strip()
+    if not persisted_result_path:
+        raise ExecutionResultContractMismatch(
+            "La ejecución COMPLETED no posee result_path."
+        )
+
+    static_root = os.path.realpath(static_dir or STATIC_DIR)
+    server_root = os.path.realpath(server_dir or SERVER_DIR)
+
+    expected_path = os.path.realpath(
+        os.path.join(
+            static_root,
+            codename,
+            "CombinedResults.csv",
+        )
+    )
+
+    if os.path.isabs(persisted_result_path):
+        persisted_path = os.path.realpath(persisted_result_path)
+    else:
+        persisted_path = os.path.realpath(
+            os.path.join(
+                server_root,
+                persisted_result_path,
+            )
+        )
+
+    if persisted_path != expected_path:
+        raise ExecutionResultContractMismatch(
+            "result_path no corresponde al codename solicitado."
+        )
+
+    return expected_path
 
 
 @results_bp.route("/<codename>/results", methods=["GET"])
@@ -79,6 +146,27 @@ def get_execution_results(codename):
     except ExecutionAccessForbidden:
         raise ForbiddenError(
             "No tienes permiso para acceder a esta ejecución."
+        )
+
+    try:
+        _assert_canonical_result_reference(
+            codename,
+            execution_row,
+        )
+    except ExecutionResultsNotReady:
+        return _error_response(
+            status=409,
+            code="RESULTS_NOT_READY",
+            message="La ejecución todavía no posee resultados publicables.",
+        )
+    except ExecutionResultContractMismatch:
+        return _error_response(
+            status=422,
+            code="RESULTS_INVALID",
+            message=(
+                "La ejecución terminó, pero su referencia de resultados "
+                "no cumple el contrato esperado."
+            ),
         )
 
     try:
@@ -130,7 +218,7 @@ def create_ai_explanation(codename):
         )
 
     try:
-        _assert_current_user_can_view(codename)
+        execution_row = _assert_current_user_can_view(codename)
     except ExecutionAccessNotFound:
         raise NotFoundError(
             "La ejecución solicitada no existe."
@@ -140,6 +228,27 @@ def create_ai_explanation(codename):
             "No tienes permiso para acceder a esta ejecución."
         )
 
+    try:
+        _assert_canonical_result_reference(
+            codename,
+            execution_row,
+        )
+    except ExecutionResultsNotReady:
+        return _error_response(
+            status=409,
+            code="RESULTS_NOT_READY",
+            message="La ejecución todavía no posee resultados publicables.",
+        )
+    except ExecutionResultContractMismatch:
+        return _error_response(
+            status=422,
+            code="RESULTS_INVALID",
+            message=(
+                "La ejecución terminó, pero su referencia de resultados "
+                "no cumple el contrato esperado."
+            ),
+        )
+
     body = request.get_json(silent=True) or {}
     force = bool(body.get("force", False))
 
@@ -147,6 +256,9 @@ def create_ai_explanation(codename):
         results_payload = build_execution_results(
             static_dir=STATIC_DIR,
             codename=codename,
+            hardware_snapshot=execution_row.get(
+                "hardware_snapshot"
+            ),
         )
 
         payload = generate_ai_explanation(

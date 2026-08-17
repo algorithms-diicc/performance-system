@@ -80,6 +80,10 @@ def serialize_execution_history_row(row):
         "executionId": row.get("execution_id", row.get("id")),
         "publicId": row.get("public_id"),
         "codename": row.get("codename"),
+        "originalFilename": (
+            row.get("original_filename")
+            or row.get("codename")
+        ),
         "submissionId": row.get("submission_id"),
         "submissionTitle": row.get("submission_title"),
         "state": state,

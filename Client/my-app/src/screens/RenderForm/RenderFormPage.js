@@ -9,6 +9,9 @@ import {
   buildRecoveredExecutionState,
   parseExecutionPublicIds,
 } from "./recovery/executionRecoveryModel";
+import {
+  resolveResultsDestination,
+} from "../submissionOverviewModel";
 
 import HeaderSection from "./components/HeaderSection";
 import TestNameAndUploadCard from "./components/TestNameAndUploadCard";
@@ -938,12 +941,31 @@ function RenderFormPage({ currentUser }) {
   };
 
   const handleGoToResults = () => {
-    if (!fileList || fileList.length === 0) return;
+    const destination = resolveResultsDestination(
+      fileList,
+      executionSnapshot?.submissionId
+    );
 
-    const lastCode = fileList[fileList.length - 1];
-    navigate("/code/" + lastCode, {
+    if (!destination.path) {
+      if (destination.error) {
+        setSubmissionError(destination.error);
+      }
+      return;
+    }
+
+    if (destination.kind === "execution") {
+      navigate(destination.path, {
+        replace: false,
+        state: {
+          name: testName || destination.codename,
+          codeList: fileList,
+        },
+      });
+      return;
+    }
+
+    navigate(destination.path, {
       replace: false,
-      state: { name: testName || lastCode, codeList: fileList },
     });
   };
 
