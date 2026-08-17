@@ -21,10 +21,14 @@ class FakeSubmissionRepository:
         return {
             "id": 777,
             "user_id": kwargs["user_id"],
+            "course_id": kwargs.get("course_id"),
             "title": kwargs["title"],
             "language": kwargs["language"],
             "file_path": kwargs["file_path"],
+            "original_filename": kwargs.get("original_filename"),
             "code_hash": kwargs["code_hash"],
+            "note": kwargs.get("note"),
+            "is_pinned": kwargs.get("is_pinned", False),
             "status": kwargs["status"],
             "created_at": None,
         }
@@ -174,6 +178,95 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         self.assertEqual(len(erepo.calls), 2)
         self.assertEqual(len(bundle["executions"]), 2)
         self.assertEqual(bundle["submission"]["status"], "QUEUED")
+        self.assertIsNone(srepo.calls[0]["original_filename"])
+        self.assertIsNone(srepo.calls[0]["note"])
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_submission_metadata_is_normalized_and_persisted(self, _resolve_course):
+        srepo = FakeSubmissionRepository()
+
+        bundle = create_submission_bundle(
+            user_id=5,
+            title="LCS upload",
+            archive_path="/srv/uploads/internal-uuid.zip",
+            archive_sha256=self.SHA,
+            benchmark="LCS",
+            input_size=500,
+            samples=30,
+            source_specs=[{"original_filename": "main.cpp"}],
+            original_filename=r"C:\fakepath\algoritmos.zip",
+            note="  Comparación para el laboratorio  ",
+            submission_repo=srepo,
+            execution_repo=FakeExecutionRepository(),
+            conn=object(),
+        )
+
+        self.assertEqual(
+            srepo.calls[0]["original_filename"],
+            "algoritmos.zip",
+        )
+        self.assertEqual(
+            srepo.calls[0]["file_path"],
+            "/srv/uploads/internal-uuid.zip",
+        )
+        self.assertEqual(
+            srepo.calls[0]["note"],
+            "Comparación para el laboratorio",
+        )
+        self.assertEqual(
+            bundle["submission"]["original_filename"],
+            "algoritmos.zip",
+        )
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_optional_note_accepts_none_empty_and_valid_text(self, _resolve_course):
+        cases = (
+            (None, None),
+            ("   \t", None),
+            ("  referencia útil  ", "referencia útil"),
+        )
+
+        for raw_note, expected in cases:
+            with self.subTest(note=raw_note):
+                srepo = FakeSubmissionRepository()
+                create_submission_bundle(
+                    user_id=5,
+                    title="LCS upload",
+                    archive_path="/srv/uploads/a.zip",
+                    archive_sha256=self.SHA,
+                    benchmark="LCS",
+                    input_size=500,
+                    samples=30,
+                    source_specs=[{"original_filename": "main.cpp"}],
+                    note=raw_note,
+                    submission_repo=srepo,
+                    execution_repo=FakeExecutionRepository(),
+                    conn=object(),
+                )
+                self.assertEqual(srepo.calls[0]["note"], expected)
+
+    def test_note_longer_than_500_characters_is_rejected(self):
+        with self.assertRaises(InvalidExecutionRequest):
+            create_submission_bundle(
+                user_id=5,
+                title="LCS upload",
+                archive_path="/srv/uploads/a.zip",
+                archive_sha256=self.SHA,
+                benchmark="LCS",
+                input_size=500,
+                samples=30,
+                source_specs=[{"original_filename": "main.cpp"}],
+                note="n" * 501,
+                submission_repo=FakeSubmissionRepository(),
+                execution_repo=FakeExecutionRepository(),
+                conn=object(),
+            )
 
     @patch(
         "Server.webapp.services.execution_creation_service.resolve_submission_course",

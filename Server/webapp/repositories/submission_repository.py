@@ -27,6 +27,9 @@ def create_submission(
     course_id=None,
     status="QUEUED",
     conn=None,
+    original_filename=None,
+    note=None,
+    is_pinned=False,
 ):
     """
     Crea una submission.
@@ -47,12 +50,16 @@ def create_submission(
                     title,
                     language,
                     file_path,
+                    original_filename,
                     code_hash,
+                    note,
+                    is_pinned,
                     created_at,
                     status
                 )
                 VALUES (
-                    %s, %s, %s, %s, %s, %s, CURRENT_TIMESTAMP, %s
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    CURRENT_TIMESTAMP, %s
                 )
                 RETURNING
                     id,
@@ -61,7 +68,10 @@ def create_submission(
                     title,
                     language,
                     file_path,
+                    original_filename,
                     code_hash,
+                    note,
+                    is_pinned,
                     created_at,
                     status;
                 """,
@@ -71,7 +81,10 @@ def create_submission(
                     title,
                     language,
                     file_path,
+                    original_filename,
                     code_hash,
+                    note,
+                    is_pinned,
                     status,
                 ),
             )
@@ -107,7 +120,10 @@ def get_submission(submission_id, conn=None):
                     title,
                     language,
                     file_path,
+                    original_filename,
                     code_hash,
+                    note,
+                    is_pinned,
                     created_at,
                     status
                 FROM submissions
@@ -148,7 +164,10 @@ def update_submission_status(submission_id, status, conn=None):
                     title,
                     language,
                     file_path,
+                    original_filename,
                     code_hash,
+                    note,
+                    is_pinned,
                     created_at,
                     status;
                 """,
@@ -170,3 +189,163 @@ def update_submission_status(submission_id, status, conn=None):
         if owns_connection:
             db.rollback()
         raise
+
+
+def update_submission_note(submission_id, note, conn=None):
+    """
+    Persiste una nota ya normalizada por la capa de servicio/dominio.
+
+    Este helper no aplica autorización ni decide el contrato del contenido.
+    """
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE submissions
+                SET note = %s
+                WHERE id = %s
+                RETURNING
+                    id,
+                    user_id,
+                    course_id,
+                    title,
+                    language,
+                    file_path,
+                    original_filename,
+                    code_hash,
+                    note,
+                    is_pinned,
+                    created_at,
+                    status;
+                """,
+                (note, submission_id),
+            )
+            row = cur.fetchone()
+
+        if row is None:
+            raise SubmissionNotFound(
+                "Submission id={} was not found.".format(submission_id)
+            )
+
+        if owns_connection:
+            db.commit()
+
+        return dict(row)
+
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def set_submission_pinned(submission_id, is_pinned, conn=None):
+    """Marca o desmarca una submission; la autorización vive fuera del repository."""
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE submissions
+                SET is_pinned = %s
+                WHERE id = %s
+                RETURNING
+                    id,
+                    user_id,
+                    course_id,
+                    title,
+                    language,
+                    file_path,
+                    original_filename,
+                    code_hash,
+                    note,
+                    is_pinned,
+                    created_at,
+                    status;
+                """,
+                (is_pinned, submission_id),
+            )
+            row = cur.fetchone()
+
+        if row is None:
+            raise SubmissionNotFound(
+                "Submission id={} was not found.".format(submission_id)
+            )
+
+        if owns_connection:
+            db.commit()
+
+        return dict(row)
+
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def update_submission_metadata(submission_id, note, is_pinned, conn=None):
+    """
+    Actualiza note e is_pinned juntos en una sola sentencia.
+
+    Los valores deben llegar validados y normalizados desde la capa de ruta o
+    servicio. Este helper no aplica autorización.
+    """
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE submissions
+                SET note = %s,
+                    is_pinned = %s
+                WHERE id = %s
+                RETURNING
+                    id,
+                    user_id,
+                    course_id,
+                    title,
+                    language,
+                    file_path,
+                    original_filename,
+                    code_hash,
+                    note,
+                    is_pinned,
+                    created_at,
+                    status;
+                """,
+                (note, is_pinned, submission_id),
+            )
+            row = cur.fetchone()
+
+        if row is None:
+            raise SubmissionNotFound(
+                "Submission id={} was not found.".format(submission_id)
+            )
+
+        if owns_connection:
+            db.commit()
+
+        return dict(row)
+
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            db.close()

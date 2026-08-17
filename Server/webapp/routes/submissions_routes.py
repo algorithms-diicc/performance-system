@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify, g
 from psycopg2.extras import RealDictCursor
 
 from ...db_connection import get_connection
+from ..repositories import submission_repository
 from ..utils.db_utils import db_cursor
 from ..utils.auth_decorators import login_required
 from ..utils.api_errors import (
@@ -21,10 +22,74 @@ from ..services.execution_history_service import (
 )
 from ..services.execution_creation_service import (
     InvalidExecutionRequest,
+    normalize_submission_note,
     resolve_submission_course,
 )
 
 submissions_bp = Blueprint("submissions", __name__, url_prefix="/api")
+
+MUTABLE_SUBMISSION_METADATA_FIELDS = frozenset({"note", "isPinned"})
+
+
+def _serialize_submission_metadata(row):
+    """Serializa únicamente metadata privada visible por el propietario."""
+    return {
+        "originalFilename": row.get("original_filename"),
+        "note": row.get("note"),
+        "isPinned": bool(row.get("is_pinned")),
+    }
+
+
+def _parse_submission_metadata_patch():
+    """Valida por completo el PATCH antes de cualquier escritura."""
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise BadRequestError(
+            "El cuerpo de la solicitud debe ser un objeto JSON."
+        )
+
+    if not data:
+        raise BadRequestError(
+            "Debe indicar al menos un campo modificable."
+        )
+
+    unknown_fields = sorted(
+        set(data) - MUTABLE_SUBMISSION_METADATA_FIELDS
+    )
+    if unknown_fields:
+        raise BadRequestError(
+            "La solicitud contiene campos no permitidos.",
+            extra={"fields": unknown_fields},
+        )
+
+    updates = {}
+
+    if "note" in data:
+        raw_note = data["note"]
+        if raw_note is not None and not isinstance(raw_note, str):
+            raise ValidationError(
+                "note debe ser texto o null.",
+                extra={"field": "note"},
+            )
+
+        try:
+            updates["note"] = normalize_submission_note(raw_note)
+        except InvalidExecutionRequest as exc:
+            raise ValidationError(
+                str(exc),
+                extra={"field": "note"},
+            )
+
+    if "isPinned" in data:
+        raw_is_pinned = data["isPinned"]
+        if not isinstance(raw_is_pinned, bool):
+            raise ValidationError(
+                "isPinned debe ser un booleano JSON.",
+                extra={"field": "isPinned"},
+            )
+        updates["is_pinned"] = raw_is_pinned
+
+    return updates
 
 
 def map_submission_status_label(raw_status: str) -> str:
@@ -104,6 +169,9 @@ def list_my_submissions():
                   s.id,
                   s.course_id,
                   s.title,
+                  s.original_filename,
+                  s.note,
+                  s.is_pinned,
                   s.status AS legacy_status,
                   s.created_at,
                   c.code AS course_code,
@@ -127,6 +195,9 @@ def list_my_submissions():
                   s.id,
                   s.course_id,
                   s.title,
+                  s.original_filename,
+                  s.note,
+                  s.is_pinned,
                   s.status,
                   s.created_at,
                   c.code,
@@ -169,6 +240,7 @@ def list_my_submissions():
                         else None
                     ),
                     "title": row.get("title"),
+                    **_serialize_submission_metadata(row),
                     "status": last_state,
                     "statusLabel": last_label,
                     "legacyStatus": row.get("legacy_status"),
@@ -309,6 +381,9 @@ def get_submission_detail(submission_id: int):
                   s.user_id,
                   s.course_id,
                   s.title,
+                  s.original_filename,
+                  s.note,
+                  s.is_pinned,
                   s.status AS legacy_status,
                   s.created_at,
                   c.code AS course_code,
@@ -437,6 +512,7 @@ def get_submission_detail(submission_id: int):
                 else None
             ),
             "title": srow["title"],
+            **_serialize_submission_metadata(srow),
             "status": last_state,
             "statusLabel": last_label,
             "legacyStatus": srow.get("legacy_status"),
@@ -453,6 +529,74 @@ def get_submission_detail(submission_id: int):
                 "summary": summary,
             }
         ), 200
+    finally:
+        conn.close()
+
+
+# ==========================
+# PATCH /api/submissions/<id>
+# ==========================
+
+@submissions_bp.route("/submissions/<int:submission_id>", methods=["PATCH"])
+@login_required
+@handle_api_errors
+def update_submission_metadata(submission_id: int):
+    user = g.current_user
+    updates = _parse_submission_metadata_patch()
+    conn = get_connection()
+
+    try:
+        try:
+            current = submission_repository.get_submission(
+                submission_id,
+                conn=conn,
+            )
+        except submission_repository.SubmissionNotFound:
+            raise NotFoundError(
+                f"Submission con id {submission_id} no existe."
+            )
+
+        if current["user_id"] != user["id"]:
+            raise ForbiddenError(
+                "No tienes permiso para modificar este envío."
+            )
+
+        try:
+            if "note" in updates and "is_pinned" in updates:
+                updated = submission_repository.update_submission_metadata(
+                    submission_id,
+                    note=updates["note"],
+                    is_pinned=updates["is_pinned"],
+                    conn=conn,
+                )
+            elif "note" in updates:
+                updated = submission_repository.update_submission_note(
+                    submission_id,
+                    note=updates["note"],
+                    conn=conn,
+                )
+            else:
+                updated = submission_repository.set_submission_pinned(
+                    submission_id,
+                    is_pinned=updates["is_pinned"],
+                    conn=conn,
+                )
+        except submission_repository.SubmissionNotFound:
+            raise NotFoundError(
+                f"Submission con id {submission_id} no existe."
+            )
+
+        conn.commit()
+
+        return jsonify(
+            {
+                "id": updated["id"],
+                **_serialize_submission_metadata(updated),
+            }
+        ), 200
+    except Exception:
+        conn.rollback()
+        raise
     finally:
         conn.close()
 

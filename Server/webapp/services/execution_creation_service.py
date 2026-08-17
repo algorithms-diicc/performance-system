@@ -19,6 +19,10 @@ from psycopg2.extras import RealDictCursor
 
 from ..repositories import execution_repository
 from ..repositories import submission_repository
+from .upload_service import (
+    UploadValidationError,
+    normalize_original_zip_filename,
+)
 from ...db_connection import get_connection
 
 
@@ -47,6 +51,7 @@ INPUT_LIMITS_BY_BENCHMARK = {
 }
 MAX_SAMPLES = 100
 MAX_SUBMISSION_TITLE_CHARS = 255
+MAX_SUBMISSION_NOTE_CHARS = 500
 MAX_SOURCE_NAME_CHARS = 512
 
 
@@ -78,6 +83,36 @@ class ExecutionCreationError(Exception):
 
 class InvalidExecutionRequest(ExecutionCreationError):
     """La configuración recibida no puede convertirse en una ejecución."""
+
+
+def normalize_submission_note(value):
+    """Normaliza la nota opcional antes de entregarla al repository."""
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    if not normalized:
+        return None
+
+    if len(normalized) > MAX_SUBMISSION_NOTE_CHARS:
+        raise InvalidExecutionRequest(
+            "note must contain at most {} characters.".format(
+                MAX_SUBMISSION_NOTE_CHARS
+            )
+        )
+
+    return normalized
+
+
+def normalize_submission_original_filename(value):
+    """Normaliza el nombre del ZIP sin hacerlo obligatorio para llamadores legacy."""
+    if value is None or not str(value).strip():
+        return None
+
+    try:
+        return normalize_original_zip_filename(value)
+    except UploadValidationError as exc:
+        raise InvalidExecutionRequest(str(exc))
 
 
 def _positive_int(value, field):
@@ -305,6 +340,8 @@ def create_submission_bundle(
     samples,
     source_specs,
     course_id=None,
+    original_filename=None,
+    note=None,
     compiler_flags="-O3",
     language="C++",
     conn=None,
@@ -351,6 +388,10 @@ def create_submission_bundle(
     validate_execution_limits(benchmark, input_size, samples)
     source_specs = validate_source_specs(source_specs)
     execution_profile = infer_execution_profile(samples)
+    original_filename = normalize_submission_original_filename(
+        original_filename
+    )
+    note = normalize_submission_note(note)
 
     owns_connection = conn is None
     db = conn or get_connection()
@@ -367,7 +408,9 @@ def create_submission_bundle(
             title=clean_title,
             language=language,
             file_path=archive_path,
+            original_filename=original_filename,
             code_hash=archive_sha256,
+            note=note,
             course_id=resolved_course_id,
             status="QUEUED",
             conn=db,

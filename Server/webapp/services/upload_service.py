@@ -17,6 +17,7 @@ DEFAULT_MAX_CPP_BYTES = 2 * 1024 * 1024
 DEFAULT_MAX_TOTAL_CPP_BYTES = 10 * 1024 * 1024
 DEFAULT_MAX_CPP_FILES = 20
 DEFAULT_MAX_ARCHIVE_ENTRIES = 200
+MAX_ORIGINAL_ZIP_FILENAME_CHARS = 512
 
 
 class UploadValidationError(Exception):
@@ -37,6 +38,31 @@ class StoredZipUpload:
     sha256: str
     archive_size_bytes: int
     sources: tuple
+
+
+def normalize_original_zip_filename(raw_filename):
+    """Devuelve solo el nombre visible y validado del ZIP subido."""
+    normalized = str(raw_filename or "").strip().replace("\\", "/")
+
+    if not normalized:
+        raise UploadValidationError("El archivo no tiene nombre.")
+
+    visible_name = PurePosixPath(normalized).name.strip()
+
+    if not visible_name or "\x00" in visible_name:
+        raise UploadValidationError("El archivo no tiene un nombre válido.")
+
+    if len(visible_name) > MAX_ORIGINAL_ZIP_FILENAME_CHARS:
+        raise UploadValidationError(
+            "El nombre del ZIP supera el máximo de {} caracteres.".format(
+                MAX_ORIGINAL_ZIP_FILENAME_CHARS
+            )
+        )
+
+    if not visible_name.lower().endswith(".zip"):
+        raise UploadValidationError("El archivo debe tener extensión .zip.")
+
+    return visible_name
 
 
 def _normalized_member_name(raw_name):
@@ -82,15 +108,9 @@ def store_and_inspect_zip(
     if file_storage is None:
         raise UploadValidationError("No se recibió archivo.")
 
-    original_filename = str(
-        getattr(file_storage, "filename", "") or ""
-    ).strip()
-
-    if not original_filename:
-        raise UploadValidationError("El archivo no tiene nombre.")
-
-    if not original_filename.lower().endswith(".zip"):
-        raise UploadValidationError("El archivo debe tener extensión .zip.")
+    original_filename = normalize_original_zip_filename(
+        getattr(file_storage, "filename", "")
+    )
 
     storage_path = Path(storage_dir)
     storage_path.mkdir(parents=True, exist_ok=True)

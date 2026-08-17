@@ -1,5 +1,5 @@
 -- Performance System
--- Esquema base actualizado después de CORE-07F-3
+-- Esquema base actualizado después de PRE-EVAL-004
 -- PostgreSQL 12+
 --
 -- Este archivo representa el estado objetivo actual para una instalación NUEVA.
@@ -213,7 +213,10 @@ CREATE TABLE submissions (
     title VARCHAR(100),
     language VARCHAR(50),
     file_path VARCHAR(255),
+    original_filename VARCHAR(512),
     code_hash VARCHAR(64),
+    note VARCHAR(500),
+    is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50)
 );
@@ -408,5 +411,9 @@ VALUES
     (
         'core07f_003_submission_course_context',
         'Contexto académico opcional de submissions mediante course_id'
+    ),
+    (
+        'pre_eval_004_submission_metadata',
+        'Nombre original del ZIP, nota opcional y marcador de referencia en submissions'
     )
 ON CONFLICT (version) DO NOTHING;

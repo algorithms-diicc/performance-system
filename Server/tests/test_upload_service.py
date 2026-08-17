@@ -39,12 +39,42 @@ class UploadServiceTests(unittest.TestCase):
 
     def test_valid_cpp_zip_is_stored_with_sha256(self):
         upload = store_and_inspect_zip(
-            make_storage([("main.cpp", b"int main(){return 0;}")]),
+            make_storage(
+                [("main.cpp", b"int main(){return 0;}")],
+                filename="algoritmos.zip",
+            ),
             self.tmp.name,
         )
         self.assertTrue(os.path.exists(upload.stored_path))
+        self.assertEqual(upload.original_filename, "algoritmos.zip")
+        self.assertNotEqual(
+            os.path.basename(upload.stored_path),
+            upload.original_filename,
+        )
         self.assertEqual(len(upload.sha256), 64)
         self.assertEqual(len(upload.sources), 1)
+
+    def test_windows_client_path_keeps_only_visible_zip_name(self):
+        upload = store_and_inspect_zip(
+            make_storage(
+                [("main.cpp", b"int main(){}")],
+                filename=r"C:\fakepath\algoritmos.zip",
+            ),
+            self.tmp.name,
+        )
+        self.assertEqual(upload.original_filename, "algoritmos.zip")
+
+    def test_zip_filename_longer_than_512_characters_is_rejected(self):
+        too_long = "a" * 509 + ".zip"
+
+        with self.assertRaises(UploadValidationError):
+            store_and_inspect_zip(
+                make_storage(
+                    [("main.cpp", b"int main(){}")],
+                    filename=too_long,
+                ),
+                self.tmp.name,
+            )
 
     def test_nested_cpp_path_is_allowed(self):
         upload = store_and_inspect_zip(

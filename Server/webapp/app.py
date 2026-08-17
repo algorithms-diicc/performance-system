@@ -435,6 +435,7 @@ def cap_code():
             input_size=input_size,
             samples=samples,
             source_specs=source_specs,
+            original_filename=stored_upload.original_filename,
             course_id=course_id,
             compiler_flags="-O3",
             language="C++",
