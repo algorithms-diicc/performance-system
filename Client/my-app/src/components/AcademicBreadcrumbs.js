@@ -45,6 +45,8 @@ const buildAcademicBreadcrumbItems = ({
   courseId,
 }) => {
   const isResult = page === "result";
+  const isComparison = page === "comparison";
+  const isDetailPage = isResult || isComparison;
   const normalizedSubmissionId = cleanIdentifier(submissionId);
   const normalizedCourseId = cleanIdentifier(
     courseId ?? course?.id
@@ -96,13 +98,13 @@ const buildAcademicBreadcrumbItems = ({
     items.push({
       key: "submission",
       label: `Experimento #${normalizedSubmissionId}`,
-      href: isResult
+      href: isDetailPage
         ? `/submissions/${encodeURIComponent(
             normalizedSubmissionId
           )}`
         : null,
     });
-  } else if (!isResult) {
+  } else if (!isDetailPage) {
     items.push({
       key: "submission",
       label: "Experimento",
@@ -114,6 +116,14 @@ const buildAcademicBreadcrumbItems = ({
     items.push({
       key: "result",
       label: resultLabel,
+      href: null,
+    });
+  }
+
+  if (isComparison) {
+    items.push({
+      key: "comparison",
+      label: "Comparación",
       href: null,
     });
   }

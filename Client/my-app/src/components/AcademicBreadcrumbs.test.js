@@ -219,4 +219,44 @@ describe("AcademicBreadcrumbs", () => {
     ).toEqual(["/admin", "/admin/users", "/submissions/7"]);
     expect(navigation).not.toHaveTextContent("exec70LCS");
   });
+
+  test("same-Submission comparison links to the experiment", () => {
+    const navigation = renderBreadcrumbs({
+      currentUser: student,
+      page: "comparison",
+      submissionId: 7,
+    });
+
+    expect(
+      within(navigation).getByRole("link", { name: "Experimento #7" })
+    ).toHaveAttribute("href", "/submissions/7");
+    expect(within(navigation).getByText("Comparación")).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+  });
+
+  test.each([
+    [student, "Mi perfil", "/profile"],
+    [teacher, "Supervisión", "/teacher/courses"],
+    [admin, "Usuarios", "/admin/users"],
+  ])(
+    "mixed-Submission comparison uses the role fallback without owner identity",
+    (currentUser, label, href) => {
+      const navigation = renderBreadcrumbs({
+        currentUser,
+        page: "comparison",
+      });
+
+      expect(within(navigation).getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href
+      );
+      expect(within(navigation).getByText("Comparación")).toHaveAttribute(
+        "aria-current",
+        "page"
+      );
+      expect(navigation).not.toHaveTextContent(/propietario|owner|usuario #/i);
+    }
+  );
 });

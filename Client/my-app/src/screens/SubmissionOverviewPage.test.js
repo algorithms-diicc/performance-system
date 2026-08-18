@@ -120,6 +120,15 @@ const sourcePayload = {
   sha256: "c".repeat(64),
 };
 
+const comparisonExecution = (index, overrides = {}) => ({
+  ...completedExecution,
+  executionId: 10 + index,
+  publicId: `public-execution-${10 + index}`,
+  codename: `comparison-codename-${index}`,
+  originalFilename: `implementation-${index}.cpp`,
+  ...overrides,
+});
+
 const arrangeRequests = ({
   submission = ownerSubmission,
   summary = completedSummary,
@@ -847,5 +856,203 @@ describe("SubmissionOverviewPage", () => {
         "Este experimento todavía no registra implementaciones ejecutables."
       )
     ).toBeInTheDocument();
+  });
+
+  test("comparison entry is disabled when fewer than two executions are eligible", async () => {
+    await renderLoadedPage({
+      executions: [
+        comparisonExecution(1),
+        comparisonExecution(2, {
+          state: "FAILED",
+          stateLabel: "Error",
+          resultAvailable: false,
+        }),
+      ],
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Se necesitan al menos dos implementaciones completadas con resultados."
+      )
+    ).toBeInTheDocument();
+  });
+
+  test.each([2, 3, 4])(
+    "comparison mode preselects exactly %i eligible executions",
+    async (count) => {
+      const executions = Array.from({ length: count }, (_, index) =>
+        comparisonExecution(index + 1)
+      );
+      await renderLoadedPage({ executions });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Comparar implementaciones" })
+      );
+
+      expect(
+        screen.getByRole("button", {
+          name: `Comparar seleccionadas (${count})`,
+        })
+      ).toBeEnabled();
+      executions.forEach((item) => {
+        expect(
+          screen.getByLabelText(`Seleccionar ${item.originalFilename}`)
+        ).toBeChecked();
+      });
+    }
+  );
+
+  test("more than four eligible executions starts without an arbitrary selection", async () => {
+    const executions = Array.from({ length: 5 }, (_, index) =>
+      comparisonExecution(index + 1)
+    );
+    await renderLoadedPage({ executions });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    );
+
+    expect(
+      screen.getByText("Selecciona entre 2 y 4 implementaciones.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Comparar seleccionadas (0)" })
+    ).toBeDisabled();
+    executions.forEach((item) => {
+      expect(
+        screen.getByLabelText(`Seleccionar ${item.originalFilename}`)
+      ).not.toBeChecked();
+    });
+  });
+
+  test.each([
+    ["FAILED", false, "La ejecución finalizó con error."],
+    ["RUNNING", false, "La ejecución todavía está en progreso."],
+    ["COMPLETED", false, "La ejecución no tiene resultados disponibles."],
+  ])(
+    "%s execution with resultAvailable=%s cannot be selected",
+    async (state, resultAvailable, reason) => {
+      await renderLoadedPage({
+        executions: [
+          comparisonExecution(1),
+          comparisonExecution(2),
+          comparisonExecution(3, {
+            state,
+            stateLabel: state,
+            resultAvailable,
+          }),
+        ],
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Comparar implementaciones" })
+      );
+
+      expect(
+        screen.queryByLabelText("Seleccionar implementation-3.cpp")
+      ).not.toBeInTheDocument();
+      expect(screen.getByText(`No participa: ${reason}`)).toBeInTheDocument();
+    }
+  );
+
+  test("a fifth selection is blocked and deselecting restores its slot", async () => {
+    const executions = Array.from({ length: 5 }, (_, index) =>
+      comparisonExecution(index + 1)
+    );
+    await renderLoadedPage({ executions });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    );
+
+    executions.slice(0, 4).forEach((item) => {
+      fireEvent.click(
+        screen.getByLabelText(`Seleccionar ${item.originalFilename}`)
+      );
+    });
+
+    const fifth = screen.getByLabelText("Seleccionar implementation-5.cpp");
+    expect(fifth).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Comparar seleccionadas (4)" })
+    ).toBeEnabled();
+
+    fireEvent.click(
+      screen.getByLabelText("Seleccionar implementation-2.cpp")
+    );
+    expect(fifth).toBeEnabled();
+    fireEvent.click(fifth);
+    expect(fifth).toBeChecked();
+    expect(
+      screen.getByRole("button", { name: "Comparar seleccionadas (4)" })
+    ).toBeEnabled();
+  });
+
+  test("compare action is disabled after reducing the selection to one", async () => {
+    await renderLoadedPage({
+      executions: [comparisonExecution(1), comparisonExecution(2)],
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    );
+    fireEvent.click(
+      screen.getByLabelText("Seleccionar implementation-2.cpp")
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Comparar seleccionadas (1)" })
+    ).toBeDisabled();
+  });
+
+  test("comparison navigation uses repeated query keys in orderedExecutions order", async () => {
+    await renderLoadedPage({
+      executions: [
+        comparisonExecution(3, { executionId: 30 }),
+        comparisonExecution(1, { executionId: 10 }),
+        comparisonExecution(2, { executionId: 20 }),
+      ],
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    );
+    fireEvent.click(
+      screen.getByLabelText("Seleccionar implementation-2.cpp")
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar seleccionadas (2)" })
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/compare?execution=comparison-codename-1&execution=comparison-codename-3"
+    );
+  });
+
+  test("cancel exits comparison mode without affecting existing result navigation", async () => {
+    await renderLoadedPage({
+      executions: [comparisonExecution(1), comparisonExecution(2)],
+    });
+    fireEvent.click(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancelar" }));
+
+    expect(
+      screen.queryByRole("region", {
+        name: "Selección de implementaciones para comparar",
+      })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Comparar implementaciones" })
+    ).toBeEnabled();
+
+    const firstCard = screen
+      .getByRole("heading", { name: "implementation-1.cpp" })
+      .closest("article");
+    fireEvent.click(
+      within(firstCard).getByRole("button", { name: "Ver resultado" })
+    );
+    expect(mockNavigate).toHaveBeenCalledWith("/code/comparison-codename-1");
   });
 });

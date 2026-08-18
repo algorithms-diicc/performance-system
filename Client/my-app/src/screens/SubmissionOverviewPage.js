@@ -26,6 +26,7 @@ import {
   Fingerprint,
   Gauge,
   GraduationCap,
+  GitCompareArrows,
   Pencil,
   RefreshCw,
   Save,
@@ -53,6 +54,16 @@ import {
   formatSubmissionDateTime,
   sortSubmissionExecutions,
 } from "./submissionOverviewModel";
+import {
+  buildComparisonPath,
+  comparisonIneligibilityReason,
+  getEligibleExecutions,
+  initialComparisonSelection,
+  isComparisonEligibleExecution,
+  MAX_COMPARISON_EXECUTIONS,
+  orderSelectedExecutions,
+  toggleComparisonSelection,
+} from "./comparisonModel";
 
 import "./SubmissionOverviewPage.css";
 
@@ -170,6 +181,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     open: false,
     codename: "",
   });
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [comparisonSelection, setComparisonSelection] = useState([]);
+  const [comparisonFeedback, setComparisonFeedback] = useState("");
 
   const encodedSubmissionId = encodeURIComponent(
     String(submissionId || "")
@@ -216,6 +230,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
       );
       setIsEditingNote(false);
       setCopyFeedback("");
+      setComparisonMode(false);
+      setComparisonSelection([]);
+      setComparisonFeedback("");
     } catch (error) {
       console.error("Error cargando Submission overview:", error);
       setRequestError(error);
@@ -255,10 +272,61 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     [executions]
   );
 
+  const eligibleComparisonExecutions = useMemo(
+    () => getEligibleExecutions(orderedExecutions),
+    [orderedExecutions]
+  );
+
   const aggregateState = useMemo(
     () => deriveSubmissionAggregateState(summary || {}),
     [summary]
   );
+
+  const handleStartComparison = () => {
+    if (eligibleComparisonExecutions.length < 2) return;
+
+    setComparisonSelection(initialComparisonSelection(orderedExecutions));
+    setComparisonFeedback("");
+    setComparisonMode(true);
+  };
+
+  const handleCancelComparison = () => {
+    setComparisonMode(false);
+    setComparisonSelection([]);
+    setComparisonFeedback("");
+  };
+
+  const handleToggleComparison = (execution) => {
+    if (!isComparisonEligibleExecution(execution)) return;
+
+    const codename = String(execution.codename).trim();
+    const alreadySelected = comparisonSelection.includes(codename);
+
+    if (
+      !alreadySelected &&
+      comparisonSelection.length >= MAX_COMPARISON_EXECUTIONS
+    ) {
+      setComparisonFeedback(
+        "Puedes comparar como máximo cuatro implementaciones. Deselecciona una para habilitar otro cupo."
+      );
+      return;
+    }
+
+    setComparisonSelection((current) =>
+      toggleComparisonSelection(current, codename)
+    );
+    setComparisonFeedback("");
+  };
+
+  const handleOpenComparison = () => {
+    const orderedSelection = orderSelectedExecutions(
+      orderedExecutions,
+      comparisonSelection
+    );
+
+    if (orderedSelection.length < 2 || orderedSelection.length > 4) return;
+    navigate(buildComparisonPath(orderedSelection));
+  };
 
   useEffect(() => {
     const traceExecution = orderedExecutions.find(
@@ -851,15 +919,74 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               </p>
             </div>
 
-            <button
-              type="button"
-              className="submission-overview__button submission-overview__button--secondary"
-              onClick={loadSubmission}
-            >
-              <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
-              Actualizar estados
-            </button>
+            <div className="submission-overview__implementation-heading-actions">
+              <button
+                type="button"
+                className="submission-overview__button submission-overview__button--secondary"
+                onClick={loadSubmission}
+              >
+                <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
+                Actualizar estados
+              </button>
+              {!comparisonMode && (
+                <button
+                  type="button"
+                  className="submission-overview__button submission-overview__button--primary"
+                  onClick={handleStartComparison}
+                  disabled={eligibleComparisonExecutions.length < 2}
+                >
+                  <GitCompareArrows size={16} strokeWidth={2} aria-hidden="true" />
+                  Comparar implementaciones
+                </button>
+              )}
+            </div>
           </div>
+
+          {eligibleComparisonExecutions.length < 2 &&
+            orderedExecutions.length > 0 && (
+              <p className="submission-overview__comparison-unavailable" role="status">
+                Se necesitan al menos dos implementaciones completadas con resultados.
+              </p>
+            )}
+
+          {comparisonMode && (
+            <div
+              className="submission-overview__comparison-panel"
+              role="region"
+              aria-label="Selección de implementaciones para comparar"
+            >
+              <div>
+                <strong>Selecciona implementaciones comparables</strong>
+                <p>
+                  {eligibleComparisonExecutions.length > 4
+                    ? "Selecciona entre 2 y 4 implementaciones."
+                    : "Las implementaciones elegibles están preseleccionadas. Puedes ajustar la selección antes de continuar."}
+                </p>
+                {comparisonFeedback && (
+                  <p className="submission-overview__comparison-feedback" role="status">
+                    {comparisonFeedback}
+                  </p>
+                )}
+              </div>
+              <div className="submission-overview__comparison-actions">
+                <button
+                  type="button"
+                  className="submission-overview__button submission-overview__button--primary"
+                  onClick={handleOpenComparison}
+                  disabled={comparisonSelection.length < 2}
+                >
+                  Comparar seleccionadas ({comparisonSelection.length})
+                </button>
+                <button
+                  type="button"
+                  className="submission-overview__button submission-overview__button--ghost"
+                  onClick={handleCancelComparison}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          )}
 
           {orderedExecutions.length === 0 ? (
             <InlineState
@@ -873,16 +1000,52 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                 const failure = execution.failure;
                 const displayName = executionDisplayName(execution);
                 const canOpenResult = canOpenExecutionResult(execution);
+                const comparisonEligible =
+                  isComparisonEligibleExecution(execution);
+                const comparisonSelected = comparisonSelection.includes(
+                  String(execution.codename || "").trim()
+                );
+                const comparisonAtLimit =
+                  comparisonSelection.length >= MAX_COMPARISON_EXECUTIONS;
 
                 return (
                   <article
-                    className="submission-overview__execution"
+                    className={[
+                      "submission-overview__execution",
+                      comparisonMode && comparisonSelected
+                        ? "submission-overview__execution--selected"
+                        : "",
+                      comparisonMode && !comparisonEligible
+                        ? "submission-overview__execution--ineligible"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
                     key={
                       execution.executionId ||
                       execution.publicId ||
                       execution.codename
                     }
                   >
+                    {comparisonMode && (
+                      <div className="submission-overview__comparison-choice">
+                        {comparisonEligible ? (
+                          <label>
+                            <input
+                              type="checkbox"
+                              checked={comparisonSelected}
+                              disabled={comparisonAtLimit && !comparisonSelected}
+                              onChange={() => handleToggleComparison(execution)}
+                            />
+                            Seleccionar {displayName}
+                          </label>
+                        ) : (
+                          <span>
+                            No participa: {comparisonIneligibilityReason(execution)}
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="submission-overview__execution-main">
                       <div className="submission-overview__execution-title">
                         <div className="submission-overview__file-icon">

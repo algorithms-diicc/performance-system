@@ -35,6 +35,15 @@ jest.mock("./screens/SubmissionOverviewPage", () => ({ currentUser }) => (
   </div>
 ));
 
+jest.mock("./screens/ComparisonPage", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-comparison"
+    data-current-user-email={currentUser?.email || ""}
+  >
+    Comparación
+  </div>
+));
+
 jest.mock("./common/Navbar", () => () => (
   <nav data-testid="navbar">
     Navbar
@@ -215,6 +224,7 @@ describe("CORE-05H-1 App shell and routing regression", () => {
   test.each([
     ["/code/exec70LCS", "screen-render-image"],
     ["/submissions/42", "screen-submission-overview"],
+    ["/compare?execution=one&execution=two", "screen-comparison"],
   ])("passes the single currentUser session to %s", async (path, testId) => {
     setRoute(path);
     mockAuthenticatedUser({
@@ -233,5 +243,16 @@ describe("CORE-05H-1 App shell and routing regression", () => {
     expect(global.fetch).toHaveBeenCalledWith("/api/auth/me", {
       credentials: "include",
     });
+  });
+
+  test("unauthenticated comparison route is redirected to login", async () => {
+    setRoute("/compare?execution=one&execution=two");
+    mockUnauthenticated();
+
+    render(<App />);
+
+    expect(await screen.findByTestId("screen-login")).toBeInTheDocument();
+    expect(screen.queryByTestId("screen-comparison")).not.toBeInTheDocument();
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 });

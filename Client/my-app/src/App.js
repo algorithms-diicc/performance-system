@@ -19,6 +19,7 @@ import TutorialPage from "./screens/TutorialPage";
 import ProfilePage from "./screens/ProfilePage";
 import SystemStatePage from "./screens/SystemStatePage";
 import SubmissionOverviewPage from "./screens/SubmissionOverviewPage";
+import ComparisonPage from "./screens/ComparisonPage";
 import Login from "./screens/Login";
 
 import AdminUser from "./screens/AdminUser";
@@ -315,6 +316,22 @@ const AppInner = () => {
             isAuthenticated
               ? (
                 <SubmissionOverviewPage currentUser={currentUser} />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
+        <Route
+          path="/compare"
+          element={
+            isAuthenticated
+              ? (
+                <ComparisonPage currentUser={currentUser} />
               )
               : (
                 <Navigate
