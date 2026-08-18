@@ -42,6 +42,10 @@ import {
   isAdminUser,
   isTeacherUser,
 } from "../common/userAccessModel";
+import {
+  formatAcademicPeriod,
+  formatCourseLabel,
+} from "./submissionOverviewModel";
 
 import "./RenderImage.css";
 
@@ -584,7 +588,7 @@ function RenderImage({ currentUser }) {
 
     setSubmissionNavigationContext(null);
 
-    if (!isTeacher || !effectiveSubmissionId) {
+    if (!effectiveSubmissionId) {
       return () => {
         active = false;
       };
@@ -617,7 +621,7 @@ function RenderImage({ currentUser }) {
     return () => {
       active = false;
     };
-  }, [effectiveSubmissionId, isTeacher]);
+  }, [effectiveSubmissionId]);
 
   const metricFiles = useMemo(() => {
     return plotFiles.map((file) => ({
@@ -1092,6 +1096,7 @@ function RenderImage({ currentUser }) {
 
           <ExecutionMetadata
             statusData={statusData}
+            courseContext={submissionNavigationContext}
           />
         </header>
 
@@ -1976,7 +1981,10 @@ function KpiCard({ item }) {
 }
 
 
-function ExecutionMetadata({ statusData }) {
+function ExecutionMetadata({
+  statusData,
+  courseContext,
+}) {
   const taskLabel =
     getTaskLabel(statusData?.task_type);
 
@@ -1987,6 +1995,15 @@ function ExecutionMetadata({ statusData }) {
   const samplesLabel =
     statusData?.samples ??
     "—";
+  const courseLabel = courseContext
+    ? formatCourseLabel(courseContext.course)
+    : null;
+  const academicPeriod = courseContext
+    ? formatAcademicPeriod(courseContext.course)
+    : null;
+  const courseDescription = courseContext
+    ? academicPeriod || "Análisis personal"
+    : null;
 
   return (
     <div className="results-metadata-grid">
@@ -2013,6 +2030,14 @@ function ExecutionMetadata({ statusData }) {
         value="Administrado"
         description="Nodo configurado por Performance System"
       />
+
+      {courseContext && (
+        <MetadataCard
+          label="Curso"
+          value={courseLabel}
+          description={courseDescription}
+        />
+      )}
     </div>
   );
 }

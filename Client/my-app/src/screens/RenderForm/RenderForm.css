@@ -175,6 +175,41 @@
     var(--ps-line-height-normal);
 }
 
+.rf-page .inicio-examples-link {
+  width: fit-content;
+
+  margin-top:
+    var(--ps-space-3);
+
+  display: inline-flex;
+
+  align-items: center;
+
+  gap:
+    var(--ps-space-2);
+
+  color:
+    var(--ps-primary);
+
+  font-size:
+    var(--ps-font-size-sm);
+
+  font-weight: 700;
+
+  text-decoration: none;
+}
+
+.rf-page .inicio-examples-link:hover {
+  text-decoration: underline;
+}
+
+.rf-page .inicio-examples-link:focus-visible {
+  outline:
+    3px solid var(--ps-focus-ring);
+
+  outline-offset: 3px;
+}
+
 
 .rf-page .inicio-header-user {
   flex: 0 0 auto;
@@ -458,6 +493,80 @@
 }
 
 
+.rf-page .rf-note-field {
+  margin-top:
+    var(--ps-space-4);
+
+  padding-top:
+    var(--ps-space-4);
+
+  border-top:
+    1px solid var(--ps-divider);
+}
+
+
+.rf-page .rf-note-field .form-label {
+  margin-bottom:
+    var(--ps-space-2);
+}
+
+
+.rf-page .rf-note-optional {
+  color:
+    var(--ps-text-muted);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  font-weight: 500;
+}
+
+
+.rf-page .rf-note-textarea {
+  min-height: 88px;
+
+  line-height: 1.5;
+
+  resize: vertical;
+}
+
+
+.rf-page .rf-note-meta {
+  margin-top:
+    var(--ps-space-2);
+
+  display: flex;
+
+  align-items: baseline;
+
+  justify-content: space-between;
+
+  gap:
+    var(--ps-space-2);
+}
+
+
+.rf-page .rf-note-meta .form-help-text {
+  margin: 0;
+}
+
+
+.rf-page .rf-note-counter {
+  flex: 0 0 auto;
+
+  color:
+    var(--ps-text-muted);
+
+  font-family:
+    var(--ps-font-mono);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  white-space: nowrap;
+}
+
+
 .rf-page .form-help-text {
   margin:
     var(--ps-space-2) 0 0;
@@ -530,6 +639,17 @@
 
   border-color:
     var(--ps-primary);
+}
+
+
+.rf-page .file-upload-dropzone:focus-visible {
+  border-color:
+    var(--ps-primary);
+
+  box-shadow:
+    0 0 0 3px var(--ps-focus-ring);
+
+  outline: none;
 }
 
 
@@ -2301,6 +2421,13 @@
   .rf-page .param-input-with-stepper {
     grid-template-columns:
       36px minmax(0, 1fr) 36px;
+  }
+
+
+  .rf-page .rf-note-meta {
+    align-items: flex-start;
+
+    flex-direction: column;
   }
 
 }

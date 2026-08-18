@@ -243,8 +243,8 @@
   display: grid;
 
   grid-template-columns:
-    repeat(4,
-      minmax(0, 1fr));
+    repeat(auto-fit,
+      minmax(180px, 1fr));
 
   gap:
     var(--ps-space-3);

@@ -10,6 +10,15 @@ import {
   parseExecutionPublicIds,
 } from "./recovery/executionRecoveryModel";
 import {
+  applyArchiveTitleSuggestion,
+  manualSubmissionTitle,
+  normalizeDraftNote,
+  resolveSubmissionTitle,
+} from "./formOnboardingModel";
+import {
+  resolveCourseQuerySelection,
+} from "./courseOnboardingModel";
+import {
   resolveResultsDestination,
 } from "../submissionOverviewModel";
 
@@ -207,7 +216,11 @@ function RenderFormPage({ currentUser }) {
   const location = useLocation();
 
   // ======= Estado general del formulario =======
-  const [testName, setTestName] = useState("");
+  const [titleState, setTitleState] = useState(() =>
+    manualSubmissionTitle("")
+  );
+  const testName = titleState.value;
+  const [note, setNote] = useState("");
   const [selectedTaskType, setSelectedTaskType] = useState("");
   const [inputSize, setInputSize] = useState(1000);
   const [samples, setSamples] = useState(30);
@@ -250,6 +263,16 @@ function RenderFormPage({ currentUser }) {
     handleDragLeave,
     reset: resetZipAnalysis,
   } = useZipAnalysis();
+
+  // File input y drag & drop convergen en el mismo `fileMeta` validado.
+  // Así la sugerencia se aplica una sola vez por cambio observable de ZIP.
+  useEffect(() => {
+    if (!fileMeta) return;
+
+    setTitleState((current) =>
+      applyArchiveTitleSuggestion(current, fileMeta.name)
+    );
+  }, [fileMeta]);
 
   // ======= Polling de estado para cada archivo (hook dedicado) =======
   const {
@@ -347,6 +370,33 @@ function RenderFormPage({ currentUser }) {
     };
   }, [courseContextReloadToken]);
 
+  // ======= 6B-B: contexto académico sugerido desde la URL =======
+  useEffect(() => {
+    if (courseContextLoading || courseContextError) {
+      return;
+    }
+
+    // Con 0/1 cursos se conserva el contrato canónico existente:
+    // sin asociación o selección automática, respectivamente.
+    if (activeCourses.length <= 1) {
+      return;
+    }
+
+    const querySelection = resolveCourseQuerySelection(
+      location.search,
+      activeCourses
+    );
+
+    if (querySelection !== null) {
+      setSelectedCourseId(querySelection);
+    }
+  }, [
+    activeCourses,
+    courseContextError,
+    courseContextLoading,
+    location.search,
+  ]);
+
 
   // ======= CORE-04D-3: recuperación persistente desde la URL =======
   useEffect(() => {
@@ -399,7 +449,9 @@ function RenderFormPage({ currentUser }) {
         const first = recovered.firstSnapshot;
 
         if (first?.submissionTitle) {
-          setTestName(first.submissionTitle);
+          setTitleState(
+            manualSubmissionTitle(first.submissionTitle)
+          );
         }
         if (first?.inputSize !== null && first?.inputSize !== undefined) {
           setInputSize(first.inputSize);
@@ -455,6 +507,7 @@ function RenderFormPage({ currentUser }) {
 
       const {
         testName: savedTestName = "",
+        note: savedNote = "",
         selectedTaskType: savedTaskType = "",
         inputSize: savedInputSize,
         samples: savedSamples,
@@ -462,7 +515,8 @@ function RenderFormPage({ currentUser }) {
         executionProfile: savedProfile = "equilibrado",
       } = draft;
 
-      setTestName(savedTestName);
+      setTitleState(manualSubmissionTitle(savedTestName));
+      setNote(normalizeDraftNote(savedNote));
       setSelectedTaskType(savedTaskType || "");
       setDataType(savedDataType);
       setExecutionProfile(savedProfile);
@@ -528,6 +582,7 @@ function RenderFormPage({ currentUser }) {
       const draft = {
         version: 1,
         testName,
+        note,
         selectedTaskType,
         inputSize:
           typeof inputSize === "number" && !Number.isNaN(inputSize)
@@ -550,6 +605,7 @@ function RenderFormPage({ currentUser }) {
     }
   }, [
     testName,
+    note,
     selectedTaskType,
     inputSize,
     samples,
@@ -592,6 +648,10 @@ function RenderFormPage({ currentUser }) {
     const value = raw === "" ? "" : Number(raw);
     setInputSize(value);
     validateParam("inputSize", raw);
+  };
+
+  const handleTestNameChange = (value) => {
+    setTitleState(manualSubmissionTitle(value));
   };
 
   const handleInputSizeSliderChange = (e) => {
@@ -681,7 +741,8 @@ function RenderFormPage({ currentUser }) {
 
   // ======= Reset completo del formulario =======
   const handleResetForm = () => {
-    setTestName("");
+    setTitleState(manualSubmissionTitle(""));
+    setNote("");
     setSelectedTaskType("");
     setInputSize(1000);
     setSamples(30);
@@ -796,8 +857,17 @@ function RenderFormPage({ currentUser }) {
 
     bodyFormData.append(
       "title",
-      (testName || "").trim() || file.name
+      resolveSubmissionTitle({
+        testName,
+        archiveFilename: file.name,
+        fallbackTitle: getTaskTitle(),
+      })
     );
+
+    const normalizedNote = note.trim();
+    if (normalizedNote) {
+      bodyFormData.append("note", normalizedNote);
+    }
 
     if (selectedCourseId) {
       bodyFormData.append(
@@ -1123,7 +1193,9 @@ function RenderFormPage({ currentUser }) {
             {/* Bloque: Nombre del test + upload de archivo */}
             <TestNameAndUploadCard
               testName={testName}
-              onTestNameChange={setTestName}
+              onTestNameChange={handleTestNameChange}
+              note={note}
+              onNoteChange={setNote}
               fileMeta={fileMeta}
               fileError={fileError}
               isDraggingFile={isDraggingFile}

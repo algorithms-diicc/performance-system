@@ -1,0 +1,143 @@
+import {
+  MAX_SUBMISSION_NOTE_CHARS,
+  MAX_SUBMISSION_TITLE_CHARS,
+  TITLE_ORIGIN,
+  applyArchiveTitleSuggestion,
+  manualSubmissionTitle,
+  normalizeDraftNote,
+  resolveSubmissionTitle,
+  suggestTitleFromArchiveFilename,
+} from "./formOnboardingModel";
+
+describe("formOnboardingModel title suggestion", () => {
+  test.each([
+    ["algoritmos.zip", "algoritmos"],
+    ["mi.algoritmo.v2.zip", "mi.algoritmo.v2"],
+    ["PRUEBA.ZIP", "PRUEBA"],
+    [String.raw`C:\fakepath\laboratorio.zip`, "laboratorio"],
+    [" /tmp/entrega.final.ZiP ", "entrega.final"],
+  ])("suggests %s as %s", (filename, expected) => {
+    expect(suggestTitleFromArchiveFilename(filename)).toBe(expected);
+  });
+
+  test("removes only the final zip extension", () => {
+    expect(suggestTitleFromArchiveFilename("algoritmos.zip.backup")).toBe(
+      "algoritmos.zip.backup"
+    );
+  });
+
+  test("does not invent a title when the stem is empty", () => {
+    expect(suggestTitleFromArchiveFilename(".zip")).toBe("");
+    expect(suggestTitleFromArchiveFilename(" /folder/.ZIP ")).toBe("");
+  });
+
+  test("limits suggestions to the backend title contract", () => {
+    const suggestion = suggestTitleFromArchiveFilename(
+      `${"a".repeat(300)}.zip`
+    );
+
+    expect(suggestion).toHaveLength(MAX_SUBMISSION_TITLE_CHARS);
+  });
+
+  test("an empty manual title becomes an explicit automatic suggestion", () => {
+    expect(
+      applyArchiveTitleSuggestion(
+        manualSubmissionTitle(""),
+        "archivo.zip"
+      )
+    ).toEqual({
+      value: "archivo",
+      origin: TITLE_ORIGIN.AUTO_SUGGESTED,
+    });
+  });
+
+  test("manual text selected before a ZIP is never overwritten", () => {
+    expect(
+      applyArchiveTitleSuggestion(
+        manualSubmissionTitle("Mi experimento"),
+        "archivo.zip"
+      )
+    ).toEqual({
+      value: "Mi experimento",
+      origin: TITLE_ORIGIN.MANUAL,
+    });
+  });
+
+  test("an untouched automatic suggestion follows replacement ZIPs", () => {
+    const automatic = applyArchiveTitleSuggestion(
+      manualSubmissionTitle(""),
+      "primero.zip"
+    );
+
+    expect(
+      applyArchiveTitleSuggestion(automatic, "segundo.ZIP")
+    ).toEqual({
+      value: "segundo",
+      origin: TITLE_ORIGIN.AUTO_SUGGESTED,
+    });
+  });
+
+  test("editing an automatic suggestion makes it manual", () => {
+    const edited = manualSubmissionTitle("primero ajustado");
+
+    expect(
+      applyArchiveTitleSuggestion(edited, "segundo.zip")
+    ).toEqual({
+      value: "primero ajustado",
+      origin: TITLE_ORIGIN.MANUAL,
+    });
+  });
+
+  test.each(["draft recuperado", "ejecución recuperada"])(
+    "a title restored from %s is treated as manual",
+    (restoredTitle) => {
+      expect(
+        applyArchiveTitleSuggestion(
+          manualSubmissionTitle(restoredTitle),
+          "nuevo.zip"
+        ).value
+      ).toBe(restoredTitle);
+    }
+  );
+
+  test("a manually cleared title can be suggested on a later ZIP", () => {
+    const cleared = manualSubmissionTitle("");
+
+    expect(
+      applyArchiveTitleSuggestion(cleared, "reemplazo.zip")
+    ).toEqual({
+      value: "reemplazo",
+      origin: TITLE_ORIGIN.AUTO_SUGGESTED,
+    });
+  });
+
+  test("the submission fallback never persists the complete .zip filename", () => {
+    expect(
+      resolveSubmissionTitle({
+        testName: "",
+        archiveFilename: "algoritmos.zip",
+        fallbackTitle: "Entrada de texto",
+      })
+    ).toBe("algoritmos");
+
+    expect(
+      resolveSubmissionTitle({
+        testName: "",
+        archiveFilename: ".zip",
+        fallbackTitle: "Entrada de texto",
+      })
+    ).toBe("Entrada de texto");
+  });
+});
+
+describe("formOnboardingModel draft compatibility", () => {
+  test("an old draft without note loads as empty", () => {
+    expect(normalizeDraftNote(undefined)).toBe("");
+  });
+
+  test("draft note is capped defensively at 500 characters", () => {
+    expect(normalizeDraftNote("n".repeat(700))).toHaveLength(
+      MAX_SUBMISSION_NOTE_CHARS
+    );
+  });
+});

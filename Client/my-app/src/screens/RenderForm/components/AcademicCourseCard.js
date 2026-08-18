@@ -20,7 +20,27 @@ function AcademicCourseCard({
   onRetry,
 }) {
   if (!loading && !error && courses.length === 0) {
-    return null;
+    return (
+      <section className="rf-panel rf-course-context-panel">
+        <div className="rf-course-context-heading">
+          <div>
+            <span className="rf-course-context-kicker">
+              Contexto académico
+            </span>
+            <h3>Sin curso asociado</h3>
+          </div>
+
+          <span className="rf-course-context-badge">
+            Personal
+          </span>
+        </div>
+
+        <p className="form-help-text rf-course-context-message">
+          Actualmente no tienes cursos activos. Puedes realizar un análisis
+          personal igualmente.
+        </p>
+      </section>
+    );
   }
 
 

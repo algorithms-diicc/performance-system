@@ -107,6 +107,8 @@ const submissionDetail = {
     id: 9,
     code: "CC4102",
     name: "Diseño y Análisis de Algoritmos",
+    academicYear: 2026,
+    academicTerm: 2,
   },
 };
 
@@ -218,7 +220,7 @@ describe("RenderImage reproducibility integration", () => {
       await screen.findByRole("heading", { name: "Reproducibilidad" })
     ).toBeInTheDocument();
 
-    await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(5));
+    await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(6));
     expect(axios.get).toHaveBeenCalledWith(
       expect.stringMatching(/api\/executions\/exec70LCS\/manifest$/),
       { withCredentials: true }
@@ -228,10 +230,17 @@ describe("RenderImage reproducibility integration", () => {
       { withCredentials: true }
     );
     expect(
-      axios.get.mock.calls.some(([url]) =>
-        String(url).includes("/submissions/")
+      axios.get
+    ).toHaveBeenCalledWith(
+      expect.stringMatching(/api\/submissions\/42$/),
+      { withCredentials: true }
+    );
+    expect(
+      await screen.findByText(
+        "CC4102 · Diseño y Análisis de Algoritmos"
       )
-    ).toBe(false);
+    ).toBeInTheDocument();
+    expect(screen.getByText("Período 2026-2")).toBeInTheDocument();
 
     const navigation = screen.getByRole("navigation", {
       name: "Ruta de navegación",
@@ -244,6 +253,27 @@ describe("RenderImage reproducibility integration", () => {
     expect(
       await within(navigation).findByText("std_sort.cpp")
     ).toHaveAttribute("aria-current", "page");
+  });
+
+  test("shows an explicit personal context when the Submission has no course", async () => {
+    arrangeRequests({
+      submissionValue: {
+        ...submissionDetail,
+        courseId: null,
+        course: null,
+      },
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText("Sin curso asociado")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Análisis personal")
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "Reproducibilidad" })
+    ).toBeInTheDocument();
   });
 
   test("reconstructs Submission navigation from reproducibility context when Results omits it", async () => {

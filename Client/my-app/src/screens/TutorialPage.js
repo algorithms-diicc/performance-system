@@ -8,6 +8,7 @@ import {
   Clock3,
   Code2,
   Cpu,
+  Download,
   FileCode2,
   Gauge,
   History,
@@ -24,6 +25,7 @@ import {
   Zap,
   ZoomIn,
 } from "lucide-react";
+import { useLocation } from "react-router-dom";
 
 import "./TutorialPage.css";
 
@@ -164,6 +166,39 @@ const GOOD_PRACTICES = [
   "Interpreta las métricas en conjunto: una mejora en una métrica no implica necesariamente una mejora global.",
 ];
 
+const STARTER_EXAMPLES = [
+  {
+    benchmark: "SIZE",
+    title: "Insertion Sort vs. Merge Sort",
+    description:
+      "Dos algoritmos clásicos de ordenamiento reciben exactamente el mismo tamaño N y generan el mismo conjunto determinista de datos.",
+    observe:
+      "Compara cómo cambian tiempo e instrucciones al crecer N y, después, abre la comparación entre ambas implementaciones.",
+    files: ["insertion_sort.cpp", "merge_sort.cpp"],
+    href: "/tutorial-codigos/size_template.zip",
+  },
+  {
+    benchmark: "LCS",
+    title: "Longest Common Subsequence",
+    description:
+      "Implementación clásica por programación dinámica sobre dos secuencias formadas a partir de las líneas del archivo de texto entregado por el benchmark.",
+    observe:
+      "Observa el crecimiento del trabajo al aumentar la cantidad de líneas procesadas y relaciona la tendencia con la tabla dinámica.",
+    files: ["longest_common_subsequence.cpp"],
+    href: "/tutorial-codigos/lcs_template.zip",
+  },
+  {
+    benchmark: "CAMM",
+    title: "Multiplicación de matrices por bloques",
+    description:
+      "Multiplicación clásica de matrices organizada en bloques para trabajar sobre los valores numéricos que el benchmark entrega por argumentos.",
+    observe:
+      "Revisa tiempo, instrucciones y métricas de caché disponibles mientras aumenta la cantidad de valores de entrada.",
+    files: ["blocked_matrix_multiplication.cpp"],
+    href: "/tutorial-codigos/camm_template.zip",
+  },
+];
+
 const TutorialScreenshot = ({ shot, onOpen }) => (
   <figure className={`tutorial-shot tutorial-shot--${shot.variant || "default"}`}>
     <button
@@ -186,6 +221,28 @@ const TutorialScreenshot = ({ shot, onOpen }) => (
 
 const TutorialPage = () => {
   const [activeShot, setActiveShot] = useState(null);
+  const location = useLocation();
+
+  useEffect(() => {
+    if (!location.hash) return undefined;
+
+    let targetId = "";
+    try {
+      targetId = decodeURIComponent(location.hash.slice(1));
+    } catch (_error) {
+      return undefined;
+    }
+
+    const target = document.getElementById(targetId);
+    if (target && typeof target.scrollIntoView === "function") {
+      target.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+
+    return undefined;
+  }, [location.hash]);
 
   useEffect(() => {
     if (!activeShot) return undefined;
@@ -370,6 +427,72 @@ const TutorialPage = () => {
                 </div>
               </div>
             </article>
+          </section>
+
+          <section
+            className="tutorial-section tutorial-examples-section"
+            id="ejemplos"
+            aria-labelledby="tutorial-examples-title"
+          >
+            <div className="tutorial-section-heading">
+              <span className="tutorial-section-kicker">
+                Ejemplos para comenzar
+              </span>
+              <h2 id="tutorial-examples-title">
+                Algoritmos clásicos listos para medir
+              </h2>
+              <p>
+                Descarga un ZIP, revisa su código y súbelo desde Nuevo análisis.
+                Cada ejemplo respeta el contrato de entrada de su benchmark y
+                está pensado para producir una tendencia interpretable.
+              </p>
+            </div>
+
+            <div className="tutorial-example-grid">
+              {STARTER_EXAMPLES.map((example) => (
+                <article className="tutorial-example-card" key={example.benchmark}>
+                  <div className="tutorial-example-card__top">
+                    <span className="tutorial-example-benchmark">
+                      {example.benchmark}
+                    </span>
+                    <FileCode2 size={21} aria-hidden="true" />
+                  </div>
+
+                  <h3>{example.title}</h3>
+                  <p>{example.description}</p>
+
+                  <div className="tutorial-example-files">
+                    {example.files.map((filename) => (
+                      <code key={filename}>{filename}</code>
+                    ))}
+                  </div>
+
+                  <div className="tutorial-example-observe">
+                    <strong>Qué observar</strong>
+                    <span>{example.observe}</span>
+                  </div>
+
+                  <a
+                    href={example.href}
+                    download
+                    className="tutorial-example-download"
+                  >
+                    <Download size={16} aria-hidden="true" />
+                    Descargar ejemplo {example.benchmark}
+                  </a>
+                </article>
+              ))}
+            </div>
+
+            <div className="tutorial-note tutorial-examples-note">
+              <Info size={18} aria-hidden="true" />
+              <p>
+                El ejemplo SIZE contiene dos archivos .cpp. Performance System
+                los registra como implementaciones independientes dentro del
+                mismo experimento, por lo que después puedes compararlas sin
+                mezclar sus mediciones.
+              </p>
+            </div>
           </section>
 
           <section className="tutorial-section">

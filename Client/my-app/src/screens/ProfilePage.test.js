@@ -1,5 +1,9 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+} from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { requestJson } from "../common/requestErrorModel";
@@ -37,10 +41,37 @@ const summary = {
   lastSubmissionId: 42,
 };
 
-const renderProfile = async (summaryOverrides = {}) => {
-  requestJson.mockResolvedValue({
-    profile,
-    summary: { ...summary, ...summaryOverrides },
+const course = {
+  id: 9,
+  code: "CC4102",
+  name: "Diseño y Análisis de Algoritmos",
+  academicYear: 2026,
+  academicTerm: 2,
+  teacher: {
+    fullName: "Grace Hopper",
+    email: "grace@example.com",
+  },
+};
+
+const renderProfile = async (
+  summaryOverrides = {},
+  { coursesValue = [], coursesError = null } = {}
+) => {
+  requestJson.mockImplementation((url) => {
+    if (url === "/api/profile") {
+      return Promise.resolve({
+        profile,
+        summary: { ...summary, ...summaryOverrides },
+      });
+    }
+
+    if (url === "/api/student/courses") {
+      return coursesError
+        ? Promise.reject(coursesError)
+        : Promise.resolve({ items: coursesValue });
+    }
+
+    return Promise.reject(new Error(`Unexpected request: ${url}`));
   });
 
   render(
@@ -55,6 +86,102 @@ const renderProfile = async (summaryOverrides = {}) => {
 describe("ProfilePage submission navigation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  test("shows an explicit personal-analysis empty state without active courses", async () => {
+    await renderProfile();
+
+    expect(
+      await screen.findByRole("heading", { name: "Mis cursos" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Actualmente no tienes cursos activos.")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Iniciar análisis personal/i })
+    ).toHaveAttribute("href", "/");
+  });
+
+  test("shows the active course context and builds its analysis link", async () => {
+    await renderProfile({}, { coursesValue: [course] });
+
+    expect(await screen.findByText("CC4102")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Diseño y Análisis de Algoritmos",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("2026 · Semestre 2")).toBeInTheDocument();
+    expect(screen.getByText("Grace Hopper")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Nuevo análisis en este curso/i })
+    ).toHaveAttribute("href", "/?course=9");
+  });
+
+  test("renders several active courses independently", async () => {
+    await renderProfile(
+      {},
+      {
+        coursesValue: [
+          course,
+          {
+            ...course,
+            id: 12,
+            code: "CC5101",
+            name: "Sistemas Paralelos",
+            academicTerm: 1,
+          },
+        ],
+      }
+    );
+
+    expect(await screen.findByText("CC4102")).toBeInTheDocument();
+    expect(screen.getByText("CC5101")).toBeInTheDocument();
+
+    const links = screen.getAllByRole("link", {
+      name: /Nuevo análisis en este curso/i,
+    });
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveAttribute("href", "/?course=9");
+    expect(links[1]).toHaveAttribute("href", "/?course=12");
+  });
+
+  test("course failure does not hide the profile and can be retried", async () => {
+    let courseAttempts = 0;
+    requestJson.mockImplementation((url) => {
+      if (url === "/api/profile") {
+        return Promise.resolve({ profile, summary });
+      }
+
+      if (url === "/api/student/courses") {
+        courseAttempts += 1;
+        return courseAttempts === 1
+          ? Promise.reject(new Error("Cursos temporalmente no disponibles"))
+          : Promise.resolve({ items: [course] });
+      }
+
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    render(
+      <MemoryRouter>
+        <ProfilePage />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: "Mi perfil" })
+    ).toBeInTheDocument();
+    expect(
+      await screen.findByText("No pudimos cargar tus cursos")
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Reintentar cursos" })
+    );
+
+    expect(await screen.findByText("CC4102")).toBeInTheDocument();
+    expect(courseAttempts).toBe(2);
   });
 
   test("keeps result navigation and adds the canonical experiment link", async () => {

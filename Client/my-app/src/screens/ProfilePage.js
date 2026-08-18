@@ -7,6 +7,7 @@ import {
   CheckCircle2,
   Clock3,
   Gauge,
+  GraduationCap,
   LogIn,
   Mail,
   PlayCircle,
@@ -64,6 +65,16 @@ const formatDuration = (milliseconds) => {
   return `${minutes} min ${remainingSeconds} s`;
 };
 
+const formatAcademicPeriod = (course) => {
+  const year = String(course?.academicYear ?? "").trim();
+  const term = String(course?.academicTerm ?? "").trim();
+
+  if (!year && !term) return "Período no disponible";
+  if (year && term) return `${year} · Semestre ${term}`;
+  if (year) return year;
+  return `Semestre ${term}`;
+};
+
 const getInitials = (fullName, email) => {
   const source = String(fullName || "").trim();
 
@@ -101,10 +112,57 @@ const ProfileMetricCard = ({
   </article>
 );
 
+const ProfileCourseCard = ({ course }) => {
+  const courseId = String(course?.id ?? "").trim();
+  const courseCode = String(course?.code || "").trim() || "Curso";
+  const courseName =
+    String(course?.name || "").trim() || "Curso sin nombre";
+  const teacherName =
+    String(course?.teacher?.fullName || "").trim() ||
+    "Profesor no disponible";
+  const analysisPath = courseId
+    ? `/?course=${encodeURIComponent(courseId)}`
+    : "/";
+
+  return (
+    <article className="profile-course-card">
+      <div className="profile-course-card__heading">
+        <div className="profile-course-card__icon">
+          <GraduationCap size={20} strokeWidth={1.9} aria-hidden="true" />
+        </div>
+
+        <div>
+          <span className="profile-course-card__code">{courseCode}</span>
+          <h3>{courseName}</h3>
+        </div>
+      </div>
+
+      <div className="profile-course-card__metadata">
+        <div>
+          <span>Período</span>
+          <strong>{formatAcademicPeriod(course)}</strong>
+        </div>
+        <div>
+          <span>Profesor</span>
+          <strong>{teacherName}</strong>
+        </div>
+      </div>
+
+      <Link to={analysisPath} className="profile-course-card__action">
+        Nuevo análisis en este curso
+        <ArrowRight size={16} aria-hidden="true" />
+      </Link>
+    </article>
+  );
+};
+
 const ProfilePage = () => {
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [courses, setCourses] = useState([]);
+  const [coursesLoading, setCoursesLoading] = useState(true);
+  const [coursesError, setCoursesError] = useState("");
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
@@ -135,9 +193,37 @@ const ProfilePage = () => {
     }
   }, []);
 
+  const loadCourses = useCallback(async () => {
+    setCoursesLoading(true);
+    setCoursesError("");
+
+    try {
+      const body = await requestJson(
+        "/api/student/courses",
+        { credentials: "include" },
+        { fallback: "No fue posible cargar tus cursos activos." }
+      );
+
+      setCourses(
+        Array.isArray(body?.items)
+          ? body.items
+          : []
+      );
+    } catch (loadError) {
+      console.error("Error cargando /api/student/courses:", loadError);
+      setCourses([]);
+      setCoursesError(
+        loadError?.message || "No fue posible cargar tus cursos activos."
+      );
+    } finally {
+      setCoursesLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     loadProfile();
-  }, [loadProfile]);
+    loadCourses();
+  }, [loadProfile, loadCourses]);
 
   const profile = data?.profile ?? {};
   const summary = data?.summary ?? {};
@@ -284,6 +370,77 @@ const ProfilePage = () => {
                 </div>
               </div>
             </div>
+          </section>
+
+          <section
+            className="profile-section"
+            aria-labelledby="profile-courses-title"
+          >
+            <div className="profile-section-heading">
+              <div>
+                <span className="profile-eyebrow">Contexto académico</span>
+                <h2 id="profile-courses-title">Mis cursos</h2>
+              </div>
+
+              <p>
+                Cursos activos en los que puedes asociar nuevos experimentos.
+              </p>
+            </div>
+
+            {coursesLoading ? (
+              <div
+                className="profile-courses-state"
+                role="status"
+                aria-live="polite"
+              >
+                <RefreshCw
+                  size={21}
+                  className="profile-loading__icon"
+                  aria-hidden="true"
+                />
+                <div>
+                  <strong>Cargando tus cursos</strong>
+                  <p>Consultando tu contexto académico activo.</p>
+                </div>
+              </div>
+            ) : coursesError ? (
+              <div className="profile-courses-state profile-courses-state--error">
+                <XCircle size={22} strokeWidth={1.8} aria-hidden="true" />
+                <div>
+                  <strong>No pudimos cargar tus cursos</strong>
+                  <p>{coursesError}</p>
+                  <button
+                    type="button"
+                    className="profile-button profile-button--primary"
+                    onClick={loadCourses}
+                  >
+                    <RefreshCw size={16} aria-hidden="true" />
+                    Reintentar cursos
+                  </button>
+                </div>
+              </div>
+            ) : courses.length === 0 ? (
+              <div className="profile-courses-state">
+                <GraduationCap size={24} strokeWidth={1.8} aria-hidden="true" />
+                <div>
+                  <strong>Actualmente no tienes cursos activos.</strong>
+                  <p>
+                    Puedes realizar un análisis personal sin asociarlo a un
+                    curso.
+                  </p>
+                  <Link to="/" className="profile-inline-link">
+                    Iniciar análisis personal
+                    <ArrowRight size={16} aria-hidden="true" />
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className="profile-courses-grid">
+                {courses.map((course) => (
+                  <ProfileCourseCard key={course.id} course={course} />
+                ))}
+              </div>
+            )}
           </section>
 
           <section className="profile-section">

@@ -1,5 +1,6 @@
 import React from "react";
-import { Gauge } from "lucide-react";
+import { BookOpen, Gauge } from "lucide-react";
+import { Link } from "react-router-dom";
 
 function HeaderSection({
   title,
@@ -33,6 +34,14 @@ function HeaderSection({
               {subtitle}
             </p>
           )}
+
+          <Link
+            to="/tutorial#ejemplos"
+            className="inicio-examples-link"
+          >
+            <BookOpen size={15} aria-hidden="true" />
+            ¿Necesitas un ejemplo? Ver ejemplos de código
+          </Link>
         </div>
       </div>
 

@@ -402,6 +402,7 @@ def cap_code():
     task_type = request.form.get("task_type", "")
     input_size = request.form.get("input_size", "10000")
     samples = request.form.get("samples", "30")
+    note = request.form.get("note")
     course_id = (
         request.form.get("course_id")
         or request.form.get("courseId")
@@ -442,6 +443,7 @@ def cap_code():
             samples=samples,
             source_specs=source_specs,
             original_filename=stored_upload.original_filename,
+            note=note,
             course_id=course_id,
             compiler_flags="-O3",
             language="C++",
