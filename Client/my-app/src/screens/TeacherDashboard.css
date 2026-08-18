@@ -666,6 +666,29 @@
   color: var(--ps-text-secondary);
 }
 
+.teacher-submission-link {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  color: var(--ps-text);
+  border-radius: var(--ps-radius-sm);
+  text-decoration: none;
+}
+
+.teacher-submission-link small {
+  color: var(--ps-text-secondary);
+}
+
+.teacher-submission-link:hover strong {
+  color: var(--ps-primary);
+  text-decoration: underline;
+}
+
+.teacher-submission-link:focus-visible {
+  outline: 2px solid var(--ps-focus-ring);
+  outline-offset: 3px;
+}
+
 .teacher-attention {
   display: inline-flex;
   padding: 0.23rem 0.5rem;
@@ -1035,6 +1058,13 @@
 
 .teacher-execution-modal-footer {
   border-top: 1px solid var(--ps-border);
+}
+
+.teacher-execution-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--ps-space-2);
 }
 
 .teacher-execution-modal-header p {

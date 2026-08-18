@@ -372,6 +372,18 @@
   text-decoration: none;
 }
 
+.profile-inline-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-top: 1rem;
+}
+
+.profile-inline-actions .profile-inline-link {
+  margin-top: 0;
+}
+
 .profile-inline-link:hover {
   text-decoration: underline;
 }

@@ -6,6 +6,12 @@ export const SUBMISSION_AGGREGATE_LABELS = {
   EMPTY: "Sin ejecuciones",
 };
 
+const FALLBACK_VALUE = "No disponible";
+
+const decimalFormatter = new Intl.NumberFormat("es-CL", {
+  maximumFractionDigits: 2,
+});
+
 const toCount = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0
@@ -132,4 +138,102 @@ export function canOpenExecutionResult(execution) {
       execution.resultAvailable === true &&
       execution.codename
   );
+}
+
+export function executionDisplayName(execution = {}) {
+  return (
+    String(execution.originalFilename || "").trim() ||
+    String(execution.codename || "").trim() ||
+    "Archivo sin nombre"
+  );
+}
+
+export function formatExecutionDuration(milliseconds) {
+  if (milliseconds === null || milliseconds === undefined) {
+    return "Sin datos";
+  }
+
+  const value = Number(milliseconds);
+
+  if (!Number.isFinite(value) || value < 0) {
+    return "Sin datos";
+  }
+
+  if (value < 1000) {
+    return `${Math.round(value)} ms`;
+  }
+
+  const seconds = value / 1000;
+
+  if (seconds < 60) {
+    return `${decimalFormatter.format(seconds)} s`;
+  }
+
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds - minutes * 60;
+
+  if (remainingSeconds < 0.005) {
+    return `${minutes} min`;
+  }
+
+  return `${minutes} min ${decimalFormatter.format(
+    remainingSeconds
+  )} s`;
+}
+
+export function formatSubmissionDateTime(value) {
+  if (!value) return FALLBACK_VALUE;
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return FALLBACK_VALUE;
+  }
+
+  const formatted = new Intl.DateTimeFormat("es-CL", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  }).format(date);
+
+  return formatted
+    .replace(/[\s\u00a0\u202f]+/gu, " ")
+    .trim();
+}
+
+export function formatCourseLabel(course) {
+  if (!course || typeof course !== "object") {
+    return "Sin curso asociado";
+  }
+
+  const code = String(course.code || "").trim();
+  const name = String(course.name || "").trim();
+
+  return [code, name].filter(Boolean).join(" · ") ||
+    "Sin curso asociado";
+}
+
+export function formatAcademicPeriod(course) {
+  if (!course || typeof course !== "object") {
+    return null;
+  }
+
+  const year = String(course.academicYear || "").trim();
+  const term = String(course.academicTerm || "").trim();
+
+  if (!year && !term) return null;
+  if (year && term) return `Período ${year}-${term}`;
+  return `Período ${year || term}`;
+}
+
+export function abbreviateArchiveSha256(value) {
+  const normalized = String(value || "").trim();
+
+  if (!normalized) return FALLBACK_VALUE;
+  if (normalized.length <= 24) return normalized;
+
+  return `${normalized.slice(0, 12)}…${normalized.slice(-8)}`;
+}
+
+export function formatBenchmark(value) {
+  return String(value || "").trim() || "No informado";
 }

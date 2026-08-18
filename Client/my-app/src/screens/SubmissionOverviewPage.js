@@ -9,22 +9,60 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import {
+  Activity,
+  AlertTriangle,
+  Ban,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
+  Copy,
+  ExternalLink,
+  FileArchive,
+  FileCode2,
+  Files,
+  Fingerprint,
+  Gauge,
+  GraduationCap,
+  Pencil,
+  RefreshCw,
+  Save,
+  Server,
+  Star,
+  X,
+  XCircle,
+} from "lucide-react";
 
 import { serverURL } from "../common/Constants";
 import InlineState from "../components/InlineState";
 import {
   SUBMISSION_AGGREGATE_LABELS,
+  abbreviateArchiveSha256,
   canOpenExecutionResult,
   deriveSubmissionAggregateState,
+  executionDisplayName,
+  formatAcademicPeriod,
+  formatBenchmark,
+  formatCourseLabel,
+  formatExecutionDuration,
+  formatSubmissionDateTime,
   sortSubmissionExecutions,
 } from "./submissionOverviewModel";
 
 import "./SubmissionOverviewPage.css";
 
+const EMPTY_PERMISSIONS = {
+  canEditMetadata: false,
+  canViewPrivateMetadata: false,
+};
+
 const stateClassName = (state) =>
-  `submission-overview__state submission-overview__state--${String(
-    state || "UNKNOWN"
-  ).toLowerCase()}`;
+  [
+    "submission-overview__status-badge",
+    `submission-overview__status-badge--${String(
+      state || "UNKNOWN"
+    ).toLowerCase()}`,
+  ].join(" ");
 
 const errorStateFromRequest = (error) => {
   const status = error?.response?.status;
@@ -35,73 +73,163 @@ const errorStateFromRequest = (error) => {
   return "error";
 };
 
+const metadataErrorMessage = (error, fallback) => {
+  const payload = error?.response?.data;
+
+  return (
+    payload?.message ||
+    payload?.error?.message ||
+    (typeof payload?.error === "string" ? payload.error : "") ||
+    fallback
+  );
+};
+
+const hasOwn = (value, key) =>
+  Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+
+const resultAvailabilityLabel = (execution) => {
+  if (execution?.resultAvailable === true) return "Disponible";
+
+  if (
+    ["QUEUED", "RUNNING", "PROCESSING"].includes(
+      execution?.state
+    )
+  ) {
+    return "Pendiente";
+  }
+
+  return "No disponible";
+};
+
+const SummaryCard = ({ icon: Icon, label, value, tone = "default" }) => (
+  <article
+    className={`submission-overview__summary-card submission-overview__summary-card--${tone}`}
+  >
+    <div className="submission-overview__summary-icon">
+      <Icon size={20} strokeWidth={1.9} aria-hidden="true" />
+    </div>
+    <div>
+      <span>{label}</span>
+      <strong>{value || 0}</strong>
+    </div>
+  </article>
+);
+
+const InformationItem = ({ icon: Icon, label, children, className = "" }) => (
+  <div
+    className={[
+      "submission-overview__information-item",
+      className,
+    ]
+      .filter(Boolean)
+      .join(" ")}
+  >
+    <div className="submission-overview__information-icon">
+      <Icon size={18} strokeWidth={1.9} aria-hidden="true" />
+    </div>
+    <div>
+      <dt>{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  </div>
+);
+
 const SubmissionOverviewPage = () => {
   const { submissionId } = useParams();
   const navigate = useNavigate();
 
   const [submission, setSubmission] = useState(null);
   const [summary, setSummary] = useState(null);
+  const [permissions, setPermissions] = useState(EMPTY_PERMISSIONS);
   const [executions, setExecutions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [requestError, setRequestError] = useState(null);
+  const [isEditingNote, setIsEditingNote] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [pinSaving, setPinSaving] = useState(false);
+  const [metadataError, setMetadataError] = useState("");
+  const [metadataFeedback, setMetadataFeedback] = useState("");
+  const [copyFeedback, setCopyFeedback] = useState("");
+
+  const encodedSubmissionId = encodeURIComponent(
+    String(submissionId || "")
+  );
+  const submissionEndpoint = `${serverURL}api/submissions/${encodedSubmissionId}`;
 
   const loadSubmission = useCallback(async () => {
     setLoading(true);
     setRequestError(null);
+    setMetadataError("");
+    setMetadataFeedback("");
 
     try {
-      const encodedId = encodeURIComponent(
-        String(submissionId || "")
-      );
-
-      const [
-        detailResponse,
-        executionsResponse,
-      ] = await Promise.all([
-        axios.get(
-          `${serverURL}api/submissions/${encodedId}`,
-          { withCredentials: true }
-        ),
-        axios.get(
-          `${serverURL}api/submissions/${encodedId}/executions`,
-          {
-            withCredentials: true,
-            params: {
-              page: 1,
-              page_size: 200,
-            },
-          }
-        ),
+      const [detailResponse, executionsResponse] = await Promise.all([
+        axios.get(submissionEndpoint, {
+          withCredentials: true,
+        }),
+        axios.get(`${submissionEndpoint}/executions`, {
+          withCredentials: true,
+          params: {
+            page: 1,
+            page_size: 200,
+          },
+        }),
       ]);
 
-      setSubmission(
-        detailResponse.data?.submission || null
-      );
-      setSummary(
-        detailResponse.data?.summary || {}
+      const nextSubmission =
+        detailResponse.data?.submission || null;
+
+      setSubmission(nextSubmission);
+      setSummary(detailResponse.data?.summary || {});
+      setPermissions(
+        detailResponse.data?.permissions || EMPTY_PERMISSIONS
       );
       setExecutions(
         Array.isArray(executionsResponse.data?.items)
           ? executionsResponse.data.items
           : []
       );
-    } catch (error) {
-      console.error(
-        "Error cargando Submission overview:",
-        error
+      setNoteDraft(
+        typeof nextSubmission?.note === "string"
+          ? nextSubmission.note
+          : ""
       );
+      setIsEditingNote(false);
+      setCopyFeedback("");
+    } catch (error) {
+      console.error("Error cargando Submission overview:", error);
       setRequestError(error);
       setSubmission(null);
       setSummary(null);
+      setPermissions(EMPTY_PERMISSIONS);
       setExecutions([]);
     } finally {
       setLoading(false);
     }
-  }, [submissionId]);
+  }, [submissionEndpoint]);
 
   useEffect(() => {
     loadSubmission();
   }, [loadSubmission]);
+
+  const patchMetadata = useCallback(
+    async (payload) => {
+      const response = await axios.patch(
+        submissionEndpoint,
+        payload,
+        { withCredentials: true }
+      );
+
+      setSubmission((current) => ({
+        ...current,
+        ...response.data,
+      }));
+
+      return response.data || {};
+    },
+    [submissionEndpoint]
+  );
 
   const orderedExecutions = useMemo(
     () => sortSubmissionExecutions(executions),
@@ -113,14 +241,109 @@ const SubmissionOverviewPage = () => {
     [summary]
   );
 
+  const handleEditNote = () => {
+    setNoteDraft(
+      typeof submission?.note === "string" ? submission.note : ""
+    );
+    setMetadataError("");
+    setMetadataFeedback("");
+    setIsEditingNote(true);
+  };
+
+  const handleCancelNote = () => {
+    setNoteDraft(
+      typeof submission?.note === "string" ? submission.note : ""
+    );
+    setMetadataError("");
+    setIsEditingNote(false);
+  };
+
+  const handleSaveNote = async () => {
+    if (!permissions.canEditMetadata || noteSaving) return;
+
+    setNoteSaving(true);
+    setMetadataError("");
+    setMetadataFeedback("");
+
+    try {
+      const updated = await patchMetadata({ note: noteDraft });
+      const normalizedNote = hasOwn(updated, "note")
+        ? updated.note
+        : submission?.note;
+
+      setNoteDraft(
+        typeof normalizedNote === "string" ? normalizedNote : ""
+      );
+      setIsEditingNote(false);
+      setMetadataFeedback("Nota personal guardada.");
+    } catch (error) {
+      setMetadataError(
+        metadataErrorMessage(
+          error,
+          "No fue posible guardar la nota. Revisa el contenido y vuelve a intentarlo."
+        )
+      );
+    } finally {
+      setNoteSaving(false);
+    }
+  };
+
+  const handleTogglePinned = async () => {
+    if (!permissions.canEditMetadata || pinSaving) return;
+
+    const nextPinned = !Boolean(submission?.isPinned);
+    setPinSaving(true);
+    setMetadataError("");
+    setMetadataFeedback("");
+
+    try {
+      await patchMetadata({ isPinned: nextPinned });
+      setMetadataFeedback(
+        nextPinned
+          ? "Experimento marcado como referencia."
+          : "Experimento removido de referencias."
+      );
+    } catch (error) {
+      setMetadataError(
+        metadataErrorMessage(
+          error,
+          "No fue posible actualizar la referencia. Vuelve a intentarlo."
+        )
+      );
+    } finally {
+      setPinSaving(false);
+    }
+  };
+
+  const handleCopySha = async () => {
+    const archiveSha256 = String(
+      submission?.archiveSha256 || ""
+    ).trim();
+
+    if (!archiveSha256) return;
+
+    try {
+      if (!navigator.clipboard?.writeText) {
+        throw new Error("Clipboard API no disponible");
+      }
+
+      await navigator.clipboard.writeText(archiveSha256);
+      setCopyFeedback("SHA copiado");
+    } catch {
+      setCopyFeedback("No se pudo copiar");
+    }
+  };
+
   if (loading) {
     return (
       <main className="submission-overview">
-        <InlineState
-          type="loading"
-          title="Cargando experimento"
-          description="Consultando el estado de sus ejecuciones."
-        />
+        <div className="submission-overview__container submission-overview__state-container">
+          <InlineState
+            type="loading"
+            title="Cargando experimento"
+            description="Consultando su metadata y el estado de las implementaciones."
+          />
+        </div>
       </main>
     );
   }
@@ -128,13 +351,15 @@ const SubmissionOverviewPage = () => {
   if (requestError) {
     return (
       <main className="submission-overview">
-        <InlineState
-          type={errorStateFromRequest(requestError)}
-          title="No fue posible cargar el experimento"
-          description="Revisa tu sesión o vuelve a intentar la consulta."
-          actionLabel="Reintentar"
-          onAction={loadSubmission}
-        />
+        <div className="submission-overview__container submission-overview__state-container">
+          <InlineState
+            type={errorStateFromRequest(requestError)}
+            title="No fue posible cargar el experimento"
+            description="Revisa tu sesión o vuelve a intentar la consulta."
+            actionLabel="Reintentar"
+            onAction={loadSubmission}
+          />
+        </div>
       </main>
     );
   }
@@ -142,197 +367,496 @@ const SubmissionOverviewPage = () => {
   if (!submission) {
     return (
       <main className="submission-overview">
-        <InlineState
-          type="not-found"
-          title="Experimento no disponible"
-          description="No se encontró información para esta Submission."
-        />
+        <div className="submission-overview__container submission-overview__state-container">
+          <InlineState
+            type="not-found"
+            title="Experimento no disponible"
+            description="No se encontró información para esta Submission."
+          />
+        </div>
       </main>
     );
   }
 
-  const courseLabel = submission.course
-    ? `${submission.course.code || "Curso"} · ${
-        submission.course.academicYear || "-"
-      }-${submission.course.academicTerm || "-"}`
-    : "Sin curso asociado";
+  const courseLabel = formatCourseLabel(submission.course);
+  const academicPeriod = formatAcademicPeriod(submission.course);
+  const createdAtLabel = formatSubmissionDateTime(
+    submission.createdAt
+  );
+  const archiveSha256 = String(
+    submission.archiveSha256 || ""
+  ).trim();
+  const showPrivateMetadata = Boolean(
+    permissions.canViewPrivateMetadata ||
+      permissions.canEditMetadata
+  );
+  const noteValue = hasOwn(submission, "note")
+    ? String(submission.note || "").trim()
+    : "";
+  const isPinned = hasOwn(submission, "isPinned")
+    ? Boolean(submission.isPinned)
+    : false;
 
   return (
     <main className="submission-overview">
-      <section className="submission-overview__header">
-        <div>
-          <p className="submission-overview__eyebrow">
-            Experimento #{submission.id}
-          </p>
-          <h1>
-            {submission.title || "Experimento sin título"}
-          </h1>
-          <p className="submission-overview__course">
-            {courseLabel}
-          </p>
-        </div>
-
-        <div className={stateClassName(aggregateState)}>
-          {
-            SUBMISSION_AGGREGATE_LABELS[
-              aggregateState
-            ] || aggregateState
-          }
-        </div>
-      </section>
-
-      <section
-        className="submission-overview__summary"
-        aria-label="Resumen de ejecuciones"
-      >
-        <div>
-          <strong>
-            {summary?.executionsCount || 0}
-          </strong>
-          <span>Ejecuciones</span>
-        </div>
-        <div>
-          <strong>
-            {summary?.completedExecutions || 0}
-          </strong>
-          <span>Completadas</span>
-        </div>
-        <div>
-          <strong>
-            {summary?.failedExecutions || 0}
-          </strong>
-          <span>Con error</span>
-        </div>
-        <div>
-          <strong>
-            {summary?.cancelledExecutions || 0}
-          </strong>
-          <span>Canceladas</span>
-        </div>
-      </section>
-
-      <section className="submission-overview__content">
-        <div className="submission-overview__section-heading">
-          <div>
-            <h2>Implementaciones</h2>
-            <p>
-              Cada archivo C++ conserva su propia Execution y
-              sus resultados independientes.
-            </p>
+      <div className="submission-overview__container">
+        <header className="submission-overview__header">
+          <div className="submission-overview__header-copy">
+            <span className="submission-overview__eyebrow">
+              Experimento #{submission.id}
+            </span>
+            <h1>{submission.title || "Experimento sin título"}</h1>
+            <div className="submission-overview__header-metadata">
+              <span>
+                <GraduationCap
+                  size={16}
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
+                {courseLabel}
+              </span>
+              <span>
+                <CalendarDays
+                  size={16}
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
+                {createdAtLabel}
+              </span>
+            </div>
+            {academicPeriod && (
+              <span className="submission-overview__period">
+                {academicPeriod}
+              </span>
+            )}
           </div>
 
-          <button
-            type="button"
-            className="submission-overview__secondary-action"
-            onClick={loadSubmission}
+          <span className={stateClassName(aggregateState)}>
+            {SUBMISSION_AGGREGATE_LABELS[aggregateState] ||
+              aggregateState}
+          </span>
+        </header>
+
+        <section
+          className="submission-overview__card submission-overview__information"
+          aria-labelledby="submission-information-title"
+        >
+          <div className="submission-overview__section-heading">
+            <div>
+              <span className="submission-overview__eyebrow">
+                Procedencia
+              </span>
+              <h2 id="submission-information-title">
+                Información del experimento
+              </h2>
+            </div>
+            <FileArchive size={22} strokeWidth={1.8} aria-hidden="true" />
+          </div>
+
+          <dl className="submission-overview__information-grid">
+            <InformationItem icon={FileArchive} label="Archivo original">
+              {submission.originalFilename || "No disponible"}
+            </InformationItem>
+
+            <InformationItem icon={CalendarDays} label="Creado">
+              {createdAtLabel}
+            </InformationItem>
+
+            <InformationItem icon={GraduationCap} label="Curso">
+              <span>{courseLabel}</span>
+              {academicPeriod && <small>{academicPeriod}</small>}
+            </InformationItem>
+
+            <InformationItem
+              icon={Fingerprint}
+              label="SHA-256"
+              className="submission-overview__information-item--sha"
+            >
+              <div className="submission-overview__sha">
+                <code title={archiveSha256 || undefined}>
+                  {abbreviateArchiveSha256(archiveSha256)}
+                </code>
+                {archiveSha256 && (
+                  <button
+                    type="button"
+                    className="submission-overview__icon-action"
+                    onClick={handleCopySha}
+                    aria-label="Copiar SHA-256 completo"
+                    title="Copiar SHA-256 completo"
+                  >
+                    <Copy size={16} strokeWidth={1.9} aria-hidden="true" />
+                  </button>
+                )}
+                {copyFeedback && (
+                  <span className="submission-overview__copy-feedback" role="status">
+                    {copyFeedback}
+                  </span>
+                )}
+              </div>
+            </InformationItem>
+
+            <InformationItem icon={Files} label="Implementaciones">
+              {summary?.executionsCount || 0}
+            </InformationItem>
+          </dl>
+        </section>
+
+        {showPrivateMetadata && (
+          <section
+            className="submission-overview__card submission-overview__personal"
+            aria-labelledby="submission-personal-title"
           >
-            Actualizar estados
-          </button>
-        </div>
+            <div className="submission-overview__personal-heading">
+              <div>
+                <span className="submission-overview__eyebrow">
+                  Solo tú
+                </span>
+                <h2 id="submission-personal-title">
+                  Metadata personal
+                </h2>
+              </div>
 
-        {orderedExecutions.length === 0 ? (
-          <InlineState
-            type="empty"
-            title="Sin ejecuciones"
-            description="Esta Submission todavía no registra ejecuciones."
-          />
-        ) : (
-          <div className="submission-overview__list">
-            {orderedExecutions.map((execution) => {
-              const failure = execution.failure;
-              const originalFilename =
-                execution.originalFilename ||
-                execution.codename ||
-                "Archivo sin nombre";
-
-              return (
-                <article
-                  className="submission-overview__execution"
-                  key={
-                    execution.executionId ||
-                    execution.publicId ||
-                    execution.codename
-                  }
+              {permissions.canEditMetadata && (
+                <button
+                  type="button"
+                  className={[
+                    "submission-overview__reference-action",
+                    isPinned
+                      ? "submission-overview__reference-action--active"
+                      : "",
+                  ]
+                    .filter(Boolean)
+                    .join(" ")}
+                  onClick={handleTogglePinned}
+                  disabled={pinSaving}
+                  aria-pressed={isPinned}
                 >
-                  <div className="submission-overview__execution-main">
-                    <div>
-                      <h3>{originalFilename}</h3>
-                      <p className="submission-overview__codename">
-                        {execution.codename}
-                      </p>
-                    </div>
+                  <Star
+                    size={17}
+                    strokeWidth={1.9}
+                    fill={isPinned ? "currentColor" : "none"}
+                    aria-hidden="true"
+                  />
+                  {pinSaving
+                    ? "Actualizando…"
+                    : isPinned
+                    ? "Referencia"
+                    : "Marcar como referencia"}
+                </button>
+              )}
+            </div>
 
-                    <span
-                      className={stateClassName(
-                        execution.state
-                      )}
-                    >
-                      {
-                        execution.stateLabel ||
-                        execution.statusLabel ||
-                        execution.state ||
-                        "Desconocido"
-                      }
+            <div className="submission-overview__note">
+              {isEditingNote && permissions.canEditMetadata ? (
+                <>
+                  <label htmlFor="submission-personal-note">
+                    Nota personal
+                  </label>
+                  <textarea
+                    id="submission-personal-note"
+                    value={noteDraft}
+                    onChange={(event) => setNoteDraft(event.target.value)}
+                    maxLength={500}
+                    rows={5}
+                    disabled={noteSaving}
+                    aria-describedby="submission-note-count"
+                  />
+                  <div className="submission-overview__note-editor-footer">
+                    <span id="submission-note-count">
+                      {noteDraft.length}/500 caracteres
                     </span>
-                  </div>
-
-                  {execution.state === "FAILED" && (
-                    <div className="submission-overview__failure">
-                      <strong>
-                        La ejecución no produjo resultados.
-                      </strong>
-                      <p>
-                        {
-                          failure?.message ||
-                          failure?.code ||
-                          "El backend no entregó más detalle del fallo."
-                        }
-                      </p>
-                      {(failure?.stage || failure?.code) && (
-                        <small>
-                          {failure?.stage
-                            ? `Etapa: ${failure.stage}`
-                            : ""}
-                          {failure?.stage && failure?.code
-                            ? " · "
-                            : ""}
-                          {failure?.code
-                            ? `Código: ${failure.code}`
-                            : ""}
-                        </small>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="submission-overview__execution-footer">
-                    <span>
-                      {execution.resultAvailable
-                        ? "Resultado disponible"
-                        : "Sin resultado publicable"}
-                    </span>
-
-                    {canOpenExecutionResult(execution) && (
+                    <div className="submission-overview__note-actions">
                       <button
                         type="button"
-                        className="submission-overview__primary-action"
-                        onClick={() =>
-                          navigate(
-                            `/code/${encodeURIComponent(
-                              execution.codename
-                            )}`
-                          )
-                        }
+                        className="submission-overview__button submission-overview__button--ghost"
+                        onClick={handleCancelNote}
+                        disabled={noteSaving}
                       >
-                        Ver resultado
+                        <X size={16} strokeWidth={2} aria-hidden="true" />
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        className="submission-overview__button submission-overview__button--primary"
+                        onClick={handleSaveNote}
+                        disabled={noteSaving}
+                      >
+                        <Save size={16} strokeWidth={2} aria-hidden="true" />
+                        {noteSaving ? "Guardando…" : "Guardar"}
+                      </button>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="submission-overview__note-heading">
+                    <h3>Nota personal</h3>
+                    {permissions.canEditMetadata && (
+                      <button
+                        type="button"
+                        className="submission-overview__text-action"
+                        onClick={handleEditNote}
+                      >
+                        <Pencil size={15} strokeWidth={1.9} aria-hidden="true" />
+                        Editar
                       </button>
                     )}
                   </div>
-                </article>
-              );
-            })}
-          </div>
+                  <p
+                    className={
+                      noteValue
+                        ? "submission-overview__note-value"
+                        : "submission-overview__note-empty"
+                    }
+                  >
+                    {noteValue || "Sin nota personal"}
+                  </p>
+                </>
+              )}
+            </div>
+
+            {metadataError && (
+              <div
+                className="submission-overview__metadata-feedback submission-overview__metadata-feedback--error"
+                role="alert"
+              >
+                <AlertTriangle size={17} strokeWidth={2} aria-hidden="true" />
+                {metadataError}
+              </div>
+            )}
+
+            {metadataFeedback && !metadataError && (
+              <div
+                className="submission-overview__metadata-feedback submission-overview__metadata-feedback--success"
+                role="status"
+              >
+                <CheckCircle2 size={17} strokeWidth={2} aria-hidden="true" />
+                {metadataFeedback}
+              </div>
+            )}
+          </section>
         )}
-      </section>
+
+        <section
+          className="submission-overview__summary-section"
+          aria-labelledby="submission-summary-title"
+        >
+          <div className="submission-overview__section-heading submission-overview__section-heading--outside">
+            <div>
+              <span className="submission-overview__eyebrow">
+                Estado agregado
+              </span>
+              <h2 id="submission-summary-title">Resumen</h2>
+            </div>
+          </div>
+
+          <div className="submission-overview__summary-grid">
+            <SummaryCard
+              icon={Activity}
+              label="Ejecuciones"
+              value={summary?.executionsCount}
+            />
+            <SummaryCard
+              icon={CheckCircle2}
+              label="Completadas"
+              value={summary?.completedExecutions}
+              tone="success"
+            />
+            <SummaryCard
+              icon={XCircle}
+              label="Con error"
+              value={summary?.failedExecutions}
+              tone="danger"
+            />
+            <SummaryCard
+              icon={Ban}
+              label="Canceladas"
+              value={summary?.cancelledExecutions}
+              tone="neutral"
+            />
+          </div>
+        </section>
+
+        <section
+          className="submission-overview__card submission-overview__implementations"
+          aria-labelledby="submission-implementations-title"
+        >
+          <div className="submission-overview__implementations-heading">
+            <div>
+              <span className="submission-overview__eyebrow">
+                Código fuente
+              </span>
+              <h2 id="submission-implementations-title">
+                Implementaciones
+              </h2>
+              <p>
+                Cada archivo C++ conserva su propia ejecución y resultados
+                independientes.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              className="submission-overview__button submission-overview__button--secondary"
+              onClick={loadSubmission}
+            >
+              <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
+              Actualizar estados
+            </button>
+          </div>
+
+          {orderedExecutions.length === 0 ? (
+            <InlineState
+              type="empty"
+              title="Sin ejecuciones"
+              description="Este experimento todavía no registra implementaciones ejecutables."
+            />
+          ) : (
+            <div className="submission-overview__execution-list">
+              {orderedExecutions.map((execution) => {
+                const failure = execution.failure;
+                const displayName = executionDisplayName(execution);
+                const canOpenResult = canOpenExecutionResult(execution);
+
+                return (
+                  <article
+                    className="submission-overview__execution"
+                    key={
+                      execution.executionId ||
+                      execution.publicId ||
+                      execution.codename
+                    }
+                  >
+                    <div className="submission-overview__execution-main">
+                      <div className="submission-overview__execution-title">
+                        <div className="submission-overview__file-icon">
+                          <FileCode2
+                            size={21}
+                            strokeWidth={1.8}
+                            aria-hidden="true"
+                          />
+                        </div>
+                        <div>
+                          <h3>{displayName}</h3>
+                          {execution.codename && (
+                            <span className="submission-overview__codename">
+                              ID técnico: <code>{execution.codename}</code>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <span className={stateClassName(execution.state)}>
+                        {execution.stateLabel ||
+                          execution.statusLabel ||
+                          execution.state ||
+                          "Desconocido"}
+                      </span>
+                    </div>
+
+                    <dl className="submission-overview__execution-metadata">
+                      <div>
+                        <Gauge size={17} strokeWidth={1.9} aria-hidden="true" />
+                        <dt>Benchmark</dt>
+                        <dd>{formatBenchmark(execution.benchmark)}</dd>
+                      </div>
+                      <div>
+                        <Clock3 size={17} strokeWidth={1.9} aria-hidden="true" />
+                        <dt>Duración</dt>
+                        <dd>{formatExecutionDuration(execution.durationMs)}</dd>
+                      </div>
+                      <div>
+                        <FileArchive size={17} strokeWidth={1.9} aria-hidden="true" />
+                        <dt>Resultado</dt>
+                        <dd
+                          className={
+                            execution.resultAvailable
+                              ? "submission-overview__result-available"
+                              : ""
+                          }
+                        >
+                          {resultAvailabilityLabel(execution)}
+                        </dd>
+                      </div>
+                      {execution.hardwareProfile && (
+                        <div>
+                          <Server size={17} strokeWidth={1.9} aria-hidden="true" />
+                          <dt>Entorno</dt>
+                          <dd>{execution.hardwareProfile}</dd>
+                        </div>
+                      )}
+                    </dl>
+
+                    {execution.state === "FAILED" && (
+                      <div className="submission-overview__failure">
+                        <AlertTriangle
+                          size={20}
+                          strokeWidth={1.9}
+                          aria-hidden="true"
+                        />
+                        <div>
+                          <strong>
+                            La implementación no pudo completar el análisis.
+                          </strong>
+                          <p>
+                            {failure?.message ||
+                              "El servidor no entregó más detalle del fallo."}
+                          </p>
+                          {(failure?.stage || failure?.code) && (
+                            <dl>
+                              {failure?.stage && (
+                                <div>
+                                  <dt>Etapa</dt>
+                                  <dd>{failure.stage}</dd>
+                                </div>
+                              )}
+                              {failure?.code && (
+                                <div>
+                                  <dt>Código</dt>
+                                  <dd>{failure.code}</dd>
+                                </div>
+                              )}
+                            </dl>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="submission-overview__execution-footer">
+                      <span>
+                        {execution.publicId
+                          ? `Registro ${execution.publicId}`
+                          : `Execution #${execution.executionId || "—"}`}
+                      </span>
+
+                      {canOpenResult && (
+                        <button
+                          type="button"
+                          className="submission-overview__button submission-overview__button--primary"
+                          onClick={() =>
+                            navigate(
+                              `/code/${encodeURIComponent(
+                                execution.codename
+                              )}`
+                            )
+                          }
+                        >
+                          Ver resultado
+                          <ExternalLink
+                            size={16}
+                            strokeWidth={2}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+        </section>
+      </div>
     </main>
   );
 };

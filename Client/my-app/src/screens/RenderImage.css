@@ -100,6 +100,8 @@
 
   font-weight: 650;
 
+  text-decoration: none;
+
   cursor: pointer;
 
   transition:
@@ -1150,7 +1152,8 @@
 
   .results-page .results-status-chip,
   .results-page .results-download-button,
-  .results-page .results-back-button {
+  .results-page .results-back-button,
+  .results-page .results-secondary-button {
     width: 100%;
   }
 

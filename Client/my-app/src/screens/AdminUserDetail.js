@@ -494,7 +494,12 @@ function ExecutionsTab({
                         </div>
                       </td>
                       <td>
-                        <div className="admin-detail-primary-cell">
+                        <Link
+                          to={`/submissions/${encodeURIComponent(
+                            String(execution.submissionId)
+                          )}`}
+                          className="admin-detail-primary-cell admin-detail-submission-link"
+                        >
                           <strong>
                             {execution.submissionTitle ||
                               `Submission #${execution.submissionId}`}
@@ -502,7 +507,7 @@ function ExecutionsTab({
                           <span>
                             ID {execution.submissionId}
                           </span>
-                        </div>
+                        </Link>
                       </td>
                       <td>
                         <span
@@ -730,13 +735,18 @@ function SubmissionsTab({ userId }) {
                   return (
                     <tr key={submission.id}>
                       <td>
-                        <div className="admin-detail-primary-cell">
+                        <Link
+                          to={`/submissions/${encodeURIComponent(
+                            String(submission.id)
+                          )}`}
+                          className="admin-detail-primary-cell admin-detail-submission-link"
+                        >
                           <strong>
                             {submission.title ||
                               `Submission #${submission.id}`}
                           </strong>
                           <span>ID {submission.id}</span>
-                        </div>
+                        </Link>
                       </td>
                       <td>
                         <span className="admin-submission-status">
@@ -1195,8 +1205,21 @@ function ExecutionDetailModal({
             Cerrar
           </button>
 
-          {detail?.resultAvailable &&
-            detail?.codename && (
+          <div className="admin-execution-modal-actions">
+            {detail?.submissionId !== null &&
+              detail?.submissionId !== undefined && (
+                <Link
+                  to={`/submissions/${encodeURIComponent(
+                    String(detail.submissionId)
+                  )}`}
+                  className="btn admin-detail-secondary-button"
+                >
+                  Ver experimento
+                </Link>
+              )}
+
+            {detail?.resultAvailable &&
+              detail?.codename && (
               <Link
                 to={`/code/${detail.codename}`}
                 className="btn admin-detail-primary-button"
@@ -1204,6 +1227,7 @@ function ExecutionDetailModal({
                 Ver resultados
               </Link>
             )}
+          </div>
         </footer>
       </section>
     </div>

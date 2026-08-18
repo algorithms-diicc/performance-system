@@ -2,6 +2,7 @@ import InlineState from "../components/InlineState";
 // src/screens/RenderImage.js
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Link,
   useLocation,
   useNavigate,
   useParams,
@@ -357,6 +358,9 @@ function RenderImage() {
       kind: "",
       message: "",
     });
+
+  const submissionId =
+    resultsData?.execution?.submission_id;
 
   const plotTheme = usePlotTheme();
 
@@ -912,6 +916,19 @@ function RenderImage() {
             </button>
 
             <div className="results-header-actions">
+              {submissionId !== null &&
+                submissionId !== undefined && (
+                  <Link
+                    to={`/submissions/${encodeURIComponent(
+                      String(submissionId)
+                    )}`}
+                    className="results-secondary-button"
+                  >
+                    <GitBranch size={14} />
+                    Ver experimento
+                  </Link>
+                )}
+
               <span className="results-status-chip">
                 <CheckCircle2 size={14} />
                 Análisis completado

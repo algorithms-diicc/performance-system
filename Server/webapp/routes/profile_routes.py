@@ -152,6 +152,7 @@ def get_my_profile():
                     "lastExecutionStatus": "Sin ejecuciones",
                     "lastExecutionPublicId": None,
                     "lastExecutionCodename": None,
+                    "lastSubmissionId": None,
                 }
                 return jsonify(
                     {"profile": profile, "summary": summary}
@@ -163,6 +164,7 @@ def get_my_profile():
                   e.execution_state,
                   e.public_id::text AS public_id,
                   e.codename,
+                  e.submission_id,
                   COALESCE(
                     e.finished_at,
                     e.processing_at,
@@ -229,6 +231,8 @@ def get_my_profile():
                         last_exec.get("public_id"),
                     "lastExecutionCodename":
                         last_exec.get("codename"),
+                    "lastSubmissionId":
+                        last_exec.get("submission_id"),
                 }
             )
         else:
@@ -239,6 +243,7 @@ def get_my_profile():
                     "lastExecutionStatus": "Sin ejecuciones",
                     "lastExecutionPublicId": None,
                     "lastExecutionCodename": None,
+                    "lastSubmissionId": None,
                 }
             )
 

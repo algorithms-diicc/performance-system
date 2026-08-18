@@ -6,7 +6,7 @@ from psycopg2.extras import RealDictCursor
 from ...db_connection import get_connection
 from ..repositories import submission_repository
 from ..utils.db_utils import db_cursor
-from ..utils.auth_decorators import login_required
+from ..utils.auth_decorators import get_user_role_name, login_required
 from ..utils.api_errors import (
     handle_api_errors,
     ValidationError,
@@ -25,19 +25,31 @@ from ..services.execution_creation_service import (
     normalize_submission_note,
     resolve_submission_course,
 )
+from ..services.submission_access_service import (
+    SubmissionAccessForbidden,
+    SubmissionAccessNotFound,
+    assert_submission_viewer,
+    is_submission_owner,
+)
 
 submissions_bp = Blueprint("submissions", __name__, url_prefix="/api")
 
 MUTABLE_SUBMISSION_METADATA_FIELDS = frozenset({"note", "isPinned"})
 
 
-def _serialize_submission_metadata(row):
-    """Serializa únicamente metadata privada visible por el propietario."""
-    return {
+def _serialize_submission_metadata(row, include_private=True):
+    """Serializa procedencia y, cuando corresponde, metadata privada."""
+    payload = {
         "originalFilename": row.get("original_filename"),
-        "note": row.get("note"),
-        "isPinned": bool(row.get("is_pinned")),
     }
+    if include_private:
+        payload.update(
+            {
+                "note": row.get("note"),
+                "isPinned": bool(row.get("is_pinned")),
+            }
+        )
+    return payload
 
 
 def _parse_submission_metadata_patch():
@@ -90,6 +102,31 @@ def _parse_submission_metadata_patch():
         updates["is_pinned"] = raw_is_pinned
 
     return updates
+
+
+def _current_role_name():
+    role_name = getattr(g, "current_role_name", None)
+    if role_name:
+        return role_name
+    return get_user_role_name(g.current_user)
+
+
+def _assert_current_user_can_view_submission(submission_id, conn):
+    try:
+        return assert_submission_viewer(
+            submission_id=submission_id,
+            current_user_id=g.current_user["id"],
+            current_role_name=_current_role_name(),
+            conn=conn,
+        )
+    except SubmissionAccessNotFound:
+        raise NotFoundError(
+            f"Submission con id {submission_id} no existe."
+        )
+    except SubmissionAccessForbidden:
+        raise ForbiddenError(
+            "No tienes permiso para ver este envío."
+        )
 
 
 def map_submission_status_label(raw_status: str) -> str:
@@ -373,15 +410,24 @@ def get_submission_detail(submission_id: int):
     conn = get_connection()
 
     try:
+        access_row = _assert_current_user_can_view_submission(
+            submission_id,
+            conn,
+        )
+        can_view_private_metadata = is_submission_owner(
+            access_row,
+            user["id"],
+        )
+
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
                 SELECT
                   s.id,
-                  s.user_id,
                   s.course_id,
                   s.title,
                   s.original_filename,
+                  s.code_hash AS archive_sha256,
                   s.note,
                   s.is_pinned,
                   s.status AS legacy_status,
@@ -402,11 +448,6 @@ def get_submission_detail(submission_id: int):
             if srow is None:
                 raise NotFoundError(
                     f"Submission con id {submission_id} no existe."
-                )
-
-            if srow["user_id"] != user["id"]:
-                raise ForbiddenError(
-                    "No tienes permiso para ver este envío."
                 )
 
             cur.execute(
@@ -512,7 +553,11 @@ def get_submission_detail(submission_id: int):
                 else None
             ),
             "title": srow["title"],
-            **_serialize_submission_metadata(srow),
+            **_serialize_submission_metadata(
+                srow,
+                include_private=can_view_private_metadata,
+            ),
+            "archiveSha256": srow.get("archive_sha256"),
             "status": last_state,
             "statusLabel": last_label,
             "legacyStatus": srow.get("legacy_status"),
@@ -527,6 +572,10 @@ def get_submission_detail(submission_id: int):
             {
                 "submission": submission,
                 "summary": summary,
+                "permissions": {
+                    "canEditMetadata": can_view_private_metadata,
+                    "canViewPrivateMetadata": can_view_private_metadata,
+                },
             }
         ), 200
     finally:
@@ -612,8 +661,6 @@ def update_submission_metadata(submission_id: int):
 @login_required
 @handle_api_errors
 def get_submission_executions(submission_id: int):
-    user = g.current_user
-
     status_param = request.args.get("status", "all", type=str)
     page = request.args.get("page", 1, type=int)
     page_size = request.args.get("page_size", 20, type=int)
@@ -637,22 +684,9 @@ def get_submission_executions(submission_id: int):
 
     conn = get_connection()
     try:
+        _assert_current_user_can_view_submission(submission_id, conn)
+
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT id, user_id FROM submissions WHERE id = %s;",
-                (submission_id,),
-            )
-            srow = cur.fetchone()
-
-            if srow is None:
-                raise NotFoundError(
-                    f"Submission con id {submission_id} no existe."
-                )
-            if srow["user_id"] != user["id"]:
-                raise ForbiddenError(
-                    "No tienes permiso para ver este envío."
-                )
-
             base_sql = """
             FROM executions e
             JOIN submissions s
@@ -677,6 +711,7 @@ def get_submission_executions(submission_id: int):
               e.public_id::text AS public_id,
               e.codename,
               e.submission_id,
+              e.benchmark,
               e.execution_state,
               e.failure_stage,
               e.error_code,

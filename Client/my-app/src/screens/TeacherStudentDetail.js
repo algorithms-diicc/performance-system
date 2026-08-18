@@ -527,8 +527,21 @@ function ExecutionDetailModal({
             Cerrar
           </button>
 
-          {detail?.resultAvailable &&
-            detail?.codename && (
+          <div className="teacher-execution-modal-actions">
+            {detail?.submissionId !== null &&
+              detail?.submissionId !== undefined && (
+                <Link
+                  to={`/submissions/${encodeURIComponent(
+                    String(detail.submissionId)
+                  )}`}
+                  className="btn teacher-secondary-button"
+                >
+                  Ver experimento
+                </Link>
+              )}
+
+            {detail?.resultAvailable &&
+              detail?.codename && (
               <Link
                 to={`/code/${detail.codename}`}
                 className="btn teacher-primary-button"
@@ -536,6 +549,7 @@ function ExecutionDetailModal({
                 Ver resultados
               </Link>
             )}
+          </div>
 
         </footer>
 
@@ -1331,8 +1345,20 @@ export default function TeacherStudentDetail() {
                                   </td>
 
                                   <td>
-                                    {execution.submissionTitle ||
-                                      `#${execution.submissionId}`}
+                                    <Link
+                                      to={`/submissions/${encodeURIComponent(
+                                        String(execution.submissionId)
+                                      )}`}
+                                      className="teacher-submission-link"
+                                    >
+                                      <strong>
+                                        {execution.submissionTitle ||
+                                          `Envío #${execution.submissionId}`}
+                                      </strong>
+                                      <small>
+                                        ID {execution.submissionId}
+                                      </small>
+                                    </Link>
                                   </td>
 
                                   <td>
@@ -1530,13 +1556,20 @@ export default function TeacherStudentDetail() {
                                 >
 
                                   <td>
-                                    <strong>
-                                      {submission.title ||
-                                        `Envío #${submission.id}`}
-                                    </strong>
-                                    <small>
-                                      ID {submission.id}
-                                    </small>
+                                    <Link
+                                      to={`/submissions/${encodeURIComponent(
+                                        String(submission.id)
+                                      )}`}
+                                      className="teacher-submission-link"
+                                    >
+                                      <strong>
+                                        {submission.title ||
+                                          `Envío #${submission.id}`}
+                                      </strong>
+                                      <small>
+                                        ID {submission.id}
+                                      </small>
+                                    </Link>
                                   </td>
 
                                   <td>

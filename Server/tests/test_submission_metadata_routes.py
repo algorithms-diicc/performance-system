@@ -21,6 +21,7 @@ def submission_row(**overrides):
         "file_path": "uploads/internal-uuid.zip",
         "original_filename": "algoritmos.zip",
         "code_hash": "a" * 64,
+        "archive_sha256": "a" * 64,
         "note": "Referencia privada",
         "is_pinned": True,
         "legacy_status": "QUEUED",
@@ -35,6 +36,17 @@ def submission_row(**overrides):
         "last_execution_codename": None,
         "last_execution_at": None,
         "executions_count": 0,
+    }
+    row.update(overrides)
+    return row
+
+
+def submission_access_row(**overrides):
+    row = {
+        "submission_id": 7,
+        "owner_user_id": OWNER["id"],
+        "course_id": None,
+        "course_teacher_user_id": None,
     }
     row.update(overrides)
     return row
@@ -117,7 +129,12 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
 
     def _get_detail(self, **row_overrides):
         row = submission_row(**row_overrides)
-        conn = ScriptedConnection([row, {}, None])
+        conn = ScriptedConnection([
+            submission_access_row(),
+            row,
+            {},
+            None,
+        ])
         with patch(
             "Server.webapp.routes.submissions_routes.get_connection",
             return_value=conn,

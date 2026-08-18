@@ -159,6 +159,9 @@ const ProfilePage = () => {
   const canOpenLastResult =
     summary.lastExecutionState === "COMPLETED" &&
     Boolean(summary.lastExecutionCodename);
+  const canOpenLastSubmission =
+    summary.lastSubmissionId !== null &&
+    summary.lastSubmissionId !== undefined;
 
   if (isLoading) {
     return (
@@ -391,14 +394,30 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              {canOpenLastResult ? (
-                <Link
-                  to={`/code/${summary.lastExecutionCodename}`}
-                  className="profile-inline-link"
-                >
-                  Ver último resultado
-                  <ArrowRight size={16} />
-                </Link>
+              {canOpenLastSubmission || canOpenLastResult ? (
+                <div className="profile-inline-actions">
+                  {canOpenLastSubmission && (
+                    <Link
+                      to={`/submissions/${encodeURIComponent(
+                        String(summary.lastSubmissionId)
+                      )}`}
+                      className="profile-inline-link"
+                    >
+                      Ver experimento
+                      <ArrowRight size={16} />
+                    </Link>
+                  )}
+
+                  {canOpenLastResult && (
+                    <Link
+                      to={`/code/${summary.lastExecutionCodename}`}
+                      className="profile-inline-link"
+                    >
+                      Ver último resultado
+                      <ArrowRight size={16} />
+                    </Link>
+                  )}
+                </div>
               ) : (
                 <span className="profile-inline-note">
                   {summary.executionsCount

@@ -86,6 +86,7 @@ def serialize_execution_history_row(row):
         ),
         "submissionId": row.get("submission_id"),
         "submissionTitle": row.get("submission_title"),
+        "benchmark": row.get("benchmark"),
         "state": state,
         "stateLabel": label,
         "status": label,

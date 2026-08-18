@@ -4,6 +4,7 @@ from Server.webapp.services.execution_access_service import (
     ExecutionAccessForbidden,
     ExecutionAccessNotFound,
     assert_execution_owner,
+    assert_execution_viewer,
 )
 
 class FakeRepository:
@@ -75,6 +76,58 @@ class ExecutionAccessServiceTests(unittest.TestCase):
         )
         self.assertEqual(row["execution_state"], "FAILED")
         self.assertFalse(row["result_available"])
+
+    def test_owner_is_allowed_to_view_results(self):
+        row = assert_execution_viewer(
+            "abcLCS",
+            1,
+            "Student",
+            repository=FakeRepository({
+                "execution_id": 10,
+                "owner_user_id": 1,
+                "course_teacher_user_id": 20,
+            }),
+        )
+        self.assertEqual(row["execution_id"], 10)
+
+    def test_admin_is_allowed_to_view_results(self):
+        row = assert_execution_viewer(
+            "abcLCS",
+            99,
+            "Admin",
+            repository=FakeRepository({
+                "execution_id": 10,
+                "owner_user_id": 1,
+                "course_teacher_user_id": 20,
+            }),
+        )
+        self.assertEqual(row["execution_id"], 10)
+
+    def test_assigned_teacher_is_allowed_to_view_results(self):
+        row = assert_execution_viewer(
+            "abcLCS",
+            20,
+            "Teacher",
+            repository=FakeRepository({
+                "execution_id": 10,
+                "owner_user_id": 1,
+                "course_teacher_user_id": 20,
+            }),
+        )
+        self.assertEqual(row["execution_id"], 10)
+
+    def test_foreign_teacher_is_forbidden_from_viewing_results(self):
+        with self.assertRaises(ExecutionAccessForbidden):
+            assert_execution_viewer(
+                "abcLCS",
+                21,
+                "Teacher",
+                repository=FakeRepository({
+                    "execution_id": 10,
+                    "owner_user_id": 1,
+                    "course_teacher_user_id": 20,
+                }),
+            )
 
 if __name__ == "__main__":
     unittest.main()

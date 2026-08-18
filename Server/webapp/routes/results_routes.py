@@ -193,6 +193,10 @@ def get_execution_results(codename):
             ),
         )
 
+    payload["execution"]["submission_id"] = (
+        execution_row["submission_id"]
+    )
+
     return jsonify(payload), 200
 
 

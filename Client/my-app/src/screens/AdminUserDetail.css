@@ -426,6 +426,21 @@
   white-space: nowrap;
 }
 
+.admin-detail-submission-link {
+  border-radius: var(--ps-radius-sm);
+  text-decoration: none;
+}
+
+.admin-detail-submission-link:hover strong {
+  color: var(--color-primary);
+  text-decoration: underline;
+}
+
+.admin-detail-submission-link:focus-visible {
+  outline: 2px solid var(--ps-focus-ring);
+  outline-offset: 3px;
+}
+
 .admin-submission-status {
   display: inline-flex;
   padding: 0.2rem 0.5rem;
@@ -542,6 +557,13 @@
   gap: 1rem;
   padding: 0.85rem 1rem;
   background: var(--color-surface-elevated);
+}
+
+.admin-execution-modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 
 .admin-execution-modal-header {

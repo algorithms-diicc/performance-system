@@ -105,6 +105,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             "original_filename": "solucion.cpp",
             "submission_id": 56,
             "submission_title": "LCS",
+            "benchmark": "LCS",
             "execution_state": "FAILED",
             "failure_stage": "COMPILATION",
             "error_code": "COMPILE_ERROR",
@@ -121,6 +122,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
         self.assertEqual(payload["rawStatus"], "FAILED")
         self.assertEqual(payload["status"], "Error")
         self.assertEqual(payload["durationMs"], 2000)
+        self.assertEqual(payload["benchmark"], "LCS")
         self.assertEqual(
             payload["originalFilename"],
             "solucion.cpp",
