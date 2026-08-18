@@ -17,9 +17,21 @@ jest.mock("./screens/RenderForm", () => () => (
   </div>
 ));
 
-jest.mock("./screens/RenderImage", () => () => (
-  <div data-testid="screen-render-image">
+jest.mock("./screens/RenderImage", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-render-image"
+    data-current-user-email={currentUser?.email || ""}
+  >
     Resultados
+  </div>
+));
+
+jest.mock("./screens/SubmissionOverviewPage", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-submission-overview"
+    data-current-user-email={currentUser?.email || ""}
+  >
+    Experimento
   </div>
 ));
 
@@ -197,6 +209,29 @@ describe("CORE-05H-1 App shell and routing regression", () => {
       expect(
         window.location.pathname
       ).toBe("/");
+    });
+  });
+
+  test.each([
+    ["/code/exec70LCS", "screen-render-image"],
+    ["/submissions/42", "screen-submission-overview"],
+  ])("passes the single currentUser session to %s", async (path, testId) => {
+    setRoute(path);
+    mockAuthenticatedUser({
+      id: 10,
+      email: "student@udec.cl",
+      role_name: "Student",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByTestId(testId)).toHaveAttribute(
+      "data-current-user-email",
+      "student@udec.cl"
+    );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
+    expect(global.fetch).toHaveBeenCalledWith("/api/auth/me", {
+      credentials: "include",
     });
   });
 });

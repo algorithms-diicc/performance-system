@@ -17,6 +17,8 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  Download,
+  Eye,
   ExternalLink,
   FileArchive,
   FileCode2,
@@ -34,7 +36,10 @@ import {
 } from "lucide-react";
 
 import { serverURL } from "../common/Constants";
+import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
+import SourceViewerModal from "../components/SourceViewerModal";
+import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 import {
   SUBMISSION_AGGREGATE_LABELS,
   abbreviateArchiveSha256,
@@ -134,7 +139,7 @@ const InformationItem = ({ icon: Icon, label, children, className = "" }) => (
   </div>
 );
 
-const SubmissionOverviewPage = () => {
+const SubmissionOverviewPage = ({ currentUser }) => {
   const { submissionId } = useParams();
   const navigate = useNavigate();
 
@@ -151,6 +156,20 @@ const SubmissionOverviewPage = () => {
   const [metadataError, setMetadataError] = useState("");
   const [metadataFeedback, setMetadataFeedback] = useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
+  const [archiveContext, setArchiveContext] = useState({
+    loading: false,
+    trace: null,
+    error: "",
+  });
+  const [archiveDownload, setArchiveDownload] = useState({
+    loading: false,
+    kind: "",
+    message: "",
+  });
+  const [sourceViewer, setSourceViewer] = useState({
+    open: false,
+    codename: "",
+  });
 
   const encodedSubmissionId = encodeURIComponent(
     String(submissionId || "")
@@ -240,6 +259,51 @@ const SubmissionOverviewPage = () => {
     () => deriveSubmissionAggregateState(summary || {}),
     [summary]
   );
+
+  useEffect(() => {
+    const traceExecution = orderedExecutions.find(
+      (execution) => String(execution?.codename || "").trim()
+    );
+
+    if (loading || !traceExecution?.codename) {
+      setArchiveContext({ loading: false, trace: null, error: "" });
+      return undefined;
+    }
+
+    let active = true;
+    setArchiveContext({ loading: true, trace: null, error: "" });
+    setArchiveDownload({ loading: false, kind: "", message: "" });
+
+    axios
+      .get(
+        `${serverURL}api/executions/${encodeURIComponent(
+          traceExecution.codename
+        )}/trace`,
+        { withCredentials: true }
+      )
+      .then((response) => {
+        if (active) {
+          setArchiveContext({
+            loading: false,
+            trace: response.data || null,
+            error: "",
+          });
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setArchiveContext({
+            loading: false,
+            trace: null,
+            error: "No fue posible verificar la disponibilidad del archivo original.",
+          });
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [loading, orderedExecutions]);
 
   const handleEditNote = () => {
     setNoteDraft(
@@ -334,6 +398,40 @@ const SubmissionOverviewPage = () => {
     }
   };
 
+  const handleArchiveDownload = async () => {
+    if (archiveDownload.loading) return;
+
+    setArchiveDownload({ loading: true, kind: "", message: "" });
+    try {
+      await downloadAuthenticatedFile(
+        `${submissionEndpoint}/archive`,
+        submission?.originalFilename || `submission-${submission?.id}.zip`
+      );
+      setArchiveDownload({
+        loading: false,
+        kind: "success",
+        message: "ZIP original descargado correctamente.",
+      });
+    } catch (error) {
+      const status = error?.response?.status;
+      let message = "No fue posible descargar el ZIP original.";
+
+      if (!error?.response) {
+        message = "No pudimos conectar para descargar el ZIP original.";
+      } else if (status === 401 || status === 403) {
+        message = "Tu sesión no permite descargar el ZIP original.";
+      } else if ([404, 409, 422].includes(status)) {
+        message = "El archivo original no está disponible.";
+      }
+
+      setArchiveDownload({
+        loading: false,
+        kind: "error",
+        message,
+      });
+    }
+  };
+
   if (loading) {
     return (
       <main className="submission-overview">
@@ -396,10 +494,25 @@ const SubmissionOverviewPage = () => {
   const isPinned = hasOwn(submission, "isPinned")
     ? Boolean(submission.isPinned)
     : false;
+  const archiveTrace = archiveContext.trace;
+  const canDownloadArchive = Boolean(
+    archiveTrace?.permissions?.canDownloadArchive === true
+  );
+  const archiveAvailable = Boolean(
+    archiveTrace?.submission?.archive?.available === true
+  );
 
   return (
     <main className="submission-overview">
       <div className="submission-overview__container">
+        <AcademicBreadcrumbs
+          currentUser={currentUser}
+          page="submission"
+          submissionId={submission.id}
+          course={submission.course}
+          courseId={submission.courseId}
+        />
+
         <header className="submission-overview__header">
           <div className="submission-overview__header-copy">
             <span className="submission-overview__eyebrow">
@@ -452,6 +565,49 @@ const SubmissionOverviewPage = () => {
             </div>
             <FileArchive size={22} strokeWidth={1.8} aria-hidden="true" />
           </div>
+
+          {archiveContext.loading && (
+            <span className="submission-overview__archive-status" role="status">
+              Verificando archivo original…
+            </span>
+          )}
+
+          {canDownloadArchive && archiveAvailable && (
+            <div className="submission-overview__archive-actions">
+              <button
+                type="button"
+                className="submission-overview__button submission-overview__button--secondary"
+                onClick={handleArchiveDownload}
+                disabled={archiveDownload.loading}
+              >
+                <Download size={16} strokeWidth={2} aria-hidden="true" />
+                {archiveDownload.loading
+                  ? "Descargando…"
+                  : "Descargar ZIP original"}
+              </button>
+            </div>
+          )}
+
+          {canDownloadArchive && !archiveAvailable && (
+            <span className="submission-overview__archive-status">
+              Archivo original no disponible
+            </span>
+          )}
+
+          {archiveContext.error && permissions.canEditMetadata && (
+            <span className="submission-overview__archive-status">
+              {archiveContext.error}
+            </span>
+          )}
+
+          {archiveDownload.message && (
+            <div
+              className={`submission-overview__archive-feedback submission-overview__archive-feedback--${archiveDownload.kind}`}
+              role={archiveDownload.kind === "error" ? "alert" : "status"}
+            >
+              {archiveDownload.message}
+            </div>
+          )}
 
           <dl className="submission-overview__information-grid">
             <InformationItem icon={FileArchive} label="Archivo original">
@@ -737,6 +893,9 @@ const SubmissionOverviewPage = () => {
                           />
                         </div>
                         <div>
+                          <span className="submission-overview__source-marker">
+                            Fuente de esta ejecución
+                          </span>
                           <h3>{displayName}</h3>
                           {execution.codename && (
                             <span className="submission-overview__codename">
@@ -829,26 +988,44 @@ const SubmissionOverviewPage = () => {
                           : `Execution #${execution.executionId || "—"}`}
                       </span>
 
-                      {canOpenResult && (
-                        <button
-                          type="button"
-                          className="submission-overview__button submission-overview__button--primary"
-                          onClick={() =>
-                            navigate(
-                              `/code/${encodeURIComponent(
-                                execution.codename
-                              )}`
-                            )
-                          }
-                        >
-                          Ver resultado
-                          <ExternalLink
-                            size={16}
-                            strokeWidth={2}
-                            aria-hidden="true"
-                          />
-                        </button>
-                      )}
+                      <div className="submission-overview__execution-actions">
+                        {execution.codename && (
+                          <button
+                            type="button"
+                            className="submission-overview__button submission-overview__button--secondary"
+                            onClick={() =>
+                              setSourceViewer({
+                                open: true,
+                                codename: execution.codename,
+                              })
+                            }
+                          >
+                            <Eye size={16} strokeWidth={2} aria-hidden="true" />
+                            Ver código
+                          </button>
+                        )}
+
+                        {canOpenResult && (
+                          <button
+                            type="button"
+                            className="submission-overview__button submission-overview__button--primary"
+                            onClick={() =>
+                              navigate(
+                                `/code/${encodeURIComponent(
+                                  execution.codename
+                                )}`
+                              )
+                            }
+                          >
+                            Ver resultado
+                            <ExternalLink
+                              size={16}
+                              strokeWidth={2}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </article>
                 );
@@ -856,6 +1033,12 @@ const SubmissionOverviewPage = () => {
             </div>
           )}
         </section>
+
+        <SourceViewerModal
+          open={sourceViewer.open}
+          codename={sourceViewer.codename}
+          onClose={() => setSourceViewer({ open: false, codename: "" })}
+        />
       </div>
     </main>
   );

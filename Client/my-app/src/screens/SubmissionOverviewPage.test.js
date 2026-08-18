@@ -7,12 +7,15 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import axios from "axios";
 
+import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 import SubmissionOverviewPage from "./SubmissionOverviewPage";
 import { formatSubmissionDateTime } from "./submissionOverviewModel";
 
 jest.mock("axios");
+jest.mock("../utils/downloadAuthenticatedFile");
 
 const mockNavigate = jest.fn();
 
@@ -23,6 +26,9 @@ jest.mock("react-router-dom", () => ({
 }));
 
 const ARCHIVE_SHA = "b".repeat(64);
+const STUDENT_USER = { role_name: "Student" };
+const TEACHER_USER = { role_name: "Teacher" };
+const ADMIN_USER = { role_name: "Admin" };
 
 const ownerSubmission = {
   id: 42,
@@ -78,15 +84,69 @@ const readOnlyPermissions = {
   canViewPrivateMetadata: false,
 };
 
+const sourceTrace = {
+  submission: {
+    id: 42,
+    title: ownerSubmission.title,
+    archive: {
+      originalFilename: "algoritmos.zip",
+      sha256: ARCHIVE_SHA,
+      available: true,
+      integrity: "verified",
+    },
+  },
+  execution: {
+    publicId: completedExecution.publicId,
+    codename: completedExecution.codename,
+    source: {
+      filename: "std_sort.cpp",
+      sourceIndex: 0,
+      available: true,
+      sha256: "c".repeat(64),
+      sizeBytes: 31,
+    },
+  },
+  permissions: {
+    canViewSource: true,
+    canDownloadSource: true,
+    canDownloadArchive: true,
+  },
+};
+
+const sourcePayload = {
+  filename: "std_sort.cpp",
+  content: "int main() {\n  return 0;\n}\n",
+  sizeBytes: 31,
+  sha256: "c".repeat(64),
+};
+
 const arrangeRequests = ({
   submission = ownerSubmission,
   summary = completedSummary,
   permissions = ownerPermissions,
   executions = [completedExecution],
+  trace = sourceTrace,
+  source = sourcePayload,
+  traceError = null,
+  sourceError = null,
 } = {}) => {
   axios.get.mockImplementation((url) => {
-    if (String(url).endsWith("/executions")) {
+    const requestURL = String(url);
+
+    if (requestURL.endsWith("/executions")) {
       return Promise.resolve({ data: { items: executions } });
+    }
+
+    if (requestURL.endsWith("/trace")) {
+      return traceError
+        ? Promise.reject(traceError)
+        : Promise.resolve({ data: trace });
+    }
+
+    if (requestURL.endsWith("/source")) {
+      return sourceError
+        ? Promise.reject(sourceError)
+        : Promise.resolve({ data: { source } });
     }
 
     return Promise.resolve({
@@ -95,19 +155,32 @@ const arrangeRequests = ({
   });
 };
 
-const renderLoadedPage = async (options) => {
-  arrangeRequests(options);
-  render(<SubmissionOverviewPage />);
+const renderSubmissionPage = (currentUser = STUDENT_USER) =>
+  render(
+    <MemoryRouter initialEntries={["/submissions/42"]}>
+      <SubmissionOverviewPage currentUser={currentUser} />
+    </MemoryRouter>
+  );
+
+const renderLoadedPage = async (options = {}) => {
+  const {
+    currentUser = STUDENT_USER,
+    ...requestOptions
+  } = options || {};
+
+  arrangeRequests(requestOptions);
+  renderSubmissionPage(currentUser);
 
   await screen.findByRole("heading", {
     name:
-      options?.submission?.title || ownerSubmission.title,
+      requestOptions?.submission?.title || ownerSubmission.title,
   });
 };
 
 describe("SubmissionOverviewPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    downloadAuthenticatedFile.mockResolvedValue({ data: new Blob([]) });
   });
 
   test("renders the canonical single-execution view with provenance and result navigation", async () => {
@@ -144,6 +217,12 @@ describe("SubmissionOverviewPage", () => {
 
     expect(filenameHeading).toBeInTheDocument();
     expect(
+      within(executionCard).getByText("Fuente de esta ejecución")
+    ).toBeInTheDocument();
+    expect(
+      within(executionCard).getByText("opaque-codename-10")
+    ).toBeInTheDocument();
+    expect(
       within(executionCard).queryByRole("heading", {
         name: "opaque-codename-10",
       })
@@ -151,6 +230,26 @@ describe("SubmissionOverviewPage", () => {
     expect(within(executionCard).getByText("LCS")).toBeInTheDocument();
     expect(within(executionCard).getByText("1,25 s")).toBeInTheDocument();
     expect(within(executionCard).getByText("Disponible")).toBeInTheDocument();
+
+    fireEvent.click(
+      within(executionCard).getByRole("button", {
+        name: "Ver código",
+      })
+    );
+
+    const sourceDialog = await screen.findByRole("dialog");
+    expect(sourceDialog).toBeInTheDocument();
+    expect(
+      await screen.findByText("int main() {", { exact: false })
+    ).toBeInTheDocument();
+    expect(
+      within(sourceDialog).getByRole("heading", { name: "std_sort.cpp" })
+    ).toBeInTheDocument();
+    expect(within(sourceDialog).getByText("31 B")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cerrar visor de código" })
+    );
 
     fireEvent.click(
       within(executionCard).getByRole("button", {
@@ -162,6 +261,47 @@ describe("SubmissionOverviewPage", () => {
       "/code/opaque-codename-10"
     );
   });
+
+  test.each([
+    [
+      "Student",
+      STUDENT_USER,
+      "Mi perfil",
+      "/profile",
+    ],
+    [
+      "Teacher",
+      TEACHER_USER,
+      "CC4102 · Diseño y Análisis de Algoritmos",
+      "/teacher/courses/9",
+    ],
+    [
+      "Admin",
+      ADMIN_USER,
+      "Usuarios",
+      "/admin/users",
+    ],
+  ])(
+    "builds the %s breadcrumb from currentUser and canonical Submission data",
+    async (_role, currentUser, linkName, href) => {
+      await renderLoadedPage({ currentUser });
+
+      const navigation = screen.getByRole("navigation", {
+        name: "Ruta de navegación",
+      });
+      expect(
+        within(navigation).getByRole("link", { name: linkName })
+      ).toHaveAttribute("href", href);
+      expect(
+        within(navigation).getByText("Experimento #42")
+      ).toHaveAttribute("aria-current", "page");
+      expect(
+        axios.get.mock.calls.some(([url]) =>
+          String(url).includes("/api/auth/me")
+        )
+      ).toBe(false);
+    }
+  );
 
   test("renders multiple implementation cards in the same layout and exposes PARTIAL aggregate", async () => {
     const failedExecution = {
@@ -234,6 +374,10 @@ describe("SubmissionOverviewPage", () => {
     expect(
       screen.queryByRole("button", { name: "Ver resultado" })
     ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Ver código" }));
+    expect(
+      await screen.findByText("int main() {", { exact: false })
+    ).toBeInTheDocument();
   });
 
   test("active execution reports pending result without a false CTA", async () => {
@@ -392,6 +536,13 @@ describe("SubmissionOverviewPage", () => {
     await renderLoadedPage({
       submission: readOnlySubmission,
       permissions: readOnlyPermissions,
+      trace: {
+        ...sourceTrace,
+        permissions: {
+          ...sourceTrace.permissions,
+          canDownloadArchive: false,
+        },
+      },
     });
 
     expect(
@@ -404,6 +555,9 @@ describe("SubmissionOverviewPage", () => {
     expect(
       screen.getByRole("heading", { name: ownerSubmission.title })
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Descargar ZIP original" })
+    ).not.toBeInTheDocument();
   });
 
   test("null archive SHA uses a readable fallback and no copy action", async () => {
@@ -430,6 +584,107 @@ describe("SubmissionOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("owner can start the verified original ZIP download", async () => {
+    await renderLoadedPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Descargar ZIP original",
+      })
+    );
+
+    await waitFor(() =>
+      expect(downloadAuthenticatedFile).toHaveBeenCalledWith(
+        expect.stringMatching(/api\/submissions\/42\/archive$/),
+        "algoritmos.zip"
+      )
+    );
+    expect(
+      await screen.findByText("ZIP original descargado correctamente.")
+    ).toBeInTheDocument();
+  });
+
+  test("historical unavailable archive is discreet and null filename is never invented", async () => {
+    await renderLoadedPage({
+      submission: {
+        ...ownerSubmission,
+        originalFilename: null,
+      },
+      trace: {
+        ...sourceTrace,
+        submission: {
+          ...sourceTrace.submission,
+          archive: {
+            ...sourceTrace.submission.archive,
+            originalFilename: null,
+            available: false,
+            integrity: "unavailable",
+          },
+        },
+      },
+    });
+
+    const information = screen.getByRole("region", {
+      name: "Información del experimento",
+    });
+    expect(within(information).getByText("No disponible")).toBeInTheDocument();
+    expect(
+      await within(information).findByText("Archivo original no disponible")
+    ).toBeInTheDocument();
+    expect(information).not.toHaveTextContent("submission-42.zip");
+    expect(
+      within(information).queryByRole("button", {
+        name: "Descargar ZIP original",
+      })
+    ).not.toBeInTheDocument();
+  });
+
+  test("source unavailable opens contextual state without fake code", async () => {
+    await renderLoadedPage({
+      trace: {
+        ...sourceTrace,
+        execution: {
+          ...sourceTrace.execution,
+          source: {
+            ...sourceTrace.execution.source,
+            available: false,
+            sha256: null,
+            sizeBytes: null,
+          },
+        },
+      },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver código" }));
+
+    expect(
+      await screen.findByText(
+        "La fuente histórica no está disponible para esta ejecución."
+      )
+    ).toBeInTheDocument();
+    expect(screen.queryByText("int main()", { exact: false })).not.toBeInTheDocument();
+    expect(
+      axios.get.mock.calls.some(([url]) => String(url).endsWith("/source"))
+    ).toBe(false);
+  });
+
+  test("source request error remains contextual and never tears down Submission", async () => {
+    await renderLoadedPage({
+      sourceError: { response: { status: 404 } },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Ver código" }));
+
+    expect(
+      await screen.findByText(
+        "La fuente histórica no está disponible para esta ejecución."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: ownerSubmission.title })
+    ).toBeInTheDocument();
+  });
+
   test("refresh reloads detail, executions, summary and permissions", async () => {
     const initialSubmission = Object.fromEntries(
       Object.entries(ownerSubmission).filter(
@@ -445,6 +700,10 @@ describe("SubmissionOverviewPage", () => {
     let detailRequestCount = 0;
 
     axios.get.mockImplementation((url) => {
+      if (String(url).endsWith("/trace")) {
+        return Promise.resolve({ data: sourceTrace });
+      }
+
       if (String(url).endsWith("/executions")) {
         const executions =
           detailRequestCount > 1
@@ -487,7 +746,7 @@ describe("SubmissionOverviewPage", () => {
       });
     });
 
-    render(<SubmissionOverviewPage />);
+    renderSubmissionPage();
     await screen.findByRole("heading", { name: ownerSubmission.title });
     expect(
       screen.queryByRole("heading", { name: "Metadata personal" })
@@ -509,7 +768,7 @@ describe("SubmissionOverviewPage", () => {
     expect(
       screen.getByRole("heading", { name: "merge_sort.cpp" })
     ).toBeInTheDocument();
-    expect(axios.get).toHaveBeenCalledTimes(4);
+    await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(6));
   });
 
   test("loading, request error and retry states remain actionable", async () => {
@@ -528,7 +787,7 @@ describe("SubmissionOverviewPage", () => {
         : detailPromise
     );
 
-    render(<SubmissionOverviewPage />);
+    renderSubmissionPage();
     expect(screen.getByText("Cargando experimento")).toBeInTheDocument();
 
     await act(async () => {
@@ -554,7 +813,7 @@ describe("SubmissionOverviewPage", () => {
       .mockImplementation(() => {});
     axios.get.mockRejectedValue({ response: { status: 500 } });
 
-    render(<SubmissionOverviewPage />);
+    renderSubmissionPage();
 
     expect(
       await screen.findByText("No fue posible cargar el experimento")

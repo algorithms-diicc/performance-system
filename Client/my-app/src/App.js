@@ -298,7 +298,7 @@ const AppInner = () => {
           element={
             isAuthenticated
               ? (
-                <RenderImage />
+                <RenderImage currentUser={currentUser} />
               )
               : (
                 <Navigate
@@ -314,7 +314,7 @@ const AppInner = () => {
           element={
             isAuthenticated
               ? (
-                <SubmissionOverviewPage />
+                <SubmissionOverviewPage currentUser={currentUser} />
               )
               : (
                 <Navigate

@@ -1,10 +1,17 @@
+import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
+import ReproducibilityPanel from "../components/ReproducibilityPanel";
+import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 // src/screens/RenderImage.js
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import {
   Link,
   useLocation,
-  useNavigate,
   useParams,
 } from "react-router-dom";
 import axios from "axios";
@@ -31,6 +38,10 @@ import {
   serverURL,
   METRIC_DESCRIPTIONS,
 } from "../common/Constants";
+import {
+  isAdminUser,
+  isTeacherUser,
+} from "../common/userAccessModel";
 
 import "./RenderImage.css";
 
@@ -313,14 +324,34 @@ const METRIC_PRESENTATION = {
 };
 
 
-function RenderImage() {
-  const navigate = useNavigate();
+const normalizeSubmissionId = (value) => {
+  const numeric = Number(value);
+  return Number.isInteger(numeric) && numeric > 0
+    ? numeric
+    : null;
+};
+
+const normalizeNavigationFilename = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .replace(/\\/g, "/");
+  return normalized.split("/").filter(Boolean).pop() || null;
+};
+
+function RenderImage({ currentUser }) {
   const location = useLocation();
   const { codename } = useParams();
 
   const [plotFiles, setPlotFiles] = useState([]);
   const [statusData, setStatusData] = useState({});
   const [resultsData, setResultsData] = useState(null);
+  const [reproducibilityNavigationContext, setReproducibilityNavigationContext] =
+    useState({
+      submissionId: null,
+      sourceFilename: null,
+    });
+  const [submissionNavigationContext, setSubmissionNavigationContext] =
+    useState(null);
   const [activeCategory, setActiveCategory] =
     useState("summary");
   const [showAdvanced, setShowAdvanced] =
@@ -359,8 +390,45 @@ function RenderImage() {
       message: "",
     });
 
-  const submissionId =
-    resultsData?.execution?.submission_id;
+  const isAdmin = isAdminUser(currentUser);
+  const isTeacher = isTeacherUser(currentUser);
+  const roleRootPath = isAdmin
+    ? "/admin/users"
+    : isTeacher
+    ? "/teacher/courses"
+    : "/profile";
+  const resultsSubmissionId = normalizeSubmissionId(
+    resultsData?.execution?.submission_id
+  );
+  const effectiveSubmissionId =
+    resultsSubmissionId ||
+    normalizeSubmissionId(
+      reproducibilityNavigationContext.submissionId
+    );
+  const deterministicBackPath = effectiveSubmissionId
+    ? `/submissions/${encodeURIComponent(
+        String(effectiveSubmissionId)
+      )}`
+    : roleRootPath;
+
+  const handleReproducibilityContextChange = useCallback((context) => {
+    const nextContext = {
+      submissionId: normalizeSubmissionId(context?.submissionId),
+      sourceFilename: normalizeNavigationFilename(
+        context?.sourceFilename
+      ),
+    };
+
+    setReproducibilityNavigationContext((current) => {
+      if (
+        current.submissionId === nextContext.submissionId &&
+        current.sourceFilename === nextContext.sourceFilename
+      ) {
+        return current;
+      }
+      return nextContext;
+    });
+  }, []);
 
   const plotTheme = usePlotTheme();
 
@@ -377,6 +445,11 @@ function RenderImage() {
       setIsLoading(true);
       setLoadError("");
       setLoadErrorType("error");
+      setReproducibilityNavigationContext({
+        submissionId: null,
+        sourceFilename: null,
+      });
+      setSubmissionNavigationContext(null);
 
       try {
         /*
@@ -505,6 +578,46 @@ function RenderImage() {
       mounted = false;
     };
   }, [codename]);
+
+  useEffect(() => {
+    let active = true;
+
+    setSubmissionNavigationContext(null);
+
+    if (!isTeacher || !effectiveSubmissionId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    axios
+      .get(
+        `${serverURL}api/submissions/${encodeURIComponent(
+          String(effectiveSubmissionId)
+        )}`,
+        { withCredentials: true }
+      )
+      .then((response) => {
+        if (!active) return;
+
+        const detail = response.data?.submission || null;
+        if (!detail) return;
+
+        setSubmissionNavigationContext({
+          course: detail.course || null,
+          courseId: normalizeSubmissionId(
+            detail.courseId ?? detail.course?.id
+          ),
+        });
+      })
+      .catch(() => {
+        if (active) setSubmissionNavigationContext(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [effectiveSubmissionId, isTeacher]);
 
   const metricFiles = useMemo(() => {
     return plotFiles.map((file) => ({
@@ -787,34 +900,11 @@ function RenderImage() {
     });
 
     try {
-      const response = await axios({
-        url:
-          `${serverURL}files/${codename}/CombinedResults.csv`,
-        method: "GET",
-        responseType: "blob",
-        withCredentials: true,
-      });
-
-      const objectURL =
-        window.URL.createObjectURL(
-          new Blob([response.data])
-        );
-
-      const anchor =
-        document.createElement("a");
-
-      anchor.href = objectURL;
-      anchor.setAttribute(
-        "download",
+      await downloadAuthenticatedFile(
+        `${serverURL}api/executions/${encodeURIComponent(
+          codename
+        )}/measurements/download`,
         `performance-system-${codename}.csv`
-      );
-
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-
-      window.URL.revokeObjectURL(
-        objectURL
       );
 
       setDownloadFeedback({
@@ -880,6 +970,11 @@ function RenderImage() {
     return (
       <main className="results-page">
         <div className="results-shell">
+          <AcademicBreadcrumbs
+            currentUser={currentUser}
+            page="result"
+          />
+
           <InlineState
             type={loadErrorType}
             title={stateTitle}
@@ -888,14 +983,13 @@ function RenderImage() {
             onAction={() => window.location.reload()}
           />
 
-          <button
-            type="button"
+          <Link
+            to={roleRootPath}
             className="results-secondary-button"
-            onClick={() => navigate(-1)}
           >
             <ArrowLeft size={16} />
             Volver
-          </button>
+          </Link>
         </div>
       </main>
     );
@@ -904,30 +998,39 @@ function RenderImage() {
   return (
     <main className="results-page">
       <div className="results-shell">
+        <AcademicBreadcrumbs
+          currentUser={currentUser}
+          page="result"
+          submissionId={effectiveSubmissionId}
+          sourceFilename={
+            reproducibilityNavigationContext.sourceFilename
+          }
+          course={submissionNavigationContext?.course}
+          courseId={submissionNavigationContext?.courseId}
+        />
+
         <header className="results-header">
           <div className="results-header-top">
-            <button
-              type="button"
+            <Link
+              to={deterministicBackPath}
               className="results-back-button"
-              onClick={() => navigate(-1)}
             >
               <ArrowLeft size={17} />
               Volver
-            </button>
+            </Link>
 
             <div className="results-header-actions">
-              {submissionId !== null &&
-                submissionId !== undefined && (
-                  <Link
-                    to={`/submissions/${encodeURIComponent(
-                      String(submissionId)
-                    )}`}
-                    className="results-secondary-button"
-                  >
-                    <GitBranch size={14} />
-                    Ver experimento
-                  </Link>
-                )}
+              {effectiveSubmissionId !== null && (
+                <Link
+                  to={`/submissions/${encodeURIComponent(
+                    String(effectiveSubmissionId)
+                  )}`}
+                  className="results-secondary-button"
+                >
+                  <GitBranch size={14} />
+                  Ver experimento
+                </Link>
+              )}
 
               <span className="results-status-chip">
                 <CheckCircle2 size={14} />
@@ -996,6 +1099,11 @@ function RenderImage() {
           items={kpiItems}
           aggregation={aggregation}
           effectiveRange={effectiveRange}
+        />
+
+        <ReproducibilityPanel
+          codename={codename}
+          onContextChange={handleReproducibilityContextChange}
         />
 
         <PedagogicalOverview

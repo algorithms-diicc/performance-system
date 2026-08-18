@@ -13,6 +13,11 @@ from ..services.execution_access_service import (
     ExecutionAccessNotFound,
     assert_execution_viewer,
 )
+from ..services.result_artifact_service import (
+    ResultArtifactInvalidReference,
+    ResultArtifactNotReady,
+    assert_canonical_result_reference,
+)
 from ..utils.api_errors import ForbiddenError, NotFoundError
 from ..utils.auth_decorators import get_user_role_name, login_required
 from ..services.ai_explanation_service import (
@@ -74,49 +79,17 @@ def _assert_canonical_result_reference(
     No existe fallback a artefactos de siblings ni compatibilidad con bundles
     multi-CPP históricos. Los datos de prueba legacy pueden regenerarse.
     """
-    if (
-        execution_row.get("execution_state") != "COMPLETED"
-        or execution_row.get("result_available") is not True
-    ):
-        raise ExecutionResultsNotReady(
-            "La ejecución todavía no posee resultados publicables."
-        )
-
-    persisted_result_path = str(
-        execution_row.get("result_path") or ""
-    ).strip()
-    if not persisted_result_path:
-        raise ExecutionResultContractMismatch(
-            "La ejecución COMPLETED no posee result_path."
-        )
-
-    static_root = os.path.realpath(static_dir or STATIC_DIR)
-    server_root = os.path.realpath(server_dir or SERVER_DIR)
-
-    expected_path = os.path.realpath(
-        os.path.join(
-            static_root,
+    try:
+        return assert_canonical_result_reference(
             codename,
-            "CombinedResults.csv",
+            execution_row,
+            static_dir=static_dir or STATIC_DIR,
+            server_dir=server_dir or SERVER_DIR,
         )
-    )
-
-    if os.path.isabs(persisted_result_path):
-        persisted_path = os.path.realpath(persisted_result_path)
-    else:
-        persisted_path = os.path.realpath(
-            os.path.join(
-                server_root,
-                persisted_result_path,
-            )
-        )
-
-    if persisted_path != expected_path:
-        raise ExecutionResultContractMismatch(
-            "result_path no corresponde al codename solicitado."
-        )
-
-    return expected_path
+    except ResultArtifactNotReady as error:
+        raise ExecutionResultsNotReady(str(error))
+    except ResultArtifactInvalidReference as error:
+        raise ExecutionResultContractMismatch(str(error))
 
 
 @results_bp.route("/<codename>/results", methods=["GET"])

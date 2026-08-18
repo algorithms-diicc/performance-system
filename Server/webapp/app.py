@@ -56,6 +56,8 @@ from .routes.admin_audit_log_routes import admin_audit_log_bp
 from .routes.results_routes import results_bp
 from .routes.execution_status_routes import execution_status_bp
 from .routes.teacher_courses_routes import teacher_courses_bp
+from .routes.trace_routes import trace_bp
+from .routes.export_routes import export_bp
 
 from .services.execution_creation_service import (
     InvalidExecutionRequest,
@@ -236,6 +238,8 @@ app.register_blueprint(admin_audit_log_bp)
 app.register_blueprint(results_bp)
 app.register_blueprint(execution_status_bp)
 app.register_blueprint(teacher_courses_bp)
+app.register_blueprint(trace_bp)
+app.register_blueprint(export_bp)
 
 # Create an empty list to store measurement queue items
 queuelist = []
