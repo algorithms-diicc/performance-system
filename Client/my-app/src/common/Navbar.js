@@ -13,6 +13,7 @@ import {
 
 import {
   Plus,
+  History,
   CircleHelp,
   Sun,
   Moon,
@@ -245,6 +246,12 @@ function Navbar({
         label: "Nuevo análisis",
         icon: Plus,
         end: true,
+      },
+      {
+        path: "/history",
+        label: "Historial",
+        icon: History,
+        end: false,
       },
       {
         path: "/tutorial",

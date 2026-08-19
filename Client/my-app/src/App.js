@@ -17,6 +17,7 @@ import {
 } from "./common/userAccessModel";
 import TutorialPage from "./screens/TutorialPage";
 import ProfilePage from "./screens/ProfilePage";
+import HistoryPage from "./screens/HistoryPage";
 import SystemStatePage from "./screens/SystemStatePage";
 import SubmissionOverviewPage from "./screens/SubmissionOverviewPage";
 import ComparisonPage from "./screens/ComparisonPage";
@@ -332,6 +333,27 @@ const AppInner = () => {
             isAuthenticated
               ? (
                 <ComparisonPage currentUser={currentUser} />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
+
+        {/* ====================================================
+            HISTORIAL
+            ==================================================== */}
+
+        <Route
+          path="/history"
+          element={
+            isAuthenticated
+              ? (
+                <HistoryPage />
               )
               : (
                 <Navigate

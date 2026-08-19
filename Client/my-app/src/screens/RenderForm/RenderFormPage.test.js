@@ -19,19 +19,71 @@ jest.mock("jszip", () => ({
 }));
 
 jest.mock("./components/HeaderSection", () => () => null);
-jest.mock("./components/AcademicCourseCard", () => () => null);
-jest.mock("./components/MeasurementAndProfileSection", () => () => null);
+jest.mock("./components/AcademicCourseCard", () => {
+  const ReactModule = require("react");
+  return function MockAcademicCourseCard({
+    selectedCourseId,
+  }) {
+    return ReactModule.createElement(
+      "span",
+      { "data-testid": "selected-course" },
+      selectedCourseId || ""
+    );
+  };
+});
+jest.mock("./components/MeasurementAndProfileSection", () => {
+  const ReactModule = require("react");
+  return function MockMeasurement({
+    executionProfile,
+  }) {
+    return ReactModule.createElement(
+      "span",
+      { "data-testid": "execution-profile" },
+      executionProfile || ""
+    );
+  };
+});
 
 jest.mock("./components/TestTypeAndParamsCard", () => {
   const ReactModule = require("react");
-  return function MockTestTypeAndParamsCard({ onTaskChange }) {
+  return function MockTestTypeAndParamsCard({
+    onTaskChange,
+    selectedTaskType,
+    inputSize,
+    samples,
+    dataType,
+  }) {
     return ReactModule.createElement(
-      "button",
-      {
-        type: "button",
-        onClick: () => onTaskChange("lcs"),
-      },
-      "Seleccionar benchmark"
+      ReactModule.Fragment,
+      null,
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onTaskChange("lcs"),
+        },
+        "Seleccionar benchmark"
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "selected-task-type" },
+        selectedTaskType || ""
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "input-size" },
+        String(inputSize ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "samples" },
+        String(samples ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "data-type" },
+        dataType || ""
+      )
     );
   };
 });
@@ -323,6 +375,80 @@ describe("RenderFormPage 6A onboarding", () => {
     expect(screen.getByLabelText("Nombre del test")).toHaveValue(
       "Ejecución recuperada"
     );
+  });
+
+  test("reuse preloads configuration without copying historical content", async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.includes("api/student/courses")) {
+        return Promise.resolve({
+          data: {
+            items: [
+              { id: 12, code: "CC4102" },
+              { id: 13, code: "CC4201" },
+            ],
+            selectionRequired: true,
+          },
+        });
+      }
+
+      if (url.includes("/reuse")) {
+        return Promise.resolve({
+          data: {
+            reuse: {
+              sourcePublicId: "reuse-1",
+              benchmark: "CAMMR",
+              inputSize: 5000,
+              samples: 30,
+              executionProfile: "BALANCED",
+              courseId: 12,
+            },
+          },
+        });
+      }
+
+      return Promise.reject(
+        new Error(`Unexpected GET ${url}`)
+      );
+    });
+
+    await renderPage(
+      "/new-analysis?reuse=reuse-1&course=13"
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("selected-task-type")
+      ).toHaveTextContent("camm");
+    });
+
+    expect(
+      screen.getByTestId("data-type")
+    ).toHaveTextContent("cammr");
+    expect(
+      screen.getByTestId("input-size")
+    ).toHaveTextContent("5000");
+    expect(
+      screen.getByTestId("samples")
+    ).toHaveTextContent("30");
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("equilibrado");
+    expect(
+      screen.getByTestId("selected-course")
+    ).toHaveTextContent("12");
+
+    // reuse > course, y no se copia contenido histórico.
+    expect(
+      screen.getByLabelText("Nombre del test")
+    ).toHaveValue("");
+    expect(
+      screen.getByLabelText(/Nota personal/)
+    ).toHaveValue("");
+    expect(
+      screen.getByRole("button", {
+        name: "Revisar y ejecutar",
+      })
+    ).toBeDisabled();
   });
 
   test("note is secondary, editable, counted and limited to 500", async () => {

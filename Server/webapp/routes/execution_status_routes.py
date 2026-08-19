@@ -5,6 +5,11 @@ from ..services.execution_query_service import (
     ExecutionSnapshotNotFound,
     get_execution_snapshot_for_user,
 )
+from ..services.execution_reuse_service import (
+    ExecutionReuseForbidden,
+    ExecutionReuseNotFound,
+    get_execution_reuse_for_user,
+)
 from ..utils.api_errors import ForbiddenError, NotFoundError, handle_api_errors
 from ..utils.auth_decorators import login_required
 
@@ -29,3 +34,24 @@ def get_execution_status(public_id):
         raise ForbiddenError("No tienes permiso para ver esta ejecución.")
 
     return jsonify({"execution": execution}), 200
+
+
+@execution_status_bp.route("/<uuid:public_id>/reuse", methods=["GET"])
+@login_required
+@handle_api_errors
+def get_execution_reuse(public_id):
+    try:
+        reuse = get_execution_reuse_for_user(
+            public_id=str(public_id),
+            current_user_id=g.current_user["id"],
+        )
+    except ExecutionReuseNotFound:
+        raise NotFoundError(
+            "La ejecución solicitada no existe."
+        )
+    except ExecutionReuseForbidden:
+        raise ForbiddenError(
+            "No tienes permiso para reutilizar esta ejecución."
+        )
+
+    return jsonify({"reuse": reuse}), 200

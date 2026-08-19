@@ -10,6 +10,8 @@ Compatibilidad temporal:
 - Esos campos se DERIVAN de execution_state; no de executions.status.
 """
 
+from .execution_query_service import build_public_failure_payload
+
 CANONICAL_STATES = frozenset({
     "QUEUED",
     "RUNNING",
@@ -41,11 +43,7 @@ def build_failure_payload(row):
     if state != "FAILED":
         return None
 
-    return {
-        "stage": row.get("failure_stage"),
-        "code": row.get("error_code"),
-        "message": row.get("error_message"),
-    }
+    return build_public_failure_payload(row)
 
 
 def _iso(value):

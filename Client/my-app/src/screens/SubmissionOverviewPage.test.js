@@ -262,6 +262,16 @@ describe("SubmissionOverviewPage", () => {
 
     fireEvent.click(
       within(executionCard).getByRole("button", {
+        name: "Reutilizar configuración",
+      })
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/?reuse=public-execution-10"
+    );
+
+    fireEvent.click(
+      within(executionCard).getByRole("button", {
         name: "Ver resultado",
       })
     );
@@ -383,6 +393,11 @@ describe("SubmissionOverviewPage", () => {
     expect(
       screen.queryByRole("button", { name: "Ver resultado" })
     ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Reutilizar configuración",
+      })
+    ).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver código" }));
     expect(
       await screen.findByText("int main() {", { exact: false })
@@ -566,6 +581,11 @@ describe("SubmissionOverviewPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Descargar ZIP original" })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Reutilizar configuración",
+      })
     ).not.toBeInTheDocument();
   });
 

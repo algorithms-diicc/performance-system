@@ -405,7 +405,7 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
             {
                 "stage": "COMPILATION",
                 "code": "COMPILE_ERROR",
-                "message": "No compila",
+                "message": "El código no pudo compilarse correctamente.",
             },
         )
 

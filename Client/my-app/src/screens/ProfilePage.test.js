@@ -195,6 +195,14 @@ describe("ProfilePage submission navigation", () => {
     ).toHaveAttribute("href", "/code/exec10LCS");
   });
 
+  test("links the profile summary to the complete history", async () => {
+    await renderProfile();
+
+    expect(
+      screen.getByRole("link", { name: /Ver historial completo/i })
+    ).toHaveAttribute("href", "/history");
+  });
+
   test.each(["FAILED", "RUNNING"])(
     "offers the experiment for a %s last execution without a false result link",
     async (lastExecutionState) => {

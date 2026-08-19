@@ -36,6 +36,15 @@ def submission_row(**overrides):
         "last_execution_codename": None,
         "last_execution_at": None,
         "executions_count": 0,
+        "completed_executions": 0,
+        "failed_executions": 0,
+        "queued_executions": 0,
+        "running_executions": 0,
+        "processing_executions": 0,
+        "cancelled_executions": 0,
+        "benchmarks": [],
+        "source_filenames": [],
+        "activity_at": None,
     }
     row.update(overrides)
     return row
@@ -117,14 +126,16 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
         auth_patch.start()
         self.addCleanup(auth_patch.stop)
 
-    def _get_list(self, **row_overrides):
+    def _get_list(self, query_string="", **row_overrides):
         row = submission_row(**row_overrides)
         conn = ScriptedConnection([{"total": 1}, [row]])
         with patch(
             "Server.webapp.routes.submissions_routes.get_connection",
             return_value=conn,
         ):
-            response = self.client.get("/api/submissions")
+            response = self.client.get(
+                "/api/submissions{}".format(query_string)
+            )
         return response, conn
 
     def _get_detail(self, **row_overrides):
@@ -242,6 +253,174 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
         self.assertNotIn("filePath", item)
         self.assertNotIn("file_path", item)
         self.assertNotIn("s.file_path", conn.executed[1][0])
+
+    def test_list_exposes_canonical_submission_aggregate(self):
+        activity_at = datetime(
+            2026,
+            8,
+            18,
+            14,
+            0,
+            tzinfo=timezone.utc,
+        )
+        response, _conn = self._get_list(
+            last_execution_state="FAILED",
+            executions_count=2,
+            completed_executions=1,
+            failed_executions=1,
+            benchmarks=["SIZE", "SIZE"],
+            source_filenames=["fast.cpp", "slow.cpp"],
+            activity_at=activity_at,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        item = response.get_json()["items"][0]
+
+        self.assertEqual(item["aggregateState"], "PARTIAL")
+        self.assertEqual(item["aggregateStateLabel"], "Parcial")
+        self.assertEqual(item["activityAt"], activity_at.isoformat())
+        self.assertEqual(item["benchmarks"], ["SIZE"])
+        self.assertEqual(item["benchmarkFamilies"], ["SIZE"])
+        self.assertEqual(
+            item["sourceFilenames"],
+            ["fast.cpp", "slow.cpp"],
+        )
+        self.assertEqual(item["summary"]["executionsCount"], 2)
+        self.assertEqual(item["summary"]["completedExecutions"], 1)
+        self.assertEqual(item["summary"]["failedExecutions"], 1)
+
+        # Compatibilidad: status sigue describiendo la última execution.
+        self.assertEqual(item["status"], "FAILED")
+        self.assertEqual(item["executionsCount"], 2)
+
+    def test_list_query_collects_all_execution_states(self):
+        response, conn = self._get_list()
+
+        self.assertEqual(response.status_code, 200)
+        sql = conn.executed[1][0]
+        for state in (
+            "COMPLETED",
+            "FAILED",
+            "QUEUED",
+            "RUNNING",
+            "PROCESSING",
+            "CANCELLED",
+        ):
+            with self.subTest(state=state):
+                self.assertIn(
+                    "e.execution_state = '{}'".format(state),
+                    sql,
+                )
+
+    def test_list_query_collects_benchmark_and_source_filename(self):
+        response, conn = self._get_list()
+
+        self.assertEqual(response.status_code, 200)
+        sql = conn.executed[1][0]
+        self.assertIn("e.benchmark", sql)
+        self.assertIn(
+            "e.execution_config->>'original_filename'",
+            sql,
+        )
+
+    def test_list_orders_by_latest_submission_activity(self):
+        response, conn = self._get_list()
+
+        self.assertEqual(response.status_code, 200)
+        sql = conn.executed[1][0]
+        self.assertIn(
+            "ORDER BY activity_at DESC, s.id DESC",
+            sql,
+        )
+
+    def test_list_combined_history_filters_are_server_side(self):
+        response, conn = self._get_list(
+            query_string=(
+                "?status=partial"
+                "&benchmark=camm"
+                "&course_id=personal"
+                "&q=slow"
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(conn.executed), 2)
+
+        count_sql, count_params = conn.executed[0]
+        list_sql, list_params = conn.executed[1]
+
+        for sql in (count_sql, list_sql):
+            self.assertIn("filtered_history", sql)
+            self.assertIn("WHERE aggregate_state = %s", sql)
+            self.assertIn("s.course_id IS NULL", sql)
+            self.assertIn(
+                "UPPER(COALESCE(be.benchmark, ''))",
+                sql,
+            )
+            self.assertIn("COALESCE(s.title, '') ILIKE %s", sql)
+            self.assertIn(
+                "COALESCE(s.original_filename, '') ILIKE %s",
+                sql,
+            )
+            self.assertIn(
+                "qe.execution_config->>'original_filename'",
+                sql,
+            )
+
+        for value in (
+            "CAMM",
+            "CAMMR",
+            "CAMMS",
+            "CAMMSO",
+            "%slow%",
+            "PARTIAL",
+        ):
+            self.assertIn(value, count_params)
+            self.assertIn(value, list_params)
+
+    def test_list_filters_by_numeric_course_and_benchmark(self):
+        response, conn = self._get_list(
+            query_string=(
+                "?course_id=9"
+                "&benchmark=SIZE"
+                "&status=COMPLETED"
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        count_sql, count_params = conn.executed[0]
+        list_sql, list_params = conn.executed[1]
+
+        for sql in (count_sql, list_sql):
+            self.assertIn("s.course_id = %s", sql)
+            self.assertIn(
+                "UPPER(COALESCE(be.benchmark, ''))",
+                sql,
+            )
+            self.assertIn("WHERE aggregate_state = %s", sql)
+
+        for value in (9, "SIZE", "COMPLETED"):
+            self.assertIn(value, count_params)
+            self.assertIn(value, list_params)
+
+    def test_list_history_filter_validation_rejects_invalid_values(self):
+        invalid_queries = [
+            "?status=UNKNOWN",
+            "?benchmark=NOPE",
+            "?course_id=abc",
+            "?course_id=0",
+            "?q={}".format("x" * 201),
+        ]
+
+        for query_string in invalid_queries:
+            with self.subTest(query_string=query_string):
+                response, conn = self._get_list(
+                    query_string=query_string
+                )
+
+                self.assertEqual(response.status_code, 400)
+                self.assertEqual(conn.executed, [])
 
     def test_detail_serializes_owner_metadata(self):
         response, conn = self._get_detail()

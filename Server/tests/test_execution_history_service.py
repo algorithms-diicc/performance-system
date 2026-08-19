@@ -85,6 +85,36 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             failure["code"],
             "COMPILE_ERROR",
         )
+        self.assertEqual(
+            failure["message"],
+            "El código no pudo compilarse correctamente.",
+        )
+        self.assertNotIn("No compila", failure["message"])
+
+    def test_failed_payload_never_exposes_internal_diagnostic(self):
+        internal = (
+            "psycopg2 OperationalError /home/perf/private/results.csv "
+            "ssh measurement-node -- secret-token"
+        )
+        failure = build_failure_payload(
+            {
+                "execution_state": "FAILED",
+                "failure_stage": "INFRASTRUCTURE",
+                "error_code": "MASTER_SLAVE_ERROR",
+                "error_message": internal,
+            }
+        )
+
+        self.assertEqual(failure["stage"], "INFRASTRUCTURE")
+        self.assertEqual(failure["code"], "MASTER_SLAVE_ERROR")
+        self.assertEqual(
+            failure["message"],
+            "Se perdió la comunicación con el nodo de medición.",
+        )
+        self.assertNotIn("psycopg2", failure["message"])
+        self.assertNotIn("/home/", failure["message"])
+        self.assertNotIn("ssh ", failure["message"])
+        self.assertNotIn("secret-token", failure["message"])
 
     def test_completed_has_no_failure(self):
         self.assertIsNone(

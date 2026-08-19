@@ -10,6 +10,10 @@ import {
   parseExecutionPublicIds,
 } from "./recovery/executionRecoveryModel";
 import {
+  buildReuseConfiguration,
+  parseReusePublicId,
+} from "./reuse/executionReuseModel";
+import {
   applyArchiveTitleSuggestion,
   manualSubmissionTitle,
   normalizeDraftNote,
@@ -376,6 +380,15 @@ function RenderFormPage({ currentUser }) {
       return;
     }
 
+    // Precedencia canónica:
+    // execution > reuse > course.
+    if (
+      parseExecutionPublicIds(location.search).length > 0 ||
+      parseReusePublicId(location.search)
+    ) {
+      return;
+    }
+
     // Con 0/1 cursos se conserva el contrato canónico existente:
     // sin asociación o selección automática, respectivamente.
     if (activeCourses.length <= 1) {
@@ -565,6 +578,133 @@ function RenderFormPage({ currentUser }) {
       console.error("Error al cargar configuración previa del test:", e);
     }
   }, []);
+
+  // ======= ITERATION 7F: reutilización de configuración histórica =======
+  useEffect(() => {
+    // Recuperación persistente tiene precedencia sobre reutilización.
+    if (parseExecutionPublicIds(location.search).length > 0) {
+      return undefined;
+    }
+
+    const reusePublicId = parseReusePublicId(
+      location.search
+    );
+
+    if (!reusePublicId) {
+      return undefined;
+    }
+
+    // Esperamos el contexto académico para no reutilizar un curso
+    // que ya no esté disponible para el usuario.
+    if (courseContextLoading || courseContextError) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadReuseConfiguration = async () => {
+      try {
+        const response = await axios.get(
+          `${serverURL}api/executions/${encodeURIComponent(
+            reusePublicId
+          )}/reuse`,
+          {
+            withCredentials: true,
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }
+        );
+
+        if (cancelled) return;
+
+        const reuse = buildReuseConfiguration(
+          response.data?.reuse || null,
+          activeCourses
+        );
+
+        if (!reuse) {
+          setSubmissionError(
+            "No fue posible interpretar la configuración histórica."
+          );
+          return;
+        }
+
+        setSelectedTaskType(
+          reuse.selectedTaskType
+        );
+        setDataType(reuse.dataType);
+
+        if (
+          reuse.inputSize !== null &&
+          reuse.inputSize !== undefined
+        ) {
+          setInputSize(reuse.inputSize);
+        }
+
+        if (
+          reuse.samples !== null &&
+          reuse.samples !== undefined
+        ) {
+          setSamples(reuse.samples);
+        }
+
+        setExecutionProfile(
+          reuse.executionProfile
+        );
+
+        if (reuse.courseId !== null) {
+          setSelectedCourseId(
+            reuse.courseId
+          );
+        }
+
+        setParamErrors({
+          inputSize: "",
+          samples: "",
+        });
+        setExecutionSnapshot(null);
+        setFileList([]);
+        setShowOverview(false);
+        setIsSubmitting(false);
+        setSubmissionError("");
+      } catch (error) {
+        if (cancelled) return;
+
+        const status = error?.response?.status;
+
+        if (status === 401) {
+          setSubmissionError(
+            "Tu sesión expiró. Inicia sesión nuevamente para reutilizar esta configuración."
+          );
+        } else if (status === 403) {
+          setSubmissionError(
+            "No tienes permiso para reutilizar esta ejecución."
+          );
+        } else if (status === 404) {
+          setSubmissionError(
+            "La ejecución usada como referencia ya no existe."
+          );
+        } else {
+          setSubmissionError(
+            "No fue posible reutilizar la configuración histórica."
+          );
+        }
+      }
+    };
+
+    loadReuseConfiguration();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCourses,
+    courseContextError,
+    courseContextLoading,
+    location.search,
+  ]);
 
   // Cuando todos los archivos llegan a un estado terminal,
   // se detiene el modo de ejecución.

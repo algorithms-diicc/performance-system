@@ -74,7 +74,7 @@ def _original_filename(row):
     return None
 
 
-def _public_failure(row):
+def build_public_failure_payload(row):
     code = str(row.get("error_code") or "").strip().upper()
     stage = str(row.get("failure_stage") or "").strip().upper()
 
@@ -106,7 +106,7 @@ def build_execution_snapshot(row, current_user_id):
     if state == "FAILED":
         # error_message conserva el diagnóstico interno en PostgreSQL, pero la
         # API expone solamente mensajes públicos controlados por código/etapa.
-        failure = _public_failure(row)
+        failure = build_public_failure_payload(row)
 
     return {
         "publicId": row.get("public_id"),

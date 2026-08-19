@@ -833,7 +833,7 @@
    RESPONSIVE — MOBILE
    ============================================================ */
 
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
 
   .app-navbar-inner {
     grid-template-columns:
@@ -958,6 +958,188 @@
 
   .app-navbar-brand-text {
     display: none;
+  }
+
+}
+
+/* ============================================================
+   RESPONSIVE — COMPACT DESKTOP
+
+   Mantiene visibles los módulos principales entre 1101 y
+   1460 px. La identidad completa sigue disponible en el
+   dropdown, mientras el chrome superior prioriza navegación.
+   ============================================================ */
+
+@media (min-width: 1101px) and (max-width: 1460px) {
+
+  .app-navbar-inner {
+    width: 100%;
+
+    max-width: none;
+
+    padding-left:
+      var(--ps-space-5);
+
+    padding-right:
+      var(--ps-space-5);
+
+    grid-template-columns:
+      max-content minmax(0, 1fr) max-content;
+
+    column-gap:
+      var(--ps-space-4);
+
+    row-gap: 0;
+  }
+
+
+  .app-navbar-brand {
+    justify-self: start;
+
+    gap:
+      var(--ps-space-2);
+  }
+
+
+  .app-navbar-brand-text {
+    font-size:
+      var(--ps-font-size-md);
+  }
+
+
+  .app-navbar-logo {
+    width: 30px;
+
+    height: 30px;
+  }
+
+
+  .app-navbar-menu {
+    min-width: 0;
+
+    justify-self: stretch;
+
+    justify-content:
+      space-evenly;
+
+    gap: 0;
+  }
+
+
+  .app-nav-link {
+    min-height: 38px;
+
+    padding:
+      0.5rem 0.58rem;
+
+    gap: 0.32rem;
+
+    font-size: 0.81rem;
+  }
+
+
+  .app-nav-link svg {
+    width: 17px;
+
+    height: 17px;
+  }
+
+
+  .app-navbar-actions {
+    grid-column: auto;
+
+    justify-self: end;
+
+    width: max-content;
+
+    gap: 0.4rem;
+
+    flex: 0 0 auto;
+  }
+
+
+  .app-user-info {
+    display: none;
+  }
+
+
+  .app-user-menu-toggle {
+    width: auto;
+
+    max-width: none;
+
+    padding:
+      0.25rem 0.38rem;
+  }
+
+
+  .app-user-chevron {
+    margin-left: 1px;
+  }
+
+}
+
+/* ============================================================
+   RESPONSIVE — WIDE DESKTOP
+
+   Marca a la izquierda, navegación distribuida en el centro
+   y acciones/perfil completo anclados a la derecha.
+   ============================================================ */
+@media (min-width: 1461px) {
+
+  .app-navbar-inner {
+    width: 100%;
+    max-width: none;
+
+    padding-left: clamp(1.5rem, 2vw, 2.25rem);
+    padding-right: clamp(1.5rem, 2vw, 2.25rem);
+
+    grid-template-columns:
+      max-content minmax(720px, 1fr) max-content;
+
+    column-gap: var(--ps-space-4);
+  }
+
+
+  .app-navbar-brand {
+    justify-self: start;
+  }
+
+
+  .app-navbar-menu {
+    width: 100%;
+    min-width: 720px;
+
+    justify-self: stretch;
+
+    justify-content: center;
+
+    gap: clamp(1rem, 1.35vw, 1.6rem);
+  }
+
+
+  .app-nav-link {
+    flex: 0 0 auto;
+  }
+
+
+  .app-navbar-actions {
+    justify-self: end;
+
+    width: max-content;
+
+    flex: 0 0 auto;
+  }
+
+
+  .app-user-info {
+    display: flex;
+  }
+
+
+  .app-user-menu-toggle {
+    width: auto;
+    max-width: 315px;
   }
 
 }

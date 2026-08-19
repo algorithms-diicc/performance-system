@@ -64,6 +64,9 @@ import {
   orderSelectedExecutions,
   toggleComparisonSelection,
 } from "./comparisonModel";
+import {
+  buildReuseSearch,
+} from "./RenderForm/reuse/executionReuseModel";
 
 import "./SubmissionOverviewPage.css";
 
@@ -1165,6 +1168,28 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                           >
                             <Eye size={16} strokeWidth={2} aria-hidden="true" />
                             Ver código
+                          </button>
+                        )}
+
+                        {permissions.canEditMetadata &&
+                          execution.publicId && (
+                          <button
+                            type="button"
+                            className="submission-overview__button submission-overview__button--secondary"
+                            onClick={() =>
+                              navigate(
+                                `/${buildReuseSearch(
+                                  execution.publicId
+                                )}`
+                              )
+                            }
+                          >
+                            <RefreshCw
+                              size={16}
+                              strokeWidth={2}
+                              aria-hidden="true"
+                            />
+                            Reutilizar configuración
                           </button>
                         )}
 

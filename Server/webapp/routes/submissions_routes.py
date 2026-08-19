@@ -20,6 +20,9 @@ from ..services.execution_history_service import (
     serialize_execution_history_row,
     summary_from_aggregate,
 )
+from ..services.submission_history_service import (
+    build_submission_history_projection,
+)
 from ..services.execution_creation_service import (
     InvalidExecutionRequest,
     normalize_submission_note,
@@ -35,6 +38,271 @@ from ..services.submission_access_service import (
 submissions_bp = Blueprint("submissions", __name__, url_prefix="/api")
 
 MUTABLE_SUBMISSION_METADATA_FIELDS = frozenset({"note", "isPinned"})
+
+HISTORY_STATUS_FILTERS = frozenset({
+    "EMPTY",
+    "IN_PROGRESS",
+    "COMPLETED",
+    "PARTIAL",
+    "FAILED",
+})
+
+HISTORY_BENCHMARK_FILTERS = {
+    "SIZE": ("SIZE",),
+    "LCS": ("LCS",),
+    "CAMM": ("CAMM", "CAMMR", "CAMMS", "CAMMSO"),
+}
+
+HISTORY_QUERY_MAX_LENGTH = 200
+
+
+def _parse_submission_history_filters():
+    raw_status = str(request.args.get("status") or "").strip().upper()
+    raw_benchmark = str(
+        request.args.get("benchmark") or ""
+    ).strip().upper()
+    raw_course = str(request.args.get("course_id") or "").strip()
+    query = str(request.args.get("q") or "").strip()
+
+    if raw_status and raw_status not in HISTORY_STATUS_FILTERS:
+        raise BadRequestError(
+            "El parámetro 'status' no corresponde a un estado válido."
+        )
+
+    if (
+        raw_benchmark
+        and raw_benchmark not in HISTORY_BENCHMARK_FILTERS
+    ):
+        raise BadRequestError(
+            "El parámetro 'benchmark' no corresponde a un benchmark válido."
+        )
+
+    course_mode = None
+    course_id = None
+
+    if raw_course:
+        if raw_course.casefold() == "personal":
+            course_mode = "personal"
+        else:
+            try:
+                course_id = int(raw_course)
+            except (TypeError, ValueError):
+                raise BadRequestError(
+                    "El parámetro 'course_id' debe ser un id positivo "
+                    "o 'personal'."
+                )
+
+            if course_id <= 0:
+                raise BadRequestError(
+                    "El parámetro 'course_id' debe ser un id positivo "
+                    "o 'personal'."
+                )
+
+            course_mode = "course"
+
+    if len(query) > HISTORY_QUERY_MAX_LENGTH:
+        raise BadRequestError(
+            "El parámetro 'q' no puede superar 200 caracteres."
+        )
+
+    return {
+        "status": raw_status or None,
+        "benchmark": raw_benchmark or None,
+        "courseMode": course_mode,
+        "courseId": course_id,
+        "query": query or None,
+    }
+
+
+def _build_submission_history_cte(user_id, filters):
+    where_parts = ["s.user_id = %s"]
+    params = [user_id]
+
+    course_mode = filters.get("courseMode")
+
+    if course_mode == "personal":
+        where_parts.append("s.course_id IS NULL")
+    elif course_mode == "course":
+        where_parts.append("s.course_id = %s")
+        params.append(filters["courseId"])
+
+    benchmark = filters.get("benchmark")
+    if benchmark:
+        benchmark_values = HISTORY_BENCHMARK_FILTERS[benchmark]
+        placeholders = ", ".join(["%s"] * len(benchmark_values))
+
+        where_parts.append(
+            """
+            EXISTS (
+              SELECT 1
+              FROM executions be
+              WHERE be.submission_id = s.id
+                AND UPPER(COALESCE(be.benchmark, ''))
+                    IN ({})
+            )
+            """.format(placeholders).strip()
+        )
+        params.extend(benchmark_values)
+
+    query = filters.get("query")
+    if query:
+        pattern = "%{}%".format(query)
+
+        where_parts.append(
+            """
+            (
+              COALESCE(s.title, '') ILIKE %s
+              OR COALESCE(s.original_filename, '') ILIKE %s
+              OR EXISTS (
+                SELECT 1
+                FROM executions qe
+                WHERE qe.submission_id = s.id
+                  AND COALESCE(
+                    qe.execution_config->>'original_filename',
+                    ''
+                  ) ILIKE %s
+              )
+            )
+            """.strip()
+        )
+        params.extend([pattern, pattern, pattern])
+
+    where_sql = "\n              AND ".join(where_parts)
+
+    status_sql = ""
+    status = filters.get("status")
+
+    if status:
+        status_sql = "WHERE aggregate_state = %s"
+        params.append(status)
+
+    sql = """
+    WITH submission_base AS (
+      SELECT
+        s.id,
+        s.created_at,
+
+        COUNT(e.id) AS executions_count,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'COMPLETED'
+        ) AS completed_executions,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'FAILED'
+        ) AS failed_executions,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'QUEUED'
+        ) AS queued_executions,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'RUNNING'
+        ) AS running_executions,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'PROCESSING'
+        ) AS processing_executions,
+
+        COUNT(e.id) FILTER (
+          WHERE e.execution_state = 'CANCELLED'
+        ) AS cancelled_executions,
+
+        ARRAY_AGG(
+          e.benchmark
+          ORDER BY e.id
+        ) FILTER (
+          WHERE e.benchmark IS NOT NULL
+        ) AS benchmarks,
+
+        ARRAY_AGG(
+          e.execution_config->>'original_filename'
+          ORDER BY e.id
+        ) FILTER (
+          WHERE COALESCE(
+            e.execution_config->>'original_filename',
+            ''
+          ) <> ''
+        ) AS source_filenames,
+
+        COALESCE(
+          MAX(
+            COALESCE(
+              e.finished_at,
+              e.processing_at,
+              e.started_at,
+              e.queued_at,
+              e.created_at
+            )
+          ),
+          s.created_at
+        ) AS activity_at
+
+      FROM submissions s
+
+      LEFT JOIN executions e
+        ON e.submission_id = s.id
+
+      WHERE {where_sql}
+
+      GROUP BY
+        s.id,
+        s.created_at
+    ),
+
+    history_rows AS (
+      SELECT
+        sb.*,
+
+        CASE
+          WHEN sb.executions_count = 0
+            THEN 'EMPTY'
+
+          WHEN (
+            sb.queued_executions
+            + sb.running_executions
+            + sb.processing_executions
+          ) > 0
+            THEN 'IN_PROGRESS'
+
+          WHEN sb.completed_executions > 0
+            AND (
+              sb.failed_executions
+              + sb.cancelled_executions
+            ) = 0
+            THEN 'COMPLETED'
+
+          WHEN sb.completed_executions > 0
+            AND (
+              sb.failed_executions
+              + sb.cancelled_executions
+            ) > 0
+            THEN 'PARTIAL'
+
+          WHEN sb.completed_executions = 0
+            AND (
+              sb.failed_executions
+              + sb.cancelled_executions
+            ) > 0
+            THEN 'FAILED'
+
+          ELSE 'EMPTY'
+        END AS aggregate_state
+
+      FROM submission_base sb
+    ),
+
+    filtered_history AS (
+      SELECT *
+      FROM history_rows
+      {status_sql}
+    )
+    """.format(
+        where_sql=where_sql,
+        status_sql=status_sql,
+    ).strip()
+
+    return sql, params
 
 
 def _serialize_submission_metadata(row, include_private=True):
@@ -169,96 +437,133 @@ def list_my_submissions():
             "El parámetro 'page_size' debe estar entre 1 y 200."
         )
 
+    filters = _parse_submission_history_filters()
     offset = (page - 1) * page_size
 
+    history_cte_sql, history_params = (
+        _build_submission_history_cte(
+            user_id=user["id"],
+            filters=filters,
+        )
+    )
+
     conn = get_connection()
+
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute(
-                "SELECT COUNT(*) AS total FROM submissions WHERE user_id = %s;",
-                (user["id"],),
+            count_sql = """
+            {history_cte_sql}
+
+            SELECT COUNT(*) AS total
+            FROM filtered_history;
+            """.format(
+                history_cte_sql=history_cte_sql,
             )
+
+            cur.execute(
+                count_sql,
+                tuple(history_params),
+            )
+
             total_row = cur.fetchone() or {"total": 0}
             total = total_row["total"] or 0
 
-            cur.execute(
-                """
-                WITH last_exec AS (
-                  SELECT DISTINCT ON (e.submission_id)
-                    e.submission_id,
-                    e.execution_state,
-                    e.public_id::text AS public_id,
-                    e.codename,
-                    COALESCE(
-                      e.finished_at,
-                      e.processing_at,
-                      e.started_at,
-                      e.queued_at,
-                      e.created_at
-                    ) AS activity_at
-                  FROM executions e
-                  JOIN submissions s2
-                    ON s2.id = e.submission_id
-                  WHERE s2.user_id = %s
-                  ORDER BY e.submission_id, e.id DESC
-                )
-                SELECT
-                  s.id,
-                  s.course_id,
-                  s.title,
-                  s.original_filename,
-                  s.note,
-                  s.is_pinned,
-                  s.status AS legacy_status,
-                  s.created_at,
-                  c.code AS course_code,
-                  c.name AS course_name,
-                  c.academic_year AS course_year,
-                  c.academic_term AS course_term,
-                  le.execution_state AS last_execution_state,
-                  le.public_id AS last_execution_public_id,
-                  le.codename AS last_execution_codename,
-                  le.activity_at AS last_execution_at,
-                  COUNT(e.id) AS executions_count
-                FROM submissions s
-                LEFT JOIN courses c
-                  ON c.id = s.course_id
-                LEFT JOIN executions e
-                  ON e.submission_id = s.id
-                LEFT JOIN last_exec le
-                  ON le.submission_id = s.id
-                WHERE s.user_id = %s
-                GROUP BY
-                  s.id,
-                  s.course_id,
-                  s.title,
-                  s.original_filename,
-                  s.note,
-                  s.is_pinned,
-                  s.status,
-                  s.created_at,
-                  c.code,
-                  c.name,
-                  c.academic_year,
-                  c.academic_term,
-                  le.execution_state,
-                  le.public_id,
-                  le.codename,
-                  le.activity_at
-                ORDER BY s.created_at DESC
-                LIMIT %s OFFSET %s;
-                """,
-                (user["id"], user["id"], page_size, offset),
+            list_sql = """
+            {history_cte_sql},
+
+            last_exec AS (
+              SELECT DISTINCT ON (e.submission_id)
+                e.submission_id,
+                e.execution_state,
+                e.public_id::text AS public_id,
+                e.codename,
+
+                COALESCE(
+                  e.finished_at,
+                  e.processing_at,
+                  e.started_at,
+                  e.queued_at,
+                  e.created_at
+                ) AS activity_at
+
+              FROM executions e
+
+              JOIN filtered_history fh_last
+                ON fh_last.id = e.submission_id
+
+              ORDER BY
+                e.submission_id,
+                e.id DESC
             )
+
+            SELECT
+              s.id,
+              s.course_id,
+              s.title,
+              s.original_filename,
+              s.note,
+              s.is_pinned,
+              s.status AS legacy_status,
+              s.created_at,
+
+              c.code AS course_code,
+              c.name AS course_name,
+              c.academic_year AS course_year,
+              c.academic_term AS course_term,
+
+              le.execution_state AS last_execution_state,
+              le.public_id AS last_execution_public_id,
+              le.codename AS last_execution_codename,
+              le.activity_at AS last_execution_at,
+
+              fh.executions_count,
+              fh.completed_executions,
+              fh.failed_executions,
+              fh.queued_executions,
+              fh.running_executions,
+              fh.processing_executions,
+              fh.cancelled_executions,
+              fh.benchmarks,
+              fh.source_filenames,
+              fh.activity_at AS activity_at
+
+            FROM filtered_history fh
+
+            JOIN submissions s
+              ON s.id = fh.id
+
+            LEFT JOIN courses c
+              ON c.id = s.course_id
+
+            LEFT JOIN last_exec le
+              ON le.submission_id = s.id
+
+            ORDER BY activity_at DESC, s.id DESC
+
+            LIMIT %s OFFSET %s;
+            """.format(
+                history_cte_sql=history_cte_sql,
+            )
+
+            cur.execute(
+                list_sql,
+                tuple(history_params) + (page_size, offset),
+            )
+
             rows = cur.fetchall()
 
         items = []
+
         for row in rows:
             last_state = row.get("last_execution_state")
             last_label = (
                 map_execution_state_label(last_state)
                 if last_state
                 else "Sin ejecuciones"
+            )
+
+            history_projection = (
+                build_submission_history_projection(row)
             )
 
             items.append(
@@ -286,7 +591,10 @@ def list_my_submissions():
                         if row.get("created_at")
                         else None
                     ),
-                    "executionsCount": row["executions_count"] or 0,
+                    "executionsCount": (
+                        row["executions_count"] or 0
+                    ),
+                    **history_projection,
                     "lastExecutionState": last_state,
                     "lastExecutionStatus": last_label,
                     "lastExecutionPublicId": row.get(
@@ -311,10 +619,65 @@ def list_my_submissions():
                 "total": total,
             }
         ), 200
+
     finally:
         conn.close()
 
 
+# ==========================
+# GET /api/submissions/history-filter-options
+# ==========================
+
+@submissions_bp.route(
+    "/submissions/history-filter-options",
+    methods=["GET"],
+)
+@login_required
+@handle_api_errors
+def list_submission_history_filter_options():
+    user = g.current_user
+
+    conn = get_connection()
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT DISTINCT
+                  c.id,
+                  c.code,
+                  c.name,
+                  c.academic_year,
+                  c.academic_term
+                FROM submissions s
+                JOIN courses c
+                  ON c.id = s.course_id
+                WHERE s.user_id = %s
+                  AND s.course_id IS NOT NULL
+                ORDER BY
+                  c.academic_year DESC,
+                  c.academic_term DESC,
+                  c.code,
+                  c.id;
+                """,
+                (user["id"],),
+            )
+            rows = cur.fetchall()
+
+        courses = [
+            {
+                "id": row["id"],
+                "code": row["code"],
+                "name": row["name"],
+                "academicYear": row["academic_year"],
+                "academicTerm": row["academic_term"],
+            }
+            for row in rows
+        ]
+
+        return jsonify({"courses": courses}), 200
+
+    finally:
+        conn.close()
 # ==========================
 # POST /api/submissions
 # ==========================

@@ -551,31 +551,36 @@ const ProfilePage = () => {
                 </div>
               </div>
 
-              {canOpenLastSubmission || canOpenLastResult ? (
-                <div className="profile-inline-actions">
-                  {canOpenLastSubmission && (
-                    <Link
-                      to={`/submissions/${encodeURIComponent(
-                        String(summary.lastSubmissionId)
-                      )}`}
-                      className="profile-inline-link"
-                    >
-                      Ver experimento
-                      <ArrowRight size={16} />
-                    </Link>
-                  )}
+              <div className="profile-inline-actions">
+                {canOpenLastSubmission && (
+                  <Link
+                    to={`/submissions/${encodeURIComponent(
+                      String(summary.lastSubmissionId)
+                    )}`}
+                    className="profile-inline-link"
+                  >
+                    Ver experimento
+                    <ArrowRight size={16} />
+                  </Link>
+                )}
 
-                  {canOpenLastResult && (
-                    <Link
-                      to={`/code/${summary.lastExecutionCodename}`}
-                      className="profile-inline-link"
-                    >
-                      Ver último resultado
-                      <ArrowRight size={16} />
-                    </Link>
-                  )}
-                </div>
-              ) : (
+                {canOpenLastResult && (
+                  <Link
+                    to={`/code/${summary.lastExecutionCodename}`}
+                    className="profile-inline-link"
+                  >
+                    Ver último resultado
+                    <ArrowRight size={16} />
+                  </Link>
+                )}
+
+                <Link to="/history" className="profile-inline-link">
+                  Ver historial completo
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+
+              {!canOpenLastSubmission && !canOpenLastResult && (
                 <span className="profile-inline-note">
                   {summary.executionsCount
                     ? "La ejecución más reciente todavía no tiene un resultado final disponible."
