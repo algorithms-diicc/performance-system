@@ -78,6 +78,10 @@ from .services.worker_execution_service import (
     mark_worker_started,
     persist_worker_outcome,
 )
+from .services.execution_runner_service import (
+    run_single_execution,
+    sync_submission_terminal_status,
+)
 from .services.upload_service import (
     UploadValidationError,
     remove_stored_upload,
@@ -243,7 +247,9 @@ app.register_blueprint(trace_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(comparisons_bp)
 
-# Create an empty list to store measurement queue items
+# Cola legacy conservada sólo para compatibilidad/regresión de
+# `serve_next_inline()`. El runtime productivo de Iteración 9 usa
+# Server/execution_dispatcher.py + PostgreSQL.
 queuelist = []
 # statusdict = OrderedDict()
 # Define routes and their respective functions
@@ -389,8 +395,9 @@ def cap_code():
     """
     CORE-04B-2.
 
-    PostgreSQL registra Submission + Executions antes de que el trabajo
-    entre a la cola legacy.
+    PostgreSQL registra Submission + Executions como fuente de verdad
+    persistente de la cola. El dispatcher independiente reclamará cada
+    Execution en orden FIFO.
     """
     file = request.files.get("file")
     if file is None:
@@ -544,18 +551,6 @@ def cap_code():
             names_on_zip.append(codename)
             file_names.append(source.original_filename)
 
-        queuelist.append(
-            [
-                cpp_dirs_on_zip,
-                names_on_zip,
-                "-O3",
-                task_type,
-                input_size,
-                samples,
-                file_names,
-            ]
-        )
-
     except Exception as exc:
         for execution in bundle["executions"]:
             try:
@@ -637,14 +632,11 @@ def cap_code():
 
 def serve_next_inline():
     """
-    Procesa el siguiente bundle y sincroniza el lifecycle real con PostgreSQL.
+    Wrapper legacy de bundle sobre el runner canónico por Execution.
 
-    PostgreSQL:
-      QUEUED -> RUNNING -> PROCESSING -> COMPLETED
-                  |            |
-                  +----------> FAILED
-
-    Server/status se conserva sólo como señal técnica transitoria del pipeline.
+    `queuelist` se conserva únicamente para compatibilidad/regresión legacy.
+    Cada elemento se procesa de forma independiente y el estado de Submission
+    se sincroniza sólo cuando todas sus executions son terminales.
     """
     if not queuelist:
         print(
@@ -668,10 +660,6 @@ def serve_next_inline():
         file_names,
     ) = next_inline[:7]
 
-    successful_names = []
-    successful_file_names = []
-    failed_count = 0
-
     max_wait = int(
         os.getenv("MASTER_EXECUTION_TIMEOUT_SECONDS", "2000")
     )
@@ -692,7 +680,6 @@ def serve_next_inline():
                     codename, exc
                 )
             )
-            failed_count += 1
             continue
 
         if initial_status != "IN QUEUE":
@@ -703,191 +690,35 @@ def serve_next_inline():
             )
             continue
 
-        os.utime(status_file_path, None)
-
-        # Persistencia: QUEUED -> RUNNING.
-        mark_worker_started(codename)
-
-        try:
-            slave_serve(
-                cpp_paths[file_num],
-                codename,
-                opt_cmd,
-                input_size,
-                samples,
-            )
-        except Exception as exc:
-            message = "Fallo en la comunicación Master/Slave: {}".format(exc)
-
-            try:
-                with open(
-                    status_file_path,
-                    "w",
-                    encoding="utf-8",
-                ) as status_file:
-                    status_file.write(
-                        "ERROR: master/slave communication failure"
-                    )
-            except OSError:
-                pass
-
-            mark_worker_failed(
-                codename,
-                failure_stage="INFRASTRUCTURE",
-                error_code="MASTER_SLAVE_ERROR",
-                error_message=message,
-            )
-            escribir_estado(
-                codename,
-                "❌ {}".format(message),
-                tipo="ERROR",
-            )
-            failed_count += 1
-            continue
-
-        print(
-            "⏳ Esperando que finalice la ejecución de {}...".format(
-                codename
-            )
+        run_single_execution(
+            source_path=cpp_paths[file_num],
+            codename=codename,
+            original_filename=file_names[file_num],
+            input_size=input_size,
+            samples=samples,
+            status_dir=STATUS_DIR,
+            static_dir=STATIC_DIR,
+            base_dir=BASE_DIR,
+            opt_cmd=opt_cmd,
+            max_wait_seconds=max_wait,
+            slave_serve_func=slave_serve,
+            status_writer_func=escribir_estado,
+            read_legacy_outcome_func=read_legacy_outcome,
+            mark_worker_started_func=mark_worker_started,
+            mark_worker_failed_func=mark_worker_failed,
+            persist_worker_outcome_func=persist_worker_outcome,
+            graph_results_func=graph_results,
+            result_bundle_exists_func=result_bundle_exists,
+            execution_result_path_func=execution_result_path,
+            mark_processing_failed_func=mark_processing_failed,
+            mark_worker_completed_func=mark_worker_completed,
         )
 
-        waited = 0
-        outcome = read_legacy_outcome(
-            codename,
-            STATUS_DIR,
-            STATIC_DIR,
-        )
-
-        while outcome.kind not in ("SUCCESS", "FAILED"):
-            time.sleep(2)
-            waited += 2
-
-            if waited >= max_wait:
-                with open(
-                    status_file_path,
-                    "w",
-                    encoding="utf-8",
-                ) as status_file:
-                    status_file.write("ERROR: timeout exceeded")
-
-                escribir_estado(
-                    codename,
-                    (
-                        "❌ ERROR DETECTADO: se agotó el tiempo máximo "
-                        "de espera del Master."
-                    ),
-                    tipo="ERROR",
-                )
-
-            outcome = read_legacy_outcome(
-                codename,
-                STATUS_DIR,
-                STATIC_DIR,
-            )
-
-            if waited >= max_wait:
-                break
-
-        print(
-            "✅ Finalizado pipeline worker: {} → {}".format(
-                codename,
-                outcome.status_text,
-            )
-        )
-
-        persisted = persist_worker_outcome(codename, outcome)
-
-        if persisted["execution_state"] == "PROCESSING":
-            successful_names.append(codename)
-            successful_file_names.append(file_names[file_num])
-        else:
-            failed_count += 1
-
-    # MULTI-01: post-procesamiento canónico e independiente por Execution.
-    # La medición del bundle sigue siendo serial; sólo se evita que varias
-    # executions compartan el mismo artefacto CombinedResults.csv.
-    completed_names = []
-
-    for codename, original_filename in zip(
-        successful_names,
-        successful_file_names,
-    ):
-        escribir_estado(codename, "📊 Generando gráficos...")
-
-        try:
-            graph_results(
-                [codename],
-                [original_filename],
-                input_size,
-            )
-        except Exception as exc:
-            message = "Falló graph_results: {}".format(exc)
-            mark_processing_failed(
-                codename,
-                error_code="GRAPH_PROCESSING_ERROR",
-                error_message=message,
-            )
-            escribir_estado(
-                codename,
-                "❌ {}".format(message),
-                tipo="ERROR",
-            )
-            failed_count += 1
-            continue
-
-        if not result_bundle_exists([codename], STATIC_DIR):
-            message = (
-                "El post-procesamiento terminó sin producir "
-                "CombinedResults.csv para la ejecución."
-            )
-            mark_processing_failed(
-                codename,
-                error_code="RESULT_ARTIFACT_MISSING",
-                error_message=message,
-            )
-            escribir_estado(
-                codename,
-                "❌ {}".format(message),
-                tipo="ERROR",
-            )
-            failed_count += 1
-            continue
-
-        absolute_result_path = execution_result_path(
-            codename,
-            STATIC_DIR,
-        )
-        persisted_result_path = os.path.relpath(
-            absolute_result_path,
-            BASE_DIR,
-        )
-
-        completed = mark_worker_completed(
-            codename,
-            result_path=persisted_result_path,
-        )
-        escribir_estado(codename, "✅ Resultados listos.")
-        print(
-            "💾 PostgreSQL: {} → {} (v{})".format(
-                codename,
-                completed["execution_state"],
-                completed["state_version"],
-            )
-        )
-        completed_names.append(codename)
-
-    successful_names = completed_names
-
-    # Compatibilidad temporal con submissions.status.
     if names:
         try:
             first_execution = get_execution_context(names[0])
-            submission_status = (
-                "finished" if failed_count == 0 else "ERROR"
-            )
-            update_submission_status(
-                first_execution["submission_id"],
-                submission_status,
+            sync_submission_terminal_status(
+                first_execution["submission_id"]
             )
         except Exception as exc:
             print(
@@ -984,8 +815,8 @@ def start_background_thread():
     th.Thread(target=queue_manager, daemon=True).start()
 
 
-# Esto se ejecuta siempre, incluso con Gunicorn
-start_background_thread()
+# Iteración 9: el servidor web ya no inicia un dispatcher por worker.
+# El proceso operacional se ejecuta mediante Server/execution_dispatcher.py.
 
 # ================================
 #   RUTAS PARA ARCHIVOS Y FRONTEND

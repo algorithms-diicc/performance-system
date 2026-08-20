@@ -10,9 +10,8 @@ class FakeRepository:
         self.fail_calls = []
         self.fail_result = {"execution_state": "FAILED"}
 
-    def list_stale_executions(self, active_before, queued_before):
+    def list_stale_executions(self, active_before):
         self.active_before = active_before
-        self.queued_before = queued_before
         return list(self.rows)
 
     def fail_execution_if_stale(self, **kwargs):
@@ -21,22 +20,17 @@ class FakeRepository:
 
 
 class ExecutionRecoveryServiceTests(unittest.TestCase):
-    def test_scan_computes_cutoffs(self):
+    def test_scan_computes_active_cutoff(self):
         now = datetime(2026, 8, 11, 10, 0, 0)
         repo = FakeRepository()
         service.scan_stale_executions(
             now=now,
             active_stale_seconds=90,
-            queued_stale_seconds=1800,
             repository=repo,
         )
         self.assertEqual(
             repo.active_before,
             now - timedelta(seconds=90),
-        )
-        self.assertEqual(
-            repo.queued_before,
-            now - timedelta(seconds=1800),
         )
 
     def test_invalid_threshold_rejected(self):
@@ -46,10 +40,10 @@ class ExecutionRecoveryServiceTests(unittest.TestCase):
                 repository=FakeRepository(),
             )
 
-    def test_queue_descriptor(self):
-        d = service.recovery_descriptor("QUEUED")
-        self.assertEqual(d["failure_stage"], "INFRASTRUCTURE")
-        self.assertEqual(d["error_code"], "QUEUE_STALE")
+    def test_queued_is_not_recoverable_by_age(self):
+        self.assertNotIn("QUEUED", service.RECOVERABLE_STATES)
+        with self.assertRaises(ValueError):
+            service.recovery_descriptor("QUEUED")
 
     def test_running_descriptor_is_coordinator_heartbeat(self):
         d = service.recovery_descriptor("RUNNING")
@@ -76,7 +70,7 @@ class ExecutionRecoveryServiceTests(unittest.TestCase):
                     "id": 1,
                     "public_id": "uuid",
                     "codename": "c",
-                    "execution_state": "QUEUED",
+                    "execution_state": "RUNNING",
                     "state_version": 0,
                     "last_activity_at": None,
                 }

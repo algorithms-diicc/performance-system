@@ -281,6 +281,81 @@ def get_execution_by_codename(codename, conn=None):
             db.close()
 
 
+def list_queued_executions(
+    limit=1,
+    conn=None,
+    for_update=False,
+    skip_locked=False,
+):
+    """
+    Lista executions QUEUED en orden FIFO persistente.
+
+    `queued_at` define el orden primario y `id` resuelve empates de forma
+    determinista. Cuando `for_update=True`, el llamador puede reclamar la
+    fila dentro de su propia transacción. `skip_locked=True` permite que un
+    coordinador concurrente omita filas ya reclamadas sin bloquearse.
+    """
+    try:
+        parsed_limit = int(limit)
+    except (TypeError, ValueError):
+        raise ValueError("limit debe ser un entero.")
+
+    if parsed_limit < 1 or parsed_limit > 1000:
+        raise ValueError("limit debe estar entre 1 y 1000.")
+
+    if skip_locked and not for_update:
+        raise ValueError(
+            "skip_locked requiere for_update=True."
+        )
+
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    lock_clause = ""
+    if for_update:
+        lock_clause = " FOR UPDATE"
+        if skip_locked:
+            lock_clause += " SKIP LOCKED"
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    e.id,
+                    e.public_id::text AS public_id,
+                    e.submission_id,
+                    e.codename,
+                    e.execution_state,
+                    e.queued_at,
+                    e.benchmark,
+                    e.input_size,
+                    e.samples,
+                    e.execution_profile,
+                    e.execution_config,
+                    e.state_version,
+                    e.status
+                FROM executions e
+                WHERE e.execution_state = 'QUEUED'
+                ORDER BY
+                    e.queued_at ASC NULLS LAST,
+                    e.id ASC
+                LIMIT %s
+                """ + lock_clause + ";",
+                (parsed_limit,),
+            )
+            rows = cur.fetchall()
+
+        return [
+            dict(row)
+            for row in rows
+        ]
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
 
 def transition_execution(
     public_id,
@@ -600,17 +675,16 @@ def touch_heartbeat(public_id, conn=None):
 
 def list_stale_executions(
     active_before,
-    queued_before,
     conn=None,
 ):
     """
-    Lista candidates stale sin modificarlos.
+    Lista executions activas con heartbeat stale sin modificarlas.
 
-    QUEUED:
-      updated_at <= queued_before
-
-    RUNNING / PROCESSING:
+    Sólo RUNNING / PROCESSING son recuperables por timeout:
       COALESCE(last_heartbeat_at, updated_at) <= active_before
+
+    QUEUED puede esperar indefinidamente en la cola FIFO persistente y no se
+    considera stale por antigüedad.
 
     El orden por id hace el proceso determinista para tests/evidencia.
     """
@@ -629,28 +703,16 @@ def list_stale_executions(
                     state_version,
                     updated_at,
                     last_heartbeat_at,
-                    CASE
-                        WHEN execution_state = 'QUEUED'
-                            THEN updated_at
-                        ELSE COALESCE(last_heartbeat_at, updated_at)
-                    END AS last_activity_at
+                    COALESCE(
+                        last_heartbeat_at,
+                        updated_at
+                    ) AS last_activity_at
                 FROM executions
-                WHERE
-                    (
-                        execution_state = 'QUEUED'
-                        AND updated_at <= %s
-                    )
-                    OR
-                    (
-                        execution_state IN ('RUNNING', 'PROCESSING')
-                        AND COALESCE(last_heartbeat_at, updated_at) <= %s
-                    )
+                WHERE execution_state IN ('RUNNING', 'PROCESSING')
+                  AND COALESCE(last_heartbeat_at, updated_at) <= %s
                 ORDER BY id ASC;
                 """,
-                (
-                    queued_before,
-                    active_before,
-                ),
+                (active_before,),
             )
             rows = cur.fetchall()
 
@@ -677,7 +739,7 @@ def fail_execution_if_stale(
     Retorna dict si recuperó la fila.
     Retorna None si hubo una carrera: transición/heartbeat posterior al scan.
     """
-    if expected_state not in ('QUEUED', 'RUNNING', 'PROCESSING'):
+    if expected_state not in ('RUNNING', 'PROCESSING'):
         raise ExecutionRepositoryError(
             "State {!r} is not recoverable as stale.".format(
                 expected_state
@@ -688,12 +750,6 @@ def fail_execution_if_stale(
     db = conn or get_connection()
 
     try:
-        activity_sql = (
-            "updated_at"
-            if expected_state == "QUEUED"
-            else "COALESCE(last_heartbeat_at, updated_at)"
-        )
-
         query = """
             UPDATE executions
             SET
@@ -712,7 +768,7 @@ def fail_execution_if_stale(
             WHERE public_id = %s::uuid
               AND execution_state = %s
               AND state_version = %s
-              AND {activity_sql} <= %s
+              AND COALESCE(last_heartbeat_at, updated_at) <= %s
             RETURNING
                 id,
                 public_id::text AS public_id,
@@ -726,7 +782,7 @@ def fail_execution_if_stale(
                 updated_at,
                 last_heartbeat_at,
                 state_version;
-        """.format(activity_sql=activity_sql)
+        """
 
         with db.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
@@ -752,6 +808,58 @@ def fail_execution_if_stale(
         if owns_connection:
             db.rollback()
         raise
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def summarize_submission_execution_states(
+    submission_id,
+    conn=None,
+):
+    """
+    Resume estados canónicos de todas las executions de una Submission.
+
+    Se usa para mantener `submissions.status` como compatibilidad legacy sin
+    marcar una Submission como terminada mientras aún existan executions
+    QUEUED/RUNNING/PROCESSING.
+    """
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    COUNT(*)::int AS total,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'QUEUED'
+                    )::int AS queued,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'RUNNING'
+                    )::int AS running,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'PROCESSING'
+                    )::int AS processing,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'COMPLETED'
+                    )::int AS completed,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'FAILED'
+                    )::int AS failed,
+                    COUNT(*) FILTER (
+                        WHERE execution_state = 'CANCELLED'
+                    )::int AS cancelled
+                FROM executions
+                WHERE submission_id = %s;
+                """,
+                (submission_id,),
+            )
+            row = cur.fetchone()
+
+        return dict(row)
 
     finally:
         if owns_connection:

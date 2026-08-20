@@ -163,6 +163,11 @@ class MultiCppPostprocessingTests(unittest.TestCase):
                     "update_submission_status",
                     lambda *args, **kwargs: None,
                 ),
+                patch.object(
+                    app_module,
+                    "sync_submission_terminal_status",
+                    lambda *args, **kwargs: None,
+                ),
             ]
 
             for current_patch in patches:

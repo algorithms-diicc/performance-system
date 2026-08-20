@@ -14,14 +14,9 @@ from ..repositories import execution_repository
 
 
 ACTIVE_STATES = frozenset({"RUNNING", "PROCESSING"})
-RECOVERABLE_STATES = frozenset({"QUEUED", "RUNNING", "PROCESSING"})
+RECOVERABLE_STATES = ACTIVE_STATES
 
 RECOVERY_FAILURES = {
-    "QUEUED": (
-        "INFRASTRUCTURE",
-        "QUEUE_STALE",
-        "La ejecución permaneció en cola más allá del umbral permitido.",
-    ),
     "RUNNING": (
         "INFRASTRUCTURE",
         "COORDINATOR_HEARTBEAT_LOST",
@@ -35,33 +30,25 @@ RECOVERY_FAILURES = {
 }
 
 
-def _cutoffs(now, active_stale_seconds, queued_stale_seconds):
+def _active_cutoff(now, active_stale_seconds):
     if active_stale_seconds <= 0:
         raise ValueError("active_stale_seconds debe ser > 0.")
-    if queued_stale_seconds <= 0:
-        raise ValueError("queued_stale_seconds debe ser > 0.")
 
-    return (
-        now - timedelta(seconds=active_stale_seconds),
-        now - timedelta(seconds=queued_stale_seconds),
-    )
+    return now - timedelta(seconds=active_stale_seconds)
 
 
 def scan_stale_executions(
     now=None,
     active_stale_seconds=90,
-    queued_stale_seconds=1800,
     repository=execution_repository,
 ):
     now = now or datetime.now()
-    active_before, queued_before = _cutoffs(
+    active_before = _active_cutoff(
         now,
         active_stale_seconds,
-        queued_stale_seconds,
     )
     return repository.list_stale_executions(
         active_before=active_before,
-        queued_before=queued_before,
     )
 
 
@@ -81,20 +68,17 @@ def recovery_descriptor(state):
 def recover_stale_executions(
     now=None,
     active_stale_seconds=90,
-    queued_stale_seconds=1800,
     dry_run=True,
     repository=execution_repository,
 ):
     now = now or datetime.now()
-    active_before, queued_before = _cutoffs(
+    active_before = _active_cutoff(
         now,
         active_stale_seconds,
-        queued_stale_seconds,
     )
 
     candidates = repository.list_stale_executions(
         active_before=active_before,
-        queued_before=queued_before,
     )
 
     result = {
@@ -122,17 +106,11 @@ def recover_stale_executions(
         if dry_run:
             continue
 
-        cutoff = (
-            queued_before
-            if state == "QUEUED"
-            else active_before
-        )
-
         updated = repository.fail_execution_if_stale(
             public_id=row["public_id"],
             expected_state=state,
             expected_version=row["state_version"],
-            stale_before=cutoff,
+            stale_before=active_before,
             failure_stage=descriptor["failure_stage"],
             error_code=descriptor["error_code"],
             error_message=descriptor["error_message"],

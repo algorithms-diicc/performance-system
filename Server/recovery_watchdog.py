@@ -4,10 +4,10 @@ Performance System — recovery watchdog.
 
 Proceso independiente de Flask/Gunicorn.
 
-Motivo:
-- app.py arranca queue_manager() como thread al importar el módulo;
-- Gunicorn puede tener más de un worker;
-- no queremos un recovery monitor por worker web.
+Responsabilidad:
+- detectar RUNNING/PROCESSING sin heartbeat;
+- recuperar únicamente executions activas abandonadas;
+- no expirar QUEUED: la espera FIFO persistente puede ser legítimamente larga.
 
 El watchdog usa un PostgreSQL advisory lock para garantizar una única instancia
 activa por base de datos.
@@ -39,9 +39,6 @@ DEFAULT_INTERVAL_SECONDS = int(
 )
 DEFAULT_ACTIVE_STALE_SECONDS = int(
     os.getenv("RECOVERY_ACTIVE_STALE_SECONDS", "90")
-)
-DEFAULT_QUEUED_STALE_SECONDS = int(
-    os.getenv("RECOVERY_QUEUED_STALE_SECONDS", "1800")
 )
 
 
@@ -77,12 +74,10 @@ def release_singleton_lock(conn, lock_key=WATCHDOG_LOCK_KEY):
 def run_recovery_cycle(
     apply_changes,
     active_stale_seconds,
-    queued_stale_seconds,
     recovery_func=recover_stale_executions,
 ):
     return recovery_func(
         active_stale_seconds=active_stale_seconds,
-        queued_stale_seconds=queued_stale_seconds,
         dry_run=not apply_changes,
     )
 
@@ -130,12 +125,6 @@ def build_parser():
         default=DEFAULT_ACTIVE_STALE_SECONDS,
         help="Umbral stale para RUNNING/PROCESSING.",
     )
-    parser.add_argument(
-        "--queued-seconds",
-        type=int,
-        default=DEFAULT_QUEUED_STALE_SECONDS,
-        help="Umbral stale para QUEUED.",
-    )
     return parser
 
 
@@ -144,8 +133,6 @@ def validate_args(args):
         raise ValueError("--interval debe ser > 0.")
     if args.active_seconds <= 0:
         raise ValueError("--active-seconds debe ser > 0.")
-    if args.queued_seconds <= 0:
-        raise ValueError("--queued-seconds debe ser > 0.")
 
 
 def main(argv=None):
@@ -179,7 +166,6 @@ def main(argv=None):
                 result = run_recovery_cycle(
                     apply_changes=args.apply,
                     active_stale_seconds=args.active_seconds,
-                    queued_stale_seconds=args.queued_seconds,
                 )
                 print_cycle(result)
             except Exception as exc:

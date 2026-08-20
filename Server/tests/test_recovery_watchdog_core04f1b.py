@@ -53,11 +53,11 @@ class RecoveryWatchdogTests(unittest.TestCase):
         result = watchdog.run_recovery_cycle(
             apply_changes=False,
             active_stale_seconds=90,
-            queued_stale_seconds=1800,
             recovery_func=fake_recovery,
         )
         self.assertTrue(result["dry_run"])
         self.assertTrue(calls[0]["dry_run"])
+        self.assertNotIn("queued_stale_seconds", calls[0])
 
     def test_cycle_apply_sets_dry_run_false(self):
         def fake_recovery(**kwargs):
@@ -66,7 +66,6 @@ class RecoveryWatchdogTests(unittest.TestCase):
         result = watchdog.run_recovery_cycle(
             apply_changes=True,
             active_stale_seconds=90,
-            queued_stale_seconds=1800,
             recovery_func=fake_recovery,
         )
         self.assertFalse(result["dry_run"])
@@ -75,7 +74,6 @@ class RecoveryWatchdogTests(unittest.TestCase):
         args = SimpleNamespace(
             interval=0,
             active_seconds=90,
-            queued_seconds=1800,
         )
         with self.assertRaises(ValueError):
             watchdog.validate_args(args)

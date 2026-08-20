@@ -151,6 +151,44 @@ def mark_worker_started(
     return row
 
 
+def activate_claimed_execution(
+    codename,
+    public_id,
+    repository=execution_repository,
+):
+    """
+    Activa heartbeat para una execution ya reclamada como RUNNING.
+
+    El dispatcher persistente hace QUEUED -> RUNNING dentro del claim
+    transaccional. Por eso aquí no se repite la transición de estado.
+    """
+    execution = get_execution_context(
+        codename,
+        repository=repository,
+    )
+
+    if str(execution.get("public_id")) != str(public_id):
+        raise UnexpectedWorkerOutcome(
+            "Claim public_id does not match codename={!r}.".format(
+                codename
+            )
+        )
+
+    if execution.get("execution_state") != "RUNNING":
+        raise UnexpectedWorkerOutcome(
+            "Claimed execution must already be RUNNING; current state={!r}."
+            .format(execution.get("execution_state"))
+        )
+
+    repository.touch_heartbeat(public_id)
+    start_heartbeat_lease(
+        codename,
+        public_id,
+        repository=repository,
+    )
+    return execution
+
+
 def persist_worker_outcome(
     codename,
     outcome,

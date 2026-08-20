@@ -21,7 +21,8 @@ El proyecto corresponde a una evolución sucesiva de trabajos de memoria desarro
 - Recolección de métricas mediante Linux `perf`.
 - Perfiles de ejecución configurables.
 - Persistencia y trazabilidad del estado de las ejecuciones.
-- Recuperación de ejecuciones obsoletas mediante un watchdog independiente.
+- Cola FIFO persistente en PostgreSQL mediante un dispatcher independiente.
+- Recuperación de ejecuciones activas sin heartbeat mediante un watchdog independiente.
 - Procesamiento estadístico y presentación de resultados experimentales.
 - Descarga de resultados para análisis posterior.
 
@@ -40,7 +41,6 @@ flowchart LR
     subgraph WEB["Servidor web"]
         G["Flask + Gunicorn<br/>Puerto 5000"]
         R["React build"]
-        Q["Queue manager"]
     end
 
     DB[("PostgreSQL")]
@@ -51,25 +51,28 @@ flowchart LR
         P["perf"]
     end
 
+    D["Execution dispatcher"]
     W["Recovery watchdog"]
 
     U -->|HTTP / HTTPS| G
     G -->|sirve| R
     G --> DB
-    G --> Q
 
-    Q -->|Envío :50000| S
-    S -->|Resultados :60000| Q
+    D -->|Reclama FIFO| DB
+    D -->|Envío :50000| S
+    S -->|Resultados :60000| D
 
     S --> C
     S --> P
 
-    W -->|Supervisa estados persistidos| DB
+    W -->|Supervisa RUNNING/PROCESSING| DB
 ```
 
 El frontend compilado se sirve directamente desde Flask en producción. Por ello, `npm start` se utiliza únicamente durante desarrollo y no es necesario como proceso permanente en el servidor.
 
-El `queue_manager` forma parte del proceso web y se inicia junto con la aplicación Flask. El `recovery_watchdog` es un proceso auxiliar destinado a detectar y recuperar ejecuciones persistidas que hayan quedado en un estado obsoleto después de una interrupción inesperada.
+La cola de ejecución tiene a PostgreSQL como fuente de verdad. El proceso independiente `Server/execution_dispatcher.py` reclama una única `Execution` a la vez en orden FIFO y mantiene serializada la medición. El servidor Flask/Gunicorn no ejecuta un gestor de cola al importarse.
+
+El `recovery_watchdog` también es un proceso independiente. Recupera únicamente ejecuciones `RUNNING` o `PROCESSING` que pierden heartbeat; una `Execution` `QUEUED` puede permanecer esperando indefinidamente sin considerarse obsoleta por antigüedad.
 
 ---
 
@@ -81,7 +84,7 @@ flowchart TD
     B["Backend valida la solicitud"]
     C["Se crean Submission y Execution"]
     D["Execution queda en cola"]
-    E["Queue manager asigna el trabajo"]
+    E["Dispatcher reclama la siguiente Execution FIFO"]
     F["Slave recibe la ejecución"]
     G["Compilación con g++"]
     H["Warmup y mediciones con perf"]
@@ -160,6 +163,7 @@ Las principales áreas configurables son:
 - origen frontend y CORS;
 - coordinador y puertos master/slave;
 - tiempos de compilación y ejecución;
+- dispatcher FIFO persistente;
 - recuperación de ejecuciones;
 - ruta de `perf`;
 - integración opcional para explicaciones asistidas por IA.
@@ -391,14 +395,26 @@ gunicorn \
   Server.webapp.app:app
 ```
 
-### Terminal 2 — Frontend
+### Terminal 2 — Dispatcher de ejecuciones
+
+Desde la raíz:
+
+```bash
+source venv-perf/bin/activate
+
+python3 Server/execution_dispatcher.py \
+  --watch \
+  --interval 2
+```
+
+### Terminal 3 — Frontend
 
 ```bash
 cd Client/my-app
 npm start
 ```
 
-### Terminal 3 — Nodo de medición
+### Terminal 4 — Nodo de medición
 
 Desde la raíz:
 
@@ -432,7 +448,7 @@ Primero generar el frontend:
 ./scripts/build_frontend.sh
 ```
 
-Posteriormente se requieren, como mínimo, dos procesos.
+Posteriormente se requieren, como mínimo, tres procesos.
 
 ### Backend
 
@@ -441,6 +457,14 @@ gunicorn \
   --workers 1 \
   --bind 0.0.0.0:5000 \
   Server.webapp.app:app
+```
+
+### Dispatcher de ejecuciones
+
+```bash
+python3 Server/execution_dispatcher.py \
+  --watch \
+  --interval 2
 ```
 
 ### Nodo de medición
@@ -460,11 +484,13 @@ python3 Server/recovery_watchdog.py \
 
 ### Gunicorn y coordinación
 
-La arquitectura actual inicia un `queue_manager` dentro del proceso de aplicación. Por ello, el despliegue validado utiliza **un único worker Gunicorn**.
+La cola ya no depende de memoria ni de threads internos de Gunicorn. El `execution_dispatcher` es un proceso separado y usa un PostgreSQL advisory lock para garantizar una única instancia activa por base de datos.
 
-No se debe aumentar arbitrariamente la cantidad de workers sin revisar primero el modelo de coordinación de la cola.
+El comando de producción anterior conserva **un único worker Gunicorn** porque ésa es la configuración web validada actualmente. La coordinación de la cola ya no impone esa restricción, pero cualquier aumento de workers debe validarse respecto del resto de la capa web antes de adoptarse en producción.
 
-Para un servidor permanente se recomienda administrar backend, slave y watchdog mediante `systemd` u otro supervisor de procesos. Las unidades concretas deben configurarse con el usuario, rutas y política de red reales del servidor de destino; el repositorio no mantiene rutas institucionales hardcodeadas.
+El despliegue validado usa **una única instancia de `Server/slave.py` por nodo de medición**. No deben ejecutarse dos procesos slave sobre el mismo hardware: el protocolo Master/Slave legacy todavía puede entregar la misma tarea a más de una conexión disponible, lo que invalidaría la serialidad experimental del nodo.
+
+Para un servidor permanente se recomienda administrar backend, dispatcher, slave y watchdog mediante `systemd` u otro supervisor de procesos. Las unidades concretas deben configurarse con el usuario, rutas y política de red reales del servidor de destino; el repositorio no mantiene rutas institucionales hardcodeadas.
 
 ---
 
@@ -535,6 +561,7 @@ performance-system/
 │   ├── input/                  # generación y entradas de benchmarks
 │   ├── tests/                  # pruebas backend
 │   ├── webapp/                 # aplicación Flask y API
+│   ├── execution_dispatcher.py # dispatcher FIFO persistente
 │   ├── recovery_watchdog.py    # recuperación de ejecuciones stale
 │   └── slave.py                # nodo de ejecución y medición
 ├── docs/                       # documentación e imágenes del proyecto
