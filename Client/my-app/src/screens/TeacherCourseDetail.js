@@ -15,6 +15,9 @@ import InlineState
 import TeacherCourseAnalytics
   from "./TeacherCourseAnalytics";
 
+import TeacherCourseAttention
+  from "./TeacherCourseAttention";
+
 import {
   coursePeriod,
   formatDateTime,
@@ -48,6 +51,17 @@ function attentionLabel(
 }
 
 
+function enrollmentRejectionLabel(
+  reason
+) {
+  if (reason === "NOT_ELIGIBLE") {
+    return "Cuenta no disponible para inscripción";
+  }
+
+  return "No fue posible agregar";
+}
+
+
 export default function TeacherCourseDetail() {
   const {
     courseId,
@@ -66,6 +80,26 @@ export default function TeacherCourseDetail() {
   const [
     totalStudents,
     setTotalStudents,
+  ] = useState(0);
+
+  const [
+    attentionStudents,
+    setAttentionStudents,
+  ] = useState([]);
+
+  const [
+    loadingAttention,
+    setLoadingAttention,
+  ] = useState(true);
+
+  const [
+    attentionError,
+    setAttentionError,
+  ] = useState(null);
+
+  const [
+    attentionRequestToken,
+    setAttentionRequestToken,
   ] = useState(0);
 
   const [
@@ -167,6 +201,7 @@ export default function TeacherCourseDetail() {
   }, [
     membership,
     search,
+    attention,
   ]);
 
 
@@ -232,6 +267,94 @@ export default function TeacherCourseDetail() {
   }, [
     courseId,
     reloadToken,
+  ]);
+
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    (async () => {
+      try {
+        setLoadingAttention(true);
+        setAttentionError(null);
+
+        const items = [];
+        let pageNumber = 1;
+        let total = 0;
+
+        do {
+          const params =
+            new URLSearchParams({
+              membership: "active",
+              page:
+                String(pageNumber),
+              page_size: "200",
+            });
+
+          const data =
+            await teacherApi(
+              `/api/teacher/courses/${courseId}/students?${params.toString()}`,
+              {
+                signal:
+                  controller.signal,
+              }
+            );
+
+          const pageItems =
+            Array.isArray(data.items)
+              ? data.items
+              : [];
+
+          items.push(
+            ...pageItems
+          );
+
+          total =
+            Number(data.total || 0);
+
+          if (
+            pageItems.length === 0
+          ) {
+            break;
+          }
+
+          pageNumber += 1;
+        } while (
+          !controller.signal.aborted
+          && items.length < total
+        );
+
+        setAttentionStudents(
+          items
+        );
+      } catch (err) {
+        if (
+          err.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setAttentionError(
+          err.message ||
+          "No fue posible cargar el resumen de atención académica."
+        );
+      } finally {
+        if (
+          !controller.signal
+            .aborted
+        ) {
+          setLoadingAttention(false);
+        }
+      }
+    })();
+
+    return () =>
+      controller.abort();
+  }, [
+    courseId,
+    reloadToken,
+    attentionRequestToken,
   ]);
 
 
@@ -318,26 +441,69 @@ export default function TeacherCourseDetail() {
   ]);
 
 
+  const usingAttentionSnapshot =
+    attention !== "all" &&
+    membership === "active";
+
+
   const filteredStudents =
     useMemo(
       () => {
+        let source =
+          usingAttentionSnapshot
+            ? attentionStudents
+            : students;
+
+        if (
+          usingAttentionSnapshot &&
+          search.trim()
+        ) {
+          const normalizedSearch =
+            search
+              .trim()
+              .toLowerCase();
+
+          source =
+            source.filter(
+              (student) => {
+                const fullName =
+                  String(
+                    student.fullName || ""
+                  ).toLowerCase();
+                const email =
+                  String(
+                    student.email || ""
+                  ).toLowerCase();
+
+                return (
+                  fullName.includes(
+                    normalizedSearch
+                  ) ||
+                  email.includes(
+                    normalizedSearch
+                  )
+                );
+              }
+            );
+        }
+
         if (
           attention === "all"
         ) {
-          return students;
+          return source;
         }
 
         if (
           attention === "no-executions"
         ) {
-          return students.filter(
+          return source.filter(
             (student) =>
               student.attention
                 ?.noExecutions
           );
         }
 
-        return students.filter(
+        return source.filter(
           (student) =>
             student.attention
               ?.failedMoreThanCompleted
@@ -345,19 +511,57 @@ export default function TeacherCourseDetail() {
       },
       [
         students,
+        attentionStudents,
         attention,
+        search,
+        usingAttentionSnapshot,
       ]
     );
 
 
+  const visibleStudentTotal =
+    usingAttentionSnapshot
+      ? filteredStudents.length
+      : totalStudents;
+
+  const effectiveLoadingStudents =
+    usingAttentionSnapshot
+      ? loadingAttention
+      : loadingStudents;
+
   const totalPages =
-    Math.max(
-      1,
-      Math.ceil(
-        totalStudents /
-        PAGE_SIZE
-      )
-    );
+    usingAttentionSnapshot
+      ? 1
+      : Math.max(
+        1,
+        Math.ceil(
+          totalStudents /
+          PAGE_SIZE
+        )
+      );
+
+
+  const showAttentionStudents =
+    (filter) => {
+      setMembership("active");
+      setAttention(filter);
+      setSearch("");
+      setPage(1);
+
+      window.setTimeout(
+        () => {
+          document
+            .getElementById(
+              "teacher-students-panel"
+            )
+            ?.scrollIntoView({
+              behavior: "smooth",
+              block: "start",
+            });
+        },
+        0
+      );
+    };
 
 
   const patchCourse =
@@ -833,6 +1037,26 @@ export default function TeacherCourseDetail() {
         />
 
 
+        <TeacherCourseAttention
+          courseId={courseId}
+          students={
+            attentionStudents
+          }
+          loading={
+            loadingAttention
+          }
+          error={attentionError}
+          onRetry={() =>
+            setAttentionRequestToken(
+              (value) => value + 1
+            )
+          }
+          onSelectFilter={
+            showAttentionStudents
+          }
+        />
+
+
         {editing && (
 
           <section className="teacher-panel">
@@ -981,7 +1205,10 @@ export default function TeacherCourseDetail() {
         )}
 
 
-        <section className="teacher-panel">
+        <section
+          id="teacher-students-panel"
+          className="teacher-panel"
+        >
 
           <div className="teacher-panel-heading">
 
@@ -1034,7 +1261,7 @@ export default function TeacherCourseDetail() {
               <label
                 htmlFor="teacher-student-emails"
               >
-                Correos institucionales
+                Correos de estudiantes
               </label>
 
               <textarea
@@ -1048,16 +1275,17 @@ export default function TeacherCourseDetail() {
                   )
                 }
                 placeholder={
-                  "alumno1@udec.cl\n"
-                  + "alumno2@udec.cl\n"
-                  + "alumno3@udec.cl"
+                  "alumno1@inf.udec.cl\n"
+                  + "alumno2@inf.udec.cl\n"
+                  + "alumno3@inf.udec.cl"
                 }
                 required
               />
 
               <div className="teacher-add-help">
                 Puedes pegar una lista separada por saltos de línea,
-                espacios, comas o punto y coma.
+                espacios, comas o punto y coma. Deben corresponder a
+                cuentas de estudiantes registradas en la plataforma.
               </div>
 
 
@@ -1099,7 +1327,9 @@ export default function TeacherCourseDetail() {
                             >
                               {item.email}
                               {" — "}
-                              {item.reason}
+                              {enrollmentRejectionLabel(
+                                item.reason
+                              )}
                             </li>
                           )
                         )}
@@ -1161,11 +1391,14 @@ export default function TeacherCourseDetail() {
                     ? "is-active"
                     : ""
                 }
-                onClick={() =>
+                onClick={() => {
                   setMembership(
                     "inactive"
-                  )
-                }
+                  );
+                  setAttention(
+                    "all"
+                  );
+                }}
               >
                 Retirados
               </button>
@@ -1177,11 +1410,14 @@ export default function TeacherCourseDetail() {
                     ? "is-active"
                     : ""
                 }
-                onClick={() =>
+                onClick={() => {
                   setMembership(
                     "all"
-                  )
-                }
+                  );
+                  setAttention(
+                    "all"
+                  );
+                }}
               >
                 Todos
               </button>
@@ -1205,11 +1441,23 @@ export default function TeacherCourseDetail() {
               <select
                 className="form-select"
                 value={attention}
-                onChange={(event) =>
+                onChange={(event) => {
+                  const nextAttention =
+                    event.target.value;
+
                   setAttention(
-                    event.target.value
-                  )
-                }
+                    nextAttention
+                  );
+
+                  if (
+                    nextAttention !== "all"
+                  ) {
+                    setMembership(
+                      "active"
+                    );
+                    setPage(1);
+                  }
+                }}
               >
                 <option value="all">
                   Todas las situaciones
@@ -1227,8 +1475,8 @@ export default function TeacherCourseDetail() {
           </div>
 
 
-          {loadingStudents &&
-            students.length === 0 && (
+          {effectiveLoadingStudents &&
+            filteredStudents.length === 0 && (
               <InlineState
                 type="loading"
                 title="Cargando estudiantes"
@@ -1237,7 +1485,7 @@ export default function TeacherCourseDetail() {
             )}
 
 
-          {!loadingStudents &&
+          {!effectiveLoadingStudents &&
             filteredStudents.length === 0 && (
 
               <div className="teacher-empty teacher-empty--compact">
@@ -1457,10 +1705,10 @@ export default function TeacherCourseDetail() {
           <footer className="teacher-pagination">
 
             <span>
-              {totalStudents === 0
+              {visibleStudentTotal === 0
                 ? "0 estudiantes"
                 : (
-                  `${totalStudents} estudiantes`
+                  `${visibleStudentTotal} estudiantes`
                 )}
             </span>
 
@@ -1470,8 +1718,9 @@ export default function TeacherCourseDetail() {
                 type="button"
                 className="btn btn-sm teacher-row-button"
                 disabled={
+                  usingAttentionSnapshot ||
                   page <= 1 ||
-                  loadingStudents
+                  effectiveLoadingStudents
                 }
                 onClick={() =>
                   setPage(
@@ -1487,15 +1736,20 @@ export default function TeacherCourseDetail() {
               </button>
 
               <span>
-                Página {page} de {totalPages}
+                Página {
+                  usingAttentionSnapshot
+                    ? 1
+                    : page
+                } de {totalPages}
               </span>
 
               <button
                 type="button"
                 className="btn btn-sm teacher-row-button"
                 disabled={
+                  usingAttentionSnapshot ||
                   page >= totalPages ||
-                  loadingStudents
+                  effectiveLoadingStudents
                 }
                 onClick={() =>
                   setPage(

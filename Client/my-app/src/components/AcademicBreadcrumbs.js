@@ -54,7 +54,10 @@ const buildAcademicBreadcrumbItems = ({
   const resultLabel = cleanFilename(sourceFilename) || "Resultado";
   const items = [];
 
-  if (isAdminUser(currentUser)) {
+  const adminUser = isAdminUser(currentUser);
+  const academicSupervisor = adminUser || isTeacherUser(currentUser);
+
+  if (adminUser && !normalizedCourseId) {
     items.push(
       {
         key: "administration",
@@ -67,7 +70,7 @@ const buildAcademicBreadcrumbItems = ({
         href: "/admin/users",
       }
     );
-  } else if (isTeacherUser(currentUser)) {
+  } else if (academicSupervisor) {
     items.push({
       key: "supervision",
       label: "Supervisión",

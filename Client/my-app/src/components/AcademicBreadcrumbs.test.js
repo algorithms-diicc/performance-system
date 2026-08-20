@@ -128,6 +128,34 @@ describe("AcademicBreadcrumbs", () => {
     );
   });
 
+  test("builds the Admin course Submission route through supervision", () => {
+    const navigation = renderBreadcrumbs({
+      currentUser: admin,
+      page: "submission",
+      submissionId: 7,
+      course,
+      courseId: 9,
+    });
+
+    expect(
+      within(navigation).getByRole("link", { name: "Supervisión" })
+    ).toHaveAttribute("href", "/teacher/courses");
+    expect(
+      within(navigation).getByRole("link", {
+        name: "CC4102 · Diseño y Análisis de Algoritmos",
+      })
+    ).toHaveAttribute("href", "/teacher/courses/9");
+    expect(
+      within(navigation).queryByRole("link", {
+        name: "Administración",
+      })
+    ).not.toBeInTheDocument();
+    expect(within(navigation).getByText("Experimento #7")).toHaveAttribute(
+      "aria-current",
+      "page"
+    );
+  });
+
   test("builds the Admin Result route without an owner link", () => {
     const navigation = renderBreadcrumbs({
       currentUser: admin,

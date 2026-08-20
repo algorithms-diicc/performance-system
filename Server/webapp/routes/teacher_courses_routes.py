@@ -1416,6 +1416,37 @@ def _normalize_emails(data):
     return emails
 
 
+def _is_enrollable_student(role_name, is_active):
+    """Solo una cuenta Student activa puede tener membresía académica activa."""
+    return (
+        str(role_name or "").strip() == "Student"
+        and bool(is_active)
+    )
+
+
+def _privacy_safe_enrollment_rejection(email, user):
+    """
+    Devuelve un rechazo indistinguible para candidatos no elegibles.
+
+    No revela si el correo existe, si corresponde a otro rol ni si la cuenta
+    está inactiva. También conserva el correo solicitado en vez de devolver
+    datos canónicos de una cuenta ajena.
+    """
+    if (
+        user is not None
+        and _is_enrollable_student(
+            user.get("role_name"),
+            user.get("is_active"),
+        )
+    ):
+        return None
+
+    return {
+        "email": str(email or "").strip().casefold(),
+        "reason": "NOT_ELIGIBLE",
+    }
+
+
 @teacher_courses_bp.route(
     "/teacher/courses/<int:course_id>/students",
     methods=["POST"],
@@ -1458,22 +1489,12 @@ def add_course_students(course_id):
             )
             user = cur.fetchone()
 
-            if user is None:
-                rejected.append(
-                    {
-                        "email": email,
-                        "reason": "USER_NOT_FOUND",
-                    }
-                )
-                continue
-
-            if user["role_name"] != "Student":
-                rejected.append(
-                    {
-                        "email": user["email"],
-                        "reason": "NOT_STUDENT",
-                    }
-                )
+            rejection = _privacy_safe_enrollment_rejection(
+                email,
+                user,
+            )
+            if rejection is not None:
+                rejected.append(rejection)
                 continue
 
             cur.execute(
@@ -1671,10 +1692,14 @@ def restore_course_student(course_id, user_id):
             SELECT
                 cm.id,
                 cm.is_active,
-                u.email
+                u.email,
+                u.is_active AS user_active,
+                r.name AS role_name
             FROM course_memberships cm
             JOIN users u
               ON u.id = cm.user_id
+            JOIN roles r
+              ON r.id = u.role_id
             WHERE cm.course_id = %s
               AND cm.user_id = %s
             FOR UPDATE;
@@ -1686,6 +1711,15 @@ def restore_course_student(course_id, user_id):
         if membership is None:
             raise NotFoundError(
                 "El estudiante no pertenece a este curso."
+            )
+
+        if not _is_enrollable_student(
+            membership.get("role_name"),
+            membership.get("user_active"),
+        ):
+            raise ValidationError(
+                "La cuenta ya no está disponible para reactivación "
+                "como estudiante."
             )
 
         if not membership["is_active"]:
