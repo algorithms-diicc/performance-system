@@ -32,6 +32,208 @@ export function executionStateLabel(state, fallback = "Desconocido") {
   return STATE_LABELS[normalized] || normalized;
 }
 
+const EXECUTION_STATE_I18N_KEYS = {
+  QUEUED:
+    "adminCommon.executionStates.queued",
+  RUNNING:
+    "adminCommon.executionStates.running",
+  PROCESSING:
+    "adminCommon.executionStates.processing",
+  COMPLETED:
+    "adminCommon.executionStates.completed",
+  FAILED:
+    "adminCommon.executionStates.failed",
+  CANCELLED:
+    "adminCommon.executionStates.cancelled",
+};
+
+const ADMIN_ROLE_I18N_KEYS = {
+  Student:
+    "adminCommon.roles.Student",
+  Teacher:
+    "adminCommon.roles.Teacher",
+  Admin:
+    "adminCommon.roles.Admin",
+};
+
+
+export function localizedExecutionStateLabel(
+  state,
+  t = null,
+  fallback = "Desconocido"
+) {
+  if (!state) {
+    return typeof t === "function"
+      ? t(
+          "adminCommon.executionStates.unknown"
+        )
+      : fallback;
+  }
+
+  const normalized =
+    String(state).toUpperCase();
+
+  const key =
+    EXECUTION_STATE_I18N_KEYS[
+      normalized
+    ];
+
+  if (
+    key &&
+    typeof t === "function"
+  ) {
+    return t(key);
+  }
+
+  return executionStateLabel(
+    normalized,
+    fallback
+  );
+}
+
+
+export function localizedExecutionStateOptions(
+  t = null
+) {
+  return EXECUTION_STATE_OPTIONS.map(
+    (option) => ({
+      value: option.value,
+      label:
+        option.value === "all"
+          ? (
+              typeof t === "function"
+                ? t(
+                    "adminCommon.executionStates.all"
+                  )
+                : option.label
+            )
+          : localizedExecutionStateLabel(
+              option.value,
+              t,
+              option.label
+            ),
+    })
+  );
+}
+
+
+export function adminRoleLabel(
+  role,
+  t = null
+) {
+  const normalized =
+    String(role || "").trim();
+
+  const legacy = {
+    Student: "Estudiante",
+    Teacher: "Docente",
+    Admin: "Administrador",
+  };
+
+  const key =
+    ADMIN_ROLE_I18N_KEYS[
+      normalized
+    ];
+
+  if (
+    key &&
+    typeof t === "function"
+  ) {
+    return t(key);
+  }
+
+  if (legacy[normalized]) {
+    return legacy[normalized];
+  }
+
+  if (
+    typeof t === "function"
+  ) {
+    return t(
+      "adminCommon.roles.unknown"
+    );
+  }
+
+  return normalized || "Sin rol";
+}
+
+
+export function adminAccountStatusLabel(
+  isActive,
+  t = null
+) {
+  if (
+    typeof isActive
+    !== "boolean"
+  ) {
+    return typeof t === "function"
+      ? t(
+          "adminCommon.accountStatus.unknown"
+        )
+      : "Desconocido";
+  }
+
+  const key =
+    isActive
+      ? "adminCommon.accountStatus.active"
+      : "adminCommon.accountStatus.inactive";
+
+  if (
+    typeof t === "function"
+  ) {
+    return t(key);
+  }
+
+  return isActive
+    ? "Activo"
+    : "Inactivo";
+}
+
+
+export function adminAccountStatusBadgeClass(
+  isActive
+) {
+  if (
+    typeof isActive
+    !== "boolean"
+  ) {
+    return "";
+  }
+
+  return isActive
+    ? "app-status-badge--success"
+    : "app-status-badge--warning";
+}
+
+
+export function localizedAdminUserLastExecutionLabel(
+  user = {},
+  t = null
+) {
+  if (
+    user.lastExecutionState
+  ) {
+    return localizedExecutionStateLabel(
+      user.lastExecutionState,
+      t
+    );
+  }
+
+  if (
+    typeof t === "function"
+  ) {
+    return t(
+      "adminCommon.executionStates.none"
+    );
+  }
+
+  return (
+    user.lastExecutionStatus
+    || "Sin ejecuciones"
+  );
+}
+
+
 export function executionStateBadgeClass(state) {
   const normalized = String(state || "").toUpperCase();
 

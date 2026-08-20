@@ -5,6 +5,10 @@ import {
   isAdminUser,
   isTeacherUser,
 } from "../common/userAccessModel";
+import {
+  translate,
+  useI18n,
+} from "../i18n";
 
 import "./AcademicBreadcrumbs.css";
 
@@ -20,7 +24,16 @@ const cleanFilename = (value) => {
   return normalized.split("/").filter(Boolean).pop() || "";
 };
 
-const formatAcademicCourseLabel = (course, courseId) => {
+const resolveTranslation = (t, key, params) =>
+  typeof t === "function"
+    ? t(key, params)
+    : translate("es", key, params);
+
+const formatAcademicCourseLabel = (
+  course,
+  courseId,
+  t
+) => {
   const code = cleanText(course?.code);
   const name = cleanText(course?.name);
 
@@ -31,19 +44,33 @@ const formatAcademicCourseLabel = (course, courseId) => {
   const normalizedCourseId = cleanIdentifier(
     courseId ?? course?.id
   );
+
   return normalizedCourseId
-    ? `Curso #${normalizedCourseId}`
-    : "Curso";
+    ? resolveTranslation(
+        t,
+        "academicBreadcrumbs.courseNumber",
+        { id: normalizedCourseId }
+      )
+    : resolveTranslation(
+        t,
+        "academicBreadcrumbs.course"
+      );
 };
 
-const buildAcademicBreadcrumbItems = ({
-  currentUser,
-  page = "submission",
-  submissionId,
-  sourceFilename,
-  course,
-  courseId,
-}) => {
+const buildAcademicBreadcrumbItems = (
+  {
+    currentUser,
+    page = "submission",
+    submissionId,
+    sourceFilename,
+    course,
+    courseId,
+  },
+  t
+) => {
+  const tr = (key, params) =>
+    resolveTranslation(t, key, params);
+
   const isResult = page === "result";
   const isComparison = page === "comparison";
   const isDetailPage = isResult || isComparison;
@@ -51,29 +78,34 @@ const buildAcademicBreadcrumbItems = ({
   const normalizedCourseId = cleanIdentifier(
     courseId ?? course?.id
   );
-  const resultLabel = cleanFilename(sourceFilename) || "Resultado";
+  const resultLabel =
+    cleanFilename(sourceFilename) ||
+    tr("academicBreadcrumbs.result");
   const items = [];
 
   const adminUser = isAdminUser(currentUser);
-  const academicSupervisor = adminUser || isTeacherUser(currentUser);
+  const academicSupervisor =
+    adminUser || isTeacherUser(currentUser);
 
   if (adminUser && !normalizedCourseId) {
     items.push(
       {
         key: "administration",
-        label: "Administración",
+        label: tr(
+          "academicBreadcrumbs.administration"
+        ),
         href: "/admin",
       },
       {
         key: "users",
-        label: "Usuarios",
+        label: tr("academicBreadcrumbs.users"),
         href: "/admin/users",
       }
     );
   } else if (academicSupervisor) {
     items.push({
       key: "supervision",
-      label: "Supervisión",
+      label: tr("academicBreadcrumbs.supervision"),
       href: "/teacher/courses",
     });
 
@@ -82,7 +114,8 @@ const buildAcademicBreadcrumbItems = ({
         key: "course",
         label: formatAcademicCourseLabel(
           course,
-          normalizedCourseId
+          normalizedCourseId,
+          t
         ),
         href: `/teacher/courses/${encodeURIComponent(
           normalizedCourseId
@@ -92,7 +125,7 @@ const buildAcademicBreadcrumbItems = ({
   } else {
     items.push({
       key: "profile",
-      label: "Mi perfil",
+      label: tr("academicBreadcrumbs.profile"),
       href: "/profile",
     });
   }
@@ -100,7 +133,10 @@ const buildAcademicBreadcrumbItems = ({
   if (normalizedSubmissionId) {
     items.push({
       key: "submission",
-      label: `Experimento #${normalizedSubmissionId}`,
+      label: tr(
+        "academicBreadcrumbs.experimentNumber",
+        { id: normalizedSubmissionId }
+      ),
       href: isDetailPage
         ? `/submissions/${encodeURIComponent(
             normalizedSubmissionId
@@ -110,7 +146,7 @@ const buildAcademicBreadcrumbItems = ({
   } else if (!isDetailPage) {
     items.push({
       key: "submission",
-      label: "Experimento",
+      label: tr("academicBreadcrumbs.experiment"),
       href: null,
     });
   }
@@ -126,7 +162,7 @@ const buildAcademicBreadcrumbItems = ({
   if (isComparison) {
     items.push({
       key: "comparison",
-      label: "Comparación",
+      label: tr("academicBreadcrumbs.comparison"),
       href: null,
     });
   }
@@ -138,12 +174,18 @@ const buildAcademicBreadcrumbItems = ({
 };
 
 const AcademicBreadcrumbs = (props) => {
-  const items = buildAcademicBreadcrumbItems(props);
+  const { t } = useI18n();
+  const items = buildAcademicBreadcrumbItems(
+    props,
+    t
+  );
 
   return (
     <nav
       className="academic-breadcrumbs"
-      aria-label="Ruta de navegación"
+      aria-label={t(
+        "academicBreadcrumbs.navigationAria"
+      )}
     >
       <ol>
         {items.map((item, index) => (
@@ -164,7 +206,9 @@ const AcademicBreadcrumbs = (props) => {
             ) : (
               <span
                 className="academic-breadcrumbs__current"
-                aria-current={item.current ? "page" : undefined}
+                aria-current={
+                  item.current ? "page" : undefined
+                }
                 title={item.label}
               >
                 {item.label}

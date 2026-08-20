@@ -12,6 +12,10 @@ import {
 import InlineState
   from "../components/InlineState";
 
+import {
+  useI18n,
+} from "../i18n";
+
 import TeacherCourseAnalytics
   from "./TeacherCourseAnalytics";
 
@@ -22,6 +26,7 @@ import {
   coursePeriod,
   formatDateTime,
   teacherApi,
+  teacherRequestErrorMessage,
 } from "./teacherApi";
 
 import "./TeacherDashboard.css";
@@ -31,34 +36,134 @@ const PAGE_SIZE = 50;
 
 
 function attentionLabel(
-  student
+  student,
+  t
 ) {
   if (
     student.attention
       ?.failedMoreThanCompleted
   ) {
-    return "Más fallos que completadas";
+    return t(
+      "teacherCourseDetail.attention.failures"
+    );
   }
 
   if (
     student.attention
       ?.noExecutions
   ) {
-    return "Sin ejecuciones";
+    return t(
+      "teacherCourseDetail.attention.noExecutions"
+    );
   }
 
-  return "Sin alerta";
+  return t(
+    "teacherCourseDetail.attention.none"
+  );
 }
 
 
 function enrollmentRejectionLabel(
-  reason
+  reason,
+  t
 ) {
-  if (reason === "NOT_ELIGIBLE") {
-    return "Cuenta no disponible para inscripción";
+  if (
+    reason === "NOT_ELIGIBLE"
+  ) {
+    return t(
+      "teacherCourseDetail.enrollment.notEligible"
+    );
   }
 
-  return "No fue posible agregar";
+  return t(
+    "teacherCourseDetail.enrollment.rejectedGeneric"
+  );
+}
+
+
+function countKey(
+  count,
+  base
+) {
+  return `${base}.${
+    count === 1
+      ? "one"
+      : "other"
+  }`;
+}
+
+
+function courseDetailErrorMessage(
+  error,
+  language,
+  t,
+  fallbackKey
+) {
+  if (!error) {
+    return "";
+  }
+
+  const status =
+    Number(error?.status);
+
+  const businessStatus =
+    status === 400 ||
+    status === 409 ||
+    status === 422;
+
+  if (
+    language === "es" &&
+    businessStatus &&
+    typeof error?.message === "string" &&
+    error.message.trim()
+  ) {
+    return error.message.trim();
+  }
+
+  const code =
+    String(
+      error?.code || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  const field =
+    String(
+      error?.payload?.error?.field
+      || error?.payload?.field
+      || ""
+    ).trim();
+
+  if (
+    code === "VALIDATION_ERROR"
+  ) {
+    const fieldKeys = {
+      code:
+        "teacherCourseDetail.errors.validationCode",
+      name:
+        "teacherCourseDetail.errors.validationName",
+      academicYear:
+        "teacherCourseDetail.errors.validationYear",
+      academicTerm:
+        "teacherCourseDetail.errors.validationTerm",
+      emails:
+        "teacherCourseDetail.errors.validationEmails",
+    };
+
+    if (fieldKeys[field]) {
+      return t(
+        fieldKeys[field]
+      );
+    }
+  }
+
+  return teacherRequestErrorMessage(
+    error,
+    t,
+    {
+      fallbackKey,
+    }
+  );
 }
 
 
@@ -66,6 +171,12 @@ export default function TeacherCourseDetail() {
   const {
     courseId,
   } = useParams();
+
+  const {
+    language,
+    locale,
+    t,
+  } = useI18n();
 
   const [
     course,
@@ -172,7 +283,7 @@ export default function TeacherCourseDetail() {
     setExportFeedback,
   ] = useState({
     kind: "",
-    message: "",
+    error: null,
   });
 
   const [
@@ -248,10 +359,7 @@ export default function TeacherCourseDetail() {
           return;
         }
 
-        setError(
-          err.message ||
-          "No fue posible cargar el curso."
-        );
+        setError(err);
       } finally {
         if (
           !controller.signal
@@ -336,8 +444,7 @@ export default function TeacherCourseDetail() {
         }
 
         setAttentionError(
-          err.message ||
-          "No fue posible cargar el resumen de atención académica."
+          err
         );
       } finally {
         if (
@@ -600,14 +707,24 @@ export default function TeacherCourseDetail() {
       const target =
         !course.isActive;
 
-      const verb =
+      const confirmKey =
         target
-          ? "reactivar"
-          : "finalizar";
+          ? "teacherCourseDetail.confirm.reactivateCourse"
+          : "teacherCourseDetail.confirm.finishCourse";
 
       if (
         !window.confirm(
-          `¿Confirmas ${verb} el curso ${course.code} ${coursePeriod(course)}?`
+          t(
+            confirmKey,
+            {
+              code:
+                course.code,
+              period:
+                coursePeriod(
+                  course
+                ),
+            }
+          )
         )
       ) {
         return;
@@ -621,8 +738,12 @@ export default function TeacherCourseDetail() {
         });
       } catch (err) {
         window.alert(
-          err.message ||
-          "No fue posible actualizar el curso."
+          courseDetailErrorMessage(
+            err,
+            language,
+            t,
+            "teacherCourseDetail.errors.updateCourse"
+          )
         );
       } finally {
         setSavingCourse(false);
@@ -640,7 +761,7 @@ export default function TeacherCourseDetail() {
         setExportingCsv(true);
         setExportFeedback({
           kind: "",
-          message: "",
+          error: null,
         });
 
         const response =
@@ -653,21 +774,32 @@ export default function TeacherCourseDetail() {
           );
 
         if (!response.ok) {
-          let message =
-            "No fue posible exportar el resumen del curso.";
+          let payload = null;
 
           try {
-            const body =
+            payload =
               await response.json();
-            message =
-              body?.error?.message ||
-              body?.message ||
-              message;
           } catch (_) {
             // La respuesta de error puede no ser JSON.
           }
 
-          throw new Error(message);
+          const exportError =
+            new Error(
+              payload?.error?.message
+              || payload?.message
+              || ""
+            );
+
+          exportError.status =
+            response.status;
+          exportError.code =
+            payload?.error?.code
+            || payload?.code
+            || "";
+          exportError.payload =
+            payload;
+
+          throw exportError;
         }
 
         const blob =
@@ -688,7 +820,9 @@ export default function TeacherCourseDetail() {
             blob
           );
         const anchor =
-          document.createElement("a");
+          document.createElement(
+            "a"
+          );
 
         anchor.href = objectUrl;
         anchor.download = filename;
@@ -703,15 +837,12 @@ export default function TeacherCourseDetail() {
 
         setExportFeedback({
           kind: "success",
-          message:
-            "Resumen CSV descargado correctamente.",
+          error: null,
         });
       } catch (err) {
         setExportFeedback({
           kind: "error",
-          message:
-            err.message ||
-            "No fue posible exportar el resumen del curso.",
+          error: err,
         });
       } finally {
         setExportingCsv(false);
@@ -744,8 +875,12 @@ export default function TeacherCourseDetail() {
         setEditing(false);
       } catch (err) {
         window.alert(
-          err.message ||
-          "No fue posible guardar el curso."
+          courseDetailErrorMessage(
+            err,
+            language,
+            t,
+            "teacherCourseDetail.errors.saveCourse"
+          )
         );
       } finally {
         setSavingCourse(false);
@@ -774,7 +909,6 @@ export default function TeacherCourseDetail() {
           );
 
         setAddFeedback(data);
-
         setEmails("");
 
         setReloadToken(
@@ -783,9 +917,7 @@ export default function TeacherCourseDetail() {
         );
       } catch (err) {
         setAddFeedback({
-          error:
-            err.message ||
-            "No fue posible agregar estudiantes.",
+          error: err,
         });
       } finally {
         setAdding(false);
@@ -797,7 +929,13 @@ export default function TeacherCourseDetail() {
     async (student) => {
       if (
         !window.confirm(
-          `¿Retirar a ${student.fullName} del curso? Sus resultados no serán eliminados.`
+          t(
+            "teacherCourseDetail.confirm.removeStudent",
+            {
+              name:
+                student.fullName,
+            }
+          )
         )
       ) {
         return;
@@ -817,8 +955,12 @@ export default function TeacherCourseDetail() {
         );
       } catch (err) {
         window.alert(
-          err.message ||
-          "No fue posible retirar al estudiante."
+          courseDetailErrorMessage(
+            err,
+            language,
+            t,
+            "teacherCourseDetail.errors.removeStudent"
+          )
         );
       }
     };
@@ -840,11 +982,54 @@ export default function TeacherCourseDetail() {
         );
       } catch (err) {
         window.alert(
-          err.message ||
-          "No fue posible restaurar al estudiante."
+          courseDetailErrorMessage(
+            err,
+            language,
+            t,
+            "teacherCourseDetail.errors.restoreStudent"
+          )
         );
       }
     };
+
+
+  const loadErrorMessage =
+    error
+      ? teacherRequestErrorMessage(
+          error,
+          t,
+          {
+            fallbackKey:
+              "teacherCourseDetail.errors.load",
+          }
+        )
+      : "";
+
+  const exportFeedbackMessage =
+    exportFeedback.kind === "success"
+      ? t(
+          "teacherCourseDetail.export.success"
+        )
+      : exportFeedback.kind === "error"
+        ? teacherRequestErrorMessage(
+            exportFeedback.error,
+            t,
+            {
+              fallbackKey:
+                "teacherCourseDetail.errors.export",
+            }
+          )
+        : "";
+
+  const addErrorMessage =
+    addFeedback?.error
+      ? courseDetailErrorMessage(
+          addFeedback.error,
+          language,
+          t,
+          "teacherCourseDetail.errors.addStudents"
+        )
+      : "";
 
 
   if (
@@ -857,7 +1042,7 @@ export default function TeacherCourseDetail() {
         <div className="teacher-page-inner">
           <InlineState
             type="loading"
-            title="Cargando curso"
+            title={t("teacherCourseDetail.loading")}
             compact
           />
         </div>
@@ -878,9 +1063,9 @@ export default function TeacherCourseDetail() {
 
           <InlineState
             type="error"
-            title="No pudimos cargar el curso"
-            description={error}
-            actionLabel="Reintentar"
+            title={t("teacherCourseDetail.errors.loadTitle")}
+            description={loadErrorMessage}
+            actionLabel={t("teacherCommon.actions.retry")}
             onAction={() =>
               setReloadToken(
                 (value) =>
@@ -913,7 +1098,7 @@ export default function TeacherCourseDetail() {
             to="/teacher/courses"
             className="teacher-back-link"
           >
-            ← Volver a cursos
+            {t("teacherCourseDetail.actions.back")}
           </Link>
 
         </div>
@@ -937,8 +1122,8 @@ export default function TeacherCourseDetail() {
                 }
               >
                 {course.isActive
-                  ? "Activo"
-                  : "Finalizado"}
+                  ? t("teacherCourseDetail.status.courseActive")
+                  : t("teacherCourseDetail.status.courseFinished")}
               </span>
 
             </div>
@@ -969,11 +1154,11 @@ export default function TeacherCourseDetail() {
               onClick={
                 exportStudentsCsv
               }
-              title="Exporta todos los estudiantes activos del curso"
+              title={t("teacherCourseDetail.export.title")}
             >
               {exportingCsv
-                ? "Exportando..."
-                : "Exportar CSV"}
+                ? t("teacherCourseDetail.actions.exporting")
+                : t("teacherCourseDetail.actions.export")}
             </button>
 
             <button
@@ -987,8 +1172,8 @@ export default function TeacherCourseDetail() {
               }
             >
               {editing
-                ? "Cerrar edición"
-                : "Editar"}
+                ? t("teacherCourseDetail.actions.closeEdit")
+                : t("teacherCourseDetail.actions.edit")}
             </button>
 
             <button
@@ -1006,8 +1191,8 @@ export default function TeacherCourseDetail() {
               }
             >
               {course.isActive
-                ? "Finalizar curso"
-                : "Reactivar curso"}
+                ? t("teacherCourseDetail.actions.finishCourse")
+                : t("teacherCourseDetail.actions.reactivateCourse")}
             </button>
 
           </div>
@@ -1015,7 +1200,7 @@ export default function TeacherCourseDetail() {
         </header>
 
 
-        {exportFeedback.message && (
+        {exportFeedbackMessage && (
           <div
             className={
               `teacher-export-feedback teacher-export-feedback--${exportFeedback.kind}`
@@ -1026,7 +1211,7 @@ export default function TeacherCourseDetail() {
                 : "status"
             }
           >
-            {exportFeedback.message}
+            {exportFeedbackMessage}
           </div>
         )}
 
@@ -1065,11 +1250,11 @@ export default function TeacherCourseDetail() {
 
               <div>
                 <h2>
-                  Editar curso
+                  {t("teacherCourseDetail.edit.title")}
                 </h2>
 
                 <p>
-                  Cambia los metadatos de esta instancia académica.
+                  {t("teacherCourseDetail.edit.description")}
                 </p>
               </div>
 
@@ -1083,7 +1268,7 @@ export default function TeacherCourseDetail() {
 
               <div>
                 <label>
-                  Código
+                  {t("teacherCourseDetail.edit.code")}
                 </label>
                 <input
                   className="form-control"
@@ -1106,7 +1291,7 @@ export default function TeacherCourseDetail() {
 
               <div className="teacher-form-span-2">
                 <label>
-                  Nombre
+                  {t("teacherCourseDetail.edit.name")}
                 </label>
                 <input
                   className="form-control"
@@ -1129,7 +1314,7 @@ export default function TeacherCourseDetail() {
 
               <div>
                 <label>
-                  Año
+                  {t("teacherCourseDetail.edit.year")}
                 </label>
                 <input
                   className="form-control"
@@ -1155,7 +1340,7 @@ export default function TeacherCourseDetail() {
 
               <div>
                 <label>
-                  Semestre
+                  {t("teacherCourseDetail.edit.semester")}
                 </label>
                 <select
                   className="form-select"
@@ -1192,8 +1377,8 @@ export default function TeacherCourseDetail() {
                   }
                 >
                   {savingCourse
-                    ? "Guardando..."
-                    : "Guardar cambios"}
+                    ? t("teacherCourseDetail.actions.saving")
+                    : t("teacherCourseDetail.actions.save")}
                 </button>
 
               </div>
@@ -1214,12 +1399,11 @@ export default function TeacherCourseDetail() {
 
             <div>
               <h2>
-                Estudiantes
+                {t("teacherCourseDetail.students.title")}
               </h2>
 
               <p>
-                Gestiona la lista del curso sin eliminar cuentas
-                ni resultados históricos.
+                {t("teacherCourseDetail.students.description")}
               </p>
             </div>
 
@@ -1232,7 +1416,7 @@ export default function TeacherCourseDetail() {
               title={
                 course.isActive
                   ? ""
-                  : "Reactiva el curso para agregar estudiantes."
+                  : t("teacherCourseDetail.students.addDisabledTitle")
               }
               onClick={() => {
                 setShowAddStudents(
@@ -1244,8 +1428,8 @@ export default function TeacherCourseDetail() {
               }}
             >
               {showAddStudents
-                ? "Cerrar"
-                : "Agregar estudiantes"}
+                ? t("teacherCourseDetail.actions.close")
+                : t("teacherCourseDetail.actions.addStudents")}
             </button>
 
           </div>
@@ -1261,7 +1445,7 @@ export default function TeacherCourseDetail() {
               <label
                 htmlFor="teacher-student-emails"
               >
-                Correos de estudiantes
+                {t("teacherCourseDetail.students.emailLabel")}
               </label>
 
               <textarea
@@ -1274,24 +1458,23 @@ export default function TeacherCourseDetail() {
                     event.target.value
                   )
                 }
-                placeholder={
-                  "alumno1@inf.udec.cl\n"
-                  + "alumno2@inf.udec.cl\n"
-                  + "alumno3@inf.udec.cl"
-                }
+                placeholder={t(
+                  "teacherCourseDetail.students.emailPlaceholder"
+                )}
                 required
               />
 
               <div className="teacher-add-help">
-                Puedes pegar una lista separada por saltos de línea,
-                espacios, comas o punto y coma. Deben corresponder a
-                cuentas de estudiantes registradas en la plataforma.
+                {t("teacherCourseDetail.students.help")}
               </div>
 
 
               {addFeedback?.error && (
-                <div className="teacher-inline-error">
-                  {addFeedback.error}
+                <div
+                  className="teacher-inline-error"
+                  role="alert"
+                >
+                  {addErrorMessage}
                 </div>
               )}
 
@@ -1301,17 +1484,53 @@ export default function TeacherCourseDetail() {
                 <div className="teacher-import-result">
 
                   <strong>
-                    Resultado de la carga
+                    {t("teacherCourseDetail.enrollment.resultTitle")}
                   </strong>
 
                   <span>
-                    {addFeedback.summary.added || 0} agregados
+                    {t(
+                      countKey(
+                        addFeedback.summary.added || 0,
+                        "teacherCourseDetail.enrollment.added"
+                      ),
+                      {
+                        count:
+                          addFeedback.summary.added || 0,
+                      }
+                    )}
                     {" · "}
-                    {addFeedback.summary.reactivated || 0} reactivados
+                    {t(
+                      countKey(
+                        addFeedback.summary.reactivated || 0,
+                        "teacherCourseDetail.enrollment.reactivated"
+                      ),
+                      {
+                        count:
+                          addFeedback.summary.reactivated || 0,
+                      }
+                    )}
                     {" · "}
-                    {addFeedback.summary.alreadyActive || 0} ya activos
+                    {t(
+                      countKey(
+                        addFeedback.summary.alreadyActive || 0,
+                        "teacherCourseDetail.enrollment.alreadyActive"
+                      ),
+                      {
+                        count:
+                          addFeedback.summary.alreadyActive || 0,
+                      }
+                    )}
                     {" · "}
-                    {addFeedback.summary.rejected || 0} rechazados
+                    {t(
+                      countKey(
+                        addFeedback.summary.rejected || 0,
+                        "teacherCourseDetail.enrollment.rejected"
+                      ),
+                      {
+                        count:
+                          addFeedback.summary.rejected || 0,
+                      }
+                    )}
                   </span>
 
                   {Array.isArray(
@@ -1328,7 +1547,8 @@ export default function TeacherCourseDetail() {
                               {item.email}
                               {" — "}
                               {enrollmentRejectionLabel(
-                                item.reason
+                                item.reason,
+                                t
                               )}
                             </li>
                           )
@@ -1353,8 +1573,8 @@ export default function TeacherCourseDetail() {
                   }
                 >
                   {adding
-                    ? "Agregando..."
-                    : "Agregar al curso"}
+                    ? t("teacherCourseDetail.actions.adding")
+                    : t("teacherCourseDetail.actions.addToCourse")}
                 </button>
 
               </div>
@@ -1380,8 +1600,11 @@ export default function TeacherCourseDetail() {
                     "active"
                   )
                 }
+                aria-pressed={
+                  membership === "active"
+                }
               >
-                Activos
+                {t("teacherCourseDetail.students.membership.active")}
               </button>
 
               <button
@@ -1399,8 +1622,11 @@ export default function TeacherCourseDetail() {
                     "all"
                   );
                 }}
+                aria-pressed={
+                  membership === "inactive"
+                }
               >
-                Retirados
+                {t("teacherCourseDetail.students.membership.inactive")}
               </button>
 
               <button
@@ -1418,8 +1644,11 @@ export default function TeacherCourseDetail() {
                     "all"
                   );
                 }}
+                aria-pressed={
+                  membership === "all"
+                }
               >
-                Todos
+                {t("teacherCourseDetail.students.membership.all")}
               </button>
 
             </div>
@@ -1435,12 +1664,20 @@ export default function TeacherCourseDetail() {
                     event.target.value
                   )
                 }
-                placeholder="Buscar nombre o correo"
+                placeholder={t(
+                  "teacherCourseDetail.students.searchPlaceholder"
+                )}
+                aria-label={t(
+                  "teacherCourseDetail.students.searchLabel"
+                )}
               />
 
               <select
                 className="form-select"
                 value={attention}
+                aria-label={t(
+                  "teacherCourseDetail.students.attentionFilterLabel"
+                )}
                 onChange={(event) => {
                   const nextAttention =
                     event.target.value;
@@ -1460,13 +1697,13 @@ export default function TeacherCourseDetail() {
                 }}
               >
                 <option value="all">
-                  Todas las situaciones
+                  {t("teacherCourseDetail.students.attentionFilter.all")}
                 </option>
                 <option value="no-executions">
-                  Sin ejecuciones
+                  {t("teacherCourseDetail.students.attentionFilter.noExecutions")}
                 </option>
                 <option value="failures">
-                  Más fallos que completadas
+                  {t("teacherCourseDetail.students.attentionFilter.failures")}
                 </option>
               </select>
 
@@ -1479,7 +1716,9 @@ export default function TeacherCourseDetail() {
             filteredStudents.length === 0 && (
               <InlineState
                 type="loading"
-                title="Cargando estudiantes"
+                title={t(
+                  "teacherCourseDetail.students.loading"
+                )}
                 compact
               />
             )}
@@ -1491,11 +1730,11 @@ export default function TeacherCourseDetail() {
               <div className="teacher-empty teacher-empty--compact">
 
                 <h3>
-                  Sin estudiantes para mostrar
+                  {t("teacherCourseDetail.students.emptyTitle")}
                 </h3>
 
                 <p>
-                  Ajusta los filtros o agrega estudiantes al curso.
+                  {t("teacherCourseDetail.students.emptyDescription")}
                 </p>
 
               </div>
@@ -1512,31 +1751,31 @@ export default function TeacherCourseDetail() {
                 <thead>
                   <tr>
                     <th>
-                      Estudiante
+                      {t("teacherCourseDetail.students.table.student")}
                     </th>
                     <th>
-                      Estado
+                      {t("teacherCourseDetail.students.table.status")}
                     </th>
                     <th>
-                      Envíos
+                      {t("teacherCourseDetail.students.table.submissions")}
                     </th>
                     <th>
-                      Ejec.
+                      {t("teacherCourseDetail.students.table.executions")}
                     </th>
                     <th>
-                      OK
+                      {t("teacherCourseDetail.students.table.completed")}
                     </th>
                     <th>
-                      Fallidas
+                      {t("teacherCourseDetail.students.table.failed")}
                     </th>
                     <th>
-                      Última actividad
+                      {t("teacherCourseDetail.students.table.lastActivity")}
                     </th>
                     <th>
-                      Atención
+                      {t("teacherCourseDetail.students.table.attention")}
                     </th>
                     <th className="text-end">
-                      Acción
+                      {t("teacherCourseDetail.students.table.action")}
                     </th>
                   </tr>
                 </thead>
@@ -1575,8 +1814,8 @@ export default function TeacherCourseDetail() {
                             }
                           >
                             {student.membershipActive
-                              ? "Activo"
-                              : "Retirado"}
+                              ? t("teacherCourseDetail.status.membershipActive")
+                              : t("teacherCourseDetail.status.membershipRemoved")}
                           </span>
                         </td>
 
@@ -1598,7 +1837,9 @@ export default function TeacherCourseDetail() {
 
                         <td>
                           {formatDateTime(
-                            student.lastActivityAt
+                            student.lastActivityAt,
+                            locale,
+                            t("teacherCourseDetail.common.unavailable")
                           )}
                         </td>
 
@@ -1613,7 +1854,8 @@ export default function TeacherCourseDetail() {
                             }
                           >
                             {attentionLabel(
-                              student
+                              student,
+                              t
                             )}
                           </span>
                         </td>
@@ -1626,7 +1868,7 @@ export default function TeacherCourseDetail() {
                               className="btn btn-sm teacher-row-button teacher-row-button--profile"
                               to={`/teacher/courses/${courseId}/students/${student.userId}`}
                             >
-                              Ver ficha
+                              {t("teacherCourseDetail.actions.viewProfile")}
                             </Link>
 
                             {student.lastResultCodename
@@ -1639,7 +1881,7 @@ export default function TeacherCourseDetail() {
                                       student.fullName,
                                   }}
                                 >
-                                  Último resultado
+                                  {t("teacherCourseDetail.actions.lastResult")}
                                 </Link>
                               )
                               : (
@@ -1647,9 +1889,11 @@ export default function TeacherCourseDetail() {
                                   type="button"
                                   className="btn btn-sm teacher-row-button teacher-row-button--result"
                                   disabled
-                                  title="Este estudiante todavía no tiene resultados completados"
+                                  title={t(
+                                    "teacherCourseDetail.students.noResultTitle"
+                                  )}
                                 >
-                                  Último resultado
+                                  {t("teacherCourseDetail.actions.lastResult")}
                                 </button>
                               )}
 
@@ -1664,7 +1908,7 @@ export default function TeacherCourseDetail() {
                                     )
                                   }
                                 >
-                                  Retirar
+                                  {t("teacherCourseDetail.actions.remove")}
                                 </button>
                               )
                               : (
@@ -1680,7 +1924,7 @@ export default function TeacherCourseDetail() {
                                     )
                                   }
                                 >
-                                  Restaurar
+                                  {t("teacherCourseDetail.actions.restore")}
                                 </button>
                               )}
 
@@ -1705,11 +1949,16 @@ export default function TeacherCourseDetail() {
           <footer className="teacher-pagination">
 
             <span>
-              {visibleStudentTotal === 0
-                ? "0 estudiantes"
-                : (
-                  `${visibleStudentTotal} estudiantes`
-                )}
+              {t(
+                countKey(
+                  visibleStudentTotal,
+                  "teacherCourseDetail.students.count"
+                ),
+                {
+                  count:
+                    visibleStudentTotal,
+                }
+              )}
             </span>
 
             <div>
@@ -1732,15 +1981,21 @@ export default function TeacherCourseDetail() {
                   )
                 }
               >
-                Anterior
+                {t("teacherCourseDetail.actions.previous")}
               </button>
 
               <span>
-                Página {
-                  usingAttentionSnapshot
-                    ? 1
-                    : page
-                } de {totalPages}
+                {t(
+                  "teacherCourseDetail.students.page",
+                  {
+                    page:
+                      usingAttentionSnapshot
+                        ? 1
+                        : page,
+                    total:
+                      totalPages,
+                  }
+                )}
               </span>
 
               <button
@@ -1761,7 +2016,7 @@ export default function TeacherCourseDetail() {
                   )
                 }
               >
-                Siguiente
+                {t("teacherCourseDetail.actions.next")}
               </button>
 
             </div>

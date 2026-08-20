@@ -1,0 +1,307 @@
+import React from "react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+} from "react-router-dom";
+import axios from "axios";
+
+import { I18nProvider, useI18n } from "../i18n";
+import ComparisonPage from "./ComparisonPage";
+
+jest.mock("axios");
+
+const mockPlotProps = jest.fn();
+jest.mock("react-plotly.js", () => (props) => {
+  mockPlotProps(props);
+  return <div data-testid="comparison-plot" />;
+});
+
+const VALID_PATH =
+  "/compare?execution=execution-a&execution=execution-b";
+
+const point = (inputSize, median, mean) => ({
+  inputSize,
+  median,
+  mean,
+  stddev: 1,
+  q1: median - 2,
+  q3: median + 3,
+  samplesValid: 9,
+  samplesTotal: 10,
+  iqrOutliersDetected: 1,
+});
+
+const executions = [
+  {
+    publicId: "public-a",
+    codename: "execution-a",
+    submissionId: 42,
+    submissionTitle: "Experimento del estudiante",
+    sourceFilename: "alpha.cpp",
+    benchmark: "SIZE",
+    profile: "BALANCED",
+    compilerFlags: "-O3",
+  },
+  {
+    publicId: "public-b",
+    codename: "execution-b",
+    submissionId: 42,
+    submissionTitle: "Experimento del estudiante",
+    sourceFilename: "beta.cpp",
+    benchmark: "SIZE",
+    profile: "BALANCED",
+    compilerFlags: "-O3",
+  },
+];
+
+const series = executions.map(
+  (execution, index) => ({
+    publicId: execution.publicId,
+    codename: execution.codename,
+    sourceFilename: execution.sourceFilename,
+    points: [
+      point(
+        100,
+        (index + 1) * 10,
+        (index + 1) * 11
+      ),
+      point(
+        200,
+        (index + 1) * 20,
+        (index + 1) * 22
+      ),
+    ],
+  })
+);
+
+const compatiblePayload = {
+  compatibility: {
+    status: "COMPATIBLE",
+    blockers: [],
+    warnings: [],
+    dimensions: {
+      benchmark: { status: "MATCH" },
+      hardware: { status: "MATCH" },
+      measurementBackend: { status: "MATCH" },
+      profile: { status: "MATCH" },
+      protocol: { status: "MATCH" },
+      compilerFlags: { status: "MATCH" },
+      inputSizes: { status: "MATCH" },
+      metrics: { status: "MATCH" },
+    },
+    commonInputSizes: [100, 200],
+    commonMetrics: ["DurationTime"],
+    excludedMetrics: [],
+  },
+  executions,
+  metrics: {
+    DurationTime: {
+      unit: "ms",
+      commonInputSizes: [100, 200],
+      series,
+    },
+  },
+};
+
+const LanguageControl = () => {
+  const { setLanguage } = useI18n();
+
+  return (
+    <button
+      type="button"
+      onClick={() => setLanguage("es")}
+    >
+      switch-es
+    </button>
+  );
+};
+
+const renderEnglishPage = ({
+  path = VALID_PATH,
+  payload = compatiblePayload,
+} = {}) => {
+  axios.post.mockResolvedValue({ data: payload });
+
+  return render(
+    <I18nProvider initialLanguage="en">
+      <LanguageControl />
+      <MemoryRouter initialEntries={[path]}>
+        <Routes>
+          <Route
+            path="/compare"
+            element={
+              <ComparisonPage
+                currentUser={{
+                  role_name: "Student",
+                }}
+              />
+            }
+          />
+        </Routes>
+      </MemoryRouter>
+    </I18nProvider>
+  );
+};
+
+const lastPlotProps = () =>
+  mockPlotProps.mock.calls[
+    mockPlotProps.mock.calls.length - 1
+  ][0];
+
+describe("ComparisonPage i18n", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    window.localStorage.clear();
+  });
+
+  test("localizes comparison chrome while preserving user and technical data", async () => {
+    renderEnglishPage();
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Implementation comparison",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Comparison analysis")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "2 implementations selected"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Experiment #42 · Experimento del estudiante"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("alpha.cpp")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getAllByText("SIZE")
+    ).toHaveLength(2);
+
+    expect(
+      screen.getByText(
+        "The executions satisfy the compatibility contract for the common measurements shown."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText("Metric")
+    ).toHaveValue("DurationTime");
+
+    expect(
+      screen.getByRole("option", {
+        name: "Execution time",
+      })
+    ).toBeInTheDocument();
+  });
+
+  test("switches EN to ES including Plotly hover text without refetching", async () => {
+    renderEnglishPage();
+
+    await screen.findByRole("heading", {
+      name: "Implementation comparison",
+    });
+
+    expect(
+      lastPlotProps().data[0].hovertemplate
+    ).toContain("Median: %{y} ms");
+
+    const callsBeforeSwitch =
+      axios.post.mock.calls.length;
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "switch-es",
+      })
+    );
+
+    expect(
+      await screen.findByRole("heading", {
+        name: "Comparación de implementaciones",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText("Métrica")
+    ).toHaveValue("DurationTime");
+
+    await waitFor(() =>
+      expect(
+        lastPlotProps().data[0].hovertemplate
+      ).toContain("Mediana: %{y} ms")
+    );
+
+    expect(
+      axios.post.mock.calls.length
+    ).toBe(callsBeforeSwitch);
+  });
+
+  test("localizes invalid query feedback and never submits it", () => {
+    renderEnglishPage({
+      path: "/compare?execution=only-one",
+    });
+
+    expect(
+      screen.getByText("Invalid comparison")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "The URL must include between 2 and 4 implementations."
+      )
+    ).toBeInTheDocument();
+
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  test("keeps backend scientific issue details literal in English", async () => {
+    renderEnglishPage({
+      payload: {
+        ...compatiblePayload,
+        compatibility: {
+          ...compatiblePayload.compatibility,
+          status: "LIMITED",
+          warnings: [
+            {
+              code: "PARTIAL_INPUT_OVERLAP",
+              message:
+                "Detalle científico persistido por el backend.",
+            },
+          ],
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        "Limited comparison"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Detalle científico persistido por el backend."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Observations")
+    ).toBeInTheDocument();
+  });
+});

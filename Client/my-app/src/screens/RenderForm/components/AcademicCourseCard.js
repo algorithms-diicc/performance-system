@@ -1,5 +1,6 @@
 import React from "react";
 
+import { useI18n } from "../../../i18n";
 
 function formatCourseLabel(course) {
   if (!course) {
@@ -8,7 +9,6 @@ function formatCourseLabel(course) {
 
   return `${course.code} · ${course.academicYear}-${course.academicTerm}`;
 }
-
 
 function AcademicCourseCard({
   courses,
@@ -19,30 +19,30 @@ function AcademicCourseCard({
   onCourseChange,
   onRetry,
 }) {
+  const { t } = useI18n();
+
   if (!loading && !error && courses.length === 0) {
     return (
       <section className="rf-panel rf-course-context-panel">
         <div className="rf-course-context-heading">
           <div>
             <span className="rf-course-context-kicker">
-              Contexto académico
+              {t("renderForm.course.context")}
             </span>
-            <h3>Sin curso asociado</h3>
+            <h3>{t("renderForm.course.noCourse")}</h3>
           </div>
 
           <span className="rf-course-context-badge">
-            Personal
+            {t("renderForm.course.personal")}
           </span>
         </div>
 
         <p className="form-help-text rf-course-context-message">
-          Actualmente no tienes cursos activos. Puedes realizar un análisis
-          personal igualmente.
+          {t("renderForm.course.noActiveCourses")}
         </p>
       </section>
     );
   }
-
 
   if (loading) {
     return (
@@ -50,23 +50,22 @@ function AcademicCourseCard({
         <div className="rf-course-context-heading">
           <div>
             <span className="rf-course-context-kicker">
-              Contexto académico
+              {t("renderForm.course.context")}
             </span>
-            <h3>Curso</h3>
+            <h3>{t("renderForm.course.course")}</h3>
           </div>
 
           <span className="rf-course-context-badge">
-            Cargando…
+            {t("renderForm.course.loading")}
           </span>
         </div>
 
         <p className="form-help-text rf-course-context-message">
-          Consultando tus cursos activos.
+          {t("renderForm.course.loadingText")}
         </p>
       </section>
     );
   }
-
 
   if (error) {
     return (
@@ -74,9 +73,9 @@ function AcademicCourseCard({
         <div className="rf-course-context-heading">
           <div>
             <span className="rf-course-context-kicker">
-              Contexto académico
+              {t("renderForm.course.context")}
             </span>
-            <h3>No pudimos cargar tus cursos</h3>
+            <h3>{t("renderForm.course.loadError")}</h3>
           </div>
         </div>
 
@@ -89,12 +88,11 @@ function AcademicCourseCard({
           className="rf-course-context-retry"
           onClick={onRetry}
         >
-          Reintentar
+          {t("renderForm.course.retry")}
         </button>
       </section>
     );
   }
-
 
   if (courses.length === 1) {
     const course = courses[0];
@@ -104,52 +102,47 @@ function AcademicCourseCard({
         <div className="rf-course-context-heading">
           <div>
             <span className="rf-course-context-kicker">
-              Contexto académico
+              {t("renderForm.course.context")}
             </span>
-            <h3>Curso asociado</h3>
+            <h3>{t("renderForm.course.associatedCourse")}</h3>
           </div>
 
           <span className="rf-course-context-badge rf-course-context-badge--auto">
-            Automático
+            {t("renderForm.course.automatic")}
           </span>
         </div>
 
         <div className="rf-course-context-selected">
-          <strong>
-            {formatCourseLabel(course)}
-          </strong>
-
-          <span>
-            {course.name}
-          </span>
-
+          <strong>{formatCourseLabel(course)}</strong>
+          <span>{course.name}</span>
           <small>
             {course.teacher?.fullName
-              ? `Profesor: ${course.teacher.fullName}`
-              : "Profesor no disponible"}
+              ? t("renderForm.course.professor", {
+                  name: course.teacher.fullName,
+                })
+              : t("renderForm.course.professorUnavailable")}
           </small>
         </div>
 
         <p className="form-help-text rf-course-context-message">
-          Esta entrega quedará asociada automáticamente a tu único curso activo.
+          {t("renderForm.course.automaticAssociation")}
         </p>
       </section>
     );
   }
-
 
   return (
     <section className="rf-panel rf-course-context-panel">
       <div className="rf-course-context-heading">
         <div>
           <span className="rf-course-context-kicker">
-            Contexto académico
+            {t("renderForm.course.context")}
           </span>
-          <h3>Selecciona el curso</h3>
+          <h3>{t("renderForm.course.selectCourse")}</h3>
         </div>
 
         <span className="rf-course-context-badge rf-course-context-badge--required">
-          Obligatorio
+          {t("renderForm.course.required")}
         </span>
       </div>
 
@@ -157,39 +150,32 @@ function AcademicCourseCard({
         className="form-label"
         htmlFor="rf-course-context-select"
       >
-        Curso de esta entrega
+        {t("renderForm.course.deliveryCourse")}
       </label>
 
       <select
         id="rf-course-context-select"
         className="form-input rf-course-context-select"
         value={selectedCourseId}
-        onChange={(event) =>
-          onCourseChange(event.target.value)
-        }
+        onChange={(event) => onCourseChange(event.target.value)}
         required={selectionRequired}
       >
         <option value="">
-          Selecciona un curso…
+          {t("renderForm.course.selectPlaceholder")}
         </option>
 
         {courses.map((course) => (
-          <option
-            key={course.id}
-            value={String(course.id)}
-          >
+          <option key={course.id} value={String(course.id)}>
             {formatCourseLabel(course)} · {course.name}
           </option>
         ))}
       </select>
 
       <p className="form-help-text rf-course-context-message">
-        Tienes más de un curso activo. Elegirlo evita mezclar entregas de
-        ramos o semestres distintos.
+        {t("renderForm.course.multipleCoursesHelp")}
       </p>
     </section>
   );
 }
-
 
 export default AcademicCourseCard;

@@ -27,6 +27,110 @@ def map_user_status_label(is_active: bool) -> str:
     return "Activo" if is_active else "Inactivo"
 
 
+def parse_admin_user_status_filter(value):
+    # Contrato técnico nuevo: active / inactive.
+    # Activo / Inactivo se conservan por compatibilidad.
+    raw = str(value or "").strip()
+
+    if not raw or raw.lower() == "all":
+        return None
+
+    normalized = raw.lower()
+
+    if normalized in {"active", "activo"}:
+        return True
+
+    if normalized in {"inactive", "inactivo"}:
+        return False
+
+    raise BadRequestError(
+        "Valor inválido para 'status'."
+    )
+
+
+def serialize_admin_user_list_item(row):
+    # isActive es el contrato técnico estable.
+    # status se conserva temporalmente por compatibilidad.
+    state = row.get(
+        "last_execution_state"
+    )
+    completed = (
+        row.get("completed_executions")
+        or 0
+    )
+    failed = (
+        row.get("failed_executions")
+        or 0
+    )
+    is_active = bool(
+        row.get("is_active")
+    )
+
+    return {
+        "id": row["id"],
+        "name": row["full_name"],
+        "email": row["email"],
+        "role": row["role_name"],
+        "isActive": is_active,
+        "status": map_user_status_label(
+            is_active
+        ),
+        "createdAt": (
+            row["created_at"].isoformat()
+            if row.get("created_at")
+            else None
+        ),
+        "submissionsCount": (
+            row.get("submissions_count")
+            or 0
+        ),
+        "executionsCount": (
+            row.get("executions_count")
+            or 0
+        ),
+        "completedExecutions": completed,
+        "failedExecutions": failed,
+        "queuedExecutions": (
+            row.get("queued_executions")
+            or 0
+        ),
+        "runningExecutions": (
+            row.get("running_executions")
+            or 0
+        ),
+        "processingExecutions": (
+            row.get("processing_executions")
+            or 0
+        ),
+        "cancelledExecutions": (
+            row.get("cancelled_executions")
+            or 0
+        ),
+        # Compatibilidad temporal.
+        "passedCount": completed,
+        "failedCount": failed,
+        "lastExecutionState": state,
+        "lastExecutionStatus": (
+            map_execution_state_label(
+                state
+            )
+            if state
+            else "Sin ejecuciones"
+        ),
+        "lastExecutionPublicId": row.get(
+            "last_execution_public_id"
+        ),
+        "lastExecutionCodename": row.get(
+            "last_execution_codename"
+        ),
+        "lastExecutionAt": (
+            row["last_execution_at"].isoformat()
+            if row.get("last_execution_at")
+            else None
+        ),
+    }
+
+
 def map_submission_status_from_counts(
     ok_count: int, timeout_count: int, error_count: int
 ) -> str:
@@ -130,15 +234,20 @@ def list_users():
         filters.append("r.name = %s")
         params.append(role)
 
-    if status and status != "all":
-        if status == "Activo":
-            filters.append("u.is_active = TRUE")
-        elif status == "Inactivo":
-            filters.append("u.is_active = FALSE")
-        else:
-            raise BadRequestError(
-                "Valor inválido para 'status'."
-            )
+    status_filter = (
+        parse_admin_user_status_filter(
+            status
+        )
+    )
+
+    if status_filter is True:
+        filters.append(
+            "u.is_active = TRUE"
+        )
+    elif status_filter is False:
+        filters.append(
+            "u.is_active = FALSE"
+        )
 
     where_sql = (
         "WHERE " + " AND ".join(filters)
@@ -275,84 +384,13 @@ def list_users():
                 "blocked": 0,
             }
 
-        items = []
-        for row in rows:
-            state = row.get(
-                "last_execution_state"
+        items = [
+            serialize_admin_user_list_item(
+                row
             )
-            completed = (
-                row.get("completed_executions")
-                or 0
-            )
-            failed = (
-                row.get("failed_executions")
-                or 0
-            )
+            for row in rows
+        ]
 
-            items.append(
-                {
-                    "id": row["id"],
-                    "name": row["full_name"],
-                    "email": row["email"],
-                    "role": row["role_name"],
-                    "status": map_user_status_label(
-                        bool(row["is_active"])
-                    ),
-                    "createdAt": (
-                        row["created_at"].isoformat()
-                        if row.get("created_at")
-                        else None
-                    ),
-                    "submissionsCount": (
-                        row["submissions_count"] or 0
-                    ),
-                    "executionsCount": (
-                        row["executions_count"] or 0
-                    ),
-                    "completedExecutions": completed,
-                    "failedExecutions": failed,
-                    "queuedExecutions": (
-                        row["queued_executions"] or 0
-                    ),
-                    "runningExecutions": (
-                        row["running_executions"] or 0
-                    ),
-                    "processingExecutions": (
-                        row["processing_executions"]
-                        or 0
-                    ),
-                    "cancelledExecutions": (
-                        row["cancelled_executions"]
-                        or 0
-                    ),
-                    # Compatibilidad temporal.
-                    "passedCount": completed,
-                    "failedCount": failed,
-                    "lastExecutionState": state,
-                    "lastExecutionStatus": (
-                        map_execution_state_label(
-                            state
-                        )
-                        if state
-                        else "Sin ejecuciones"
-                    ),
-                    "lastExecutionPublicId": row.get(
-                        "last_execution_public_id"
-                    ),
-                    "lastExecutionCodename": row.get(
-                        "last_execution_codename"
-                    ),
-                    "lastExecutionAt": (
-                        row[
-                            "last_execution_at"
-                        ].isoformat()
-                        if row.get(
-                            "last_execution_at"
-                        )
-                        else None
-                    ),
-                }
-            )
 
         total_pages = (
             (filtered_total + page_size - 1)

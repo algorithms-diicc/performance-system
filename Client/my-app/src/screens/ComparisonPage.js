@@ -27,6 +27,7 @@ import {
 } from "../common/userAccessModel";
 import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
+import { useI18n } from "../i18n";
 import {
   appendHistoricalExecution,
   buildComparisonInterpretation,
@@ -35,6 +36,7 @@ import {
   buildUniqueSeriesLabels,
   canAddHistoricalCandidate,
   COMPARISON_DIMENSIONS,
+  comparisonDimensionLabel,
   comparisonDimensionPresentation,
   defaultComparisonMetric,
   filterHistoricalCandidates,
@@ -55,22 +57,40 @@ const STATUS_PRESENTATION = Object.freeze({
   COMPATIBLE: {
     icon: CheckCircle2,
     tone: "success",
-    label: "Compatible",
-    text: "Las ejecuciones cumplen el contrato de compatibilidad para las mediciones comunes mostradas.",
+    labelKey: "comparisonPage.status.compatible.label",
+    textKey: "comparisonPage.status.compatible.text",
   },
   LIMITED: {
     icon: AlertTriangle,
     tone: "warning",
-    label: "Comparación limitada",
-    text: "La comparación es válida sólo para las dimensiones y mediciones comunes indicadas.",
+    labelKey: "comparisonPage.status.limited.label",
+    textKey: "comparisonPage.status.limited.text",
   },
   INCOMPATIBLE: {
     icon: XCircle,
     tone: "danger",
-    label: "Comparación incompatible",
-    text: "Estas ejecuciones no cumplen el contrato necesario para superponer sus resultados de rendimiento.",
+    labelKey: "comparisonPage.status.incompatible.label",
+    textKey: "comparisonPage.status.incompatible.text",
   },
 });
+
+const comparisonStatusPresentation = (
+  status,
+  t
+) => {
+  const normalized = String(status || "")
+    .trim()
+    .toUpperCase();
+  const base =
+    STATUS_PRESENTATION[normalized] ||
+    STATUS_PRESENTATION.INCOMPATIBLE;
+
+  return {
+    ...base,
+    label: t(base.labelKey),
+    text: t(base.textKey),
+  };
+};
 
 const CANDIDATE_STATUS_ICONS = Object.freeze({
   COMPATIBLE: CheckCircle2,
@@ -87,28 +107,23 @@ const candidateStatusIcon = (status) =>
 const REQUEST_ERRORS = Object.freeze({
   401: {
     type: "forbidden",
-    title: "Sesión no disponible",
-    description: "Tu sesión ya no permite consultar esta comparación.",
+    key: "unauthorized",
   },
   403: {
     type: "forbidden",
-    title: "Comparación restringida",
-    description: "No tienes permisos para comparar una o más de estas ejecuciones.",
+    key: "forbidden",
   },
   404: {
     type: "not-found",
-    title: "Resultados no disponibles",
-    description: "Una de las ejecuciones o sus resultados ya no está disponible.",
+    key: "notFound",
   },
   409: {
     type: "unavailable",
-    title: "Resultados todavía no publicables",
-    description: "Una de las ejecuciones todavía no tiene resultados publicables.",
+    key: "notReady",
   },
   422: {
     type: "error",
-    title: "Resultados no comparables",
-    description: "Los resultados no cumplen el contrato necesario para compararlos.",
+    key: "notComparable",
   },
 });
 
@@ -118,74 +133,138 @@ const roleFallbackPath = (currentUser) => {
   return "/profile";
 };
 
-const requestErrorPresentation = (error) => {
+const localizedError = (
+  type,
+  key,
+  t
+) => ({
+  type,
+  title: t(
+    `comparisonPage.requestErrors.${key}.title`
+  ),
+  description: t(
+    `comparisonPage.requestErrors.${key}.description`
+  ),
+});
+
+const requestErrorPresentation = (
+  error,
+  t
+) => {
   if (!error?.response) {
-    return {
-      type: "network",
-      title: "Sin conexión con el servidor",
-      description: "No pudimos conectar con el servidor.",
-    };
+    return localizedError(
+      "network",
+      "network",
+      t
+    );
   }
 
-  return (
-    REQUEST_ERRORS[error.response.status] || {
-      type: "error",
-      title: "No fue posible cargar la comparación",
-      description: "No fue posible cargar la comparación.",
-    }
+  const configured =
+    REQUEST_ERRORS[error.response.status];
+
+  if (configured) {
+    return localizedError(
+      configured.type,
+      configured.key,
+      t
+    );
+  }
+
+  return localizedError(
+    "error",
+    "generic",
+    t
   );
 };
 
-const candidateErrorPresentation = (error) => {
+const candidateErrorPresentation = (
+  error,
+  t
+) => {
   if (!error?.response) {
     return {
       type: "network",
-      title: "Sin conexión con el servidor",
-      description: "No pudimos conectar con el servidor.",
+      title: t(
+        "comparisonPage.candidateErrors.network.title"
+      ),
+      description: t(
+        "comparisonPage.candidateErrors.network.description"
+      ),
     };
   }
 
   if ([401, 403].includes(error.response.status)) {
     return {
       type: "forbidden",
-      title: "Historial no disponible",
-      description:
-        "Tu sesión no permite consultar ejecuciones históricas para esta selección.",
+      title: t(
+        "comparisonPage.candidateErrors.forbidden.title"
+      ),
+      description: t(
+        "comparisonPage.candidateErrors.forbidden.description"
+      ),
     };
   }
 
   return {
     type: "error",
-    title: "No fue posible cargar el historial",
-    description: "No fue posible cargar las ejecuciones históricas.",
+    title: t(
+      "comparisonPage.candidateErrors.generic.title"
+    ),
+    description: t(
+      "comparisonPage.candidateErrors.generic.description"
+    ),
   };
 };
 
-const comparisonContext = (executions, currentUser) => {
-  const items = Array.isArray(executions) ? executions : [];
+const comparisonContext = (
+  executions,
+  currentUser,
+  t
+) => {
+  const items = Array.isArray(executions)
+    ? executions
+    : [];
   const firstId = items[0]?.submissionId;
   const sameSubmission =
     items.length > 0 &&
     firstId !== null &&
     firstId !== undefined &&
     items.every(
-      (execution) => String(execution?.submissionId) === String(firstId)
+      (execution) =>
+        String(execution?.submissionId) ===
+        String(firstId)
     );
 
   if (sameSubmission) {
-    const title = String(items[0]?.submissionTitle || "").trim();
+    const title = String(
+      items[0]?.submissionTitle || ""
+    ).trim();
+    const experimentLabel = t(
+      "comparisonPage.context.experimentNumber",
+      { id: firstId }
+    );
+
     return {
-      description: `Experimento #${firstId}${title ? ` · ${title}` : ""}`,
-      backPath: `/submissions/${encodeURIComponent(String(firstId))}`,
-      backLabel: "Volver al experimento",
+      description: `${experimentLabel}${
+        title ? ` · ${title}` : ""
+      }`,
+      backPath:
+        `/submissions/${encodeURIComponent(
+          String(firstId)
+        )}`,
+      backLabel: t(
+        "comparisonPage.context.backExperiment"
+      ),
       submissionId: firstId,
     };
   }
 
   return {
-    description: "Ejecuciones de distintos experimentos",
+    description: t(
+      "comparisonPage.context.differentExperiments"
+    ),
     backPath: roleFallbackPath(currentUser),
-    backLabel: "Volver",
+    backLabel: t("comparisonPage.actions.back"),
     submissionId: null,
   };
 };
@@ -258,12 +337,17 @@ const usePlotTheme = () => {
 };
 
 const ComparisonPage = ({ currentUser }) => {
+  const { locale, t } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryKey = searchParams.toString();
   const query = useMemo(
-    () => parseExecutionQuery(new URLSearchParams(queryKey)),
-    [queryKey]
+    () =>
+      parseExecutionQuery(
+        new URLSearchParams(queryKey),
+        t
+      ),
+    [queryKey, t]
   );
   const [requestVersion, setRequestVersion] = useState(0);
   const [requestState, setRequestState] = useState({
@@ -401,23 +485,40 @@ const ComparisonPage = ({ currentUser }) => {
     showDispersion,
     minimum: normalizedRange.minimum,
     maximum: normalizedRange.maximum,
+    t,
   });
-  const hasChartPoints = traces.some((trace) => trace.y.length > 0);
-  const status = String(compatibility.status || "").toUpperCase();
+  const hasChartPoints = traces.some(
+    (trace) => trace.y.length > 0
+  );
+  const status = String(
+    compatibility.status || ""
+  ).toUpperCase();
   const statusPresentation =
-    STATUS_PRESENTATION[status] || STATUS_PRESENTATION.INCOMPATIBLE;
+    comparisonStatusPresentation(status, t);
   const StatusIcon = statusPresentation.icon;
-  const canRenderCharts = ["COMPATIBLE", "LIMITED"].includes(status);
-  const executions = Array.isArray(data.executions) ? data.executions : [];
-  const executionLabels = buildUniqueSeriesLabels(executions);
-  const context = comparisonContext(executions, currentUser);
-  const interpretationMessages = buildComparisonInterpretation({
-    compatibility,
-    selectedMetric: activeMetric,
-    metricData,
-    aggregation,
-    showDispersion,
-  });
+  const canRenderCharts = [
+    "COMPATIBLE",
+    "LIMITED",
+  ].includes(status);
+  const executions = Array.isArray(data.executions)
+    ? data.executions
+    : [];
+  const executionLabels =
+    buildUniqueSeriesLabels(executions, t);
+  const context = comparisonContext(
+    executions,
+    currentUser,
+    t
+  );
+  const interpretationMessages =
+    buildComparisonInterpretation({
+      compatibility,
+      selectedMetric: activeMetric,
+      metricData,
+      aggregation,
+      showDispersion,
+      t,
+    });
   const canBrowseHistorical =
     ["COMPATIBLE", "LIMITED"].includes(status) &&
     query.executions.length >= 2 &&
@@ -442,7 +543,9 @@ const ComparisonPage = ({ currentUser }) => {
         <div className="comparison-page__container comparison-page__state">
           <InlineState
             type="unavailable"
-            title="Comparación no válida"
+            title={t(
+              "comparisonPage.states.invalid.title"
+            )}
             description={query.reason}
           />
           <button
@@ -451,7 +554,7 @@ const ComparisonPage = ({ currentUser }) => {
             onClick={() => navigate(fallbackPath)}
           >
             <ArrowLeft size={16} aria-hidden="true" />
-            Volver
+            {t("comparisonPage.actions.back")}
           </button>
         </div>
       </main>
@@ -464,8 +567,12 @@ const ComparisonPage = ({ currentUser }) => {
         <div className="comparison-page__container comparison-page__state">
           <InlineState
             type="loading"
-            title="Cargando comparación"
-            description="Estamos reuniendo los resultados estructurados de las implementaciones seleccionadas."
+            title={t(
+              "comparisonPage.states.loading.title"
+            )}
+            description={t(
+              "comparisonPage.states.loading.description"
+            )}
           />
         </div>
       </main>
@@ -473,7 +580,10 @@ const ComparisonPage = ({ currentUser }) => {
   }
 
   if (requestState.kind === "error") {
-    const error = requestErrorPresentation(requestState.error);
+    const error = requestErrorPresentation(
+      requestState.error,
+      t
+    );
     return (
       <main className="comparison-page">
         <div className="comparison-page__container comparison-page__state">
@@ -481,8 +591,14 @@ const ComparisonPage = ({ currentUser }) => {
             type={error.type}
             title={error.title}
             description={error.description}
-            actionLabel="Reintentar"
-            onAction={() => setRequestVersion((value) => value + 1)}
+            actionLabel={t(
+              "comparisonPage.actions.retry"
+            )}
+            onAction={() =>
+              setRequestVersion(
+                (value) => value + 1
+              )
+            }
           />
           <button
             type="button"
@@ -490,7 +606,7 @@ const ComparisonPage = ({ currentUser }) => {
             onClick={() => navigate(fallbackPath)}
           >
             <ArrowLeft size={16} aria-hidden="true" />
-            Volver
+            {t("comparisonPage.actions.back")}
           </button>
         </div>
       </main>
@@ -509,12 +625,23 @@ const ComparisonPage = ({ currentUser }) => {
         </div>
         <header className="comparison-page__header">
           <div>
-            <span className="comparison-page__eyebrow">Análisis comparativo</span>
-            <h1>Comparación de implementaciones</h1>
+            <span className="comparison-page__eyebrow">
+              {t(
+                "comparisonPage.header.eyebrow"
+              )}
+            </span>
+            <h1>
+              {t("comparisonPage.header.title")}
+            </h1>
             <p className="comparison-page__selection-count">
-              {executions.length} implementaciones seleccionadas
+              {t(
+                "comparisonPage.header.selectionCount",
+                { count: executions.length }
+              )}
             </p>
-            <p className="comparison-page__context">{context.description}</p>
+            <p className="comparison-page__context">
+              {context.description}
+            </p>
           </div>
           <Link
             className="comparison-page__button comparison-page__button--secondary"
@@ -543,8 +670,16 @@ const ComparisonPage = ({ currentUser }) => {
         >
           <div className="comparison-page__section-heading comparison-page__section-heading--actions">
             <div>
-              <span className="comparison-page__eyebrow">Series</span>
-              <h2 id="comparison-implementations-title">Implementaciones</h2>
+              <span className="comparison-page__eyebrow">
+                {t(
+                  "comparisonPage.implementations.eyebrow"
+                )}
+              </span>
+              <h2 id="comparison-implementations-title">
+                {t(
+                  "comparisonPage.implementations.title"
+                )}
+              </h2>
             </div>
             <button
               type="button"
@@ -552,18 +687,31 @@ const ComparisonPage = ({ currentUser }) => {
               disabled={!canBrowseHistorical}
               aria-expanded={historyOpen}
               aria-controls="comparison-history-panel"
-              onClick={() => setHistoryOpen((value) => !value)}
+              onClick={() =>
+                setHistoryOpen(
+                  (value) => !value
+                )
+              }
             >
               {historyOpen ? (
                 <X size={16} aria-hidden="true" />
               ) : (
-                <History size={16} aria-hidden="true" />
+                <History
+                  size={16}
+                  aria-hidden="true"
+                />
               )}
               {query.executions.length >= 4
-                ? "Máximo 4 implementaciones"
+                ? t(
+                    "comparisonPage.implementations.maxFour"
+                  )
                 : historyOpen
-                ? "Cerrar historial"
-                : "Agregar ejecución histórica"}
+                ? t(
+                    "comparisonPage.implementations.closeHistory"
+                  )
+                : t(
+                    "comparisonPage.implementations.addHistorical"
+                  )}
             </button>
           </div>
           <div className="comparison-page__implementation-grid">
@@ -576,37 +724,76 @@ const ComparisonPage = ({ currentUser }) => {
                 <div className="comparison-page__implementation-content">
                   <div className="comparison-page__implementation-title">
                     <h3>{executionLabels[index]}</h3>
-                    {query.executions.length > 2 && execution?.codename && (
-                      <button
-                        type="button"
-                        className="comparison-page__remove-button"
-                        aria-label={`Quitar ${executionLabels[index]}`}
-                        onClick={() => {
-                          const nextExecutions = removeComparisonExecution(
-                            query.executions,
-                            execution.codename
-                          );
-                          navigate(buildComparisonPath(nextExecutions));
-                        }}
-                      >
-                        <X size={14} aria-hidden="true" />
-                        Quitar
-                      </button>
-                    )}
+                    {query.executions.length > 2 &&
+                      execution?.codename && (
+                        <button
+                          type="button"
+                          className="comparison-page__remove-button"
+                          aria-label={t(
+                            "comparisonPage.implementations.removeAria",
+                            {
+                              name:
+                                executionLabels[
+                                  index
+                                ],
+                            }
+                          )}
+                          onClick={() => {
+                            const nextExecutions =
+                              removeComparisonExecution(
+                                query.executions,
+                                execution.codename
+                              );
+                            navigate(
+                              buildComparisonPath(
+                                nextExecutions
+                              )
+                            );
+                          }}
+                        >
+                          <X
+                            size={14}
+                            aria-hidden="true"
+                          />
+                          {t(
+                            "comparisonPage.actions.remove"
+                          )}
+                        </button>
+                      )}
                   </div>
                   <dl>
                     <div>
                       <dt>Benchmark</dt>
-                      <dd>{execution?.benchmark || "No verificable"}</dd>
+                      <dd>
+                        {execution?.benchmark ||
+                          t(
+                            "comparisonPage.common.notVerifiable"
+                          )}
+                      </dd>
                     </div>
                     <div>
-                      <dt>Perfil</dt>
-                      <dd>{execution?.profile || "No verificable"}</dd>
+                      <dt>
+                        {t(
+                          "comparisonPage.common.profile"
+                        )}
+                      </dt>
+                      <dd>
+                        {execution?.profile ||
+                          t(
+                            "comparisonPage.common.notVerifiable"
+                          )}
+                      </dd>
                     </div>
                     {execution?.compilerFlags && (
                       <div>
-                        <dt>Flags del compilador</dt>
-                        <dd>{execution.compilerFlags}</dd>
+                        <dt>
+                          {t(
+                            "comparisonPage.common.compilerFlags"
+                          )}
+                        </dt>
+                        <dd>
+                          {execution.compilerFlags}
+                        </dd>
                       </div>
                     )}
                   </dl>
@@ -624,58 +811,98 @@ const ComparisonPage = ({ currentUser }) => {
           >
             <div className="comparison-page__section-heading comparison-page__section-heading--actions">
               <div>
-                <span className="comparison-page__eyebrow">Historial accesible</span>
-                <h2 id="comparison-history-title">Ejecuciones históricas</h2>
+                <span className="comparison-page__eyebrow">
+                  {t(
+                    "comparisonPage.history.eyebrow"
+                  )}
+                </span>
+                <h2 id="comparison-history-title">
+                  {t(
+                    "comparisonPage.history.title"
+                  )}
+                </h2>
                 <p>
-                  Cada opción se evalúa junto a toda la selección actual antes
-                  de poder agregarla.
+                  {t(
+                    "comparisonPage.history.description"
+                  )}
                 </p>
               </div>
-              {candidateState.kind === "success" && hasNonSelectableCandidates && (
-                <label className="comparison-page__check-control">
-                  <input
-                    type="checkbox"
-                    checked={showIncompatible}
-                    onChange={(event) =>
-                      setShowIncompatible(event.target.checked)
-                    }
-                  />
-                  Mostrar incompatibles
-                </label>
-              )}
+              {candidateState.kind ===
+                "success" &&
+                hasNonSelectableCandidates && (
+                  <label className="comparison-page__check-control">
+                    <input
+                      type="checkbox"
+                      checked={
+                        showIncompatible
+                      }
+                      onChange={(event) =>
+                        setShowIncompatible(
+                          event.target.checked
+                        )
+                      }
+                    />
+                    {t(
+                      "comparisonPage.history.showIncompatible"
+                    )}
+                  </label>
+                )}
             </div>
 
-            {candidateState.kind === "loading" && (
+            {candidateState.kind ===
+              "loading" && (
               <InlineState
                 type="loading"
-                title="Buscando ejecuciones históricas"
-                description="Estamos verificando compatibilidad y permisos para la selección actual."
+                title={t(
+                  "comparisonPage.history.loading.title"
+                )}
+                description={t(
+                  "comparisonPage.history.loading.description"
+                )}
                 compact
               />
             )}
 
-            {candidateState.kind === "error" && (() => {
-              const error = candidateErrorPresentation(candidateState.error);
-              return (
-                <InlineState
-                  type={error.type}
-                  title={error.title}
-                  description={error.description}
-                  actionLabel="Reintentar"
-                  onAction={() =>
-                    setCandidateRequestVersion((value) => value + 1)
-                  }
-                  compact
-                />
-              );
-            })()}
+            {candidateState.kind ===
+              "error" &&
+              (() => {
+                const error =
+                  candidateErrorPresentation(
+                    candidateState.error,
+                    t
+                  );
+                return (
+                  <InlineState
+                    type={error.type}
+                    title={error.title}
+                    description={
+                      error.description
+                    }
+                    actionLabel={t(
+                      "comparisonPage.actions.retry"
+                    )}
+                    onAction={() =>
+                      setCandidateRequestVersion(
+                        (value) =>
+                          value + 1
+                      )
+                    }
+                    compact
+                  />
+                );
+              })()}
 
-            {candidateState.kind === "success" &&
+            {candidateState.kind ===
+              "success" &&
               visibleCandidates.length === 0 && (
                 <InlineState
                   type="unavailable"
-                  title="Sin ejecuciones compatibles"
-                  description="No encontramos ejecuciones históricas compatibles con la selección actual."
+                  title={t(
+                    "comparisonPage.history.empty.title"
+                  )}
+                  description={t(
+                    "comparisonPage.history.empty.description"
+                  )}
                   compact
                 />
               )}
@@ -684,9 +911,11 @@ const ComparisonPage = ({ currentUser }) => {
               visibleCandidates.length > 0 && (
                 <div className="comparison-page__candidate-grid">
                   {visibleCandidates.map((candidate, index) => {
-                    const presentation = historicalCandidatePresentation(
-                      candidate?.status
-                    );
+                    const presentation =
+                      historicalCandidatePresentation(
+                        candidate?.status,
+                        t
+                      );
                     const CandidateStatusIcon = candidateStatusIcon(
                       candidate?.status
                     );
@@ -698,8 +927,14 @@ const ComparisonPage = ({ currentUser }) => {
                       query.executions
                     );
                     const filename =
-                      String(candidate?.sourceFilename || "").trim() ||
-                      `Implementación histórica ${index + 1}`;
+                      String(
+                        candidate?.sourceFilename ||
+                          ""
+                      ).trim() ||
+                      t(
+                        "comparisonPage.history.candidateFallback",
+                        { index: index + 1 }
+                      );
                     const experimentId = candidate?.submissionId;
                     const experimentTitle = String(
                       candidate?.submissionTitle || ""
@@ -724,23 +959,63 @@ const ComparisonPage = ({ currentUser }) => {
                           </span>
                         </div>
                         <p className="comparison-page__candidate-experiment">
-                          {experimentId !== null && experimentId !== undefined
-                            ? `Experimento #${experimentId}`
-                            : "Experimento"}
-                          {experimentTitle ? ` · ${experimentTitle}` : ""}
+                          {experimentId !==
+                            null &&
+                          experimentId !==
+                            undefined
+                            ? t(
+                                "comparisonPage.context.experimentNumber",
+                                {
+                                  id: experimentId,
+                                }
+                              )
+                            : t(
+                                "comparisonPage.context.experiment"
+                              )}
+                          {experimentTitle
+                            ? ` · ${experimentTitle}`
+                            : ""}
                         </p>
                         <dl>
                           <div>
-                            <dt>Fecha</dt>
-                            <dd>{formatHistoricalCandidateDate(candidate?.createdAt)}</dd>
+                            <dt>
+                              {t(
+                                "comparisonPage.history.date"
+                              )}
+                            </dt>
+                            <dd>
+                              {formatHistoricalCandidateDate(
+                                candidate?.createdAt,
+                                locale,
+                                t(
+                                  "comparisonModel.historicalDateUnavailable"
+                                )
+                              )}
+                            </dd>
                           </div>
                           <div>
-                            <dt>Benchmark</dt>
-                            <dd>{candidate?.benchmark || "No verificable"}</dd>
+                            <dt>
+                              Benchmark
+                            </dt>
+                            <dd>
+                              {candidate?.benchmark ||
+                                t(
+                                  "comparisonPage.common.notVerifiable"
+                                )}
+                            </dd>
                           </div>
                           <div>
-                            <dt>Perfil</dt>
-                            <dd>{candidate?.profile || "No verificable"}</dd>
+                            <dt>
+                              {t(
+                                "comparisonPage.common.profile"
+                              )}
+                            </dt>
+                            <dd>
+                              {candidate?.profile ||
+                                t(
+                                  "comparisonPage.common.notVerifiable"
+                                )}
+                            </dd>
                           </div>
                         </dl>
                         {candidate?.reason && (
@@ -767,10 +1042,16 @@ const ComparisonPage = ({ currentUser }) => {
                         >
                           <Plus size={15} aria-hidden="true" />
                           {alreadySelected
-                            ? "Ya seleccionada"
+                            ? t(
+                                "comparisonPage.history.alreadySelected"
+                              )
                             : canAdd
-                            ? "Agregar"
-                            : "No se puede agregar"}
+                            ? t(
+                                "comparisonPage.actions.add"
+                              )
+                            : t(
+                                "comparisonPage.history.cannotAdd"
+                              )}
                         </button>
                       </article>
                     );
@@ -780,9 +1061,13 @@ const ComparisonPage = ({ currentUser }) => {
 
             {candidateState.kind === "success" &&
               candidateState.data?.truncated === true && (
-                <p className="comparison-page__history-note" role="status">
-                  Se muestran las ejecuciones recientes disponibles dentro del
-                  límite de búsqueda.
+                <p
+                  className="comparison-page__history-note"
+                  role="status"
+                >
+                  {t(
+                    "comparisonPage.history.truncated"
+                  )}
                 </p>
               )}
           </section>
@@ -793,23 +1078,47 @@ const ComparisonPage = ({ currentUser }) => {
           aria-labelledby="comparison-dimensions-title"
         >
           <div className="comparison-page__section-heading">
-            <span className="comparison-page__eyebrow">Contrato científico</span>
-            <h2 id="comparison-dimensions-title">Compatibilidad por dimensión</h2>
+            <span className="comparison-page__eyebrow">
+              {t(
+                "comparisonPage.dimensions.eyebrow"
+              )}
+            </span>
+            <h2 id="comparison-dimensions-title">
+              {t(
+                "comparisonPage.dimensions.title"
+              )}
+            </h2>
           </div>
           <dl className="comparison-page__dimension-grid">
-            {COMPARISON_DIMENSIONS.map(([key, label]) => {
-              const presentation = comparisonDimensionPresentation(
-                compatibility.dimensions?.[key]?.status
-              );
-              return (
-                <div className="comparison-page__dimension" key={key}>
-                  <dt>{label}</dt>
-                  <dd className={`comparison-page__dimension-value comparison-page__dimension-value--${presentation.tone}`}>
-                    {presentation.label}
-                  </dd>
-                </div>
-              );
-            })}
+            {COMPARISON_DIMENSIONS.map(
+              ([key]) => {
+                const presentation =
+                  comparisonDimensionPresentation(
+                    compatibility
+                      .dimensions?.[key]
+                      ?.status,
+                    t
+                  );
+                return (
+                  <div
+                    className="comparison-page__dimension"
+                    key={key}
+                  >
+                    <dt>
+                      {comparisonDimensionLabel(
+                        key,
+                        t
+                      )}
+                    </dt>
+                    <dd
+                      className={`comparison-page__dimension-value comparison-page__dimension-value--${presentation.tone}`}
+                    >
+                      {presentation.label}
+                    </dd>
+                  </div>
+                );
+              }
+            )}
           </dl>
         </section>
 
@@ -822,24 +1131,64 @@ const ComparisonPage = ({ currentUser }) => {
             aria-labelledby="comparison-observations-title"
           >
             <div className="comparison-page__section-heading">
-              <span className="comparison-page__eyebrow">Alcance</span>
-              <h2 id="comparison-observations-title">Observaciones</h2>
+              <span className="comparison-page__eyebrow">
+                {t(
+                  "comparisonPage.observations.eyebrow"
+                )}
+              </span>
+              <h2 id="comparison-observations-title">
+                {t(
+                  "comparisonPage.observations.title"
+                )}
+              </h2>
             </div>
             <div className="comparison-page__issues">
-              {Array.isArray(compatibility.blockers) &&
-                compatibility.blockers.map((issue, index) => (
-                  <div className="comparison-page__issue comparison-page__issue--danger" key={`blocker-${index}`}>
-                    <strong>Bloqueo de compatibilidad</strong>
-                    <p>{issue?.message || "Dimensión incompatible."}</p>
-                  </div>
-                ))}
-              {Array.isArray(compatibility.warnings) &&
-                compatibility.warnings.map((issue, index) => (
-                  <div className="comparison-page__issue comparison-page__issue--warning" key={`warning-${index}`}>
-                    <strong>Limitación</strong>
-                    <p>{issue?.message || "Comparación con alcance limitado."}</p>
-                  </div>
-                ))}
+              {Array.isArray(
+                compatibility.blockers
+              ) &&
+                compatibility.blockers.map(
+                  (issue, index) => (
+                    <div
+                      className="comparison-page__issue comparison-page__issue--danger"
+                      key={`blocker-${index}`}
+                    >
+                      <strong>
+                        {t(
+                          "comparisonPage.observations.blocker"
+                        )}
+                      </strong>
+                      <p>
+                        {issue?.message ||
+                          t(
+                            "comparisonPage.observations.blockerFallback"
+                          )}
+                      </p>
+                    </div>
+                  )
+                )}
+              {Array.isArray(
+                compatibility.warnings
+              ) &&
+                compatibility.warnings.map(
+                  (issue, index) => (
+                    <div
+                      className="comparison-page__issue comparison-page__issue--warning"
+                      key={`warning-${index}`}
+                    >
+                      <strong>
+                        {t(
+                          "comparisonPage.observations.limitation"
+                        )}
+                      </strong>
+                      <p>
+                        {issue?.message ||
+                          t(
+                            "comparisonPage.observations.warningFallback"
+                          )}
+                      </p>
+                    </div>
+                  )
+                )}
             </div>
           </section>
         ) : null}
@@ -851,16 +1200,41 @@ const ComparisonPage = ({ currentUser }) => {
               aria-labelledby="comparison-excluded-title"
             >
               <div className="comparison-page__section-heading">
-                <span className="comparison-page__eyebrow">Cobertura</span>
-                <h2 id="comparison-excluded-title">Métricas no comparables</h2>
+                <span className="comparison-page__eyebrow">
+                  {t(
+                    "comparisonPage.excluded.eyebrow"
+                  )}
+                </span>
+                <h2 id="comparison-excluded-title">
+                  {t(
+                    "comparisonPage.excluded.title"
+                  )}
+                </h2>
               </div>
               <ul>
-                {compatibility.excludedMetrics.map((item, index) => (
-                  <li key={`${item?.metric || "metric"}-${index}`}>
-                    <strong>{humanMetricLabel(item?.metric)}</strong>
-                    <span>{item?.message || "No está disponible de forma común."}</span>
-                  </li>
-                ))}
+                {compatibility.excludedMetrics.map(
+                  (item, index) => (
+                    <li
+                      key={`${
+                        item?.metric ||
+                        "metric"
+                      }-${index}`}
+                    >
+                      <strong>
+                        {humanMetricLabel(
+                          item?.metric,
+                          t
+                        )}
+                      </strong>
+                      <span>
+                        {item?.message ||
+                          t(
+                            "comparisonPage.excluded.fallback"
+                          )}
+                      </span>
+                    </li>
+                  )
+                )}
               </ul>
             </section>
           )}
@@ -872,12 +1246,22 @@ const ComparisonPage = ({ currentUser }) => {
           >
             <div className="comparison-page__section-heading comparison-page__guidance-heading">
               <div>
-                <span className="comparison-page__eyebrow">Lectura prudente</span>
+                <span className="comparison-page__eyebrow">
+                  {t(
+                    "comparisonPage.guidance.eyebrow"
+                  )}
+                </span>
                 <h2 id="comparison-guidance-title">
-                  Cómo interpretar esta comparación
+                  {t(
+                    "comparisonPage.guidance.title"
+                  )}
                 </h2>
               </div>
-              <Info size={23} strokeWidth={1.9} aria-hidden="true" />
+              <Info
+                size={23}
+                strokeWidth={1.9}
+                aria-hidden="true"
+              />
             </div>
             <ul>
               {interpretationMessages.map((message) => (
@@ -894,59 +1278,114 @@ const ComparisonPage = ({ currentUser }) => {
           >
             <div className="comparison-page__section-heading comparison-page__chart-heading">
               <div>
-                <span className="comparison-page__eyebrow">Mediciones comunes</span>
-                <h2 id="comparison-chart-title">Resultados superpuestos</h2>
+                <span className="comparison-page__eyebrow">
+                  {t(
+                    "comparisonPage.chart.eyebrow"
+                  )}
+                </span>
+                <h2 id="comparison-chart-title">
+                  {t(
+                    "comparisonPage.chart.title"
+                  )}
+                </h2>
               </div>
-              <BarChart3 size={25} strokeWidth={1.8} aria-hidden="true" />
+              <BarChart3
+                size={25}
+                strokeWidth={1.8}
+                aria-hidden="true"
+              />
             </div>
 
             {!activeMetric ? (
               <InlineState
                 type="unavailable"
-                title="Sin métricas comparables"
-                description="La respuesta no contiene una métrica común disponible para graficar."
+                title={t(
+                  "comparisonPage.chart.noMetrics.title"
+                )}
+                description={t(
+                  "comparisonPage.chart.noMetrics.description"
+                )}
               />
             ) : (
               <>
                 <div className="comparison-page__controls">
                   <label className="comparison-page__control">
-                    <span>Métrica</span>
+                    <span>
+                      {t(
+                        "comparisonPage.chart.metric"
+                      )}
+                    </span>
                     <select
                       value={activeMetric}
                       onChange={(event) => {
-                        setSelectedMetric(event.target.value);
-                        setRange({ minimum: null, maximum: null });
+                        setSelectedMetric(
+                          event.target.value
+                        );
+                        setRange({
+                          minimum: null,
+                          maximum: null,
+                        });
                       }}
                     >
-                      {orderedMetrics.map((metric) => (
-                        <option value={metric} key={metric}>
-                          {humanMetricLabel(metric)}
-                        </option>
-                      ))}
+                      {orderedMetrics.map(
+                        (metric) => (
+                          <option
+                            value={metric}
+                            key={metric}
+                          >
+                            {humanMetricLabel(
+                              metric,
+                              t
+                            )}
+                          </option>
+                        )
+                      )}
                     </select>
                   </label>
 
                   <fieldset className="comparison-page__aggregation">
-                    <legend>Agregación</legend>
+                    <legend>
+                      {t(
+                        "comparisonPage.chart.aggregation"
+                      )}
+                    </legend>
                     <label>
                       <input
                         type="radio"
                         name="comparison-aggregation"
                         value="median"
-                        checked={aggregation === "median"}
-                        onChange={() => setAggregation("median")}
+                        checked={
+                          aggregation ===
+                          "median"
+                        }
+                        onChange={() =>
+                          setAggregation(
+                            "median"
+                          )
+                        }
                       />
-                      Mediana
+                      {t(
+                        "comparisonModel.aggregation.median"
+                      )}
                     </label>
                     <label>
                       <input
                         type="radio"
                         name="comparison-aggregation"
                         value="mean"
-                        checked={aggregation === "mean"}
-                        onChange={() => setAggregation("mean")}
+                        checked={
+                          aggregation ===
+                          "mean"
+                        }
+                        onChange={() =>
+                          setAggregation(
+                            "mean"
+                          )
+                        }
                       />
-                      Media
+                      {t(
+                        "comparisonModel.aggregation.mean"
+                      )}
                     </label>
                   </fieldset>
 
@@ -954,16 +1393,36 @@ const ComparisonPage = ({ currentUser }) => {
                     <input
                       type="checkbox"
                       checked={showDispersion}
-                      onChange={(event) => setShowDispersion(event.target.checked)}
+                      onChange={(event) =>
+                        setShowDispersion(
+                          event.target.checked
+                        )
+                      }
                     />
-                    Mostrar dispersión
+                    {t(
+                      "comparisonPage.chart.showDispersion"
+                    )}
                   </label>
                 </div>
 
-                <div className="comparison-page__range" role="group" aria-label="Rango de InputSize">
-                  <SlidersHorizontal size={18} strokeWidth={1.9} aria-hidden="true" />
+                <div
+                  className="comparison-page__range"
+                  role="group"
+                  aria-label={t(
+                    "comparisonPage.chart.rangeAria"
+                  )}
+                >
+                  <SlidersHorizontal
+                    size={18}
+                    strokeWidth={1.9}
+                    aria-hidden="true"
+                  />
                   <label>
-                    <span>InputSize mínimo</span>
+                    <span>
+                      {t(
+                        "comparisonPage.chart.minimumInputSize"
+                      )}
+                    </span>
                     <select
                       value={normalizedRange.minimum ?? ""}
                       disabled={normalizedRange.domain.length <= 1}
@@ -983,7 +1442,11 @@ const ComparisonPage = ({ currentUser }) => {
                     </select>
                   </label>
                   <label>
-                    <span>InputSize máximo</span>
+                    <span>
+                      {t(
+                        "comparisonPage.chart.maximumInputSize"
+                      )}
+                    </span>
                     <select
                       value={normalizedRange.maximum ?? ""}
                       disabled={normalizedRange.domain.length <= 1}
@@ -1007,36 +1470,81 @@ const ComparisonPage = ({ currentUser }) => {
                     className="comparison-page__button comparison-page__button--secondary"
                     onClick={() => setRange({ minimum: null, maximum: null })}
                   >
-                    <RotateCcw size={15} aria-hidden="true" />
-                    Restablecer rango
+                    <RotateCcw
+                      size={15}
+                      aria-hidden="true"
+                    />
+                    {t(
+                      "comparisonPage.chart.resetRange"
+                    )}
                   </button>
                 </div>
 
                 <div className="comparison-page__chart-context">
-                  <h3>{humanMetricLabel(activeMetric)}</h3>
+                  <h3>
+                    {humanMetricLabel(
+                      activeMetric,
+                      t
+                    )}
+                  </h3>
                   <p>
-                    Eje X: InputSize. Eje Y: {aggregation === "median" ? "mediana" : "media"}
-                    {metricData?.unit ? ` (${metricData.unit})` : ""}.
+                    {t(
+                      "comparisonPage.chart.axisContext",
+                      {
+                        aggregation:
+                          aggregation ===
+                          "median"
+                            ? t(
+                                "comparisonPage.chart.medianLower"
+                              )
+                            : t(
+                                "comparisonPage.chart.meanLower"
+                              ),
+                        unit: metricData?.unit
+                          ? ` (${metricData.unit})`
+                          : "",
+                      }
+                    )}
                     {showDispersion
-                      ? aggregation === "median"
-                        ? " Dispersión Q1–Q3."
-                        : " Dispersión mediante desviación estándar."
-                      : " Dispersión oculta."}
+                      ? aggregation ===
+                        "median"
+                        ? t(
+                            "comparisonPage.chart.dispersionIqr"
+                          )
+                        : t(
+                            "comparisonPage.chart.dispersionStddev"
+                          )
+                      : t(
+                          "comparisonPage.chart.dispersionHidden"
+                        )}
                   </p>
                 </div>
 
                 {!hasChartPoints ? (
                   <InlineState
                     type="unavailable"
-                    title="Sin puntos para este rango"
-                    description="No hay valores centrales disponibles en el rango seleccionado."
+                    title={t(
+                      "comparisonPage.chart.noPoints.title"
+                    )}
+                    description={t(
+                      "comparisonPage.chart.noPoints.description"
+                    )}
                     compact
                   />
                 ) : (
                   <div
                     className="comparison-page__plot"
                     role="img"
-                    aria-label={`Gráfico comparativo de ${humanMetricLabel(activeMetric)}`}
+                    aria-label={t(
+                      "comparisonPage.chart.plotAria",
+                      {
+                        metric:
+                          humanMetricLabel(
+                            activeMetric,
+                            t
+                          ),
+                      }
+                    )}
                   >
                     <Plot
                       data={traces}
@@ -1061,9 +1569,16 @@ const ComparisonPage = ({ currentUser }) => {
                         },
                         yaxis: {
                           title: {
-                            text: metricData?.unit
-                              ? `${humanMetricLabel(activeMetric)} (${metricData.unit})`
-                              : humanMetricLabel(activeMetric),
+                            text:
+                              metricData?.unit
+                                ? `${humanMetricLabel(
+                                    activeMetric,
+                                    t
+                                  )} (${metricData.unit})`
+                                : humanMetricLabel(
+                                    activeMetric,
+                                    t
+                                  ),
                           },
                           automargin: true,
                           gridcolor: plotTheme.divider,

@@ -12,10 +12,14 @@ import InlineState
   from "../components/InlineState";
 
 import {
+  useI18n,
+} from "../i18n";
+
+import {
   coursePeriod,
   formatDateTime,
-  pluralize,
   teacherApi,
+  teacherRequestErrorMessage,
 } from "./teacherApi";
 
 import "./TeacherDashboard.css";
@@ -29,25 +33,20 @@ function EmptyCourseState({
   activeView,
   onCreate,
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="teacher-empty">
-
       <h3>
         {activeView
-          ? "Todavía no hay cursos activos"
-          : "No hay cursos históricos"}
+          ? t("teacherCourses.empty.activeTitle")
+          : t("teacherCourses.empty.historyTitle")}
       </h3>
 
       <p>
         {activeView
-          ? (
-            "Crea una instancia académica para separar "
-            + "estudiantes y resultados por semestre."
-          )
-          : (
-            "Los cursos finalizados aparecerán aquí "
-            + "sin perder su historial."
-          )}
+          ? t("teacherCourses.empty.activeDescription")
+          : t("teacherCourses.empty.historyDescription")}
       </p>
 
       {activeView && (
@@ -56,10 +55,9 @@ function EmptyCourseState({
           className="btn teacher-primary-button"
           onClick={onCreate}
         >
-          Crear curso
+          {t("teacherCourses.actions.create")}
         </button>
       )}
-
     </div>
   );
 }
@@ -69,15 +67,39 @@ function CourseCard({
   course,
   onOpen,
 }) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const totalStudents =
+    course.totalStudents || 0;
+
+  const studentCountLabel =
+    course.totalStudents >
+      course.activeStudents
+      ? t(
+          "teacherCourses.card.historicalStudents",
+          {
+            count:
+              totalStudents,
+          }
+        )
+      : t(
+          totalStudents === 1
+            ? "teacherCourses.card.registeredStudents.one"
+            : "teacherCourses.card.registeredStudents.other",
+          {
+            count:
+              totalStudents,
+          }
+        );
+
   return (
     <article className="teacher-course-card">
-
       <div className="teacher-course-card-top">
-
         <div>
-
           <div className="teacher-course-code-row">
-
             <strong>
               {course.code}
             </strong>
@@ -90,10 +112,9 @@ function CourseCard({
               }
             >
               {course.isActive
-                ? "Activo"
-                : "Finalizado"}
+                ? t("teacherCourses.card.active")
+                : t("teacherCourses.card.finished")}
             </span>
-
           </div>
 
           <h2>
@@ -103,9 +124,11 @@ function CourseCard({
           <p>
             {coursePeriod(course)}
             {" · "}
-            {course.teacher?.fullName || "Profesor no disponible"}
+            {course.teacher?.fullName ||
+              t(
+                "teacherCourses.card.teacherUnavailable"
+              )}
           </p>
-
         </div>
 
         <button
@@ -115,64 +138,148 @@ function CourseCard({
             onOpen(course.id)
           }
         >
-          Abrir
+          {t(
+            "teacherCourses.actions.open"
+          )}
         </button>
-
       </div>
 
 
       <div className="teacher-course-metrics">
-
         <div>
-          <span>Estudiantes</span>
+          <span>
+            {t(
+              "teacherCourses.metrics.students"
+            )}
+          </span>
           <strong>
             {course.activeStudents || 0}
           </strong>
         </div>
 
         <div>
-          <span>Envíos</span>
+          <span>
+            {t(
+              "teacherCourses.metrics.submissions"
+            )}
+          </span>
           <strong>
             {course.submissions || 0}
           </strong>
         </div>
 
         <div>
-          <span>Ejecuciones</span>
+          <span>
+            {t(
+              "teacherCourses.metrics.executions"
+            )}
+          </span>
           <strong>
             {course.executions || 0}
           </strong>
         </div>
-
       </div>
 
 
       <footer className="teacher-course-footer">
-
         <span>
-          {course.totalStudents > course.activeStudents
-            ? (
-              `${course.totalStudents} estudiantes históricos`
-            )
-            : (
-              pluralize(
-                course.totalStudents || 0,
-                "estudiante registrado",
-                "estudiantes registrados"
-              )
-            )}
+          {studentCountLabel}
         </span>
 
         <span>
-          Última actividad:{" "}
-          {formatDateTime(
-            course.lastActivityAt
+          {t(
+            "teacherCourses.card.lastActivity",
+            {
+              value:
+                formatDateTime(
+                  course.lastActivityAt,
+                  locale,
+                  t(
+                    "teacherCourses.common.unavailable"
+                  )
+                ),
+            }
           )}
         </span>
-
       </footer>
-
     </article>
+  );
+}
+
+
+function createCourseErrorMessage(
+  error,
+  language,
+  t
+) {
+  if (!error) {
+    return "";
+  }
+
+  const status =
+    Number(error?.status);
+
+  const businessStatus =
+    status === 400 ||
+    status === 409 ||
+    status === 422;
+
+  /*
+   * Compatibilidad legacy en español:
+   * conserva el detalle backend esperado.
+   * En inglés nunca se filtra ese texto.
+   */
+  if (
+    language === "es" &&
+    businessStatus &&
+    typeof error?.message === "string" &&
+    error.message.trim()
+  ) {
+    return error.message.trim();
+  }
+
+  const code =
+    String(error?.code || "")
+      .trim()
+      .toUpperCase();
+
+  const field =
+    String(
+      error?.payload?.error?.field || ""
+    ).trim();
+
+  if (
+    code === "VALIDATION_ERROR"
+  ) {
+    const fieldKeys = {
+      code:
+        "teacherCourses.errors.validationCode",
+      name:
+        "teacherCourses.errors.validationName",
+      academicYear:
+        "teacherCourses.errors.validationYear",
+      academicTerm:
+        "teacherCourses.errors.validationTerm",
+    };
+
+    if (fieldKeys[field]) {
+      return t(
+        fieldKeys[field]
+      );
+    }
+
+    return t(
+      "teacherCourses.errors.createValidation"
+    );
+  }
+
+  return teacherRequestErrorMessage(
+    error,
+    t,
+    {
+      fallbackKey:
+        "teacherCourses.errors.create",
+    }
   );
 }
 
@@ -180,6 +287,11 @@ function CourseCard({
 export default function TeacherCourses() {
   const navigate =
     useNavigate();
+
+  const {
+    language,
+    t,
+  } = useI18n();
 
   const [
     activeView,
@@ -285,10 +397,7 @@ export default function TeacherCourses() {
             }
 
             setItems([]);
-            setError(
-              err.message ||
-              "No fue posible cargar los cursos."
-            );
+            setError(err);
           } finally {
             if (
               !controller.signal
@@ -425,38 +534,55 @@ export default function TeacherCourses() {
           );
         }
       } catch (err) {
-        setCreateError(
-          err.message ||
-          "No fue posible crear el curso."
-        );
+        setCreateError(err);
       } finally {
         setCreating(false);
       }
     };
 
 
+  const loadErrorMessage =
+    error
+      ? teacherRequestErrorMessage(
+          error,
+          t,
+          {
+            fallbackKey:
+              "teacherCourses.errors.load",
+          }
+        )
+      : "";
+
+  const createErrorMessage =
+    createCourseErrorMessage(
+      createError,
+      language,
+      t
+    );
+
+
   return (
     <main className="teacher-page">
-
       <div className="teacher-page-inner">
-
         <header className="teacher-page-header">
-
           <div>
-
             <p className="teacher-eyebrow">
-              Supervisión docente
+              {t(
+                "teacherCourses.header.eyebrow"
+              )}
             </p>
 
             <h1>
-              Cursos
+              {t(
+                "teacherCourses.header.title"
+              )}
             </h1>
 
             <span>
-              Separa la actividad por semestre y revisa
-              únicamente a los estudiantes de cada curso.
+              {t(
+                "teacherCourses.header.description"
+              )}
             </span>
-
           </div>
 
           <button
@@ -470,20 +596,31 @@ export default function TeacherCourses() {
             }}
           >
             {showCreate
-              ? "Cerrar"
-              : "Crear curso"}
+              ? t(
+                  "teacherCourses.actions.close"
+                )
+              : t(
+                  "teacherCourses.actions.create"
+                )}
           </button>
-
         </header>
 
 
-        <section className="teacher-summary-grid">
-
+        <section
+          className="teacher-summary-grid"
+          aria-label={t(
+            "teacherCourses.summary.aria"
+          )}
+        >
           <article>
             <span>
               {activeView
-                ? "Cursos activos"
-                : "Cursos históricos"}
+                ? t(
+                    "teacherCourses.summary.activeCourses"
+                  )
+                : t(
+                    "teacherCourses.summary.historicalCourses"
+                  )}
             </span>
             <strong>
               {stats.courses}
@@ -492,7 +629,9 @@ export default function TeacherCourses() {
 
           <article>
             <span>
-              Estudiantes activos
+              {t(
+                "teacherCourses.summary.activeStudents"
+              )}
             </span>
             <strong>
               {stats.students}
@@ -501,7 +640,9 @@ export default function TeacherCourses() {
 
           <article>
             <span>
-              Envíos
+              {t(
+                "teacherCourses.metrics.submissions"
+              )}
             </span>
             <strong>
               {stats.submissions}
@@ -510,46 +651,46 @@ export default function TeacherCourses() {
 
           <article>
             <span>
-              Ejecuciones
+              {t(
+                "teacherCourses.metrics.executions"
+              )}
             </span>
             <strong>
               {stats.executions}
             </strong>
           </article>
-
         </section>
 
 
         {showCreate && (
-
           <section className="teacher-panel">
-
             <div className="teacher-panel-heading">
-
               <div>
                 <h2>
-                  Nueva instancia académica
+                  {t(
+                    "teacherCourses.create.title"
+                  )}
                 </h2>
 
                 <p>
-                  El mismo código puede existir en años
-                  o semestres distintos sin mezclar resultados.
+                  {t(
+                    "teacherCourses.create.description"
+                  )}
                 </p>
               </div>
-
             </div>
-
 
             <form
               className="teacher-form-grid"
               onSubmit={createCourse}
             >
-
               <div>
                 <label
                   htmlFor="teacher-course-code"
                 >
-                  Código
+                  {t(
+                    "teacherCourses.create.code"
+                  )}
                 </label>
 
                 <input
@@ -562,19 +703,21 @@ export default function TeacherCourses() {
                       event.target.value
                     )
                   }
-                  placeholder="Ej. INF-221"
+                  placeholder={t(
+                    "teacherCourses.create.codePlaceholder"
+                  )}
                   maxLength={50}
                   required
                 />
               </div>
 
-
               <div className="teacher-form-span-2">
-
                 <label
                   htmlFor="teacher-course-name"
                 >
-                  Nombre
+                  {t(
+                    "teacherCourses.create.name"
+                  )}
                 </label>
 
                 <input
@@ -587,18 +730,21 @@ export default function TeacherCourses() {
                       event.target.value
                     )
                   }
-                  placeholder="Ej. Estructuras de Datos"
+                  placeholder={t(
+                    "teacherCourses.create.namePlaceholder"
+                  )}
                   maxLength={150}
                   required
                 />
               </div>
 
-
               <div>
                 <label
                   htmlFor="teacher-course-year"
                 >
-                  Año
+                  {t(
+                    "teacherCourses.create.year"
+                  )}
                 </label>
 
                 <input
@@ -620,12 +766,13 @@ export default function TeacherCourses() {
                 />
               </div>
 
-
               <div>
                 <label
                   htmlFor="teacher-course-term"
                 >
-                  Semestre
+                  {t(
+                    "teacherCourses.create.semester"
+                  )}
                 </label>
 
                 <select
@@ -650,12 +797,13 @@ export default function TeacherCourses() {
                 </select>
               </div>
 
-
               <div className="teacher-form-actions">
-
                 {createError && (
-                  <span className="teacher-inline-error">
-                    {createError}
+                  <span
+                    className="teacher-inline-error"
+                    role="alert"
+                  >
+                    {createErrorMessage}
                   </span>
                 )}
 
@@ -665,23 +813,26 @@ export default function TeacherCourses() {
                   disabled={creating}
                 >
                   {creating
-                    ? "Creando..."
-                    : "Crear curso"}
+                    ? t(
+                        "teacherCourses.actions.creating"
+                      )
+                    : t(
+                        "teacherCourses.actions.create"
+                      )}
                 </button>
-
               </div>
-
             </form>
-
           </section>
-
         )}
 
 
-        <section className="teacher-toolbar">
-
+        <section
+          className="teacher-toolbar"
+          aria-label={t(
+            "teacherCourses.toolbar.aria"
+          )}
+        >
           <div className="teacher-segmented">
-
             <button
               type="button"
               className={
@@ -692,8 +843,13 @@ export default function TeacherCourses() {
               onClick={() =>
                 setActiveView(true)
               }
+              aria-pressed={
+                activeView
+              }
             >
-              Activos
+              {t(
+                "teacherCourses.toolbar.active"
+              )}
             </button>
 
             <button
@@ -706,19 +862,23 @@ export default function TeacherCourses() {
               onClick={() =>
                 setActiveView(false)
               }
+              aria-pressed={
+                !activeView
+              }
             >
-              Históricos
+              {t(
+                "teacherCourses.toolbar.historical"
+              )}
             </button>
-
           </div>
 
-
           <div className="teacher-search">
-
             <label
               htmlFor="teacher-course-search"
             >
-              Buscar curso
+              {t(
+                "teacherCourses.toolbar.searchLabel"
+              )}
             </label>
 
             <input
@@ -730,18 +890,21 @@ export default function TeacherCourses() {
                   event.target.value
                 )
               }
-              placeholder="Código, nombre o profesor"
+              placeholder={t(
+                "teacherCourses.toolbar.searchPlaceholder"
+              )}
             />
-
           </div>
-
         </section>
 
 
-        {loading && items.length === 0 && (
+        {loading &&
+          items.length === 0 && (
           <InlineState
             type="loading"
-            title="Cargando cursos"
+            title={t(
+              "teacherCourses.loading"
+            )}
             compact
           />
         )}
@@ -750,9 +913,15 @@ export default function TeacherCourses() {
         {error && (
           <InlineState
             type="error"
-            title="No pudimos cargar los cursos"
-            description={error}
-            actionLabel="Reintentar"
+            title={t(
+              "teacherCourses.errors.loadTitle"
+            )}
+            description={
+              loadErrorMessage
+            }
+            actionLabel={t(
+              "teacherCourses.actions.retry"
+            )}
             onAction={() =>
               setReloadToken(
                 (value) =>
@@ -778,9 +947,12 @@ export default function TeacherCourses() {
 
         {!error &&
           items.length > 0 && (
-
-            <section className="teacher-course-list">
-
+            <section
+              className="teacher-course-list"
+              aria-label={t(
+                "teacherCourses.list.aria"
+              )}
+            >
               {items.map(
                 (course) => (
                   <CourseCard
@@ -794,13 +966,9 @@ export default function TeacherCourses() {
                   />
                 )
               )}
-
             </section>
-
           )}
-
       </div>
-
     </main>
   );
 }

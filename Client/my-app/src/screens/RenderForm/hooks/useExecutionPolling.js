@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { serverURL } from "../../../common/Constants.js";
 import { friendlyRequestError } from "../../../common/requestErrorModel";
+import { useI18n } from "../../../i18n";
 import {
   aggregatePollingState,
   indexExecutionRecords,
@@ -13,6 +14,7 @@ function useExecutionPolling(
   executionRecords,
   intervalMs = 3000
 ) {
+  const { t } = useI18n();
   const [messages, setMessages] = useState([]);
   const [executionFiles, setExecutionFiles] = useState([]);
   const [allDone, setAllDone] = useState(false);
@@ -50,7 +52,7 @@ function useExecutionPolling(
       setAllTerminal(false);
       setHasError(true);
       setFirstErrorMessage(
-        "El servidor no devolvió el identificador persistente de la ejecución."
+        t("renderForm.workflow.polling.missingPersistentId")
       );
       setRequestError("");
       return;
@@ -107,9 +109,11 @@ function useExecutionPolling(
             requestStatus: error?.response?.status || null,
             requestError: friendlyRequestError(
               error,
-              "No fue posible consultar el estado de la ejecución.",
+              t("renderForm.workflow.polling.unavailable"),
               {
-                404: "La ejecución consultada ya no está disponible.",
+                404: t(
+                  "renderForm.workflow.polling.notFound"
+                ),
               }
             ),
           };
@@ -153,8 +157,9 @@ function useExecutionPolling(
         setHasError(false);
         setFirstErrorMessage("");
         setRequestError(
-          results.find((item) => item.unavailable)?.requestError ||
-            "No fue posible consultar el estado de la ejecución."
+          results.find((item) => item.unavailable)
+            ?.requestError ||
+            t("renderForm.workflow.polling.unavailable")
         );
       }
     };
@@ -167,7 +172,13 @@ function useExecutionPolling(
         window.clearTimeout(timeoutId);
       }
     };
-  }, [fileList, executionRecords, intervalMs, retryToken]);
+  }, [
+    fileList,
+    executionRecords,
+    intervalMs,
+    retryToken,
+    t,
+  ]);
 
   const retryPolling = () => {
     setRetryToken((value) => value + 1);

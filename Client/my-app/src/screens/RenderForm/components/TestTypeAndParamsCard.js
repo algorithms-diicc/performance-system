@@ -1,6 +1,29 @@
 // src/screens/RenderForm/components/TestTypeAndParamsCard.js
 import React from "react";
 
+import { useI18n } from "../../../i18n";
+
+const profileIdFromValue = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+  const known = {
+    rapido: "rapido",
+    equilibrado: "equilibrado",
+    exhaustivo: "exhaustivo",
+    personalizado: "personalizado",
+    quick: "rapido",
+    balanced: "equilibrado",
+    exhaustive: "exhaustivo",
+    custom: "personalizado",
+  };
+
+  return known[normalized] || normalized;
+};
+
 function TestTypeAndParamsCard({
   tasks,
   selectedTaskType,
@@ -26,8 +49,25 @@ function TestTypeAndParamsCard({
   paramLimits,
   executionProfile,
 }) {
+  const { t } = useI18n();
+
   const getLimits = (taskId, field) =>
     paramLimits?.[taskId]?.[field] || null;
+
+  const taskText = (task, field, fallback) => {
+    const key = `renderForm.benchmark.tasks.${task.id}.${field}`;
+    const translated = t(key);
+    return translated === key ? fallback : translated;
+  };
+
+  const profileId = profileIdFromValue(executionProfile);
+  const profileKey =
+    `renderForm.measurement.profiles.${profileId}.name`;
+  const translatedProfile = t(profileKey);
+  const profileLabel =
+    translatedProfile === profileKey
+      ? executionProfile
+      : translatedProfile;
 
   const handleSamplesStep = (direction, limitsSamples) => {
     const current =
@@ -36,36 +76,18 @@ function TestTypeAndParamsCard({
         : limitsSamples?.min ?? 1;
 
     if (!limitsSamples) {
-      const next =
-        direction === "inc"
-          ? current + 1
-          : Math.max(1, current - 1);
-
-      onSamplesChange({
-        target: { value: next },
-      });
-
+      const next = direction === "inc" ? current + 1 : Math.max(1, current - 1);
+      onSamplesChange({ target: { value: next } });
       return;
     }
 
     const step = limitsSamples.step ?? 1;
+    let next = direction === "inc" ? current + step : current - step;
 
-    let next =
-      direction === "inc"
-        ? current + step
-        : current - step;
+    if (next < limitsSamples.min) next = limitsSamples.min;
+    if (next > limitsSamples.max) next = limitsSamples.max;
 
-    if (next < limitsSamples.min) {
-      next = limitsSamples.min;
-    }
-
-    if (next > limitsSamples.max) {
-      next = limitsSamples.max;
-    }
-
-    onSamplesChange({
-      target: { value: next },
-    });
+    onSamplesChange({ target: { value: next } });
   };
 
   return (
@@ -73,32 +95,23 @@ function TestTypeAndParamsCard({
       <section className="rf-panel">
         <div className="form-label">
           <span className="label-icon">🧪</span>
-          Tipo de benchmark y parámetros
+          {t("renderForm.benchmark.sectionLabel")}
         </div>
 
         <p className="benchmark-section-help">
-          Selecciona el tipo de entrada que mejor representa el algoritmo que
-          quieres analizar. Performance System utilizará el benchmark asociado
-          para generar los distintos puntos de medición.
+          {t("renderForm.benchmark.sectionHelp")}
         </p>
 
         <div className="test-options">
           {tasks.map((task) => {
-            const isSelected =
-              selectedTaskType === task.id;
-
-            const limitsInput =
-              getLimits(task.id, "inputSize");
-
-            const limitsSamples =
-              getLimits(task.id, "samples");
+            const isSelected = selectedTaskType === task.id;
+            const limitsInput = getLimits(task.id, "inputSize");
+            const limitsSamples = getLimits(task.id, "samples");
 
             return (
               <div
                 key={task.id}
-                className={`test-option ${
-                  isSelected ? "selected" : ""
-                }`}
+                className={`test-option ${isSelected ? "selected" : ""}`}
               >
                 <div
                   className="test-option-header"
@@ -110,9 +123,7 @@ function TestTypeAndParamsCard({
                       className="test-radio"
                       name="taskToggle"
                       checked={isSelected}
-                      onChange={() =>
-                        onTaskChange(task.id)
-                      }
+                      onChange={() => onTaskChange(task.id)}
                     />
 
                     <div className="test-option-texts">
@@ -120,22 +131,32 @@ function TestTypeAndParamsCard({
                         <span className="test-option-icon">
                           {taskIcons[task.id]}
                         </span>
-
                         <span className="test-title">
-                          {taskDisplayNames[task.id] ||
-                            task.title}
+                          {taskText(
+                            task,
+                            "name",
+                            taskDisplayNames[task.id] || task.title
+                          )}
                         </span>
                       </div>
 
                       <p className="test-subtitle">
-                        {taskSubtitles[task.id]}
+                        {taskText(
+                          task,
+                          "subtitle",
+                          taskSubtitles[task.id]
+                        )}
                       </p>
                     </div>
                   </div>
 
                   <div className="test-option-meta">
                     <span className="test-badge">
-                      {taskBadges[task.id]}
+                      {taskText(
+                        task,
+                        "badge",
+                        taskBadges[task.id]
+                      )}
                     </span>
                   </div>
                 </div>
@@ -143,35 +164,36 @@ function TestTypeAndParamsCard({
                 {isSelected && (
                   <div className="test-details">
                     <p className="test-description">
-                      {taskDescriptions[task.id] ||
-                        task.description}
+                      {taskText(
+                        task,
+                        "description",
+                        taskDescriptions[task.id] || task.description
+                      )}
                     </p>
 
                     <div className="test-params-grid">
                       <div className="param-group">
                         <label className="param-label">
-                          Tamaño máximo de entrada
+                          {t("renderForm.benchmark.maxInput")}
                         </label>
 
                         <input
                           type="number"
                           className={`param-input ${
-                            paramErrors.inputSize
-                              ? "param-input-error"
-                              : ""
+                            paramErrors.inputSize ? "param-input-error" : ""
                           }`}
-                          value={
-                            inputSize === ""
-                              ? ""
-                              : inputSize
-                          }
+                          value={inputSize === "" ? "" : inputSize}
                           onChange={onInputSizeChange}
                           min={limitsInput?.min ?? 1}
                           max={limitsInput?.max}
                         />
 
                         <p className="param-context-help">
-                          {inputSizeHelp[task.id]}
+                          {taskText(
+                            task,
+                            "inputHelp",
+                            inputSizeHelp[task.id]
+                          )}
                         </p>
 
                         {limitsInput && (
@@ -183,17 +205,13 @@ function TestTypeAndParamsCard({
                               max={limitsInput.max}
                               step={limitsInput.step}
                               value={
-                                typeof inputSize ===
-                                  "number" &&
+                                typeof inputSize === "number" &&
                                 !Number.isNaN(inputSize)
                                   ? inputSize
                                   : limitsInput.min
                               }
-                              onChange={
-                                onInputSizeSliderChange
-                              }
+                              onChange={onInputSizeSliderChange}
                             />
-
                             <div className="param-range-labels">
                               <span>{limitsInput.min}</span>
                               <span>{limitsInput.max}</span>
@@ -202,19 +220,14 @@ function TestTypeAndParamsCard({
                         )}
 
                         <div className="param-suggestions">
-                          {(
-                            inputSizePresets[task.id] ||
-                            []
-                          ).map((preset) => (
+                          {(inputSizePresets[task.id] || []).map((preset) => (
                             <button
                               key={preset}
                               type="button"
                               className="param-chip"
                               onClick={() =>
                                 onInputSizeSliderChange({
-                                  target: {
-                                    value: preset,
-                                  },
+                                  target: { value: preset },
                                 })
                               }
                             >
@@ -232,8 +245,7 @@ function TestTypeAndParamsCard({
 
                       <div className="param-group">
                         <label className="param-label">
-                          Repeticiones por punto de
-                          medición
+                          {t("renderForm.benchmark.repetitionsPerPoint")}
                         </label>
 
                         <div className="param-input-with-stepper">
@@ -241,12 +253,11 @@ function TestTypeAndParamsCard({
                             type="button"
                             className="stepper-button"
                             onClick={() =>
-                              handleSamplesStep(
-                                "dec",
-                                limitsSamples
-                              )
+                              handleSamplesStep("dec", limitsSamples)
                             }
-                            aria-label="Disminuir repeticiones"
+                            aria-label={t(
+                              "renderForm.benchmark.decreaseRepetitions"
+                            )}
                           >
                             −
                           </button>
@@ -254,19 +265,11 @@ function TestTypeAndParamsCard({
                           <input
                             type="number"
                             className={`param-input ${
-                              paramErrors.samples
-                                ? "param-input-error"
-                                : ""
+                              paramErrors.samples ? "param-input-error" : ""
                             }`}
-                            value={
-                              samples === ""
-                                ? ""
-                                : samples
-                            }
+                            value={samples === "" ? "" : samples}
                             onChange={onSamplesChange}
-                            min={
-                              limitsSamples?.min ?? 1
-                            }
+                            min={limitsSamples?.min ?? 1}
                             max={limitsSamples?.max}
                           />
 
@@ -274,25 +277,20 @@ function TestTypeAndParamsCard({
                             type="button"
                             className="stepper-button"
                             onClick={() =>
-                              handleSamplesStep(
-                                "inc",
-                                limitsSamples
-                              )
+                              handleSamplesStep("inc", limitsSamples)
                             }
-                            aria-label="Aumentar repeticiones"
+                            aria-label={t(
+                              "renderForm.benchmark.increaseRepetitions"
+                            )}
                           >
                             +
                           </button>
                         </div>
 
                         <p className="param-context-help">
-                          El perfil actual es{" "}
-                          <strong>
-                            {executionProfile}
-                          </strong>
-                          . Si modificas este valor
-                          manualmente, el perfil cambia a
-                          Personalizado.
+                          {t("renderForm.benchmark.currentProfile", {
+                            profile: profileLabel,
+                          })}
                         </p>
 
                         {limitsSamples && (
@@ -304,47 +302,35 @@ function TestTypeAndParamsCard({
                               max={limitsSamples.max}
                               step={limitsSamples.step}
                               value={
-                                typeof samples ===
-                                  "number" &&
+                                typeof samples === "number" &&
                                 !Number.isNaN(samples)
                                   ? samples
                                   : limitsSamples.min
                               }
-                              onChange={
-                                onSamplesSliderChange
-                              }
+                              onChange={onSamplesSliderChange}
                             />
-
                             <div className="param-range-labels">
-                              <span>
-                                {limitsSamples.min}
-                              </span>
-                              <span>
-                                {limitsSamples.max}
-                              </span>
+                              <span>{limitsSamples.min}</span>
+                              <span>{limitsSamples.max}</span>
                             </div>
                           </div>
                         )}
 
                         <div className="param-suggestions">
-                          {samplesPresets.map(
-                            (preset) => (
-                              <button
-                                key={preset}
-                                type="button"
-                                className="param-chip"
-                                onClick={() =>
-                                  onSamplesSliderChange({
-                                    target: {
-                                      value: preset,
-                                    },
-                                  })
-                                }
-                              >
-                                {preset}
-                              </button>
-                            )
-                          )}
+                          {samplesPresets.map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              className="param-chip"
+                              onClick={() =>
+                                onSamplesSliderChange({
+                                  target: { value: preset },
+                                })
+                              }
+                            >
+                              {preset}
+                            </button>
+                          ))}
                         </div>
 
                         {paramErrors.samples && (
@@ -357,17 +343,24 @@ function TestTypeAndParamsCard({
                       {task.id === "camm" && (
                         <div className="param-group param-group-full">
                           <label className="param-label">
-                            Distribución de los datos
+                            {t("renderForm.benchmark.dataDistribution")}
                           </label>
 
                           <p className="param-context-help">
-                            Define cómo se organiza el conjunto
-                            numérico que recibirá el algoritmo.
+                            {t("renderForm.benchmark.dataDistributionHelp")}
                           </p>
 
                           <div className="data-options">
-                            {numericalInputOptions.map(
-                              (option) => (
+                            {numericalInputOptions.map((option) => {
+                              const key =
+                                `renderForm.benchmark.dataTypes.${option.value}`;
+                              const translated = t(key);
+                              const label =
+                                translated === key
+                                  ? option.label
+                                  : translated;
+
+                              return (
                                 <label
                                   key={option.value}
                                   className="data-option"
@@ -377,23 +370,17 @@ function TestTypeAndParamsCard({
                                     name="dataType"
                                     value={option.value}
                                     onChange={(e) =>
-                                      onDataTypeChange(
-                                        e.target.value
-                                      )
+                                      onDataTypeChange(e.target.value)
                                     }
-                                    checked={
-                                      dataType ===
-                                      option.value
-                                    }
+                                    checked={dataType === option.value}
                                     className="data-radio"
                                   />
-
                                   <span className="data-label">
-                                    {option.label}
+                                    {label}
                                   </span>
                                 </label>
-                              )
-                            )}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -401,16 +388,9 @@ function TestTypeAndParamsCard({
 
                     <div className="param-summary">
                       <p>
-                        <strong>
-                          Cómo se ejecutará:
-                        </strong>{" "}
-                        el motor generará varios puntos de
-                        medición hasta el tamaño máximo
-                        seleccionado y repetirá cada punto{" "}
-                        <strong>{samples}</strong>{" "}
-                        {samples === 1
-                          ? "vez"
-                          : "veces"}.
+                        {t("renderForm.benchmark.executionSummary", {
+                          count: samples,
+                        })}
                       </p>
                     </div>
                   </div>

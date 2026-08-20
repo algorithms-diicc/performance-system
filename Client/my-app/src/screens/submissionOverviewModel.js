@@ -8,10 +8,6 @@ export const SUBMISSION_AGGREGATE_LABELS = {
 
 const FALLBACK_VALUE = "No disponible";
 
-const decimalFormatter = new Intl.NumberFormat("es-CL", {
-  maximumFractionDigits: 2,
-});
-
 const toCount = (value) => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0
@@ -140,28 +136,47 @@ export function canOpenExecutionResult(execution) {
   );
 }
 
-export function executionDisplayName(execution = {}) {
+export function executionDisplayName(
+  execution = {},
+  fallback = "Archivo sin nombre"
+) {
   return (
-    String(execution.originalFilename || "").trim() ||
+    String(
+      execution.originalFilename || ""
+    ).trim() ||
     String(execution.codename || "").trim() ||
-    "Archivo sin nombre"
+    fallback
   );
 }
 
-export function formatExecutionDuration(milliseconds) {
-  if (milliseconds === null || milliseconds === undefined) {
-    return "Sin datos";
+export function formatExecutionDuration(
+  milliseconds,
+  locale = "es-CL",
+  fallback = "Sin datos"
+) {
+  if (
+    milliseconds === null ||
+    milliseconds === undefined
+  ) {
+    return fallback;
   }
 
   const value = Number(milliseconds);
 
   if (!Number.isFinite(value) || value < 0) {
-    return "Sin datos";
+    return fallback;
   }
 
   if (value < 1000) {
     return `${Math.round(value)} ms`;
   }
+
+  const decimalFormatter = new Intl.NumberFormat(
+    locale,
+    {
+      maximumFractionDigits: 2,
+    }
+  );
 
   const seconds = value / 1000;
 
@@ -170,7 +185,8 @@ export function formatExecutionDuration(milliseconds) {
   }
 
   const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = seconds - minutes * 60;
+  const remainingSeconds =
+    seconds - minutes * 60;
 
   if (remainingSeconds < 0.005) {
     return `${minutes} min`;
@@ -181,59 +197,92 @@ export function formatExecutionDuration(milliseconds) {
   )} s`;
 }
 
-export function formatSubmissionDateTime(value) {
-  if (!value) return FALLBACK_VALUE;
+export function formatSubmissionDateTime(
+  value,
+  locale = "es-CL",
+  fallback = FALLBACK_VALUE
+) {
+  if (!value) return fallback;
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return FALLBACK_VALUE;
+    return fallback;
   }
 
-  const formatted = new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  const formatted = new Intl.DateTimeFormat(
+    locale,
+    {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }
+  ).format(date);
 
   return formatted
     .replace(/[\s\u00a0\u202f]+/gu, " ")
     .trim();
 }
 
-export function formatCourseLabel(course) {
+export function formatCourseLabel(
+  course,
+  fallback = "Sin curso asociado"
+) {
   if (!course || typeof course !== "object") {
-    return "Sin curso asociado";
+    return fallback;
   }
 
   const code = String(course.code || "").trim();
   const name = String(course.name || "").trim();
 
-  return [code, name].filter(Boolean).join(" · ") ||
-    "Sin curso asociado";
+  return (
+    [code, name].filter(Boolean).join(" · ") ||
+    fallback
+  );
 }
 
-export function formatAcademicPeriod(course) {
+export function formatAcademicPeriod(
+  course,
+  {
+    periodLabel = "Período",
+  } = {}
+) {
   if (!course || typeof course !== "object") {
     return null;
   }
 
-  const year = String(course.academicYear || "").trim();
-  const term = String(course.academicTerm || "").trim();
+  const year = String(
+    course.academicYear || ""
+  ).trim();
+  const term = String(
+    course.academicTerm || ""
+  ).trim();
 
   if (!year && !term) return null;
-  if (year && term) return `Período ${year}-${term}`;
-  return `Período ${year || term}`;
+  if (year && term) {
+    return `${periodLabel} ${year}-${term}`;
+  }
+
+  return `${periodLabel} ${year || term}`;
 }
 
-export function abbreviateArchiveSha256(value) {
+export function abbreviateArchiveSha256(
+  value,
+  fallback = FALLBACK_VALUE
+) {
   const normalized = String(value || "").trim();
 
-  if (!normalized) return FALLBACK_VALUE;
+  if (!normalized) return fallback;
   if (normalized.length <= 24) return normalized;
 
-  return `${normalized.slice(0, 12)}…${normalized.slice(-8)}`;
+  return `${normalized.slice(
+    0,
+    12
+  )}…${normalized.slice(-8)}`;
 }
 
-export function formatBenchmark(value) {
-  return String(value || "").trim() || "No informado";
+export function formatBenchmark(
+  value,
+  fallback = "No informado"
+) {
+  return String(value || "").trim() || fallback;
 }

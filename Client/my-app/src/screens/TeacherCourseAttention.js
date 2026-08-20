@@ -9,7 +9,12 @@ import InlineState
   from "../components/InlineState";
 
 import {
+  useI18n,
+} from "../i18n";
+
+import {
   formatDateTime,
+  teacherRequestErrorMessage,
 } from "./teacherApi";
 
 
@@ -80,6 +85,18 @@ export function buildAcademicAttention(
 }
 
 
+function countKey(
+  count,
+  base
+) {
+  return `${base}.${
+    count === 1
+      ? "one"
+      : "other"
+  }`;
+}
+
+
 export default function TeacherCourseAttention({
   courseId,
   students,
@@ -88,6 +105,11 @@ export default function TeacherCourseAttention({
   onRetry,
   onSelectFilter,
 }) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
   const summary =
     useMemo(
       () =>
@@ -97,6 +119,22 @@ export default function TeacherCourseAttention({
       [students]
     );
 
+  const resolvedError =
+    error
+      ? (
+          typeof error === "string"
+            ? error
+            : teacherRequestErrorMessage(
+                error,
+                t,
+                {
+                  fallbackKey:
+                    "teacherCourseAttention.errors.load",
+                }
+              )
+        )
+      : "";
+
   if (
     loading &&
     (!students || students.length === 0)
@@ -105,7 +143,9 @@ export default function TeacherCourseAttention({
       <section className="teacher-attention-panel">
         <InlineState
           type="loading"
-          title="Cargando atención académica"
+          title={t(
+            "teacherCourseAttention.loading"
+          )}
           compact
         />
       </section>
@@ -120,9 +160,13 @@ export default function TeacherCourseAttention({
       <section className="teacher-attention-panel">
         <InlineState
           type="error"
-          title="No pudimos cargar la atención académica"
-          description={error}
-          actionLabel="Reintentar"
+          title={t(
+            "teacherCourseAttention.errors.title"
+          )}
+          description={resolvedError}
+          actionLabel={t(
+            "teacherCommon.actions.retry"
+          )}
           onAction={onRetry}
           compact
         />
@@ -138,20 +182,27 @@ export default function TeacherCourseAttention({
       <div className="teacher-attention-heading">
         <div>
           <p className="teacher-eyebrow">
-            Supervisión accionable
+            {t(
+              "teacherCourseAttention.header.eyebrow"
+            )}
           </p>
           <h2 id="teacher-attention-title">
-            Atención académica
+            {t(
+              "teacherCourseAttention.header.title"
+            )}
           </h2>
           <p>
-            Señales operativas para encontrar casos que conviene revisar,
-            sin calificar ni comparar estudiantes.
+            {t(
+              "teacherCourseAttention.header.description"
+            )}
           </p>
         </div>
 
         {loading && (
           <span className="teacher-attention-refreshing">
-            Actualizando…
+            {t(
+              "teacherCourseAttention.refreshing"
+            )}
           </span>
         )}
       </div>
@@ -161,12 +212,16 @@ export default function TeacherCourseAttention({
           className="teacher-attention-inline-error"
           role="status"
         >
-          <span>{error}</span>
+          <span>
+            {resolvedError}
+          </span>
           <button
             type="button"
             onClick={onRetry}
           >
-            Reintentar
+            {t(
+              "teacherCommon.actions.retry"
+            )}
           </button>
         </div>
       )}
@@ -180,17 +235,37 @@ export default function TeacherCourseAttention({
               "no-executions"
             )
           }
-          aria-label={`${summary.noExecutions.length} estudiantes sin ejecuciones. Ver estudiantes.`}
+          aria-label={t(
+            countKey(
+              summary.noExecutions
+                .length,
+              "teacherCourseAttention.cards.noExecutions.aria"
+            ),
+            {
+              count:
+                summary.noExecutions
+                  .length,
+            }
+          )}
         >
-          <span>Sin ejecuciones</span>
+          <span>
+            {t(
+              "teacherCourseAttention.cards.noExecutions.title"
+            )}
+          </span>
           <strong>
             {summary.noExecutions.length}
           </strong>
           <p>
-            Estudiantes activos que todavía no registran ejecuciones.
+            {t(
+              "teacherCourseAttention.cards.noExecutions.description"
+            )}
           </p>
           <small>
-            Ver estudiantes →
+            {t(
+              "teacherCourseAttention.actions.viewStudents"
+            )}
+            {" →"}
           </small>
         </button>
 
@@ -202,37 +277,67 @@ export default function TeacherCourseAttention({
               "failures"
             )
           }
-          aria-label={`${summary.failures.length} estudiantes con más fallos que completadas. Ver estudiantes.`}
+          aria-label={t(
+            countKey(
+              summary.failures.length,
+              "teacherCourseAttention.cards.failures.aria"
+            ),
+            {
+              count:
+                summary.failures.length,
+            }
+          )}
         >
-          <span>Fallos predominantes</span>
+          <span>
+            {t(
+              "teacherCourseAttention.cards.failures.title"
+            )}
+          </span>
           <strong>
             {summary.failures.length}
           </strong>
           <p>
-            Estudiantes con más ejecuciones fallidas que completadas.
+            {t(
+              "teacherCourseAttention.cards.failures.description"
+            )}
           </p>
           <small>
-            Ver estudiantes →
+            {t(
+              "teacherCourseAttention.actions.viewStudents"
+            )}
+            {" →"}
           </small>
         </button>
 
         <article className="teacher-attention-recent">
           <div>
-            <span>Actividad reciente</span>
+            <span>
+              {t(
+                "teacherCourseAttention.recent.title"
+              )}
+            </span>
             <p>
-              Últimos estudiantes con actividad registrada.
+              {t(
+                "teacherCourseAttention.recent.description"
+              )}
             </p>
           </div>
 
           {summary.recent.length === 0 ? (
             <div className="teacher-attention-recent-empty">
-              Aún no hay actividad registrada.
+              {t(
+                "teacherCourseAttention.recent.empty"
+              )}
             </div>
           ) : (
             <ul>
               {summary.recent.map(
                 (student) => (
-                  <li key={student.userId}>
+                  <li
+                    key={
+                      student.userId
+                    }
+                  >
                     <Link
                       className="teacher-attention-student-link"
                       to={`/teacher/courses/${courseId}/students/${student.userId}`}
@@ -242,7 +347,11 @@ export default function TeacherCourseAttention({
                       </strong>
                       <small>
                         {formatDateTime(
-                          student.lastActivityAt
+                          student.lastActivityAt,
+                          locale,
+                          t(
+                            "teacherCourseAttention.common.unavailable"
+                          )
                         )}
                       </small>
                     </Link>
@@ -251,9 +360,17 @@ export default function TeacherCourseAttention({
                       <Link
                         className="teacher-attention-result-link"
                         to={`/code/${student.lastResultCodename}`}
-                        aria-label={`Ver último resultado de ${student.fullName}`}
+                        aria-label={t(
+                          "teacherCourseAttention.actions.lastResultAria",
+                          {
+                            name:
+                              student.fullName,
+                          }
+                        )}
                       >
-                        Resultado
+                        {t(
+                          "teacherCourseAttention.actions.result"
+                        )}
                       </Link>
                     )}
                   </li>

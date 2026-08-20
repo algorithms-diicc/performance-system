@@ -1,4 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, {
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
 import {
   AlertTriangle,
@@ -9,70 +13,93 @@ import {
 } from "lucide-react";
 
 import { serverURL } from "../common/Constants";
+import { useI18n } from "../i18n";
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 
 import "./SourceViewerModal.css";
 
-const EMPTY_STATE = {
+const emptyViewerState = () => ({
   kind: "loading",
-  message: "Consultando la fuente histórica…",
+  messageKey: "sourceViewer.states.loading",
   trace: null,
   source: null,
-};
+});
 
-const safeFilename = (value) => {
+const safeFilename = (
+  value,
+  fallback = "fuente.cpp"
+) => {
   const normalized = String(value || "").replace(/\\/g, "/");
-  return normalized.split("/").filter(Boolean).pop() || "fuente.cpp";
+  return (
+    normalized.split("/").filter(Boolean).pop() ||
+    fallback
+  );
 };
 
-const displayFilename = (value) =>
-  String(value || "").trim() || "Fuente histórica";
+const displayFilename = (
+  value,
+  fallback = "Fuente histórica"
+) =>
+  String(value || "").trim() || fallback;
 
-const formatBytes = (value) => {
+const formatBytes = (
+  value,
+  locale = "es-CL",
+  fallback = "No disponible"
+) => {
   const bytes = Number(value);
-  if (!Number.isFinite(bytes) || bytes < 0) return "No disponible";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toLocaleString("es-CL", {
-      maximumFractionDigits: 1,
-    })} KB`;
+  if (!Number.isFinite(bytes) || bytes < 0) {
+    return fallback;
   }
-  return `${(bytes / (1024 * 1024)).toLocaleString("es-CL", {
+  if (bytes < 1024) return `${bytes} B`;
+
+  const number = new Intl.NumberFormat(locale, {
     maximumFractionDigits: 1,
-  })} MB`;
+  });
+
+  if (bytes < 1024 * 1024) {
+    return `${number.format(bytes / 1024)} KB`;
+  }
+
+  return `${number.format(
+    bytes / (1024 * 1024)
+  )} MB`;
 };
 
-const abbreviateSha = (value) => {
+const abbreviateSha = (
+  value,
+  fallback = "No disponible"
+) => {
   const sha = String(value || "").trim();
-  if (!sha) return "No disponible";
+  if (!sha) return fallback;
   return sha.length > 24
     ? `${sha.slice(0, 12)}…${sha.slice(-8)}`
     : sha;
 };
 
-const sourceErrorMessage = (error) => {
+const sourceErrorKey = (error) => {
   const status = error?.response?.status;
+
   if (!error?.response) {
-    return "No pudimos conectar con el servidor para recuperar la fuente.";
+    return "sourceViewer.errors.network";
   }
   if (status === 401 || status === 403) {
-    return "Tu sesión no permite consultar esta fuente histórica.";
+    return "sourceViewer.errors.session";
   }
   if (status === 404) {
-    return "La fuente histórica no está disponible para esta ejecución.";
+    return "sourceViewer.errors.notFound";
   }
   if (status === 409 || status === 422) {
-    return "La fuente histórica no superó las comprobaciones de disponibilidad e integridad.";
+    return "sourceViewer.errors.integrity";
   }
-  return "No fue posible recuperar la fuente histórica en este momento.";
+
+  return "sourceViewer.errors.generic";
 };
 
-const sourcePreviewErrorMessage = (error) => {
-  if (error?.response?.status === 422) {
-    return "La vista previa no puede mostrarse porque la fuente histórica no utiliza codificación UTF-8 válida. Aún puedes descargar el archivo original.";
-  }
-  return sourceErrorMessage(error);
-};
+const sourcePreviewErrorKey = (error) =>
+  error?.response?.status === 422
+    ? "sourceViewer.errors.previewEncoding"
+    : sourceErrorKey(error);
 
 const SourceViewerModal = ({
   open,
@@ -80,10 +107,13 @@ const SourceViewerModal = ({
   trace: suppliedTrace = null,
   onClose,
 }) => {
-  const [viewerState, setViewerState] = useState(EMPTY_STATE);
+  const { locale, t } = useI18n();
+  const [viewerState, setViewerState] = useState(
+    emptyViewerState
+  );
   const [downloadState, setDownloadState] = useState({
     loading: false,
-    message: "",
+    messageKey: "",
     kind: "",
   });
   const closeButtonRef = useRef(null);
@@ -104,7 +134,10 @@ const SourceViewerModal = ({
 
     return () => {
       window.clearTimeout(focusTimer);
-      document.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener(
+        "keydown",
+        onKeyDown
+      );
       previousFocusRef.current?.focus?.();
     };
   }, [open, onClose]);
@@ -113,26 +146,33 @@ const SourceViewerModal = ({
     if (!open || !codename) return undefined;
 
     let active = true;
-    const encodedCodename = encodeURIComponent(codename);
+    const encodedCodename =
+      encodeURIComponent(codename);
 
-    setViewerState(EMPTY_STATE);
-    setDownloadState({ loading: false, message: "", kind: "" });
+    setViewerState(emptyViewerState());
+    setDownloadState({
+      loading: false,
+      messageKey: "",
+      kind: "",
+    });
 
     const loadSource = async () => {
       let tracePayload = suppliedTrace;
 
       try {
-        tracePayload = tracePayload || (
-          await axios.get(
-            `${serverURL}api/executions/${encodedCodename}/trace`,
-            { withCredentials: true }
-          )
-        ).data;
+        tracePayload =
+          tracePayload ||
+          (
+            await axios.get(
+              `${serverURL}api/executions/${encodedCodename}/trace`,
+              { withCredentials: true }
+            )
+          ).data;
       } catch (error) {
         if (!active) return;
         setViewerState({
           kind: "error",
-          message: sourceErrorMessage(error),
+          messageKey: sourceErrorKey(error),
           trace: null,
           source: null,
         });
@@ -141,14 +181,18 @@ const SourceViewerModal = ({
 
       if (!active) return;
 
-      const canView = tracePayload?.permissions?.canViewSource === true;
+      const canView =
+        tracePayload?.permissions?.canViewSource ===
+        true;
       const available =
-        tracePayload?.execution?.source?.available === true;
+        tracePayload?.execution?.source?.available ===
+        true;
 
       if (!canView) {
         setViewerState({
           kind: "forbidden",
-          message: "Tu cuenta no tiene permiso para visualizar esta fuente.",
+          messageKey:
+            "sourceViewer.errors.forbidden",
           trace: tracePayload,
           source: null,
         });
@@ -158,7 +202,8 @@ const SourceViewerModal = ({
       if (!available) {
         setViewerState({
           kind: "unavailable",
-          message: "La fuente histórica no está disponible para esta ejecución.",
+          messageKey:
+            "sourceViewer.errors.notFound",
           trace: tracePayload,
           source: null,
         });
@@ -175,15 +220,17 @@ const SourceViewerModal = ({
 
         setViewerState({
           kind: "ready",
-          message: "",
+          messageKey: "",
           trace: tracePayload,
-          source: sourceResponse.data?.source || null,
+          source:
+            sourceResponse.data?.source || null,
         });
       } catch (error) {
         if (!active) return;
         setViewerState({
           kind: "error",
-          message: sourcePreviewErrorMessage(error),
+          messageKey:
+            sourcePreviewErrorKey(error),
           trace: tracePayload,
           source: null,
         });
@@ -207,35 +254,53 @@ const SourceViewerModal = ({
   );
 
   const handleDownload = async () => {
-    if (!canDownload || downloadState.loading) return;
+    if (!canDownload || downloadState.loading) {
+      return;
+    }
 
-    setDownloadState({ loading: true, message: "", kind: "" });
+    setDownloadState({
+      loading: true,
+      messageKey: "",
+      kind: "",
+    });
+
     try {
       await downloadAuthenticatedFile(
         `${serverURL}api/executions/${encodeURIComponent(
           codename
         )}/source/download`,
         safeFilename(
-          source?.filename || trace?.execution?.source?.filename
+          source?.filename ||
+            trace?.execution?.source?.filename,
+          t("sourceViewer.fallbackDownloadFilename")
         )
       );
       setDownloadState({
         loading: false,
         kind: "success",
-        message: "Fuente descargada correctamente.",
+        messageKey:
+          "sourceViewer.download.success",
       });
     } catch (error) {
       setDownloadState({
         loading: false,
         kind: "error",
-        message: sourceErrorMessage(error),
+        messageKey: sourceErrorKey(error),
       });
     }
   };
 
   const handleBackdropClick = (event) => {
-    if (event.target === event.currentTarget) onClose();
+    if (event.target === event.currentTarget) {
+      onClose();
+    }
   };
+
+  const visibleFilename = displayFilename(
+    source?.filename ||
+      trace?.execution?.source?.filename,
+    t("sourceViewer.fallbackSource")
+  );
 
   return (
     <div
@@ -253,17 +318,17 @@ const SourceViewerModal = ({
         <header className="source-viewer__header">
           <div className="source-viewer__heading">
             <span className="source-viewer__marker">
-              <FileCode2 size={15} aria-hidden="true" />
-              Fuente de esta ejecución
+              <FileCode2
+                size={15}
+                aria-hidden="true"
+              />
+              {t("sourceViewer.marker")}
             </span>
             <h2 id="source-viewer-title">
-              {displayFilename(
-                source?.filename ||
-                  trace?.execution?.source?.filename
-              )}
+              {visibleFilename}
             </h2>
             <p id="source-viewer-description">
-              Vista histórica de solo lectura
+              {t("sourceViewer.readOnly")}
             </p>
           </div>
 
@@ -272,7 +337,9 @@ const SourceViewerModal = ({
             type="button"
             className="source-viewer__close"
             onClick={onClose}
-            aria-label="Cerrar visor de código"
+            aria-label={t(
+              "sourceViewer.closeAria"
+            )}
           >
             <X size={20} aria-hidden="true" />
           </button>
@@ -284,56 +351,91 @@ const SourceViewerModal = ({
               <div>
                 <dt>SHA-256</dt>
                 <dd>
-                  <code title={source.sha256 || undefined}>
-                    {abbreviateSha(source.sha256)}
+                  <code
+                    title={
+                      source.sha256 || undefined
+                    }
+                  >
+                    {abbreviateSha(
+                      source.sha256,
+                      t("sourceViewer.unavailable")
+                    )}
                   </code>
                 </dd>
               </div>
               <div>
-                <dt>Tamaño</dt>
-                <dd>{formatBytes(source.sizeBytes)}</dd>
+                <dt>{t("sourceViewer.size")}</dt>
+                <dd>
+                  {formatBytes(
+                    source.sizeBytes,
+                    locale,
+                    t("sourceViewer.unavailable")
+                  )}
+                </dd>
               </div>
             </dl>
 
-            <div className="source-viewer__code-region" tabIndex="0">
+            <div
+              className="source-viewer__code-region"
+              tabIndex="0"
+            >
               <pre>
-                <code>{String(source.content ?? "")}</code>
+                <code>
+                  {String(source.content ?? "")}
+                </code>
               </pre>
             </div>
           </>
         ) : (
           <div
             className={`source-viewer__state source-viewer__state--${viewerState.kind}`}
-            role={viewerState.kind === "loading" ? "status" : "alert"}
+            role={
+              viewerState.kind === "loading"
+                ? "status"
+                : "alert"
+            }
           >
             {viewerState.kind === "loading" ? (
-              <Loader2 className="source-viewer__spinner" aria-hidden="true" />
+              <Loader2
+                className="source-viewer__spinner"
+                aria-hidden="true"
+              />
             ) : (
               <AlertTriangle aria-hidden="true" />
             )}
-            <p>{viewerState.message}</p>
+            <p>
+              {viewerState.messageKey
+                ? t(viewerState.messageKey)
+                : ""}
+            </p>
           </div>
         )}
 
         <footer className="source-viewer__footer">
           <div aria-live="polite">
-            {downloadState.message && (
+            {downloadState.messageKey && (
               <span
                 className={`source-viewer__feedback source-viewer__feedback--${downloadState.kind}`}
-                role={downloadState.kind === "error" ? "alert" : "status"}
+                role={
+                  downloadState.kind === "error"
+                    ? "alert"
+                    : "status"
+                }
               >
-                {downloadState.message}
+                {t(downloadState.messageKey)}
               </span>
             )}
           </div>
+
           <div className="source-viewer__actions">
             <button
               type="button"
               className="source-viewer__button source-viewer__button--secondary"
               onClick={onClose}
             >
-              Cerrar
+              {t("sourceViewer.close")}
             </button>
+
             {canDownload && (
               <button
                 type="button"
@@ -341,8 +443,17 @@ const SourceViewerModal = ({
                 onClick={handleDownload}
                 disabled={downloadState.loading}
               >
-                <Download size={16} aria-hidden="true" />
-                {downloadState.loading ? "Descargando…" : "Descargar .cpp"}
+                <Download
+                  size={16}
+                  aria-hidden="true"
+                />
+                {downloadState.loading
+                  ? t(
+                      "sourceViewer.download.downloading"
+                    )
+                  : t(
+                      "sourceViewer.download.action"
+                    )}
               </button>
             )}
           </div>
@@ -352,5 +463,10 @@ const SourceViewerModal = ({
   );
 };
 
-export { abbreviateSha, displayFilename, formatBytes, safeFilename };
+export {
+  abbreviateSha,
+  displayFilename,
+  formatBytes,
+  safeFilename,
+};
 export default SourceViewerModal;

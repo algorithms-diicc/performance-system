@@ -17,37 +17,15 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 
-const PROGRESS_STEPS = [
-  {
-    id: "accepted",
-    label: "Solicitud registrada",
-    description: "El servidor recibió la solicitud del análisis.",
-  },
-  {
-    id: "queued",
-    label: "En cola",
-    description: "El código espera su turno de ejecución.",
-  },
-  {
-    id: "preparing",
-    label: "Preparando ejecución",
-    description: "Se prepara el código y el entorno de medición.",
-  },
-  {
-    id: "running",
-    label: "Ejecutando mediciones",
-    description: "El benchmark está realizando las mediciones.",
-  },
-  {
-    id: "processing",
-    label: "Procesando resultados",
-    description: "Se consolidan las métricas obtenidas.",
-  },
-  {
-    id: "completed",
-    label: "Resultados disponibles",
-    description: "El análisis ya puede ser consultado.",
-  },
+import { useI18n } from "../../../i18n";
+
+const PROGRESS_STEP_IDS = [
+  "accepted",
+  "queued",
+  "preparing",
+  "running",
+  "processing",
+  "completed",
 ];
 
 function StatusPanel({
@@ -68,6 +46,7 @@ function StatusPanel({
   onPrepareRetry,
   onRetryPolling,
 }) {
+  const { t } = useI18n();
   const [showTechnicalDetails, setShowTechnicalDetails] =
     useState(false);
 
@@ -111,9 +90,13 @@ function StatusPanel({
 
   const friendlyError =
     pollingRequestError ||
+    submissionError ||
     getFriendlyErrorMessage(
-      submissionError || firstErrorMessage
+      firstErrorMessage,
+      t
     );
+
+  const shared = { summary, t };
 
   return (
     <aside
@@ -121,19 +104,19 @@ function StatusPanel({
     >
       {mode === "ready" && (
         <ReadyPanel
-          summary={summary}
+          {...shared}
           isSubmitDisabled={isSubmitDisabled}
           onReset={onReset}
         />
       )}
 
       {mode === "submitting" && (
-        <SubmittingPanel summary={summary} />
+        <SubmittingPanel {...shared} />
       )}
 
       {mode === "running" && (
         <RunningPanel
-          summary={summary}
+          {...shared}
           progressIndex={progressIndex}
           messages={messages}
           showTechnicalDetails={showTechnicalDetails}
@@ -145,7 +128,7 @@ function StatusPanel({
 
       {mode === "completed" && (
         <CompletedPanel
-          summary={summary}
+          {...shared}
           messages={messages}
           showTechnicalDetails={showTechnicalDetails}
           onToggleTechnical={() =>
@@ -158,7 +141,7 @@ function StatusPanel({
 
       {mode === "partial" && (
         <PartialPanel
-          summary={summary}
+          {...shared}
           messages={messages}
           showTechnicalDetails={showTechnicalDetails}
           onToggleTechnical={() =>
@@ -171,7 +154,7 @@ function StatusPanel({
 
       {mode === "error" && (
         <ErrorPanel
-          summary={summary}
+          {...shared}
           message={friendlyError}
           messages={messages}
           showTechnicalDetails={showTechnicalDetails}
@@ -191,19 +174,22 @@ function ReadyPanel({
   summary,
   isSubmitDisabled,
   onReset,
+  t,
 }) {
   const ready = !isSubmitDisabled;
 
   return (
     <>
       <PanelHeader
-        kicker="Resumen"
-        title="Resumen del experimento"
-        description="Comprueba la configuración principal antes de iniciar el análisis."
+        kicker={t("renderForm.workflow.ready.kicker")}
+        title={t("renderForm.workflow.ready.title")}
+        description={t(
+          "renderForm.workflow.ready.description"
+        )}
         icon={<SlidersHorizontal size={20} />}
       />
 
-      <SummaryList summary={summary} />
+      <SummaryList summary={summary} t={t} />
 
       <div
         className={`rf-readiness ${
@@ -223,14 +209,14 @@ function ReadyPanel({
         <div>
           <strong>
             {ready
-              ? "Configuración lista"
-              : "Configuración pendiente"}
+              ? t("renderForm.workflow.ready.readyTitle")
+              : t("renderForm.workflow.ready.pendingTitle")}
           </strong>
 
           <p>
             {ready
-              ? "Puedes revisar el resumen detallado y confirmar la ejecución."
-              : "Completa los campos obligatorios para habilitar la ejecución."}
+              ? t("renderForm.workflow.ready.readyText")
+              : t("renderForm.workflow.ready.pendingText")}
           </p>
         </div>
       </div>
@@ -242,7 +228,7 @@ function ReadyPanel({
           disabled={isSubmitDisabled}
         >
           <Play size={16} />
-          Revisar y ejecutar
+          {t("renderForm.workflow.ready.review")}
         </button>
 
         <button
@@ -251,25 +237,26 @@ function ReadyPanel({
           onClick={onReset}
         >
           <RotateCcw size={15} />
-          Limpiar configuración
+          {t("renderForm.workflow.ready.clear")}
         </button>
       </div>
 
       <p className="rf-status-hint">
-        Antes de enviar el código verás el overview detallado
-        para confirmar los parámetros.
+        {t("renderForm.workflow.ready.hint")}
       </p>
     </>
   );
 }
 
-function SubmittingPanel({ summary }) {
+function SubmittingPanel({ summary, t }) {
   return (
     <>
       <PanelHeader
-        kicker="Iniciando"
-        title="Enviando análisis"
-        description="Estamos registrando el experimento en el servidor."
+        kicker={t("renderForm.workflow.submitting.kicker")}
+        title={t("renderForm.workflow.submitting.title")}
+        description={t(
+          "renderForm.workflow.submitting.description"
+        )}
         icon={
           <LoaderCircle
             className="rf-spin"
@@ -278,7 +265,7 @@ function SubmittingPanel({ summary }) {
         }
       />
 
-      <CompactExecutionSummary summary={summary} />
+      <CompactExecutionSummary summary={summary} t={t} />
 
       <div className="rf-submitting-state">
         <LoaderCircle
@@ -287,10 +274,10 @@ function SubmittingPanel({ summary }) {
         />
 
         <div>
-          <strong>Registrando solicitud</strong>
-          <p>
-            Este paso suele tardar solo unos segundos.
-          </p>
+          <strong>
+            {t("renderForm.workflow.submitting.registering")}
+          </strong>
+          <p>{t("renderForm.workflow.submitting.hint")}</p>
         </div>
       </div>
     </>
@@ -303,13 +290,16 @@ function RunningPanel({
   messages,
   showTechnicalDetails,
   onToggleTechnical,
+  t,
 }) {
   return (
     <>
       <PanelHeader
-        kicker="En ejecución"
-        title="Analizando tu código"
-        description="El experimento está avanzando por las distintas etapas de medición."
+        kicker={t("renderForm.workflow.running.kicker")}
+        title={t("renderForm.workflow.running.title")}
+        description={t(
+          "renderForm.workflow.running.description"
+        )}
         icon={
           <Activity
             className="rf-status-pulse"
@@ -317,28 +307,28 @@ function RunningPanel({
           />
         }
         chip={{
-          label: "En curso",
+          label: t("renderForm.workflow.running.chip"),
           className:
             "status-chip status-chip-running",
         }}
       />
 
-      <CompactExecutionSummary summary={summary} />
+      <CompactExecutionSummary summary={summary} t={t} />
 
       <ProgressStepper
         progressIndex={progressIndex}
+        t={t}
       />
 
       <TechnicalDetails
         messages={messages}
         open={showTechnicalDetails}
         onToggle={onToggleTechnical}
+        t={t}
       />
 
       <p className="rf-status-hint rf-status-hint-running">
-        Puedes mantener esta vista abierta mientras se ejecuta
-        el benchmark. La recuperación después de recargar la
-        página se implementará en la fase de persistencia.
+        {t("renderForm.workflow.running.hint")}
       </p>
     </>
   );
@@ -351,18 +341,20 @@ function CompletedPanel({
   onToggleTechnical,
   onGoToResults,
   onReset,
+  t,
 }) {
   return (
     <>
       <PanelHeader
-        kicker="Completado"
-        title="Análisis completado"
-        description="Las mediciones fueron procesadas correctamente."
+        kicker={t("renderForm.workflow.completed.kicker")}
+        title={t("renderForm.workflow.completed.title")}
+        description={t(
+          "renderForm.workflow.completed.description"
+        )}
         icon={<CheckCircle2 size={20} />}
         chip={{
-          label: "Resultados listos",
-          className:
-            "status-chip status-chip-done",
+          label: t("renderForm.workflow.completed.chip"),
+          className: "status-chip status-chip-done",
         }}
       />
 
@@ -370,15 +362,20 @@ function CompletedPanel({
         <CheckCircle2 size={22} />
 
         <div>
-          <strong>Resultados disponibles</strong>
+          <strong>
+            {t(
+              "renderForm.workflow.completed.calloutTitle"
+            )}
+          </strong>
           <p>
-            Ya puedes revisar las métricas y visualizaciones
-            generadas para este experimento.
+            {t(
+              "renderForm.workflow.completed.calloutText"
+            )}
           </p>
         </div>
       </div>
 
-      <CompactExecutionSummary summary={summary} />
+      <CompactExecutionSummary summary={summary} t={t} />
 
       <div className="rf-status-actions">
         <button
@@ -387,7 +384,7 @@ function CompletedPanel({
           onClick={onGoToResults}
         >
           <BarChart3 size={17} />
-          Ver resultados
+          {t("renderForm.workflow.completed.viewResults")}
         </button>
 
         <button
@@ -396,7 +393,7 @@ function CompletedPanel({
           onClick={onReset}
         >
           <RotateCcw size={15} />
-          Nuevo análisis
+          {t("renderForm.workflow.completed.newAnalysis")}
         </button>
       </div>
 
@@ -404,6 +401,7 @@ function CompletedPanel({
         messages={messages}
         open={showTechnicalDetails}
         onToggle={onToggleTechnical}
+        t={t}
       />
     </>
   );
@@ -416,18 +414,20 @@ function PartialPanel({
   onToggleTechnical,
   onGoToResults,
   onReset,
+  t,
 }) {
   return (
     <>
       <PanelHeader
-        kicker="Parcial"
-        title="Análisis parcialmente completado"
-        description="Algunas implementaciones terminaron correctamente y otras requieren revisión."
+        kicker={t("renderForm.workflow.partial.kicker")}
+        title={t("renderForm.workflow.partial.title")}
+        description={t(
+          "renderForm.workflow.partial.description"
+        )}
         icon={<AlertTriangle size={20} />}
         chip={{
-          label: "Resultados parciales",
-          className:
-            "status-chip status-chip-error",
+          label: t("renderForm.workflow.partial.chip"),
+          className: "status-chip status-chip-error",
         }}
       />
 
@@ -435,16 +435,16 @@ function PartialPanel({
         <AlertTriangle size={22} />
 
         <div>
-          <strong>Hay resultados disponibles</strong>
+          <strong>
+            {t("renderForm.workflow.partial.calloutTitle")}
+          </strong>
           <p>
-            Puedes revisar las ejecuciones completadas sin repetir
-            las que ya finalizaron correctamente. El experimento
-            mostrará también qué implementación falló.
+            {t("renderForm.workflow.partial.calloutText")}
           </p>
         </div>
       </div>
 
-      <CompactExecutionSummary summary={summary} />
+      <CompactExecutionSummary summary={summary} t={t} />
 
       <div className="rf-status-actions">
         <button
@@ -453,7 +453,7 @@ function PartialPanel({
           onClick={onGoToResults}
         >
           <BarChart3 size={17} />
-          Ver resultados disponibles
+          {t("renderForm.workflow.partial.viewResults")}
         </button>
 
         <button
@@ -462,7 +462,7 @@ function PartialPanel({
           onClick={onReset}
         >
           <RotateCcw size={15} />
-          Nuevo análisis
+          {t("renderForm.workflow.partial.newAnalysis")}
         </button>
       </div>
 
@@ -470,6 +470,7 @@ function PartialPanel({
         messages={messages}
         open={showTechnicalDetails}
         onToggle={onToggleTechnical}
+        t={t}
       />
     </>
   );
@@ -484,18 +485,20 @@ function ErrorPanel({
   onPrepareRetry,
   retryRequestOnly,
   onRetryRequest,
+  t,
 }) {
   return (
     <>
       <PanelHeader
-        kicker="Incidencia"
-        title="No se pudo completar"
-        description="La ejecución terminó con un problema que requiere revisión."
+        kicker={t("renderForm.workflow.error.kicker")}
+        title={t("renderForm.workflow.error.title")}
+        description={t(
+          "renderForm.workflow.error.description"
+        )}
         icon={<AlertTriangle size={20} />}
         chip={{
-          label: "Requiere revisión",
-          className:
-            "status-chip status-chip-error",
+          label: t("renderForm.workflow.error.chip"),
+          className: "status-chip status-chip-error",
         }}
       />
 
@@ -503,12 +506,14 @@ function ErrorPanel({
         <AlertTriangle size={22} />
 
         <div>
-          <strong>El análisis no finalizó correctamente</strong>
+          <strong>
+            {t("renderForm.workflow.error.calloutTitle")}
+          </strong>
           <p>{message}</p>
         </div>
       </div>
 
-      <CompactExecutionSummary summary={summary} />
+      <CompactExecutionSummary summary={summary} t={t} />
 
       <div className="rf-status-actions">
         <button
@@ -526,8 +531,8 @@ function ErrorPanel({
             <Settings2 size={16} />
           )}
           {retryRequestOnly
-            ? "Reintentar consulta"
-            : "Revisar y volver a intentar"}
+            ? t("renderForm.workflow.error.retryRequest")
+            : t("renderForm.workflow.error.reviewRetry")}
         </button>
       </div>
 
@@ -535,6 +540,7 @@ function ErrorPanel({
         messages={messages}
         open={showTechnicalDetails}
         onToggle={onToggleTechnical}
+        t={t}
       />
     </>
   );
@@ -578,50 +584,47 @@ function PanelHeader({
   );
 }
 
-function SummaryList({ summary }) {
+function SummaryList({ summary, t }) {
   const rows = [
     {
-      label: "Código",
+      label: t("renderForm.workflow.summary.code"),
       value:
         summary?.fileName ||
-        "Selecciona un archivo .zip",
+        t("renderForm.workflow.summary.selectFile"),
       muted: !summary?.fileName,
     },
     {
-      label: "Benchmark",
+      label: t("renderForm.workflow.summary.benchmark"),
       value:
         summary?.taskTitle ||
-        "Selecciona un benchmark",
+        t("renderForm.workflow.summary.selectBenchmark"),
       muted: !summary?.taskTitle,
     },
     {
-      label: "Tamaño máximo",
-      value:
-        summary?.inputSizeLabel || "—",
+      label: t("renderForm.workflow.summary.maxSize"),
+      value: summary?.inputSizeLabel || "—",
     },
     {
-      label: "Repeticiones",
-      value:
-        summary?.samplesLabel || "—",
+      label: t("renderForm.workflow.summary.repetitions"),
+      value: summary?.samplesLabel || "—",
     },
     {
-      label: "Perfil",
-      value:
-        summary?.profileLabel || "—",
+      label: t("renderForm.workflow.summary.profile"),
+      value: summary?.profileLabel || "—",
     },
     {
-      label: "Entorno",
-      value:
-        summary?.environmentLabel || "—",
+      label: t("renderForm.workflow.summary.environment"),
+      value: summary?.environmentLabel || "—",
     },
   ];
 
   if (
     summary?.dataTypeLabel &&
-    summary.dataTypeLabel !== "No aplica"
+    summary.dataTypeLabel !==
+      t("renderForm.benchmark.notApplicable")
   ) {
     rows.splice(2, 0, {
-      label: "Datos",
+      label: t("renderForm.workflow.summary.data"),
       value: summary.dataTypeLabel,
     });
   }
@@ -649,7 +652,7 @@ function SummaryList({ summary }) {
   );
 }
 
-function CompactExecutionSummary({ summary }) {
+function CompactExecutionSummary({ summary, t }) {
   return (
     <div className="rf-execution-compact">
       <div className="rf-execution-compact-icon">
@@ -658,7 +661,8 @@ function CompactExecutionSummary({ summary }) {
 
       <div className="rf-execution-compact-copy">
         <strong>
-          {summary?.fileName || "Código enviado"}
+          {summary?.fileName ||
+            t("renderForm.workflow.summary.sentCode")}
         </strong>
 
         <span>
@@ -675,10 +679,10 @@ function CompactExecutionSummary({ summary }) {
   );
 }
 
-function ProgressStepper({ progressIndex }) {
+function ProgressStepper({ progressIndex, t }) {
   return (
     <div className="rf-progress-stepper">
-      {PROGRESS_STEPS.map((step, index) => {
+      {PROGRESS_STEP_IDS.map((stepId, index) => {
         const state =
           index < progressIndex
             ? "done"
@@ -688,7 +692,7 @@ function ProgressStepper({ progressIndex }) {
 
         return (
           <div
-            key={step.id}
+            key={stepId}
             className={`rf-progress-step rf-progress-step-${state}`}
           >
             <div className="rf-progress-marker">
@@ -710,8 +714,16 @@ function ProgressStepper({ progressIndex }) {
             </div>
 
             <div className="rf-progress-copy">
-              <strong>{step.label}</strong>
-              <span>{step.description}</span>
+              <strong>
+                {t(
+                  `renderForm.workflow.progress.${stepId}.label`
+                )}
+              </strong>
+              <span>
+                {t(
+                  `renderForm.workflow.progress.${stepId}.description`
+                )}
+              </span>
             </div>
           </div>
         );
@@ -724,6 +736,7 @@ function TechnicalDetails({
   messages,
   open,
   onToggle,
+  t,
 }) {
   const hasMessages =
     Array.isArray(messages) &&
@@ -742,8 +755,12 @@ function TechnicalDetails({
         aria-expanded={open}
       >
         <span>
-          Detalles técnicos
-          {hasMessages ? "" : " (sin mensajes aún)"}
+          {t("renderForm.workflow.technical.title")}
+          {hasMessages
+            ? ""
+            : t(
+                "renderForm.workflow.technical.noMessagesYet"
+              )}
         </span>
 
         <ChevronDown
@@ -765,8 +782,7 @@ function TechnicalDetails({
                 className="rf-technical-group"
               >
                 <strong>
-                  {group.originalName ||
-                    group.codename}
+                  {group.originalName || group.codename}
                 </strong>
 
                 <ul>
@@ -793,7 +809,9 @@ function TechnicalDetails({
 
                           <span>
                             {entry?.msg ||
-                              "Mensaje sin contenido"}
+                              t(
+                                "renderForm.workflow.technical.messageWithoutContent"
+                              )}
                           </span>
                         </li>
                       );
@@ -804,8 +822,7 @@ function TechnicalDetails({
             ))
           ) : (
             <p className="rf-technical-empty">
-              El servidor todavía no ha publicado
-              mensajes adicionales.
+              {t("renderForm.workflow.technical.empty")}
             </p>
           )}
         </div>
@@ -863,7 +880,7 @@ function getAggregateProgressIndex({
   allDone,
 }) {
   if (allDone) {
-    return PROGRESS_STEPS.length - 1;
+    return PROGRESS_STEP_IDS.length - 1;
   }
 
   if (
@@ -896,11 +913,6 @@ function getAggregateProgressIndex({
     });
   });
 
-  /**
-   * Para ZIP con varios .cpp mostramos la etapa del archivo
-   * menos avanzado. Así el panel no aparenta que toda la tanda
-   * terminó cuando todavía queda un archivo en cola.
-   */
   return Math.min(...indexes);
 }
 
@@ -959,26 +971,22 @@ function getFileProgressIndex({ group, file }) {
   return 0;
 }
 
-function getFriendlyErrorMessage(rawMessage) {
+function getFriendlyErrorMessage(rawMessage, t) {
   const text = String(rawMessage || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
   if (!text) {
-    return (
-      "Revisa el código y la configuración del experimento. " +
-      "Los detalles técnicos pueden aportar información adicional."
-    );
+    return t("renderForm.workflow.friendlyErrors.default");
   }
 
   if (
     text.includes("compilacion") ||
     text.includes("compilation")
   ) {
-    return (
-      "El código no pudo compilarse correctamente. " +
-      "Revisa los errores del compilador antes de volver a ejecutar."
+    return t(
+      "renderForm.workflow.friendlyErrors.compilation"
     );
   }
 
@@ -986,60 +994,53 @@ function getFriendlyErrorMessage(rawMessage) {
     text.includes("timeout") ||
     text.includes("tiempo limite")
   ) {
-    return (
-      "La ejecución superó el tiempo máximo permitido. " +
-      "Revisa el algoritmo o utiliza una configuración de entrada menor."
-    );
+    return t("renderForm.workflow.friendlyErrors.timeout");
   }
 
   if (
     text.includes("no se genero") ||
-    text.includes("resultados")
+    text.includes("did not generate") ||
+    text.includes("resultados") ||
+    text.includes("results")
   ) {
-    return (
-      "La ejecución terminó sin generar los resultados esperados. " +
-      "Revisa los detalles técnicos antes de intentar nuevamente."
-    );
+    return t("renderForm.workflow.friendlyErrors.results");
   }
 
-  return (
-    "El servidor informó un problema durante la ejecución. " +
-    "Revisa los detalles técnicos y corrige el código o la configuración."
-  );
+  return t("renderForm.workflow.friendlyErrors.server");
 }
 
 function classifyTechnicalMessage(text) {
-  const t = String(text || "")
+  const value = String(text || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
   if (
-    t.includes("resultados listos") ||
-    t.includes("compilacion exitosa") ||
-    t.includes("recibido correctamente")
+    value.includes("resultados listos") ||
+    value.includes("compilacion exitosa") ||
+    value.includes("recibido correctamente")
   ) {
     return "success";
   }
 
   if (
-    t.includes("timeout") ||
-    t.includes("tiempo limite") ||
-    t.includes("error de compilacion") ||
-    t.includes("error en ejecucion") ||
-    t.includes("error ejecucion") ||
-    t.includes("no se genero") ||
-    t.includes("no se pudo") ||
-    t.includes("fallo inesperado") ||
-    t.includes("❌")
+    value.includes("timeout") ||
+    value.includes("tiempo limite") ||
+    value.includes("error de compilacion") ||
+    value.includes("error en ejecucion") ||
+    value.includes("error ejecucion") ||
+    value.includes("no se genero") ||
+    value.includes("no se pudo") ||
+    value.includes("fallo inesperado") ||
+    value.includes("❌")
   ) {
     return "error";
   }
 
   if (
-    t.includes("warning") ||
-    t.includes("aviso") ||
-    t.includes("⚠")
+    value.includes("warning") ||
+    value.includes("aviso") ||
+    value.includes("⚠")
   ) {
     return "warning";
   }

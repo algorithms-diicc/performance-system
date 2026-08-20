@@ -1,3 +1,4 @@
+import { useI18n } from "../../../i18n";
 
 function OverviewModal({
   visible,
@@ -7,89 +8,129 @@ function OverviewModal({
   testName,
   fileName,
   taskTitle,
+  taskId,
   inputSize,
   inputLimits,
   samples,
   sampleLimits,
   dataTypeLabel,
+  dataType,
   environmentLabel,
   executionProfileLabel,
+  executionProfileId,
   courseLabel,
+  hasCourse,
   username,
 }) {
+  const { t } = useI18n();
+
   if (!visible) return null;
+
+  const translatedTaskKey =
+    `renderForm.benchmark.tasks.${taskId}.name`;
+  const translatedTask = taskId ? t(translatedTaskKey) : "";
+  const resolvedTaskTitle =
+    taskId && translatedTask !== translatedTaskKey
+      ? translatedTask
+      : taskTitle || "-";
+
+  const translatedDataKey =
+    `renderForm.benchmark.dataTypes.${dataType}`;
+  const translatedData = dataType ? t(translatedDataKey) : "";
+  const resolvedDataType = dataType
+    ? (translatedData !== translatedDataKey
+        ? translatedData
+        : dataTypeLabel)
+    : t("renderForm.benchmark.notApplicable");
+
+  const translatedProfileKey =
+    `renderForm.measurement.profiles.${executionProfileId}.name`;
+  const translatedProfile = executionProfileId
+    ? t(translatedProfileKey)
+    : "";
+  const resolvedProfile =
+    executionProfileId && translatedProfile !== translatedProfileKey
+      ? translatedProfile
+      : executionProfileLabel;
 
   return (
     <div className="rf-modal-backdrop">
       <div className="rf-modal">
         <div className="rf-modal-header">
-          <h3>Revisar experimento</h3>
-          <p>
-            Confirma la configuración antes de enviar el código al entorno de
-            ejecución.
-          </p>
+          <h3>{t("renderForm.overview.title")}</h3>
+          <p>{t("renderForm.overview.description")}</p>
         </div>
 
         <div className="rf-modal-body">
           <div className="rf-modal-grid">
             <div className="rf-modal-section">
-              <h4>Experimento</h4>
-
+              <h4>{t("renderForm.overview.experiment")}</h4>
               <dl>
-                <dt>Nombre</dt>
-                <dd>{testName || "(sin nombre)"}</dd>
+                <dt>{t("renderForm.overview.name")}</dt>
+                <dd>{testName || t("renderForm.overview.unnamed")}</dd>
 
-                <dt>Archivo</dt>
-                <dd>
-                  {fileName ||
-                    "Ningún archivo seleccionado"}
-                </dd>
+                <dt>{t("renderForm.overview.file")}</dt>
+                <dd>{fileName || t("renderForm.overview.noFile")}</dd>
 
-                <dt>Benchmark</dt>
-                <dd>{taskTitle || "-"}</dd>
+                <dt>{t("renderForm.overview.benchmark")}</dt>
+                <dd>{resolvedTaskTitle}</dd>
               </dl>
             </div>
 
             <div className="rf-modal-section">
-              <h4>Parámetros</h4>
-
+              <h4>{t("renderForm.overview.parameters")}</h4>
               <dl>
-                <dt>Tamaño máximo</dt>
+                <dt>{t("renderForm.overview.maxSize")}</dt>
                 <dd>
                   {inputSize}
                   {inputLimits
-                    ? ` (rango ${inputLimits.min}–${inputLimits.max})`
+                    ? ` (${t("renderForm.overview.range", {
+                        min: inputLimits.min,
+                        max: inputLimits.max,
+                      })})`
                     : ""}
                 </dd>
 
-                <dt>Repeticiones por punto</dt>
+                <dt>{t("renderForm.overview.repetitions")}</dt>
                 <dd>
                   {samples}
                   {sampleLimits
-                    ? ` (rango ${sampleLimits.min}–${sampleLimits.max})`
+                    ? ` (${t("renderForm.overview.range", {
+                        min: sampleLimits.min,
+                        max: sampleLimits.max,
+                      })})`
                     : ""}
                 </dd>
 
-                <dt>Distribución de datos</dt>
-                <dd>{dataTypeLabel}</dd>
+                <dt>{t("renderForm.overview.dataDistribution")}</dt>
+                <dd>{resolvedDataType}</dd>
               </dl>
             </div>
 
             <div className="rf-modal-section">
-              <h4>Medición</h4>
-
+              <h4>{t("renderForm.overview.measurement")}</h4>
               <dl>
-                <dt>Entorno</dt>
-                <dd>{environmentLabel}</dd>
+                <dt>{t("renderForm.overview.environment")}</dt>
+                <dd>
+                  {t("renderForm.measurement.environmentName") ||
+                    environmentLabel}
+                </dd>
 
-                <dt>Perfil</dt>
-                <dd>{executionProfileLabel}</dd>
+                <dt>{t("renderForm.overview.profile")}</dt>
+                <dd>{resolvedProfile}</dd>
 
-                <dt>Curso</dt>
-                <dd>{courseLabel || "Sin curso asociado"}</dd>
+                <dt>{t("renderForm.overview.course")}</dt>
+                <dd>
+                  {hasCourse
+                    ? courseLabel
+                    : t("renderForm.overview.noCourse")}
+                </dd>
 
-                <dt>Usuario</dt>
-                <dd>{username || "Sesión autenticada"}</dd>
+                <dt>{t("renderForm.overview.user")}</dt>
+                <dd>
+                  {username ||
+                    t("renderForm.overview.authenticatedSession")}
+                </dd>
               </dl>
             </div>
           </div>
@@ -101,7 +142,7 @@ function OverviewModal({
             className="rf-modal-secondary"
             onClick={onCancel}
           >
-            Volver y editar
+            {t("renderForm.overview.back")}
           </button>
 
           <button
@@ -111,8 +152,8 @@ function OverviewModal({
             disabled={isSubmitting}
           >
             {isSubmitting
-              ? "Enviando…"
-              : "Confirmar y ejecutar"}
+              ? t("renderForm.overview.sending")
+              : t("renderForm.overview.confirm")}
           </button>
         </div>
       </div>

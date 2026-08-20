@@ -40,9 +40,9 @@ import { serverURL } from "../common/Constants";
 import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
 import SourceViewerModal from "../components/SourceViewerModal";
+import { useI18n } from "../i18n";
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 import {
-  SUBMISSION_AGGREGATE_LABELS,
   abbreviateArchiveSha256,
   canOpenExecutionResult,
   deriveSubmissionAggregateState,
@@ -56,7 +56,6 @@ import {
 } from "./submissionOverviewModel";
 import {
   buildComparisonPath,
-  comparisonIneligibilityReason,
   getEligibleExecutions,
   initialComparisonSelection,
   isComparisonEligibleExecution,
@@ -92,32 +91,142 @@ const errorStateFromRequest = (error) => {
   return "error";
 };
 
-const metadataErrorMessage = (error, fallback) => {
+const metadataErrorState = (error, key) => {
   const payload = error?.response?.data;
-
-  return (
+  const rawText =
     payload?.message ||
     payload?.error?.message ||
-    (typeof payload?.error === "string" ? payload.error : "") ||
-    fallback
+    (typeof payload?.error === "string"
+      ? payload.error
+      : "");
+
+  return {
+    key,
+    rawText: String(rawText || "").trim(),
+  };
+};
+
+const localizedStoredMessage = (
+  value,
+  language,
+  t
+) => {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    return t(value);
+  }
+
+  const localized = t(
+    value.key,
+    value.params || {}
   );
+
+  return language === "es" && value.rawText
+    ? value.rawText
+    : localized;
 };
 
 const hasOwn = (value, key) =>
-  Boolean(value) && Object.prototype.hasOwnProperty.call(value, key);
+  Boolean(value) &&
+  Object.prototype.hasOwnProperty.call(
+    value,
+    key
+  );
 
-const resultAvailabilityLabel = (execution) => {
-  if (execution?.resultAvailable === true) return "Disponible";
+const resultAvailabilityKey = (execution) => {
+  if (execution?.resultAvailable === true) {
+    return "submissionOverview.results.available";
+  }
 
   if (
     ["QUEUED", "RUNNING", "PROCESSING"].includes(
-      execution?.state
+      String(execution?.state || "").toUpperCase()
     )
   ) {
-    return "Pendiente";
+    return "submissionOverview.results.pending";
   }
 
-  return "No disponible";
+  return "submissionOverview.results.unavailable";
+};
+
+const executionStateKey = (state) => {
+  const normalized = String(state || "")
+    .trim()
+    .toUpperCase();
+
+  const keys = {
+    QUEUED: "submissionOverview.executionStates.queued",
+    RUNNING: "submissionOverview.executionStates.running",
+    PROCESSING:
+      "submissionOverview.executionStates.processing",
+    COMPLETED:
+      "submissionOverview.executionStates.completed",
+    FAILED: "submissionOverview.executionStates.failed",
+    CANCELLED:
+      "submissionOverview.executionStates.cancelled",
+  };
+
+  return (
+    keys[normalized] ||
+    "submissionOverview.executionStates.unknown"
+  );
+};
+
+const aggregateStateKey = (state) => {
+  const normalized = String(state || "")
+    .trim()
+    .toUpperCase();
+
+  const keys = {
+    IN_PROGRESS:
+      "submissionOverview.aggregateStates.inProgress",
+    COMPLETED:
+      "submissionOverview.aggregateStates.completed",
+    PARTIAL:
+      "submissionOverview.aggregateStates.partial",
+    FAILED:
+      "submissionOverview.aggregateStates.failed",
+    EMPTY:
+      "submissionOverview.aggregateStates.empty",
+  };
+
+  return (
+    keys[normalized] ||
+    "submissionOverview.aggregateStates.unknown"
+  );
+};
+
+const comparisonIneligibilityKey = (
+  execution
+) => {
+  const state = String(execution?.state || "")
+    .trim()
+    .toUpperCase();
+
+  if (state !== "COMPLETED") {
+    if (state === "FAILED") {
+      return "submissionOverview.comparison.reasons.failed";
+    }
+    if (
+      ["QUEUED", "RUNNING", "PROCESSING"].includes(
+        state
+      )
+    ) {
+      return "submissionOverview.comparison.reasons.inProgress";
+    }
+    return "submissionOverview.comparison.reasons.notCompleted";
+  }
+
+  if (execution?.resultAvailable !== true) {
+    return "submissionOverview.comparison.reasons.noResults";
+  }
+
+  if (!String(execution?.codename || "").trim()) {
+    return "submissionOverview.comparison.reasons.invalidId";
+  }
+
+  return "";
 };
 
 const SummaryCard = ({ icon: Icon, label, value, tone = "default" }) => (
@@ -156,6 +265,7 @@ const InformationItem = ({ icon: Icon, label, children, className = "" }) => (
 const SubmissionOverviewPage = ({ currentUser }) => {
   const { submissionId } = useParams();
   const navigate = useNavigate();
+  const { language, locale, t } = useI18n();
 
   const [submission, setSubmission] = useState(null);
   const [summary, setSummary] = useState(null);
@@ -167,18 +277,19 @@ const SubmissionOverviewPage = ({ currentUser }) => {
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
-  const [metadataError, setMetadataError] = useState("");
-  const [metadataFeedback, setMetadataFeedback] = useState("");
+  const [metadataError, setMetadataError] = useState(null);
+  const [metadataFeedback, setMetadataFeedback] =
+    useState("");
   const [copyFeedback, setCopyFeedback] = useState("");
   const [archiveContext, setArchiveContext] = useState({
     loading: false,
     trace: null,
-    error: "",
+    errorKey: "",
   });
   const [archiveDownload, setArchiveDownload] = useState({
     loading: false,
     kind: "",
-    message: "",
+    messageKey: "",
   });
   const [sourceViewer, setSourceViewer] = useState({
     open: false,
@@ -196,7 +307,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
   const loadSubmission = useCallback(async () => {
     setLoading(true);
     setRequestError(null);
-    setMetadataError("");
+    setMetadataError(null);
     setMetadataFeedback("");
 
     try {
@@ -310,7 +421,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
       comparisonSelection.length >= MAX_COMPARISON_EXECUTIONS
     ) {
       setComparisonFeedback(
-        "Puedes comparar como máximo cuatro implementaciones. Deselecciona una para habilitar otro cupo."
+        "submissionOverview.comparison.maxFeedback"
       );
       return;
     }
@@ -337,13 +448,13 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     );
 
     if (loading || !traceExecution?.codename) {
-      setArchiveContext({ loading: false, trace: null, error: "" });
+      setArchiveContext({ loading: false, trace: null, errorKey: "" });
       return undefined;
     }
 
     let active = true;
-    setArchiveContext({ loading: true, trace: null, error: "" });
-    setArchiveDownload({ loading: false, kind: "", message: "" });
+    setArchiveContext({ loading: true, trace: null, errorKey: "" });
+    setArchiveDownload({ loading: false, kind: "", messageKey: "" });
 
     axios
       .get(
@@ -357,7 +468,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           setArchiveContext({
             loading: false,
             trace: response.data || null,
-            error: "",
+            errorKey: "",
           });
         }
       })
@@ -366,7 +477,8 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           setArchiveContext({
             loading: false,
             trace: null,
-            error: "No fue posible verificar la disponibilidad del archivo original.",
+            errorKey:
+              "submissionOverview.archive.verifyError",
           });
         }
       });
@@ -380,7 +492,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     setNoteDraft(
       typeof submission?.note === "string" ? submission.note : ""
     );
-    setMetadataError("");
+    setMetadataError(null);
     setMetadataFeedback("");
     setIsEditingNote(true);
   };
@@ -389,7 +501,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     setNoteDraft(
       typeof submission?.note === "string" ? submission.note : ""
     );
-    setMetadataError("");
+    setMetadataError(null);
     setIsEditingNote(false);
   };
 
@@ -397,7 +509,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     if (!permissions.canEditMetadata || noteSaving) return;
 
     setNoteSaving(true);
-    setMetadataError("");
+    setMetadataError(null);
     setMetadataFeedback("");
 
     try {
@@ -410,12 +522,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
         typeof normalizedNote === "string" ? normalizedNote : ""
       );
       setIsEditingNote(false);
-      setMetadataFeedback("Nota personal guardada.");
+      setMetadataFeedback(
+        "submissionOverview.feedback.noteSaved"
+      );
     } catch (error) {
       setMetadataError(
-        metadataErrorMessage(
+        metadataErrorState(
           error,
-          "No fue posible guardar la nota. Revisa el contenido y vuelve a intentarlo."
+          "submissionOverview.errors.noteSave"
         )
       );
     } finally {
@@ -428,21 +542,21 @@ const SubmissionOverviewPage = ({ currentUser }) => {
 
     const nextPinned = !Boolean(submission?.isPinned);
     setPinSaving(true);
-    setMetadataError("");
+    setMetadataError(null);
     setMetadataFeedback("");
 
     try {
       await patchMetadata({ isPinned: nextPinned });
       setMetadataFeedback(
         nextPinned
-          ? "Experimento marcado como referencia."
-          : "Experimento removido de referencias."
+          ? "submissionOverview.feedback.pinned"
+          : "submissionOverview.feedback.unpinned"
       );
     } catch (error) {
       setMetadataError(
-        metadataErrorMessage(
+        metadataErrorState(
           error,
-          "No fue posible actualizar la referencia. Vuelve a intentarlo."
+          "submissionOverview.errors.referenceUpdate"
         )
       );
     } finally {
@@ -463,42 +577,63 @@ const SubmissionOverviewPage = ({ currentUser }) => {
       }
 
       await navigator.clipboard.writeText(archiveSha256);
-      setCopyFeedback("SHA copiado");
+      setCopyFeedback(
+        "submissionOverview.feedback.shaCopied"
+      );
     } catch {
-      setCopyFeedback("No se pudo copiar");
+      setCopyFeedback(
+        "submissionOverview.feedback.shaCopyFailed"
+      );
     }
   };
 
   const handleArchiveDownload = async () => {
     if (archiveDownload.loading) return;
 
-    setArchiveDownload({ loading: true, kind: "", message: "" });
+    setArchiveDownload({
+      loading: true,
+      kind: "",
+      messageKey: "",
+    });
+
     try {
       await downloadAuthenticatedFile(
         `${submissionEndpoint}/archive`,
-        submission?.originalFilename || `submission-${submission?.id}.zip`
+        submission?.originalFilename ||
+          `submission-${submission?.id}.zip`
       );
+
       setArchiveDownload({
         loading: false,
         kind: "success",
-        message: "ZIP original descargado correctamente.",
+        messageKey:
+          "submissionOverview.archive.downloadSuccess",
       });
     } catch (error) {
       const status = error?.response?.status;
-      let message = "No fue posible descargar el ZIP original.";
+      let messageKey =
+        "submissionOverview.archive.downloadError";
 
       if (!error?.response) {
-        message = "No pudimos conectar para descargar el ZIP original.";
-      } else if (status === 401 || status === 403) {
-        message = "Tu sesión no permite descargar el ZIP original.";
-      } else if ([404, 409, 422].includes(status)) {
-        message = "El archivo original no está disponible.";
+        messageKey =
+          "submissionOverview.archive.downloadNetwork";
+      } else if (
+        status === 401 ||
+        status === 403
+      ) {
+        messageKey =
+          "submissionOverview.archive.downloadSession";
+      } else if (
+        [404, 409, 422].includes(status)
+      ) {
+        messageKey =
+          "submissionOverview.archive.unavailable";
       }
 
       setArchiveDownload({
         loading: false,
         kind: "error",
-        message,
+        messageKey,
       });
     }
   };
@@ -509,8 +644,12 @@ const SubmissionOverviewPage = ({ currentUser }) => {
         <div className="submission-overview__container submission-overview__state-container">
           <InlineState
             type="loading"
-            title="Cargando experimento"
-            description="Consultando su metadata y el estado de las implementaciones."
+            title={t(
+              "submissionOverview.states.loadingTitle"
+            )}
+            description={t(
+              "submissionOverview.states.loadingDescription"
+            )}
           />
         </div>
       </main>
@@ -523,9 +662,15 @@ const SubmissionOverviewPage = ({ currentUser }) => {
         <div className="submission-overview__container submission-overview__state-container">
           <InlineState
             type={errorStateFromRequest(requestError)}
-            title="No fue posible cargar el experimento"
-            description="Revisa tu sesión o vuelve a intentar la consulta."
-            actionLabel="Reintentar"
+            title={t(
+              "submissionOverview.states.errorTitle"
+            )}
+            description={t(
+              "submissionOverview.states.errorDescription"
+            )}
+            actionLabel={t(
+              "submissionOverview.actions.retry"
+            )}
             onAction={loadSubmission}
           />
         </div>
@@ -539,18 +684,34 @@ const SubmissionOverviewPage = ({ currentUser }) => {
         <div className="submission-overview__container submission-overview__state-container">
           <InlineState
             type="not-found"
-            title="Experimento no disponible"
-            description="No se encontró información para esta Submission."
+            title={t(
+              "submissionOverview.states.notFoundTitle"
+            )}
+            description={t(
+              "submissionOverview.states.notFoundDescription"
+            )}
           />
         </div>
       </main>
     );
   }
 
-  const courseLabel = formatCourseLabel(submission.course);
-  const academicPeriod = formatAcademicPeriod(submission.course);
+  const courseLabel = formatCourseLabel(
+    submission.course,
+    t("submissionOverview.fallbacks.noCourse")
+  );
+  const academicPeriod = formatAcademicPeriod(
+    submission.course,
+    {
+      periodLabel: t(
+        "submissionOverview.labels.period"
+      ),
+    }
+  );
   const createdAtLabel = formatSubmissionDateTime(
-    submission.createdAt
+    submission.createdAt,
+    locale,
+    t("submissionOverview.fallbacks.unavailable")
   );
   const archiveSha256 = String(
     submission.archiveSha256 || ""
@@ -570,8 +731,30 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     archiveTrace?.permissions?.canDownloadArchive === true
   );
   const archiveAvailable = Boolean(
-    archiveTrace?.submission?.archive?.available === true
+    archiveTrace?.submission?.archive?.available ===
+      true
   );
+  const metadataErrorText =
+    localizedStoredMessage(
+      metadataError,
+      language,
+      t
+    );
+  const metadataFeedbackText =
+    metadataFeedback
+      ? t(metadataFeedback)
+      : "";
+  const copyFeedbackText = copyFeedback
+    ? t(copyFeedback)
+    : "";
+  const archiveDownloadMessage =
+    archiveDownload.messageKey
+      ? t(archiveDownload.messageKey)
+      : "";
+  const comparisonFeedbackText =
+    comparisonFeedback
+      ? t(comparisonFeedback)
+      : "";
 
   return (
     <main className="submission-overview">
@@ -587,9 +770,17 @@ const SubmissionOverviewPage = ({ currentUser }) => {
         <header className="submission-overview__header">
           <div className="submission-overview__header-copy">
             <span className="submission-overview__eyebrow">
-              Experimento #{submission.id}
+              {t(
+                "submissionOverview.header.experimentNumber",
+                { id: submission.id }
+              )}
             </span>
-            <h1>{submission.title || "Experimento sin título"}</h1>
+            <h1>
+              {submission.title ||
+                t(
+                  "submissionOverview.fallbacks.untitledExperiment"
+                )}
+            </h1>
             <div className="submission-overview__header-metadata">
               <span>
                 <GraduationCap
@@ -616,8 +807,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           </div>
 
           <span className={stateClassName(aggregateState)}>
-            {SUBMISSION_AGGREGATE_LABELS[aggregateState] ||
-              aggregateState}
+            {t(aggregateStateKey(aggregateState))}
           </span>
         </header>
 
@@ -628,18 +818,27 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           <div className="submission-overview__section-heading">
             <div>
               <span className="submission-overview__eyebrow">
-                Procedencia
+                {t(
+                  "submissionOverview.information.eyebrow"
+                )}
               </span>
               <h2 id="submission-information-title">
-                Información del experimento
+                {t(
+                  "submissionOverview.information.title"
+                )}
               </h2>
             </div>
             <FileArchive size={22} strokeWidth={1.8} aria-hidden="true" />
           </div>
 
           {archiveContext.loading && (
-            <span className="submission-overview__archive-status" role="status">
-              Verificando archivo original…
+            <span
+              className="submission-overview__archive-status"
+              role="status"
+            >
+              {t(
+                "submissionOverview.archive.verifying"
+              )}
             </span>
           )}
 
@@ -653,45 +852,76 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               >
                 <Download size={16} strokeWidth={2} aria-hidden="true" />
                 {archiveDownload.loading
-                  ? "Descargando…"
-                  : "Descargar ZIP original"}
+                  ? t(
+                      "submissionOverview.archive.downloading"
+                    )
+                  : t(
+                      "submissionOverview.archive.downloadAction"
+                    )}
               </button>
             </div>
           )}
 
           {canDownloadArchive && !archiveAvailable && (
             <span className="submission-overview__archive-status">
-              Archivo original no disponible
+              {t(
+                "submissionOverview.archive.unavailable"
+              )}
             </span>
           )}
 
-          {archiveContext.error && permissions.canEditMetadata && (
-            <span className="submission-overview__archive-status">
-              {archiveContext.error}
-            </span>
-          )}
+          {archiveContext.errorKey &&
+            permissions.canEditMetadata && (
+              <span className="submission-overview__archive-status">
+                {t(archiveContext.errorKey)}
+              </span>
+            )}
 
-          {archiveDownload.message && (
+          {archiveDownloadMessage && (
             <div
               className={`submission-overview__archive-feedback submission-overview__archive-feedback--${archiveDownload.kind}`}
-              role={archiveDownload.kind === "error" ? "alert" : "status"}
+              role={
+                archiveDownload.kind === "error"
+                  ? "alert"
+                  : "status"
+              }
             >
-              {archiveDownload.message}
+              {archiveDownloadMessage}
             </div>
           )}
 
           <dl className="submission-overview__information-grid">
-            <InformationItem icon={FileArchive} label="Archivo original">
-              {submission.originalFilename || "No disponible"}
+            <InformationItem
+              icon={FileArchive}
+              label={t(
+                "submissionOverview.labels.originalArchive"
+              )}
+            >
+              {submission.originalFilename ||
+                t(
+                  "submissionOverview.fallbacks.unavailable"
+                )}
             </InformationItem>
 
-            <InformationItem icon={CalendarDays} label="Creado">
+            <InformationItem
+              icon={CalendarDays}
+              label={t(
+                "submissionOverview.labels.created"
+              )}
+            >
               {createdAtLabel}
             </InformationItem>
 
-            <InformationItem icon={GraduationCap} label="Curso">
+            <InformationItem
+              icon={GraduationCap}
+              label={t(
+                "submissionOverview.labels.course"
+              )}
+            >
               <span>{courseLabel}</span>
-              {academicPeriod && <small>{academicPeriod}</small>}
+              {academicPeriod && (
+                <small>{academicPeriod}</small>
+              )}
             </InformationItem>
 
             <InformationItem
@@ -701,28 +931,45 @@ const SubmissionOverviewPage = ({ currentUser }) => {
             >
               <div className="submission-overview__sha">
                 <code title={archiveSha256 || undefined}>
-                  {abbreviateArchiveSha256(archiveSha256)}
+                  {abbreviateArchiveSha256(
+                    archiveSha256,
+                    t(
+                      "submissionOverview.fallbacks.unavailable"
+                    )
+                  )}
                 </code>
                 {archiveSha256 && (
                   <button
                     type="button"
                     className="submission-overview__icon-action"
                     onClick={handleCopySha}
-                    aria-label="Copiar SHA-256 completo"
-                    title="Copiar SHA-256 completo"
+                    aria-label={t(
+                      "submissionOverview.actions.copySha"
+                    )}
+                    title={t(
+                      "submissionOverview.actions.copySha"
+                    )}
                   >
                     <Copy size={16} strokeWidth={1.9} aria-hidden="true" />
                   </button>
                 )}
-                {copyFeedback && (
-                  <span className="submission-overview__copy-feedback" role="status">
-                    {copyFeedback}
+                {copyFeedbackText && (
+                  <span
+                    className="submission-overview__copy-feedback"
+                    role="status"
+                  >
+                    {copyFeedbackText}
                   </span>
                 )}
               </div>
             </InformationItem>
 
-            <InformationItem icon={Files} label="Implementaciones">
+            <InformationItem
+              icon={Files}
+              label={t(
+                "submissionOverview.labels.implementations"
+              )}
+            >
               {summary?.executionsCount || 0}
             </InformationItem>
           </dl>
@@ -736,10 +983,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
             <div className="submission-overview__personal-heading">
               <div>
                 <span className="submission-overview__eyebrow">
-                  Solo tú
+                  {t(
+                    "submissionOverview.personal.eyebrow"
+                  )}
                 </span>
                 <h2 id="submission-personal-title">
-                  Metadata personal
+                  {t(
+                    "submissionOverview.personal.title"
+                  )}
                 </h2>
               </div>
 
@@ -765,10 +1016,16 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                     aria-hidden="true"
                   />
                   {pinSaving
-                    ? "Actualizando…"
+                    ? t(
+                        "submissionOverview.personal.updating"
+                      )
                     : isPinned
-                    ? "Referencia"
-                    : "Marcar como referencia"}
+                    ? t(
+                        "submissionOverview.personal.reference"
+                      )
+                    : t(
+                        "submissionOverview.personal.markReference"
+                      )}
                 </button>
               )}
             </div>
@@ -777,7 +1034,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               {isEditingNote && permissions.canEditMetadata ? (
                 <>
                   <label htmlFor="submission-personal-note">
-                    Nota personal
+                    {t(
+                      "submissionOverview.personal.note"
+                    )}
                   </label>
                   <textarea
                     id="submission-personal-note"
@@ -790,7 +1049,13 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   />
                   <div className="submission-overview__note-editor-footer">
                     <span id="submission-note-count">
-                      {noteDraft.length}/500 caracteres
+                      {t(
+                        "submissionOverview.personal.characters",
+                        {
+                          count: noteDraft.length,
+                          max: 500,
+                        }
+                      )}
                     </span>
                     <div className="submission-overview__note-actions">
                       <button
@@ -799,8 +1064,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         onClick={handleCancelNote}
                         disabled={noteSaving}
                       >
-                        <X size={16} strokeWidth={2} aria-hidden="true" />
-                        Cancelar
+                        <X
+                          size={16}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                        {t(
+                          "submissionOverview.actions.cancel"
+                        )}
                       </button>
                       <button
                         type="button"
@@ -808,8 +1079,18 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         onClick={handleSaveNote}
                         disabled={noteSaving}
                       >
-                        <Save size={16} strokeWidth={2} aria-hidden="true" />
-                        {noteSaving ? "Guardando…" : "Guardar"}
+                        <Save
+                          size={16}
+                          strokeWidth={2}
+                          aria-hidden="true"
+                        />
+                        {noteSaving
+                          ? t(
+                              "submissionOverview.personal.saving"
+                            )
+                          : t(
+                              "submissionOverview.actions.save"
+                            )}
                       </button>
                     </div>
                   </div>
@@ -817,15 +1098,25 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               ) : (
                 <>
                   <div className="submission-overview__note-heading">
-                    <h3>Nota personal</h3>
+                    <h3>
+                      {t(
+                        "submissionOverview.personal.note"
+                      )}
+                    </h3>
                     {permissions.canEditMetadata && (
                       <button
                         type="button"
                         className="submission-overview__text-action"
                         onClick={handleEditNote}
                       >
-                        <Pencil size={15} strokeWidth={1.9} aria-hidden="true" />
-                        Editar
+                        <Pencil
+                          size={15}
+                          strokeWidth={1.9}
+                          aria-hidden="true"
+                        />
+                        {t(
+                          "submissionOverview.actions.edit"
+                        )}
                       </button>
                     )}
                   </div>
@@ -836,31 +1127,43 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         : "submission-overview__note-empty"
                     }
                   >
-                    {noteValue || "Sin nota personal"}
+                    {noteValue ||
+                      t(
+                        "submissionOverview.personal.noNote"
+                      )}
                   </p>
                 </>
               )}
             </div>
 
-            {metadataError && (
+            {metadataErrorText && (
               <div
                 className="submission-overview__metadata-feedback submission-overview__metadata-feedback--error"
                 role="alert"
               >
-                <AlertTriangle size={17} strokeWidth={2} aria-hidden="true" />
-                {metadataError}
+                <AlertTriangle
+                  size={17}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                {metadataErrorText}
               </div>
             )}
 
-            {metadataFeedback && !metadataError && (
-              <div
-                className="submission-overview__metadata-feedback submission-overview__metadata-feedback--success"
-                role="status"
-              >
-                <CheckCircle2 size={17} strokeWidth={2} aria-hidden="true" />
-                {metadataFeedback}
-              </div>
-            )}
+            {metadataFeedbackText &&
+              !metadataErrorText && (
+                <div
+                  className="submission-overview__metadata-feedback submission-overview__metadata-feedback--success"
+                  role="status"
+                >
+                  <CheckCircle2
+                    size={17}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  {metadataFeedbackText}
+                </div>
+              )}
           </section>
         )}
 
@@ -871,33 +1174,47 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           <div className="submission-overview__section-heading submission-overview__section-heading--outside">
             <div>
               <span className="submission-overview__eyebrow">
-                Estado agregado
+                {t(
+                  "submissionOverview.summary.eyebrow"
+                )}
               </span>
-              <h2 id="submission-summary-title">Resumen</h2>
+              <h2 id="submission-summary-title">
+                {t(
+                  "submissionOverview.summary.title"
+                )}
+              </h2>
             </div>
           </div>
 
           <div className="submission-overview__summary-grid">
             <SummaryCard
               icon={Activity}
-              label="Ejecuciones"
+              label={t(
+                "submissionOverview.summary.executions"
+              )}
               value={summary?.executionsCount}
             />
             <SummaryCard
               icon={CheckCircle2}
-              label="Completadas"
+              label={t(
+                "submissionOverview.summary.completed"
+              )}
               value={summary?.completedExecutions}
               tone="success"
             />
             <SummaryCard
               icon={XCircle}
-              label="Con error"
+              label={t(
+                "submissionOverview.summary.failed"
+              )}
               value={summary?.failedExecutions}
               tone="danger"
             />
             <SummaryCard
               icon={Ban}
-              label="Canceladas"
+              label={t(
+                "submissionOverview.summary.cancelled"
+              )}
               value={summary?.cancelledExecutions}
               tone="neutral"
             />
@@ -911,14 +1228,19 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           <div className="submission-overview__implementations-heading">
             <div>
               <span className="submission-overview__eyebrow">
-                Código fuente
+                {t(
+                  "submissionOverview.implementations.eyebrow"
+                )}
               </span>
               <h2 id="submission-implementations-title">
-                Implementaciones
+                {t(
+                  "submissionOverview.implementations.title"
+                )}
               </h2>
               <p>
-                Cada archivo C++ conserva su propia ejecución y resultados
-                independientes.
+                {t(
+                  "submissionOverview.implementations.description"
+                )}
               </p>
             </div>
 
@@ -928,8 +1250,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                 className="submission-overview__button submission-overview__button--secondary"
                 onClick={loadSubmission}
               >
-                <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
-                Actualizar estados
+                <RefreshCw
+                  size={16}
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+                {t(
+                  "submissionOverview.actions.refreshStates"
+                )}
               </button>
               {!comparisonMode && (
                 <button
@@ -938,8 +1266,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   onClick={handleStartComparison}
                   disabled={eligibleComparisonExecutions.length < 2}
                 >
-                  <GitCompareArrows size={16} strokeWidth={2} aria-hidden="true" />
-                  Comparar implementaciones
+                  <GitCompareArrows
+                    size={16}
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                  {t(
+                    "submissionOverview.actions.compareImplementations"
+                  )}
                 </button>
               )}
             </div>
@@ -947,8 +1281,13 @@ const SubmissionOverviewPage = ({ currentUser }) => {
 
           {eligibleComparisonExecutions.length < 2 &&
             orderedExecutions.length > 0 && (
-              <p className="submission-overview__comparison-unavailable" role="status">
-                Se necesitan al menos dos implementaciones completadas con resultados.
+              <p
+                className="submission-overview__comparison-unavailable"
+                role="status"
+              >
+                {t(
+                  "submissionOverview.comparison.needTwo"
+                )}
               </p>
             )}
 
@@ -956,18 +1295,32 @@ const SubmissionOverviewPage = ({ currentUser }) => {
             <div
               className="submission-overview__comparison-panel"
               role="region"
-              aria-label="Selección de implementaciones para comparar"
+              aria-label={t(
+                "submissionOverview.comparison.regionAria"
+              )}
             >
               <div>
-                <strong>Selecciona implementaciones comparables</strong>
+                <strong>
+                  {t(
+                    "submissionOverview.comparison.title"
+                  )}
+                </strong>
                 <p>
-                  {eligibleComparisonExecutions.length > 4
-                    ? "Selecciona entre 2 y 4 implementaciones."
-                    : "Las implementaciones elegibles están preseleccionadas. Puedes ajustar la selección antes de continuar."}
+                  {eligibleComparisonExecutions.length >
+                  4
+                    ? t(
+                        "submissionOverview.comparison.selectRange"
+                      )
+                    : t(
+                        "submissionOverview.comparison.preselected"
+                      )}
                 </p>
-                {comparisonFeedback && (
-                  <p className="submission-overview__comparison-feedback" role="status">
-                    {comparisonFeedback}
+                {comparisonFeedbackText && (
+                  <p
+                    className="submission-overview__comparison-feedback"
+                    role="status"
+                  >
+                    {comparisonFeedbackText}
                   </p>
                 )}
               </div>
@@ -978,14 +1331,22 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   onClick={handleOpenComparison}
                   disabled={comparisonSelection.length < 2}
                 >
-                  Comparar seleccionadas ({comparisonSelection.length})
+                  {t(
+                    "submissionOverview.comparison.compareSelected",
+                    {
+                      count:
+                        comparisonSelection.length,
+                    }
+                  )}
                 </button>
                 <button
                   type="button"
                   className="submission-overview__button submission-overview__button--ghost"
                   onClick={handleCancelComparison}
                 >
-                  Cancelar
+                  {t(
+                    "submissionOverview.actions.cancel"
+                  )}
                 </button>
               </div>
             </div>
@@ -994,14 +1355,24 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           {orderedExecutions.length === 0 ? (
             <InlineState
               type="empty"
-              title="Sin ejecuciones"
-              description="Este experimento todavía no registra implementaciones ejecutables."
+              title={t(
+                "submissionOverview.states.emptyTitle"
+              )}
+              description={t(
+                "submissionOverview.states.emptyDescription"
+              )}
             />
           ) : (
             <div className="submission-overview__execution-list">
               {orderedExecutions.map((execution) => {
                 const failure = execution.failure;
-                const displayName = executionDisplayName(execution);
+                const displayName =
+                  executionDisplayName(
+                    execution,
+                    t(
+                      "submissionOverview.fallbacks.unnamedFile"
+                    )
+                  );
                 const canOpenResult = canOpenExecutionResult(execution);
                 const comparisonEligible =
                   isComparisonEligibleExecution(execution);
@@ -1040,11 +1411,23 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                               disabled={comparisonAtLimit && !comparisonSelected}
                               onChange={() => handleToggleComparison(execution)}
                             />
-                            Seleccionar {displayName}
+                            {t(
+                              "submissionOverview.comparison.selectFile",
+                              { name: displayName }
+                            )}
                           </label>
                         ) : (
                           <span>
-                            No participa: {comparisonIneligibilityReason(execution)}
+                            {t(
+                              "submissionOverview.comparison.notEligible",
+                              {
+                                reason: t(
+                                  comparisonIneligibilityKey(
+                                    execution
+                                  )
+                                ),
+                              }
+                            )}
                           </span>
                         )}
                       </div>
@@ -1060,39 +1443,78 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         </div>
                         <div>
                           <span className="submission-overview__source-marker">
-                            Fuente de esta ejecución
+                            {t(
+                              "submissionOverview.execution.sourceMarker"
+                            )}
                           </span>
                           <h3>{displayName}</h3>
                           {execution.codename && (
                             <span className="submission-overview__codename">
-                              ID técnico: <code>{execution.codename}</code>
+                              {t(
+                                "submissionOverview.execution.technicalId"
+                              )}:{" "}
+                              <code>
+                                {execution.codename}
+                              </code>
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <span className={stateClassName(execution.state)}>
-                        {execution.stateLabel ||
-                          execution.statusLabel ||
-                          execution.state ||
-                          "Desconocido"}
+                      <span
+                        className={stateClassName(
+                          execution.state
+                        )}
+                      >
+                        {t(
+                          executionStateKey(
+                            execution.state
+                          )
+                        )}
                       </span>
                     </div>
 
                     <dl className="submission-overview__execution-metadata">
                       <div>
                         <Gauge size={17} strokeWidth={1.9} aria-hidden="true" />
-                        <dt>Benchmark</dt>
-                        <dd>{formatBenchmark(execution.benchmark)}</dd>
+                        <dt>
+                          {t(
+                            "submissionOverview.labels.benchmark"
+                          )}
+                        </dt>
+                        <dd>
+                          {formatBenchmark(
+                            execution.benchmark,
+                            t(
+                              "submissionOverview.fallbacks.notReported"
+                            )
+                          )}
+                        </dd>
                       </div>
                       <div>
                         <Clock3 size={17} strokeWidth={1.9} aria-hidden="true" />
-                        <dt>Duración</dt>
-                        <dd>{formatExecutionDuration(execution.durationMs)}</dd>
+                        <dt>
+                          {t(
+                            "submissionOverview.labels.duration"
+                          )}
+                        </dt>
+                        <dd>
+                          {formatExecutionDuration(
+                            execution.durationMs,
+                            locale,
+                            t(
+                              "submissionOverview.fallbacks.noData"
+                            )
+                          )}
+                        </dd>
                       </div>
                       <div>
                         <FileArchive size={17} strokeWidth={1.9} aria-hidden="true" />
-                        <dt>Resultado</dt>
+                        <dt>
+                          {t(
+                            "submissionOverview.labels.result"
+                          )}
+                        </dt>
                         <dd
                           className={
                             execution.resultAvailable
@@ -1100,13 +1522,21 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                               : ""
                           }
                         >
-                          {resultAvailabilityLabel(execution)}
+                          {t(
+                            resultAvailabilityKey(
+                              execution
+                            )
+                          )}
                         </dd>
                       </div>
                       {execution.hardwareProfile && (
                         <div>
                           <Server size={17} strokeWidth={1.9} aria-hidden="true" />
-                          <dt>Entorno</dt>
+                          <dt>
+                            {t(
+                              "submissionOverview.labels.environment"
+                            )}
+                          </dt>
                           <dd>{execution.hardwareProfile}</dd>
                         </div>
                       )}
@@ -1121,23 +1551,35 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         />
                         <div>
                           <strong>
-                            La implementación no pudo completar el análisis.
+                            {t(
+                              "submissionOverview.failure.title"
+                            )}
                           </strong>
                           <p>
                             {failure?.message ||
-                              "El servidor no entregó más detalle del fallo."}
+                              t(
+                                "submissionOverview.failure.noDetail"
+                              )}
                           </p>
                           {(failure?.stage || failure?.code) && (
                             <dl>
                               {failure?.stage && (
                                 <div>
-                                  <dt>Etapa</dt>
+                                  <dt>
+                                    {t(
+                                      "submissionOverview.failure.stage"
+                                    )}
+                                  </dt>
                                   <dd>{failure.stage}</dd>
                                 </div>
                               )}
                               {failure?.code && (
                                 <div>
-                                  <dt>Código</dt>
+                                  <dt>
+                                    {t(
+                                      "submissionOverview.failure.code"
+                                    )}
+                                  </dt>
                                   <dd>{failure.code}</dd>
                                 </div>
                               )}
@@ -1150,8 +1592,20 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                     <div className="submission-overview__execution-footer">
                       <span>
                         {execution.publicId
-                          ? `Registro ${execution.publicId}`
-                          : `Execution #${execution.executionId || "—"}`}
+                          ? t(
+                              "submissionOverview.execution.record",
+                              {
+                                id: execution.publicId,
+                              }
+                            )
+                          : t(
+                              "submissionOverview.execution.executionNumber",
+                              {
+                                id:
+                                  execution.executionId ||
+                                  "—",
+                              }
+                            )}
                       </span>
 
                       <div className="submission-overview__execution-actions">
@@ -1166,8 +1620,14 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                               })
                             }
                           >
-                            <Eye size={16} strokeWidth={2} aria-hidden="true" />
-                            Ver código
+                            <Eye
+                              size={16}
+                              strokeWidth={2}
+                              aria-hidden="true"
+                            />
+                            {t(
+                              "submissionOverview.actions.viewCode"
+                            )}
                           </button>
                         )}
 
@@ -1189,7 +1649,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                               strokeWidth={2}
                               aria-hidden="true"
                             />
-                            Reutilizar configuración
+                            {t(
+                              "submissionOverview.actions.reuseConfiguration"
+                            )}
                           </button>
                         )}
 
@@ -1205,7 +1667,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                               )
                             }
                           >
-                            Ver resultado
+                            {t(
+                              "submissionOverview.actions.viewResult"
+                            )}
                             <ExternalLink
                               size={16}
                               strokeWidth={2}

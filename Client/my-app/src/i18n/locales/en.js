@@ -1,0 +1,3231 @@
+const en = {
+  common: {
+    user: "User",
+    executionCount: {
+      one: "{{count}} execution",
+      other: "{{count}} executions",
+    },
+  },
+  language: {
+    selectorLabel: "Language",
+    spanish: "Spanish",
+    english: "English",
+    switchTo: "Switch language to {{language}}",
+  },
+  nav: {
+    newAnalysis: "New analysis",
+    history: "History",
+    tutorial: "How it works",
+    supervision: "Supervision",
+    administration: "Administration",
+  },
+  roles: {
+    admin: "Administrator",
+    teacher: "Teacher",
+    student: "Student",
+  },
+  navbar: {
+    brandAria: "Performance System — New analysis",
+    mainNavigationAria: "Main navigation",
+    mobileNavigationAria: "Mobile navigation",
+    themeToLight: "Switch to light theme",
+    themeToDark: "Switch to dark theme",
+    profile: "My profile",
+    logout: "Sign out",
+    openNavigation: "Open navigation",
+    closeNavigation: "Close navigation",
+  },
+  login: {
+    logoAlt: "Performance System logo",
+    brandSubtitle:
+      "A platform for measuring and analyzing C++ code performance using real hardware metrics.",
+    highlights: {
+      analysisLead: "Performance analysis for",
+      benchmarks: "LCS, CAMM and SIZE",
+      metricsLead: "Advanced metrics:",
+      metrics: "IPC, cache, energy, cycles",
+      integrationLead: "Integration with institutional accounts",
+      accounts: "@inf.udec.cl and @udec.cl*",
+    },
+    note: {
+      standardLead: "Standard access uses your",
+      otherLead:
+        "If you belong to another UdeC program, you can request access with your",
+      formSuffix: "using the form on this page.",
+    },
+    title: "Institutional access",
+    subtitle: {
+      lead: "Sign in with your institutional account:",
+      direct: "(direct access) or",
+      approval: "(approval required).",
+    },
+    google: {
+      redirecting: "Redirecting to Google...",
+      continue: "Continue with Google",
+      hintLead:
+        "Your institutional account will be used to authenticate you securely. If your email belongs to",
+      hintImmediate: "access is immediate. If you use",
+      hintRequest: "you must first request access and wait for approval.",
+    },
+    accessRequestDivider: "Access request (@udec.cl email)",
+    fields: {
+      fullName: "Full name",
+      fullNamePlaceholder: "First name Last name",
+      institutionalEmail: "UdeC institutional email",
+      professorEmail: "Responsible professor's email",
+      course: "Course / Subject",
+      coursePlaceholder: "E.g. INF-253 Data Structures",
+      comment: "Comment",
+      commentPlaceholder:
+        "Briefly explain why you need access (2–3 lines).",
+      optional: "optional",
+    },
+    validation: {
+      fullNameRequired: "Full name is required.",
+      emailRequired: "Institutional email is required.",
+      emailDomain:
+        "This form is only for institutional @udec.cl email addresses.",
+      professorRequired:
+        "Enter the responsible professor's email.",
+      professorInvalid:
+        "The professor's email does not appear to be valid.",
+    },
+    request: {
+      submit: "Submit access request",
+      submitting: "Submitting request...",
+      success:
+        "Request submitted successfully. Once your account is approved, you can sign in using 'Continue with Google' with the same @udec.cl email.",
+      pending:
+        "An access request is already pending for this email.",
+      emailRejected:
+        "The institutional email could not be validated. Review it and try again.",
+      professorRejected:
+        "The responsible professor's email could not be validated. Review it and try again.",
+      error:
+        "An error occurred while submitting the request. Try again.",
+      metaLead:
+        "When you submit this request, an administrator will review your case. If approved, you will receive a confirmation email and can sign in using",
+      metaSuffix: "with the same",
+    },
+    footer: {
+      lead:
+        "Having trouble accessing the system? Contact the course instructor or the laboratory administrator",
+      example: "(e.g. josefuentes@inf.udec.cl).",
+    },
+    auth: {
+      generic:
+        "The sign-in process could not be completed. Try again.",
+      invalidOauthState:
+        "The sign-in request expired or is invalid. Try again.",
+      googleAuthError:
+        "The Google sign-in process could not be completed.",
+      missingAuthCode:
+        "Google did not provide the information required to sign in.",
+      missingIdToken:
+        "Your identity could not be validated with Google.",
+      externalDomain:
+        "This email does not belong to an allowed institutional domain.",
+      accessRequired:
+        "Your email requires an access request before you can sign in.",
+      accessPending:
+        "Your access request is still pending approval.",
+      accountDisabled:
+        "Your account is disabled. Contact the system administrator.",
+      accessDenied:
+        "Access could not be authorized for this account.",
+    },
+  },
+
+  history: {
+    eyebrow: "Saved work",
+    title: "History",
+    description: "Return to previous experiments, executions, results, and their traceability.",
+    newAnalysis: "New analysis",
+    filtersAria: "History filters",
+    filtersTitle: "Filter experiments",
+    filtersHint: "Filters are applied to your full history before results are paginated.",
+    clearFilters: "Clear filters",
+    search: "Search",
+    searchHint: "Title, ZIP file, or C/C++ source",
+    searchPlaceholder: "E.g. sorting, sorting.zip, merge.cpp",
+    status: "Status",
+    filterByStatus: "Filter by status",
+    allStatuses: "All statuses",
+    benchmark: "Benchmark",
+    filterByBenchmark: "Filter by benchmark",
+    allBenchmarks: "All benchmarks",
+    context: "Context",
+    filterByCourse: "Filter by course",
+    allContexts: "All contexts",
+    personal: "Personal",
+    summaryAria: "History summary",
+    resultsFound: "Results found",
+    registeredExperiments: "Registered experiments",
+    page: "Page",
+    of: "of",
+    loadingTitle: "Loading history",
+    loadingText: "Loading your saved experiments.",
+    loadErrorTitle: "We could not load your history",
+    retry: "Retry",
+    emptyFilteredTitle: "No experiments found",
+    emptyTitle: "You do not have any registered experiments yet",
+    emptyFilteredText: "Try different criteria or clear the filters to view your full history again.",
+    emptyText: "Once you run an analysis, it will appear here so you can review it later.",
+    createFirstAnalysis: "Create first analysis",
+    experimentsAria: "Experiments",
+    experimentNumber: "Experiment #{{id}}",
+    untitledExperiment: "Untitled experiment",
+    reference: "Reference",
+    file: "File",
+    zipUnavailable: "ZIP unavailable",
+    lastActivity: "Last activity",
+    implementations: "Implementations",
+    sources: "Sources",
+    sourcesUnavailable: "Sources unavailable",
+    moreSources: "+{{count}} more",
+    benchmarkUnavailable: "Benchmark not provided",
+    viewExperiment: "View experiment",
+    paginationAria: "History pagination",
+    previous: "Previous",
+    next: "Next",
+    noRecord: "No record",
+    noCourse: "No associated course",
+    semester: "Semester",
+    states: {
+      empty: "No executions",
+      inProgress: "In progress",
+      completed: "Completed",
+      partial: "Partial",
+      failed: "Failed",
+    },
+    errors: {
+      load: "Your history could not be loaded.",
+      incomplete: "The server returned incomplete history data.",
+      filterOptions: "History course options could not be loaded.",
+    },
+  },
+
+  profile: {
+    semester: "Semester",
+    noPeriod: "Period unavailable",
+    courseFallback: "Course",
+    unnamedCourse: "Unnamed course",
+    teacherUnavailable: "Professor unavailable",
+    period: "Period",
+    professor: "Professor",
+    newAnalysisInCourse: "New analysis in this course",
+    loadingTitle: "Loading your profile",
+    loadingText: "Loading activity and execution summary.",
+    eyebrow: "My profile",
+    loadErrorTitle: "We could not load your information",
+    retry: "Retry",
+    accountEyebrow: "Personal account",
+    title: "My profile",
+    description:
+      "Review your institutional identity and a summary of the activity recorded in Performance System.",
+    newAnalysis: "New analysis",
+    noEmail: "No registered email",
+    accountCreated: "Account created",
+    lastSession: "Last session",
+    lastExecution: "Last execution",
+    academicContext: "Academic context",
+    coursesTitle: "My courses",
+    coursesDescription:
+      "Active courses where you can associate new experiments.",
+    coursesLoadingTitle: "Loading your courses",
+    coursesLoadingText: "Loading your active academic context.",
+    coursesLoadErrorTitle: "We could not load your courses",
+    retryCourses: "Retry courses",
+    noCoursesTitle: "You currently have no active courses.",
+    noCoursesText:
+      "You can run a personal analysis without associating it with a course.",
+    startPersonalAnalysis: "Start personal analysis",
+    activity: "Activity",
+    usageSummary: "Usage summary",
+    usageDescription:
+      "These figures are calculated from your persisted submissions and executions.",
+    metrics: {
+      submissions: "Submissions",
+      submissionsHint: "Registered submissions",
+      executions: "Executions",
+      executionsHint: "Total executions",
+      completed: "Completed",
+      completedHint: "Processing completed",
+      failed: "Failed",
+      failedHint: "Recorded failures",
+    },
+    executionsEyebrow: "Executions",
+    currentState: "Current status",
+    active: "Active",
+    queued: "Queued",
+    running: "Running",
+    processing: "Processing",
+    cancelled: "Cancelled",
+    latestActivity: "Latest activity",
+    latestExecution: "Most recent execution",
+    status: "Status",
+    date: "Date",
+    averageDuration: "Average duration",
+    viewExperiment: "View experiment",
+    viewLastResult: "View latest result",
+    viewFullHistory: "View full history",
+    noFinalResult:
+      "The most recent execution does not have a final result available yet.",
+    firstAnalysisState:
+      "Once you complete your first analysis, its status will appear here.",
+    institutionalData: "Institutional data",
+    institutionalDataText:
+      "The displayed name, email, and role come from your account registered in the system. They cannot be edited on this page.",
+    noRecord: "No record",
+    noData: "No data",
+    accountStatus: {
+      active: "Active",
+      inactive: "Inactive",
+    },
+    roles: {
+      admin: "Administrator",
+      teacher: "Teacher",
+      student: "Student",
+      user: "User",
+    },
+    executionStates: {
+      none: "No executions",
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled",
+      unavailable: "Unavailable",
+    },
+    errors: {
+      load: "Your profile could not be loaded.",
+      incomplete: "The server returned incomplete profile data.",
+      courses: "Your active courses could not be loaded.",
+    },
+  },
+
+  renderForm: {
+    header: {
+      eyebrow: "Performance experiment",
+      exampleLink: "Need an example? View code examples",
+    },
+    upload: {
+      testNameLabel: "Test name",
+      testNamePlaceholder: "E.g. optimized LCS, blocked CAMM, etc.",
+      testNameHelp:
+        "This name will identify the execution in the results view.",
+      noteLabel: "Personal note",
+      optional: "(optional)",
+      notePrivate: "Only you can see this note.",
+      characters: "{{count}} / {{max}} characters",
+      archiveLabel: "Code archive (.zip)",
+      selectAria: "Select ZIP code archive",
+      dropTitle: "Drag and drop the .zip here",
+      dropHint: "or click to select a file from your computer.",
+      maxHint:
+        "Recommended max: {{max}} MB. The .zip must contain at least one .cpp file.",
+      inspecting: "Analyzing contents…",
+      cppFiles: {
+        one: "{{count}} .cpp file",
+        other: "{{count}} .cpp files",
+      },
+      examplesInside: "Examples inside the .zip:",
+    },
+    measurement: {
+      environmentLabel: "Execution environment",
+      environmentName: "Managed measurement environment",
+      automaticBadge: "Automatic",
+      environmentDescription:
+        "Performance System will send the test to the measurement node configured for this installation.",
+      environmentNote:
+        "Manual hardware selection will be enabled when real backend support is available.",
+      profileLabel: "Measurement profile",
+      profileHelp:
+        "Defines how many times each measurement point is repeated. More repetitions usually provide more stable results, but increase the total experiment time.",
+      repetitions: {
+        one: "{{count}} repetition per point",
+        other: "{{count}} repetitions per point",
+      },
+      manualRepetitions: "Repetitions defined manually",
+      profiles: {
+        rapido: {
+          name: "Quick",
+          badge: "Exploration",
+          description:
+            "Useful for quickly checking general behavior before running a more extensive measurement.",
+        },
+        equilibrado: {
+          name: "Balanced",
+          badge: "Recommended",
+          description:
+            "Balances execution time and measurement stability. This is the recommended option for general use.",
+        },
+        exhaustivo: {
+          name: "Exhaustive",
+          badge: "Higher stability",
+          description:
+            "Increases repetitions to observe measurement variability with greater stability.",
+        },
+        personalizado: {
+          name: "Custom",
+          badge: "Manual control",
+          description:
+            "Lets you define the number of repetitions per measurement point manually.",
+        },
+      },
+    },
+    benchmark: {
+      sectionLabel: "Benchmark type and parameters",
+      sectionHelp:
+        "Select the input type that best represents the algorithm you want to analyze. Performance System will use the associated benchmark to generate the measurement points.",
+      maxInput: "Maximum input size",
+      repetitionsPerPoint: "Repetitions per measurement point",
+      decreaseRepetitions: "Decrease repetitions",
+      increaseRepetitions: "Increase repetitions",
+      currentProfile: "The current profile is {{profile}}. If you change this value manually, the profile switches to Custom.",
+      dataDistribution: "Data distribution",
+      dataDistributionHelp:
+        "Defines how the numeric dataset received by the algorithm is organized.",
+      executionSummary: {
+        one: "How it will run: the engine will generate several measurement points up to the selected maximum size and repeat each point {{count}} time.",
+        other: "How it will run: the engine will generate several measurement points up to the selected maximum size and repeat each point {{count}} times.",
+      },
+      notApplicable: "Not applicable",
+      tasks: {
+        lcs: {
+          name: "Text input",
+          subtitle:
+            "Analyzes algorithms that process text using the english.50MB dataset.",
+          description:
+            "The engine evaluates the program with increasing input sizes taken from the text dataset. Each point is repeated according to the selected measurement profile.",
+          badge: "Text dataset",
+          inputHelp:
+            "Maximum number of text lines the benchmark will reach.",
+        },
+        camm: {
+          name: "Numeric data",
+          subtitle:
+            "Analyzes algorithms over numeric collections with different distributions.",
+          description:
+            "The engine evaluates the program with numeric datasets of increasing size. You can choose the data distribution to study how it affects algorithm behavior.",
+          badge: "Numeric dataset",
+          inputHelp:
+            "Maximum number of numeric values the benchmark will reach.",
+        },
+        size: {
+          name: "Parameterized size",
+          subtitle:
+            "Analyzes algorithms whose problem size is provided as an integer argument.",
+          description:
+            "The engine runs the program with increasing input-parameter values. This is useful when the algorithm generates or manages its data from a size received as an argument.",
+          badge: "Integer argument",
+          inputHelp:
+            "Maximum value passed to the program as the problem size.",
+        },
+      },
+      dataTypes: {
+        cammr: "Random numbers",
+        cammso: "Semi-sorted numbers",
+        camms: "Equal numbers",
+      },
+    },
+    course: {
+      context: "Academic context",
+      noCourse: "No associated course",
+      personal: "Personal",
+      noActiveCourses:
+        "You currently have no active courses. You can still run a personal analysis.",
+      course: "Course",
+      loading: "Loading…",
+      loadingText: "Loading your active courses.",
+      loadError: "We could not load your courses",
+      retry: "Retry",
+      associatedCourse: "Associated course",
+      automatic: "Automatic",
+      professor: "Professor: {{name}}",
+      professorUnavailable: "Professor unavailable",
+      automaticAssociation:
+        "This submission will automatically be associated with your only active course.",
+      selectCourse: "Select the course",
+      required: "Required",
+      deliveryCourse: "Course for this submission",
+      selectPlaceholder: "Select a course…",
+      multipleCoursesHelp:
+        "You have more than one active course. Selecting one prevents submissions from different courses or terms from being mixed.",
+    },
+    overview: {
+      title: "Review experiment",
+      description:
+        "Confirm the configuration before sending the code to the execution environment.",
+      experiment: "Experiment",
+      name: "Name",
+      unnamed: "(unnamed)",
+      file: "File",
+      noFile: "No file selected",
+      benchmark: "Benchmark",
+      parameters: "Parameters",
+      maxSize: "Maximum size",
+      range: "range {{min}}–{{max}}",
+      repetitions: "Repetitions per point",
+      dataDistribution: "Data distribution",
+      measurement: "Measurement",
+      environment: "Environment",
+      profile: "Profile",
+      course: "Course",
+      noCourse: "No associated course",
+      user: "User",
+      authenticatedSession: "Authenticated session",
+      back: "Back to edit",
+      sending: "Sending…",
+      confirm: "Confirm and run",
+    },
+
+    workflow: {
+      zip: {
+        extension: "The file must have a .zip extension.",
+        tooLarge:
+          "The recommended maximum size is {{max}} MB. The current file is {{size}}.",
+        noCpp:
+          "The .zip contains no .cpp files. Review its contents before uploading it again.",
+        unreadable:
+          "The .zip contents could not be read. Try again or use another file.",
+      },
+      polling: {
+        missingPersistentId:
+          "The server did not return the persistent execution identifier.",
+        unavailable: "The execution status could not be retrieved.",
+        notFound: "The requested execution is no longer available.",
+      },
+      ready: {
+        kicker: "Summary",
+        title: "Experiment summary",
+        description:
+          "Review the main configuration before starting the analysis.",
+        readyTitle: "Configuration ready",
+        pendingTitle: "Configuration pending",
+        readyText:
+          "You can review the detailed summary and confirm the execution.",
+        pendingText:
+          "Complete the required fields to enable the execution.",
+        review: "Review and run",
+        clear: "Clear configuration",
+        hint:
+          "Before sending the code, you will see the detailed summary to confirm the parameters.",
+      },
+      submitting: {
+        kicker: "Starting",
+        title: "Submitting analysis",
+        description: "The experiment is being registered on the server.",
+        registering: "Registering request",
+        hint: "This step usually takes only a few seconds.",
+      },
+      running: {
+        kicker: "Running",
+        title: "Analyzing your code",
+        description:
+          "The experiment is progressing through the measurement stages.",
+        chip: "In progress",
+        hint:
+          "You can keep this view open while the benchmark runs. If you reload the page, Performance System will attempt to recover the execution.",
+      },
+      completed: {
+        kicker: "Completed",
+        title: "Analysis completed",
+        description: "The measurements were processed successfully.",
+        chip: "Results ready",
+        calloutTitle: "Results available",
+        calloutText:
+          "You can now review the metrics and visualizations generated for this experiment.",
+        viewResults: "View results",
+        newAnalysis: "New analysis",
+      },
+      partial: {
+        kicker: "Partial",
+        title: "Analysis partially completed",
+        description:
+          "Some implementations completed successfully while others require review.",
+        chip: "Partial results",
+        calloutTitle: "Results are available",
+        calloutText:
+          "You can review completed executions without repeating those that already finished successfully. The experiment will also show which implementation failed.",
+        viewResults: "View available results",
+        newAnalysis: "New analysis",
+      },
+      error: {
+        kicker: "Issue",
+        title: "Could not complete",
+        description:
+          "The execution ended with a problem that requires review.",
+        chip: "Review required",
+        calloutTitle: "The analysis did not finish successfully",
+        retryRequest: "Retry status request",
+        reviewRetry: "Review and try again",
+      },
+      summary: {
+        code: "Code",
+        selectFile: "Select a .zip file",
+        benchmark: "Benchmark",
+        selectBenchmark: "Select a benchmark",
+        maxSize: "Maximum size",
+        repetitions: "Repetitions",
+        profile: "Profile",
+        environment: "Environment",
+        data: "Data",
+        sentCode: "Submitted code",
+      },
+      progress: {
+        accepted: {
+          label: "Request registered",
+          description: "The server received the analysis request.",
+        },
+        queued: {
+          label: "Queued",
+          description: "The code is waiting for its execution turn.",
+        },
+        preparing: {
+          label: "Preparing execution",
+          description: "The code and measurement environment are being prepared.",
+        },
+        running: {
+          label: "Running measurements",
+          description: "The benchmark is performing the measurements.",
+        },
+        processing: {
+          label: "Processing results",
+          description: "The collected metrics are being consolidated.",
+        },
+        completed: {
+          label: "Results available",
+          description: "The analysis is ready to be reviewed.",
+        },
+      },
+      technical: {
+        title: "Technical details",
+        noMessagesYet: " (no messages yet)",
+        messageWithoutContent: "Message has no content",
+        empty:
+          "The server has not published any additional messages yet.",
+      },
+      friendlyErrors: {
+        default:
+          "Review the code and experiment configuration. Technical details may provide additional information.",
+        compilation:
+          "The code could not compile successfully. Review the compiler errors before running it again.",
+        timeout:
+          "The execution exceeded the maximum allowed time. Review the algorithm or use a smaller input configuration.",
+        results:
+          "The execution finished without generating the expected results. Review the technical details before trying again.",
+        server:
+          "The server reported a problem during execution. Review the technical details and correct the code or configuration.",
+      },
+    },
+
+    page: {
+      headerTitle: "New performance analysis",
+      headerSubtitle:
+        "Upload an implementation and configure how Performance System will evaluate its behavior.",
+      configKicker: "Configuration",
+      configTitle: "Prepare your experiment",
+      configDescription:
+        "Select the code, benchmark type, and measurement parameters. You will be able to review the full configuration before starting the execution.",
+      inputSize: {
+        lines: "{{count}} lines",
+        values: "{{count}} values",
+      },
+      recoveredExecution: "Recovered execution",
+      recoveredFiles: {
+        one: "{{count}} file",
+        other: "{{count}} files",
+      },
+      registeredEnvironment: "Registered environment",
+      validations: {
+        numberRequired: "Enter a numeric value.",
+        numberInvalid: "Enter a valid number.",
+        minimum: "Minimum allowed: {{min}}.",
+        maximum: "Maximum allowed: {{max}}.",
+      },
+      alerts: {
+        fileRequired: "Please upload a .zip file before continuing.",
+        benchmarkRequired: "Select a test type before running.",
+        fileError: "Fix the file error before running.",
+        parameterError: "Fix the numeric parameters before running.",
+        dataTypeRequired:
+          "Select the CAMM data type before running.",
+        courseLoading: "Wait while your academic context is loaded.",
+        courseUnavailable:
+          "The execution cannot start until your active courses are verified.",
+        courseRequired:
+          "Select the corresponding course before running.",
+      },
+      errors: {
+        courses: "Your active courses could not be loaded.",
+        coursesSession:
+          "Your session expired. Sign in again to load your courses.",
+        coursesForbidden:
+          "You do not have permission to load your active courses.",
+        restoreInvalid:
+          "The saved execution could not be reconstructed.",
+        restoreSession:
+          "Your session expired. Sign in again to recover the execution.",
+        restoreForbidden:
+          "You do not have permission to recover this execution.",
+        restoreNotFound:
+          "The execution specified in the URL no longer exists.",
+        restoreGeneric:
+          "The execution could not be recovered from the server.",
+        reuseInvalid:
+          "The historical configuration could not be interpreted.",
+        reuseSession:
+          "Your session expired. Sign in again to reuse this configuration.",
+        reuseForbidden:
+          "You do not have permission to reuse this execution.",
+        reuseNotFound:
+          "The execution used as a reference no longer exists.",
+        reuseGeneric:
+          "The historical configuration could not be reused.",
+        submitNoExecutions:
+          "The server registered the request but returned no queued executions.",
+        submitNetwork:
+          "The server could not be reached. Verify that the backend is available and try again.",
+        submitSession:
+          "Your session expired. Sign in again before submitting the analysis.",
+        submitForbidden:
+          "Your account does not have permission to register this analysis.",
+        submitTooLarge:
+          "The submitted file exceeds the size allowed by the server.",
+        submitGeneric:
+          "The analysis could not be registered on the server. Try again.",
+        resultsDestination:
+          "The results destination for this execution could not be determined.",
+      },
+    },
+  },
+
+  academicBreadcrumbs: {
+    navigationAria: "Breadcrumb",
+    administration: "Administration",
+    users: "Users",
+    supervision: "Supervision",
+    course: "Course",
+    courseNumber: "Course #{{id}}",
+    profile: "My profile",
+    experiment: "Experiment",
+    experimentNumber: "Experiment #{{id}}",
+    result: "Result",
+    comparison: "Comparison",
+  },
+  sourceViewer: {
+    unavailable: "Unavailable",
+    fallbackSource: "Historical source",
+    fallbackDownloadFilename: "source.cpp",
+    marker: "Source for this execution",
+    readOnly: "Read-only historical view",
+    closeAria: "Close code viewer",
+    size: "Size",
+    states: {
+      loading: "Loading historical source…",
+    },
+    errors: {
+      network:
+        "We could not connect to the server to retrieve the source.",
+      session:
+        "Your session does not allow access to this historical source.",
+      notFound:
+        "The historical source is not available for this execution.",
+      integrity:
+        "The historical source did not pass the availability and integrity checks.",
+      generic:
+        "The historical source could not be retrieved at this time.",
+      previewEncoding:
+        "The preview cannot be displayed because the historical source is not valid UTF-8. You can still download the original file.",
+      forbidden:
+        "Your account does not have permission to view this source.",
+    },
+    close: "Close",
+    download: {
+      action: "Download .cpp",
+      downloading: "Downloading…",
+      success: "Source downloaded successfully.",
+    },
+  },
+
+  submissionOverview: {
+    fallbacks: {
+      unavailable: "Unavailable",
+      noCourse: "No associated course",
+      untitledExperiment: "Untitled experiment",
+      unnamedFile: "Unnamed file",
+      notReported: "Not reported",
+      noData: "No data",
+    },
+    labels: {
+      period: "Period",
+      originalArchive: "Original archive",
+      created: "Created",
+      course: "Course",
+      implementations: "Implementations",
+      benchmark: "Benchmark",
+      duration: "Duration",
+      result: "Result",
+      environment: "Environment",
+    },
+    aggregateStates: {
+      inProgress: "In progress",
+      completed: "Completed",
+      partial: "Partial",
+      failed: "Error",
+      empty: "No executions",
+      unknown: "Unknown",
+    },
+    executionStates: {
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      completed: "Completed",
+      failed: "Error",
+      cancelled: "Cancelled",
+      unknown: "Unknown",
+    },
+    results: {
+      available: "Available",
+      pending: "Pending",
+      unavailable: "Unavailable",
+    },
+    states: {
+      loadingTitle: "Loading experiment",
+      loadingDescription:
+        "Retrieving its metadata and implementation status.",
+      errorTitle: "The experiment could not be loaded",
+      errorDescription:
+        "Check your session or try the request again.",
+      notFoundTitle: "Experiment unavailable",
+      notFoundDescription:
+        "No information was found for this Submission.",
+      emptyTitle: "No executions",
+      emptyDescription:
+        "This experiment does not have any executable implementations yet.",
+    },
+    header: {
+      experimentNumber: "Experiment #{{id}}",
+    },
+    information: {
+      eyebrow: "Provenance",
+      title: "Experiment information",
+    },
+    archive: {
+      verifying: "Checking original archive…",
+      downloading: "Downloading…",
+      downloadAction: "Download original ZIP",
+      unavailable: "Original archive unavailable",
+      verifyError:
+        "The availability of the original archive could not be verified.",
+      downloadSuccess:
+        "Original ZIP downloaded successfully.",
+      downloadError:
+        "The original ZIP could not be downloaded.",
+      downloadNetwork:
+        "We could not connect to download the original ZIP.",
+      downloadSession:
+        "Your session does not allow downloading the original ZIP.",
+    },
+    personal: {
+      eyebrow: "Only you",
+      title: "Personal metadata",
+      updating: "Updating…",
+      reference: "Reference",
+      markReference: "Mark as reference",
+      note: "Personal note",
+      characters: "{{count}}/{{max}} characters",
+      saving: "Saving…",
+      noNote: "No personal note",
+    },
+    feedback: {
+      noteSaved: "Personal note saved.",
+      pinned: "Experiment marked as a reference.",
+      unpinned: "Experiment removed from references.",
+      shaCopied: "SHA copied",
+      shaCopyFailed: "Could not copy",
+    },
+    errors: {
+      noteSave:
+        "The note could not be saved. Review the content and try again.",
+      referenceUpdate:
+        "The reference could not be updated. Try again.",
+    },
+    summary: {
+      eyebrow: "Aggregate status",
+      title: "Summary",
+      executions: "Executions",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled",
+    },
+    implementations: {
+      eyebrow: "Source code",
+      title: "Implementations",
+      description:
+        "Each C++ file keeps its own execution and independent results.",
+    },
+    comparison: {
+      needTwo:
+        "At least two completed implementations with results are required.",
+      regionAria:
+        "Implementation selection for comparison",
+      title: "Select comparable implementations",
+      selectRange: "Select between 2 and 4 implementations.",
+      preselected:
+        "Eligible implementations are preselected. You can adjust the selection before continuing.",
+      maxFeedback:
+        "You can compare at most four implementations. Deselect one to free another slot.",
+      compareSelected:
+        "Compare selected ({{count}})",
+      selectFile: "Select {{name}}",
+      notEligible: "Not eligible: {{reason}}",
+      reasons: {
+        failed: "The execution ended with an error.",
+        inProgress: "The execution is still in progress.",
+        notCompleted: "The execution is not completed yet.",
+        noResults: "The execution has no available results.",
+        invalidId: "The execution does not have a valid identifier.",
+      },
+    },
+    execution: {
+      sourceMarker: "Source for this execution",
+      technicalId: "Technical ID",
+      record: "Record {{id}}",
+      executionNumber: "Execution #{{id}}",
+    },
+    failure: {
+      title:
+        "The implementation could not complete the analysis.",
+      noDetail:
+        "The server did not provide additional failure details.",
+      stage: "Stage",
+      code: "Code",
+    },
+    actions: {
+      retry: "Retry",
+      copySha: "Copy full SHA-256",
+      cancel: "Cancel",
+      save: "Save",
+      edit: "Edit",
+      refreshStates: "Refresh statuses",
+      compareImplementations: "Compare implementations",
+      viewCode: "View code",
+      reuseConfiguration: "Reuse configuration",
+      viewResult: "View result",
+    },
+  },
+
+  comparisonModel: {
+    query: {
+      count: "The URL must include between 2 and 4 implementations.",
+      empty: "The URL contains an empty implementation.",
+      duplicate: "Each implementation must appear only once.",
+    },
+    historicalStatuses: {
+      compatible: "Compatible",
+      limited: "Limited",
+      incompatible: "Incompatible",
+      unavailable: "Unavailable",
+    },
+    ineligibility: {
+      failed: "The execution ended with an error.",
+      active: "The execution is still in progress.",
+      notCompleted: "The execution is not completed yet.",
+      noResults: "The execution has no available results.",
+      invalidId: "The execution has no valid identifier.",
+    },
+    genericMetric: "Metric",
+    metrics: {
+      DurationTime: {
+        label: "Execution time",
+        interpretation:
+          "Lower values represent lower observed execution time across the compared input sizes.",
+      },
+      IPC: {
+        label: "Instructions per cycle (IPC)",
+        interpretation:
+          "Higher IPC describes more retired instructions per cycle, but by itself does not imply lower total execution time.",
+      },
+      CacheMissRate: {
+        label: "Cache miss rate",
+        interpretation:
+          "A lower rate indicates fewer observed cache misses; by itself it does not establish the cause of performance.",
+      },
+      BranchMissRate: {
+        label: "Branch misprediction rate",
+        interpretation:
+          "A lower rate indicates fewer observed branch mispredictions; by itself it is not a causal explanation.",
+      },
+      EnergyPkg: {
+        label: "CPU package energy",
+        interpretation:
+          "Compare energy only when it is available for every selected implementation.",
+      },
+    },
+    interpretations: {
+      limited:
+        "This comparison is valid only within the limitations shown.",
+      incompatible:
+        "The comparison was blocked to prevent unsupported experimental conclusions.",
+      partialOverlap:
+        "The comparison is limited to input sizes measured in common. No interpolation or extrapolation is performed outside that domain.",
+      singleInput:
+        "There is only one shared input size; this comparison cannot establish a scaling trend.",
+      dispersion:
+        "If dispersion is large relative to the observed differences, small differences should be interpreted cautiously.",
+    },
+    dimensions: {
+      benchmark: "Benchmark",
+      hardware: "Hardware",
+      measurementBackend: "Backend",
+      profile: "Profile",
+      protocol: "Protocol",
+      compilerFlags: "Compiler flags",
+      inputSizes: "Input sizes",
+      metrics: "Metrics",
+    },
+    dimensionStatuses: {
+      compatible: "Compatible",
+      limited: "Limited",
+      incompatible: "Incompatible",
+      unavailable: "Unavailable",
+      unverifiable: "Not verifiable",
+    },
+    seriesFallback: "Implementation {{index}}",
+    aggregation: {
+      median: "Median",
+      mean: "Mean",
+    },
+    hover: {
+      inputSize: "InputSize",
+      stddev: "Std. deviation",
+      validSamples: "Valid samples",
+      iqrOutliers: "IQR outliers",
+    },
+    historicalDateUnavailable: "Date unavailable",
+  },
+
+  comparisonPage: {
+    actions: {
+      back: "Back",
+      retry: "Retry",
+      remove: "Remove",
+      add: "Add",
+    },
+    common: {
+      profile: "Profile",
+      compilerFlags: "Compiler flags",
+      notVerifiable: "Not verifiable",
+    },
+    status: {
+      compatible: {
+        label: "Compatible",
+        text:
+          "The executions satisfy the compatibility contract for the common measurements shown.",
+      },
+      limited: {
+        label: "Limited comparison",
+        text:
+          "The comparison is valid only for the common dimensions and measurements indicated.",
+      },
+      incompatible: {
+        label: "Incompatible comparison",
+        text:
+          "These executions do not satisfy the contract required to overlay their performance results.",
+      },
+    },
+    requestErrors: {
+      network: {
+        title: "No connection to the server",
+        description: "We could not connect to the server.",
+      },
+      unauthorized: {
+        title: "Session unavailable",
+        description:
+          "Your session no longer allows access to this comparison.",
+      },
+      forbidden: {
+        title: "Comparison restricted",
+        description:
+          "You do not have permission to compare one or more of these executions.",
+      },
+      notFound: {
+        title: "Results unavailable",
+        description:
+          "One of the executions or its results is no longer available.",
+      },
+      notReady: {
+        title: "Results not publishable yet",
+        description:
+          "One of the executions does not have publishable results yet.",
+      },
+      notComparable: {
+        title: "Results not comparable",
+        description:
+          "The results do not satisfy the contract required for comparison.",
+      },
+      generic: {
+        title: "Unable to load comparison",
+        description: "The comparison could not be loaded.",
+      },
+    },
+    candidateErrors: {
+      network: {
+        title: "No connection to the server",
+        description: "We could not connect to the server.",
+      },
+      forbidden: {
+        title: "History unavailable",
+        description:
+          "Your session does not allow access to historical executions for this selection.",
+      },
+      generic: {
+        title: "Unable to load history",
+        description:
+          "Historical executions could not be loaded.",
+      },
+    },
+    context: {
+      experiment: "Experiment",
+      experimentNumber: "Experiment #{{id}}",
+      backExperiment: "Back to experiment",
+      differentExperiments:
+        "Executions from different experiments",
+    },
+    states: {
+      invalid: {
+        title: "Invalid comparison",
+      },
+      loading: {
+        title: "Loading comparison",
+        description:
+          "We are gathering the structured results for the selected implementations.",
+      },
+    },
+    header: {
+      eyebrow: "Comparison analysis",
+      title: "Implementation comparison",
+      selectionCount: {
+        one: "{{count}} implementation selected",
+        other: "{{count}} implementations selected",
+      },
+    },
+    implementations: {
+      eyebrow: "Series",
+      title: "Implementations",
+      maxFour: "Maximum 4 implementations",
+      closeHistory: "Close history",
+      addHistorical: "Add historical execution",
+      removeAria: "Remove {{name}}",
+    },
+    history: {
+      eyebrow: "Accessible history",
+      title: "Historical executions",
+      description:
+        "Each option is evaluated together with the current selection before it can be added.",
+      showIncompatible: "Show incompatible",
+      loading: {
+        title: "Searching historical executions",
+        description:
+          "We are checking compatibility and permissions for the current selection.",
+      },
+      empty: {
+        title: "No compatible executions",
+        description:
+          "We found no historical executions compatible with the current selection.",
+      },
+      candidateFallback: "Historical implementation {{index}}",
+      date: "Date",
+      alreadySelected: "Already selected",
+      cannotAdd: "Cannot add",
+      truncated:
+        "Recent executions available within the search limit are shown.",
+    },
+    dimensions: {
+      eyebrow: "Scientific contract",
+      title: "Compatibility by dimension",
+    },
+    observations: {
+      eyebrow: "Scope",
+      title: "Observations",
+      blocker: "Compatibility blocker",
+      blockerFallback: "Incompatible dimension.",
+      limitation: "Limitation",
+      warningFallback: "Comparison with limited scope.",
+    },
+    excluded: {
+      eyebrow: "Coverage",
+      title: "Non-comparable metrics",
+      fallback:
+        "It is not commonly available.",
+    },
+    guidance: {
+      eyebrow: "Cautious reading",
+      title: "How to interpret this comparison",
+    },
+    chart: {
+      eyebrow: "Common measurements",
+      title: "Overlaid results",
+      noMetrics: {
+        title: "No comparable metrics",
+        description:
+          "The response does not contain a common metric available for plotting.",
+      },
+      metric: "Metric",
+      aggregation: "Aggregation",
+      showDispersion: "Show dispersion",
+      rangeAria: "InputSize range",
+      minimumInputSize: "Minimum InputSize",
+      maximumInputSize: "Maximum InputSize",
+      resetRange: "Reset range",
+      medianLower: "median",
+      meanLower: "mean",
+      axisContext:
+        "X axis: InputSize. Y axis: {{aggregation}}{{unit}}.",
+      dispersionIqr: " Q1–Q3 dispersion.",
+      dispersionStddev:
+        " Dispersion using standard deviation.",
+      dispersionHidden: " Dispersion hidden.",
+      noPoints: {
+        title: "No points for this range",
+        description:
+          "No central values are available in the selected range.",
+      },
+      plotAria: "Comparison chart for {{metric}}",
+    },
+  },
+
+  reproducibilityPanel: {
+    common: {
+      unavailable: "Unavailable",
+      yes: "Yes",
+      no: "No",
+    },
+    availability: {
+      available: "Available",
+      unavailable: "Unavailable",
+    },
+    integrity: {
+      verified: "Verified",
+      unavailable: "Unavailable",
+      unverified: "Unverified",
+      mismatch: "Mismatch",
+      invalidReference: "Invalid reference",
+      invalidArchive: "Invalid ZIP",
+    },
+    resources: {
+      manifest: "the manifest",
+      provenance: "the provenance data",
+      source: "the source",
+      manifestJson: "the JSON manifest",
+      csv: "the CSV",
+      bundle: "the reproducibility bundle",
+    },
+    requestErrors: {
+      network: "Could not connect to load {{resource}}.",
+      forbidden: "Your session does not allow access to {{resource}}.",
+      notFound: "{{resource}} is not available for this execution.",
+      generic: "Could not load {{resource}}.",
+    },
+    downloadErrors: {
+      network: "Could not connect to download {{resource}}.",
+      forbidden: "Your session does not allow downloading {{resource}}.",
+      notFound: "{{resource}} is not available for this execution.",
+      generic: "Could not download {{resource}}.",
+    },
+    download: {
+      success: "{{resource}} was downloaded successfully.",
+    },
+    header: {
+      eyebrow: "Experimental identity",
+      title: "Reproducibility",
+      description:
+        "Provenance, configuration, and verifiable artifacts for this execution.",
+    },
+    loading: "Loading reproducible identity…",
+    partial: {
+      scientificResultsRemain:
+        "Scientific results remain available.",
+    },
+    source: {
+      title: "Source for this execution",
+    },
+    fields: {
+      technicalId: "Technical ID",
+      state: "State",
+      created: "Created",
+      finished: "Finished",
+      size: "Size",
+      profile: "Profile",
+      inputSize: "Input size",
+      samples: "Samples",
+      compilerFlags: "Compiler flags",
+      points: "Points",
+      samplesPerPoint: "Samples per point",
+      warmupRounds: "Warm-up rounds",
+      perfScope: "perf scope",
+      eventFallback: "Per-event fallback",
+      cpuVendor: "CPU vendor",
+      cpuModel: "CPU model",
+      architecture: "Architecture",
+      logicalCpus: "Logical CPUs",
+      backend: "Backend",
+      version: "Version",
+      requestedScope: "Requested scope",
+    },
+    copy: {
+      idAction: "Copy ID",
+      linkAction: "Copy link",
+      publicIdSuccess: "Public ID copied",
+      linkSuccess: "Link copied",
+      error: "Could not copy",
+    },
+    configuration: {
+      title: "Configuration",
+    },
+    hardware: {
+      title: "Hardware observed during execution",
+      note: "This is not the requested profile.",
+    },
+    artifacts: {
+      source: "Source",
+      measurements: "Measurements",
+      originalArchive: "Original archive",
+    },
+    actions: {
+      aria: "Reproducibility actions",
+      viewCode: "View code",
+      downloading: "Downloading…",
+      downloadSource: "Download source .cpp",
+      downloadManifest: "Download JSON manifest",
+      downloadCsv: "Download CSV",
+      downloadBundle: "Download reproducibility bundle",
+    },
+  },
+
+  renderImage: {
+    executionFallback: "Execution {{codename}}",
+    common: {
+      back: "Back",
+      retry: "Retry",
+      range: "range {{min}}–{{max}}",
+    },
+    loading: {
+      title: "Loading results",
+      description: "Preparing the execution dashboard.",
+    },
+    errors: {
+      titles: {
+        network: "Could not connect to the server",
+        forbidden: "You cannot open this execution",
+        notFound: "Execution not found",
+        unavailable: "Result not available yet",
+        generic: "Could not open this execution",
+      },
+      descriptions: {
+        network:
+          "We could not reach the server. Check that the backend is available and try again.",
+        forbidden:
+          "This execution exists, but your account does not have permission to view its results.",
+        notFound:
+          "The execution or one of its result artifacts is no longer available.",
+        unavailable:
+          "This execution does not have results ready to display yet.",
+        session:
+          "Your session no longer allows access to this execution. Sign in again.",
+        generic:
+          "The results for this execution could not be loaded.",
+      },
+    },
+    download: {
+      action: "Download CSV",
+      downloading: "Downloading...",
+      success: "CSV downloaded successfully.",
+      errors: {
+        generic: "The CSV could not be downloaded at this time.",
+        network:
+          "We could not connect to the server to download the CSV.",
+        forbidden:
+          "Your account does not have permission to download this CSV.",
+        notFound:
+          "The CSV for this execution is no longer available.",
+      },
+    },
+    header: {
+      viewExperiment: "View experiment",
+      analysisCompleted: "Analysis completed",
+      eyebrow: "Performance results",
+      description:
+        "Explore how program behavior changes as the input size increases.",
+    },
+    categories: {
+      aria: "Metric categories",
+      summary: "Summary",
+      performance: "Performance",
+      cache: "Cache",
+      cpu: "CPU",
+      system: "System",
+      energy: "Energy",
+    },
+    toolbar: {
+      filters: "Filters",
+      advancedMetrics: "Advanced metrics",
+    },
+    summary: {
+      eyebrow: "Main view",
+      title: "Key metrics",
+      description:
+        "These metrics provide an initial view of execution time, CPU work, memory, and control flow.",
+      missingPrimary: {
+        one: "{{count}} primary metric is unavailable for this execution.",
+        other:
+          "{{count}} primary metrics are unavailable for this execution.",
+      },
+    },
+    empty: {
+      title: "No metrics available in this category",
+      description:
+        "This execution did not generate charts for the selected metrics.",
+    },
+    footer: {
+      note:
+        "Available metrics are rendered from the JSON API. When a measurement is unavailable, the dashboard states the reason explicitly instead of drawing an empty chart or assuming a zero value.",
+    },
+    filters: {
+      eyebrow: "Visualization",
+      title: "Analysis filters",
+      description:
+        "They only change how results are presented; they do not modify the original measurements.",
+      reset: "Reset",
+      aggregation: "Aggregation",
+      mean: "Mean",
+      median: "Median",
+      aggregationHelp:
+        "Defines the central value shown in charts and KPIs.",
+      dispersion: "Dispersion",
+      iqrInterval: "Q1–Q3 interval",
+      stddevInterval: "± standard deviation",
+      iqrHelp:
+        "Shows the central 50% of observations around the median.",
+      stddevHelp:
+        "Shows the sample standard deviation around the mean.",
+      horizontalScale: "Horizontal scale",
+      linear: "Linear",
+      horizontalScaleHelp:
+        "Only affects the input-size axis.",
+      inputRange: "Input range",
+      from: "From",
+      to: "To",
+      minimum: "Minimum",
+      maximum: "Maximum",
+      rangeHelp: "Limits visible points without changing the CSV.",
+      singleInputHelp:
+        "This execution contains a single input size.",
+    },
+    kpiOverview: {
+      eyebrow: "Quick view",
+      title: "Main indicators",
+      description:
+        "{{aggregation}} value at the largest visible input size{{range}}.",
+    },
+    kpis: {
+      DurationTime: {
+        label: "Time",
+        description: "Execution time",
+      },
+      IPC: {
+        label: "IPC",
+        description: "Instructions per cycle",
+      },
+      CacheMissRate: {
+        label: "Cache miss",
+        description: "Cache miss rate",
+      },
+      BranchMissRate: {
+        label: "Branch miss",
+        description: "Branch mispredictions",
+      },
+      Instructions: {
+        label: "Instructions",
+        description: "CPU work executed",
+      },
+    },
+    kpiCard: {
+      inputSize: "Input size {{inputSize}}",
+      unavailable: "Unavailable",
+      noValidData:
+        "No valid data was obtained for this indicator.",
+      validSamples: "{{valid}}/{{total}} valid samples",
+      implementations: {
+        one: "{{count}} implementation",
+        other: "{{count}} implementations",
+      },
+    },
+    metadata: {
+      benchmark: "Benchmark",
+      benchmarkDescription: "Executed test type",
+      maxSize: "Maximum size",
+      maxSizeDescription: "Configured input limit",
+      repetitions: "Repetitions",
+      repetitionsDescription: "Per measurement point",
+      environment: "Environment",
+      managed: "Managed",
+      environmentDescription:
+        "Node configured by Performance System",
+      course: "Course",
+      noCourse: "No associated course",
+      period: "Period",
+      personalAnalysis: "Personal analysis",
+      tasks: {
+        lcs: "Text input",
+        numeric: "Numeric data",
+        size: "Parameterized size",
+      },
+    },
+  },
+
+  renderImageScientific: {
+    metricCard: {
+      genericMetric: "Metric",
+      genericDescription:
+        "This metric does not have a configured pedagogical description yet.",
+      explainAria: "Explain {{metric}}",
+      represents: "What it represents",
+      legacyCompatibility: "Legacy compatibility",
+      noVisualizationData: "No visualization data",
+    },
+    chart: {
+      executionSeries: "Execution",
+      inputSize: "Input size",
+      mean: "Mean",
+      median: "Median",
+      stddev: "Std. deviation",
+      numericSamples: "Numeric samples",
+      iqrOutliers: "IQR outliers detected",
+      legacyFrameTitle: "Chart for {{title}}",
+    },
+    pedagogy: {
+      eyebrow: "Guided interpretation",
+      title: "What the results show",
+      deterministic: "Based on reproducible rules",
+      disclaimer:
+        "These conclusions describe only the measurements from this execution. By themselves, they do not classify an algorithm as good, bad, efficient, or inefficient.",
+      metricHeading: "What happened in this execution",
+      kinds: {
+        snapshot: "Observed value",
+        trend: "Trend",
+        observedScaling: "Observed scaling",
+        outliers: "Variability",
+        coverage: "Coverage",
+        limitation: "Scope",
+        availability: "Availability",
+        analysis: "Analysis",
+      },
+    },
+    availability: {
+      partial:
+        "Partial availability: {{numeric}} of {{total}} samples contain a numeric value.",
+      measurementContext: "Measurement context",
+      notZero:
+        "A missing measurement is not interpreted as a zero value.",
+      metricUnavailableTitle: "{{title}} unavailable",
+      metricUnavailableDescription:
+        "There is no structured data or legacy visualization for this metric.",
+      statuses: {
+        unsupported: {
+          label: "Unavailable",
+          description:
+            "The measurement produced no valid numeric samples in the environment used for this execution.",
+        },
+        notCounted: {
+          label: "Not counted",
+          description:
+            "The event was recognized, but perf could not obtain a valid count during this execution.",
+        },
+        noData: {
+          label: "No valid data",
+          description:
+            "There were not enough numeric observations to represent this metric.",
+        },
+        default: {
+          label: "Unavailable",
+          description:
+            "This metric has no representable data in the current execution.",
+        },
+      },
+      summary: {
+        eventNotExposed:
+          "{{total}}/{{total}} samples did not have this event available in the measurement backend.",
+        notSupported:
+          "{{total}}/{{total}} samples could not measure this event in the observed environment.",
+        notCounted:
+          "{{total}}/{{total}} samples did not produce a valid count for this event.",
+        backendError:
+          "The event availability for {{total}} samples could not be verified because of a measurement-backend problem.",
+        noNumericSample:
+          "{{total}}/{{total}} samples had no valid numeric observation for this event.",
+        unsupported:
+          "{{count}}/{{total}} samples reported the event as unavailable.",
+        notCountedRows:
+          "{{count}}/{{total}} samples could not be counted.",
+        noData:
+          "{{count}}/{{total}} samples had no valid numeric value.",
+      },
+      provenance: {
+        metric_availability_sidecar: "preserved provenance",
+        raw_csv_fallback: "recovered provenance",
+      },
+    },
+    hardware: {
+      requestedEvent: "the requested event",
+      eventNotExposed:
+        "The perf backend in this environment does not expose {{event}}.",
+      notSupported:
+        "The event {{event}} is exposed by perf, but the availability probe could not measure it in this environment.",
+      notCounted:
+        "The event {{event}} was recognized, but the availability probe did not produce a valid count.",
+      backendError:
+        "{{event}} could not be verified because of a measurement-backend problem.",
+      noNumericSample:
+        "The {{event}} probe did not produce a valid numeric sample.",
+      numeric:
+        "The {{event}} probe produced a valid numeric sample.",
+      notExposedGeneric:
+        "The measurement backend does not expose {{event}} in this environment.",
+      requestedScope: "requested scope: {{scope}}",
+      observedEnvironment: "Observed environment: {{details}}.",
+    },
+    footer: {
+      apiData: "API data",
+      median: "median",
+      mean: "mean",
+      stddev: "± standard deviation",
+      logScale: "log X scale",
+      range: "range {{min}}–{{max}}",
+    },
+    metrics: {
+      DurationTime: {
+        label: "Execution time",
+        eyebrow: "Scaling",
+        axisTitle: "Execution time (ms)",
+        description: "Total program execution duration in milliseconds.\nIt is one of the most intuitive metrics because it indicates the actual time required to complete the task.\nIt is used as a primary reference when comparing speed across algorithms or configurations.",
+      },
+      TaskClock: {
+        label: "Active task time",
+        eyebrow: "CPU",
+        axisTitle: "Active time (ms)",
+        description: "Total active process execution time in milliseconds.\nIt indicates how long the CPU was effectively busy executing the process, including possible threads or concurrent tasks.\nIt is a key metric for comparing speed across different implementations.",
+      },
+      CpuClock: {
+        label: "CPU time",
+        eyebrow: "CPU",
+        axisTitle: "CPU time (ms)",
+        description: "Total CPU time consumed by the program in milliseconds.\nIt includes the time from all cores and threads used.\nIt measures total processing cost and is especially relevant for parallel or multithreaded algorithms.",
+      },
+      Instructions: {
+        label: "Executed instructions",
+        eyebrow: "CPU work",
+        axisTitle: "Instructions",
+        description: "Total number of instructions executed by the CPU while running the program.\nIt reflects the amount of basic work required to complete the task.\nA lower instruction count, when the result is unchanged, may indicate more optimized and efficient code.\nHowever, fewer instructions are not always better; interpretation depends on the implementation and algorithm.",
+      },
+      CpuCycles: {
+        label: "CPU cycles",
+        eyebrow: "CPU",
+        axisTitle: "Cycles",
+        description: "Total number of CPU clock cycles used to execute the program.\nEach CPU cycle is a clock tick during which the processor may execute part of an instruction.\nComparing cycles with instructions makes it possible to calculate IPC.\nFewer cycles for the same instruction count indicates more efficient processor use.",
+      },
+      IPC: {
+        label: "Instructions per cycle (IPC)",
+        eyebrow: "CPU efficiency",
+        axisTitle: "IPC",
+        description: "Instructions Per Cycle (IPC).\nCalculated as Instructions / CpuCycles.\nIt measures the average number of instructions executed per CPU cycle.\nA higher IPC indicates better processor utilization and greater execution efficiency.\nThe value depends on the workload and on how the compiler and CPU handle the instruction flow.",
+      },
+      Branches: {
+        label: "Executed branches",
+        eyebrow: "Control flow",
+        axisTitle: "Branches",
+        description: "Total number of conditional branches or jumps executed, such as if statements, loops, or jumps.\nThe processor predicts these branches to maintain an efficient execution flow.\nA high number of branches can make control flow less predictable and optimization more difficult.",
+      },
+      BranchMisses: {
+        label: "Branch mispredictions",
+        eyebrow: "Control flow",
+        axisTitle: "Mispredictions",
+        description: "Number of branch prediction failures.\nWhen the processor predicts incorrectly, already processed instructions may be discarded and the correct flow restarted.\nThis penalizes performance and increases latency.",
+      },
+      BranchMissRate: {
+        label: "Branch misprediction rate",
+        eyebrow: "Control flow",
+        axisTitle: "Misprediction rate (%)",
+        description: "Branch prediction miss rate.\nCalculated as BranchMisses / Branches.\nIt reflects how accurately the processor predicts control-flow branches such as if statements and loops.\nA lower rate means less pipeline penalty and can improve processor utilization.",
+      },
+      BranchMissesPerMI: {
+        label: "Branch misses per million instructions",
+        eyebrow: "Control flow",
+        axisTitle: "Misses / million instructions",
+        description: "Branch prediction misses per million instructions.\nCalculated as BranchMisses / (Instructions / 1e6).\nThis complements BranchMissRate by expressing misses per unit of executed work, making comparisons easier across implementations with different instruction volumes.\nLower values suggest more predictable control flow.",
+      },
+      CacheReferences: {
+        label: "Cache references",
+        eyebrow: "Memory",
+        axisTitle: "Cache references",
+        description: "Cache references reported by the system's generic performance counter.\nThey represent cache activity according to the semantics exposed by the processor PMU; the exact mapping to a cache level may vary by architecture.\nThis metric is interpreted mainly together with CacheMisses, not as a universal count of every access to every cache level.",
+      },
+      CacheMisses: {
+        label: "Cache misses",
+        eyebrow: "Memory",
+        axisTitle: "Cache misses",
+        description: "Cache misses reported by the system's generic performance counter.\nThe exact event semantics depend on the architecture and PMU, so this must not automatically be interpreted as the sum of misses at every cache level or as proof of a subsequent RAM access.\nIt is used together with CacheReferences to study the miss proportion observed by the available counter.",
+      },
+      CacheMissRate: {
+        label: "Cache miss rate",
+        eyebrow: "Memory",
+        axisTitle: "Miss rate (%)",
+        description: "Cache miss rate.\nCalculated as CacheMisses / CacheReferences.\nIt expresses the proportion of misses among the references reported by the generic counters available on that hardware.\nA lower rate may indicate a more favorable access pattern, but interpretation must consider the architecture and PMU semantics.",
+      },
+      CacheMissesPerMI: {
+        label: "Cache misses per million instructions",
+        eyebrow: "Memory",
+        axisTitle: "Misses / million instructions",
+        description: "Cache misses per million instructions.\nCalculated as CacheMisses / (Instructions / 1e6).\nThis normalizes cache misses by the total volume of executed instructions, enabling fairer comparisons between algorithms with different work volumes.\nLower values indicate better data locality and more efficient use of the memory hierarchy.",
+      },
+      L1DcacheLoads: {
+        label: "L1 data-cache loads",
+        eyebrow: "Memory",
+        axisTitle: "L1 loads",
+        description: "Number of reads from the L1 data cache.\nL1 is the cache closest to a CPU core: extremely fast but small, typically around 32–64 KB.\nAn L1 access has minimal latency.\nA high number of successful L1 reads reduces dependence on slower levels such as L2, L3, and RAM.",
+      },
+      L1DcacheLoadMisses: {
+        label: "L1 data-cache load misses",
+        eyebrow: "Memory",
+        axisTitle: "L1 load misses",
+        description: "Number of misses while reading the L1 data cache.\nOn an L1 miss, the CPU must search L2 or L3 and, ultimately, RAM, which is much slower.\nReducing these misses is important for avoiding memory bottlenecks.\n\nCache hierarchy:\n- L1: fastest and closest, but small.\n- L2: intermediate and larger.\n- L3: last cache level before RAM, larger and slower.",
+      },
+      L1DcacheStores: {
+        label: "L1 data-cache stores",
+        eyebrow: "Memory",
+        axisTitle: "L1 stores",
+        description: "Number of writes to the L1 data cache.\nKeeping data in L1 allows later operations such as loops or accumulations to execute with very low latency.\nEfficient L1 use reduces pressure on higher cache levels and lowers overall access time.",
+      },
+      LLCLoads: {
+        label: "Last-level cache loads",
+        eyebrow: "Memory",
+        axisTitle: "LLC loads",
+        description: "Number of reads from the Last Level Cache (LLC), which on most modern systems corresponds to L3.\nL3 is larger and slower than L1 and L2 and is often shared by multiple cores.\nAccessing the LLC is much faster than RAM but slower than L1 or L2.\nHigh LLC activity may indicate frequent access to data shared across threads or cores.",
+      },
+      LLCLoadMisses: {
+        label: "Last-level cache load misses",
+        eyebrow: "Memory",
+        axisTitle: "LLC load misses",
+        description: "Number of misses while reading the Last Level Cache, typically L3.\nAn LLC miss forces the CPU to retrieve data from RAM, introducing substantially more latency.\nReducing these misses can improve overall performance and energy use.",
+      },
+      LLCStores: {
+        label: "Last-level cache stores",
+        eyebrow: "Memory",
+        axisTitle: "LLC stores",
+        description: "Number of writes to the Last Level Cache, typically L3.\nThis level stores data that may be needed by other cores and helps prepare writes to RAM.\nEfficient use can reduce RAM pressure and support parallel execution.",
+      },
+      LLCStoreMisses: {
+        label: "Last-level cache store misses",
+        eyebrow: "Memory",
+        axisTitle: "LLC store misses",
+        description: "Number of misses while writing to the Last Level Cache.\nOn a miss, data may need to be written directly to RAM, which is slower and more expensive.\nReducing these misses generally requires coherent memory-access patterns and appropriate data structures.",
+      },
+      PageFaults: {
+        label: "Page faults",
+        eyebrow: "System",
+        axisTitle: "Page faults",
+        description: "Number of page faults.\nThey occur when the process accesses a memory page that is not resident in RAM and the operating system must resolve the fault.\nA high count can indicate memory pressure or access patterns that degrade performance.",
+      },
+      MajorFaults: {
+        label: "Major page faults",
+        eyebrow: "System",
+        axisTitle: "Major faults",
+        description: "Number of major page faults.\nThese require the operating system to load data from disk or swap.\nThey are very expensive in time and can significantly affect performance.\nReducing excessive memory use and improving access patterns can reduce these faults.",
+      },
+      EnergyPkg: {
+        label: "CPU package energy",
+        eyebrow: "Energy",
+        axisTitle: "Energy (J)",
+        description: "Energy recorded for the physical CPU Package domain during the benchmark measurement window (J).\nThe reading corresponds to the energy domain exposed by the platform and does not attribute that consumption exclusively to the student's process.\nIt is shown only when the measurement backend provides valid numeric samples.",
+      },
+      EnergyCores: {
+        label: "CPU core energy",
+        eyebrow: "Energy",
+        axisTitle: "Energy (J)",
+        description: "Energy recorded for the physical CPU core domain during the benchmark measurement window (J), when that domain is exposed by the platform and accessible to the backend.\nIt must not be interpreted as energy exclusive to the process or as a measurement available on all hardware.",
+      },
+      EnergyRAM: {
+        label: "Memory energy",
+        eyebrow: "Energy",
+        axisTitle: "Energy (J)",
+        description: "Energy recorded for the memory/DRAM domain during the benchmark measurement window (J), only when the platform exposes that domain and the backend can measure it.\nWhen this metric is absent it is represented as unavailable; it is never replaced with zero.",
+      },
+    },
+  },
+
+
+  teacherCommon: {
+    actions: {
+      retry: "Retry",
+    },
+    errors: {
+      network:
+        "Could not connect to the server. Check that the backend is available and try again.",
+      session:
+        "Your session expired. Sign in again to continue.",
+      forbidden:
+        "Your account does not have permission to perform this action.",
+      notFound:
+        "The requested information is not available.",
+      service:
+        "The service is temporarily unavailable. Try again in a few moments.",
+      generic:
+        "The requested information could not be loaded.",
+    },
+  },
+  teacherCourseAnalytics: {
+    common: {
+      unavailable: "—",
+    },
+    loading: "Loading analytics",
+    errors: {
+      title: "Could not load analytics",
+      load:
+        "The course analytics could not be loaded.",
+    },
+    header: {
+      eyebrow: "Aggregate monitoring",
+      title: "Course analytics",
+      description:
+        "Participation, benchmarks, and activity without comparing performance across machines.",
+    },
+    kpis: {
+      activeStudents: "Active students",
+      submissions: "Submissions",
+      executions: "Executions",
+      completionRate: "Completion rate",
+    },
+    empty: {
+      title: "No data yet",
+    },
+    axes: {
+      students: "Students",
+      executions: "Executions",
+    },
+    charts: {
+      participation: {
+        title: "Participation by student",
+        description:
+          "Active students grouped by number of executions.",
+        buckets: {
+          zero: "0 executions",
+          oneToFour: "1–4",
+          fiveToNine: "5–9",
+          tenOrMore: "10+",
+        },
+        hover:
+          "%{x}: %{y} students<extra></extra>",
+        empty:
+          "Add students to the course to visualize participation.",
+      },
+      benchmarks: {
+        title: "Benchmarks used",
+        description:
+          "Distribution of executions across LCS, CAMM, and SIZE.",
+        hover:
+          "%{label}: %{value} executions (%{percent})<extra></extra>",
+        empty:
+          "Executions with a benchmark will appear here.",
+      },
+      activity: {
+        title: "Activity over time",
+        description:
+          "Executions per day during the 30 days up to the most recent activity.",
+        hover:
+          "%{x}: %{y} executions<extra></extra>",
+        empty:
+          "There are no executions to show on the timeline yet.",
+      },
+    },
+  },
+  teacherCourseAttention: {
+    common: {
+      unavailable: "—",
+    },
+    loading:
+      "Loading academic attention",
+    errors: {
+      title:
+        "Could not load academic attention",
+      load:
+        "The academic-attention summary could not be loaded.",
+    },
+    header: {
+      eyebrow:
+        "Actionable supervision",
+      title:
+        "Academic attention",
+      description:
+        "Operational signals for finding cases worth reviewing, without grading or comparing students.",
+    },
+    refreshing: "Updating…",
+    actions: {
+      viewStudents: "View students",
+      result: "Result",
+      lastResultAria:
+        "View latest result for {{name}}",
+    },
+    cards: {
+      noExecutions: {
+        title: "No executions",
+        description:
+          "Active students who have not recorded any executions yet.",
+        aria: {
+          one:
+            "{{count}} student with no executions. View students.",
+          other:
+            "{{count}} students with no executions. View students.",
+        },
+      },
+      failures: {
+        title:
+          "Predominant failures",
+        description:
+          "Students with more failed executions than completed executions.",
+        aria: {
+          one:
+            "{{count}} student with more failures than completions. View students.",
+          other:
+            "{{count}} students with more failures than completions. View students.",
+        },
+      },
+    },
+    recent: {
+      title: "Recent activity",
+      description:
+        "Most recent students with recorded activity.",
+      empty:
+        "There is no recorded activity yet.",
+    },
+  },
+  teacherCourses: {
+    common: {
+      unavailable: "—",
+    },
+    header: {
+      eyebrow: "Teacher supervision",
+      title: "Courses",
+      description:
+        "Separate activity by semester and review only the students enrolled in each course.",
+    },
+    actions: {
+      create: "Create course",
+      creating: "Creating...",
+      close: "Close",
+      open: "Open",
+      retry: "Retry",
+    },
+    metrics: {
+      students: "Students",
+      submissions: "Submissions",
+      executions: "Executions",
+    },
+    summary: {
+      aria: "Course summary",
+      activeCourses: "Active courses",
+      historicalCourses: "Historical courses",
+      activeStudents: "Active students",
+    },
+    create: {
+      title: "New academic instance",
+      description:
+        "The same course code can exist in different years or semesters without mixing results.",
+      code: "Code",
+      codePlaceholder: "e.g. INF-221",
+      name: "Name",
+      namePlaceholder: "e.g. Data Structures",
+      year: "Year",
+      semester: "Semester",
+    },
+    toolbar: {
+      aria: "Course filters",
+      active: "Active",
+      historical: "Historical",
+      searchLabel: "Search courses",
+      searchPlaceholder: "Code, name, or instructor",
+    },
+    loading: "Loading courses",
+    empty: {
+      activeTitle: "There are no active courses yet",
+      historyTitle: "There are no historical courses",
+      activeDescription:
+        "Create an academic instance to separate students and results by semester.",
+      historyDescription:
+        "Finished courses will appear here without losing their history.",
+    },
+    card: {
+      active: "Active",
+      finished: "Finished",
+      teacherUnavailable: "Instructor unavailable",
+      historicalStudents: "{{count}} historical students",
+      registeredStudents: {
+        one: "{{count}} registered student",
+        other: "{{count}} registered students",
+      },
+      lastActivity: "Last activity: {{value}}",
+    },
+    list: {
+      aria: "Course list",
+    },
+    errors: {
+      loadTitle: "Could not load courses",
+      load: "The courses could not be loaded.",
+      create: "The course could not be created.",
+      createValidation:
+        "Check the course information and try again.",
+      validationCode:
+        "Enter a valid course code.",
+      validationName:
+        "Enter a valid course name.",
+      validationYear:
+        "Enter an academic year between 2000 and 9999.",
+      validationTerm:
+        "Select semester 1 or 2.",
+    },
+  },
+
+  teacherCourseDetail: {
+    common: {
+      unavailable: "—",
+    },
+    status: {
+      courseActive: "Active",
+      courseFinished: "Finished",
+      membershipActive: "Active",
+      membershipRemoved: "Removed",
+    },
+    attention: {
+      failures:
+        "More failures than completions",
+      noExecutions: "No executions",
+      none: "No alert",
+    },
+    enrollment: {
+      notEligible:
+        "Account unavailable for enrollment",
+      rejectedGeneric:
+        "Could not add",
+      resultTitle:
+        "Enrollment result",
+      added: {
+        one: "{{count}} added",
+        other: "{{count}} added",
+      },
+      reactivated: {
+        one: "{{count}} reactivated",
+        other: "{{count}} reactivated",
+      },
+      alreadyActive: {
+        one: "{{count}} already active",
+        other: "{{count}} already active",
+      },
+      rejected: {
+        one: "{{count}} rejected",
+        other: "{{count}} rejected",
+      },
+    },
+    actions: {
+      back: "← Back to courses",
+      export: "Export CSV",
+      exporting: "Exporting...",
+      edit: "Edit",
+      closeEdit: "Close editing",
+      finishCourse: "Finish course",
+      reactivateCourse: "Reactivate course",
+      save: "Save changes",
+      saving: "Saving...",
+      close: "Close",
+      addStudents: "Add students",
+      addToCourse: "Add to course",
+      adding: "Adding...",
+      viewProfile: "View profile",
+      lastResult: "Latest result",
+      remove: "Remove",
+      restore: "Restore",
+      previous: "Previous",
+      next: "Next",
+    },
+    export: {
+      title:
+        "Export all active students in the course",
+      success:
+        "CSV summary downloaded successfully.",
+    },
+    edit: {
+      title: "Edit course",
+      description:
+        "Change the metadata for this academic instance.",
+      code: "Code",
+      name: "Name",
+      year: "Year",
+      semester: "Semester",
+    },
+    students: {
+      title: "Students",
+      description:
+        "Manage the course roster without deleting accounts or historical results.",
+      addDisabledTitle:
+        "Reactivate the course to add students.",
+      emailLabel:
+        "Student emails",
+      emailPlaceholder:
+        "student1@inf.udec.cl\nstudent2@inf.udec.cl\nstudent3@inf.udec.cl",
+      help:
+        "Paste a list separated by line breaks, spaces, commas, or semicolons. They must correspond to student accounts registered on the platform.",
+      membership: {
+        active: "Active",
+        inactive: "Removed",
+        all: "All",
+      },
+      searchLabel:
+        "Search students",
+      searchPlaceholder:
+        "Search by name or email",
+      attentionFilterLabel:
+        "Filter by attention",
+      attentionFilter: {
+        all: "All situations",
+        noExecutions: "No executions",
+        failures:
+          "More failures than completions",
+      },
+      loading:
+        "Loading students",
+      emptyTitle:
+        "No students to show",
+      emptyDescription:
+        "Adjust the filters or add students to the course.",
+      table: {
+        student: "Student",
+        status: "Status",
+        submissions: "Submissions",
+        executions: "Exec.",
+        completed: "OK",
+        failed: "Failed",
+        lastActivity:
+          "Last activity",
+        attention: "Attention",
+        action: "Action",
+      },
+      noResultTitle:
+        "This student does not have any completed results yet",
+      count: {
+        one: "{{count}} student",
+        other: "{{count}} students",
+      },
+      page:
+        "Page {{page}} of {{total}}",
+    },
+    confirm: {
+      finishCourse:
+        "Confirm finishing course {{code}} {{period}}?",
+      reactivateCourse:
+        "Confirm reactivating course {{code}} {{period}}?",
+      removeStudent:
+        "Remove {{name}} from the course? Their results will not be deleted.",
+    },
+    loading: "Loading course",
+    errors: {
+      loadTitle:
+        "Could not load the course",
+      load:
+        "The course could not be loaded.",
+      updateCourse:
+        "The course could not be updated.",
+      saveCourse:
+        "The course could not be saved.",
+      addStudents:
+        "Students could not be added.",
+      removeStudent:
+        "The student could not be removed.",
+      restoreStudent:
+        "The student could not be restored.",
+      export:
+        "The course summary could not be exported.",
+      validationCode:
+        "Enter a valid course code.",
+      validationName:
+        "Enter a valid course name.",
+      validationYear:
+        "Enter an academic year between 2000 and 9999.",
+      validationTerm:
+        "Select semester 1 or 2.",
+      validationEmails:
+        "Enter one or more valid student email addresses.",
+    },
+  },
+
+  teacherStudentDetail: {
+    common: {
+      unavailable: "—",
+    },
+    actions: {
+      back: "← Back to course",
+      retry: "Retry",
+      previous: "Previous",
+      next: "Next",
+      viewDetail: "View details",
+      close: "Close",
+      viewExperiment:
+        "View experiment",
+      viewResults:
+        "View results",
+    },
+    profile: {
+      loading:
+        "Loading student profile",
+      errors: {
+        title:
+          "Could not load the profile",
+        load:
+          "The student profile could not be loaded.",
+      },
+      eyebrow:
+        "Course student",
+      membership: {
+        active: "In course",
+        removed: "Removed",
+      },
+      lastActivity:
+        "Last activity",
+      lastAccess:
+        "Last access",
+    },
+    summary: {
+      submissions: "Submissions",
+      executions: "Executions",
+      completed: "Completed",
+      failed: "Failed",
+      active: "Active",
+    },
+    tabs: {
+      executions: "Executions",
+      submissions: "Submissions",
+    },
+    states: {
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled",
+    },
+    pagination: {
+      records: {
+        one: "{{count}} record",
+        other: "{{count}} records",
+      },
+      page:
+        "Page {{page}} of {{total}}",
+    },
+    executions: {
+      searchLabel:
+        "Search executions",
+      searchPlaceholder:
+        "Submission title",
+      statusLabel: "Status",
+      statusAll: "All",
+      loading:
+        "Loading executions",
+      emptyTitle:
+        "No executions in this course",
+      emptyDescription:
+        "No executions match the current filters.",
+      errors: {
+        title:
+          "Could not load executions",
+        load:
+          "The executions could not be loaded.",
+      },
+      table: {
+        execution: "Execution",
+        submission: "Submission",
+        state: "Status",
+        duration: "Duration",
+        hardware: "Hardware",
+        updated: "Updated",
+        detail: "Details",
+      },
+      noCodename: "No codename",
+      submissionFallback:
+        "Submission #{{id}}",
+    },
+
+    modal: {
+      eyebrow: "Technical details",
+      title:
+        "Execution #{{id}}",
+      closeAria: "Close",
+      loading:
+        "Loading details",
+      errors: {
+        title:
+          "Could not load the execution",
+        load:
+          "The execution details could not be loaded.",
+      },
+      summary: {
+        submission: "Submission",
+        benchmark: "Benchmark",
+        state: "Status",
+        duration: "Duration",
+      },
+      configuration: {
+        title: "Configuration",
+        input: "Maximum input",
+        samplesPerPoint:
+          "Samples/point",
+        points: "Points",
+        warmup: "Warm-up",
+        profile: "Profile",
+        compilation: "Compilation",
+      },
+      hardware: {
+        title:
+          "Hardware and measurement",
+        cpu: "CPU",
+        architecture:
+          "Architecture",
+        logicalCpus:
+          "Logical CPUs",
+        backend: "Backend",
+        scope: "Scope",
+        result: "Result",
+        available: "Available",
+        unavailable:
+          "Unavailable",
+      },
+      failure: {
+        title:
+          "Recorded failure",
+        noCode: "No code",
+        noMessage:
+          "No additional message.",
+      },
+    },
+    submissions: {
+      searchLabel:
+        "Search submissions",
+      searchPlaceholder:
+        "Submission title",
+      loading:
+        "Loading submissions",
+      emptyTitle:
+        "No submissions in this course",
+      emptyDescription:
+        "This student does not have any submissions associated with this course instance yet.",
+      errors: {
+        title:
+          "Could not load submissions",
+        load:
+          "The submissions could not be loaded.",
+      },
+      table: {
+        submission: "Submission",
+        status: "Status",
+        executions: "Exec.",
+        completed: "Completed",
+        failed: "Failed",
+        active: "Active",
+        created: "Created",
+      },
+      status: {
+        noExecutions:
+          "No executions",
+        active:
+          "Has active executions",
+        completed: "Completed",
+        failed: "Has failures",
+        mixed: "Mixed",
+        unknown:
+          "No derived status",
+      },
+      fallback:
+        "Submission #{{id}}",
+    },
+  },
+
+  adminCommon: {
+    roles: {
+      Student: "Student",
+      Teacher: "Teacher",
+      Admin: "Administrator",
+      unknown: "No role",
+    },
+    accountStatus: {
+      active: "Active",
+      inactive: "Inactive",
+      unknown: "Unknown",
+    },
+    executionStates: {
+      all: "All",
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled",
+      unknown: "Unknown",
+      none: "No executions",
+    },
+  },
+
+  adminUsers: {
+    header: {
+      eyebrow: "Administration",
+      title: "Users",
+      description:
+        "Manage accounts and review their recent activity in Performance System.",
+    },
+    summary: {
+      aria: "User summary",
+      total: "Total",
+      totalCaption:
+        "registered users",
+      active: "Active",
+      activeCaption:
+        "with access enabled",
+      inactive: "Inactive",
+      inactiveCaption:
+        "without access enabled",
+      results: "Results",
+      visible: "Visible",
+      filteredCaption:
+        "match the filters",
+      visibleCaption:
+        "available users",
+    },
+    filters: {
+      search: "Search",
+      searchPlaceholder:
+        "Name or institutional email",
+      role: "Role",
+      roleAll: "All",
+      status: "Status",
+      statusAll: "All",
+      sort: "Sort",
+      sortRecent:
+        "Recent activity",
+      sortName: "Name",
+      sortCreated:
+        "Creation date",
+      clear: "Clear",
+    },
+    table: {
+      user: "User",
+      role: "Role",
+      account: "Account",
+      activity: "Activity",
+      lastExecution:
+        "Latest execution",
+      action: "Action",
+    },
+    loading: {
+      title:
+        "Loading users",
+      description:
+        "Querying the administrative user list.",
+    },
+    errors: {
+      title:
+        "Could not load users",
+      network:
+        "Could not connect to the service. Check your connection and try again.",
+      session:
+        "Your session expired. Sign in again.",
+      forbidden:
+        "Your account does not have permission to view this list.",
+      service:
+        "The service is temporarily unavailable. Try again in a few moments.",
+      generic:
+        "The user information could not be loaded. You can retry without leaving this page.",
+    },
+    actions: {
+      retry: "Retry",
+      viewUser: "View user",
+      clearFilters:
+        "Clear filters",
+      previous: "Previous",
+      next: "Next",
+    },
+    fallbacks: {
+      name: "Unnamed user",
+      email: "No email",
+      unavailable: "—",
+    },
+    created:
+      "Created {{date}}",
+    activity: {
+      submissions: {
+        one: "{{count}} submission",
+        other: "{{count}} submissions",
+      },
+      executions: {
+        one: "{{count}} execution",
+        other: "{{count}} executions",
+      },
+      completed: {
+        one: "{{count}} completed",
+        other: "{{count}} completed",
+      },
+      failed: {
+        one: "{{count}} failed",
+        other: "{{count}} failed",
+      },
+      active: {
+        one: "{{count}} active",
+        other: "{{count}} active",
+      },
+    },
+    empty: {
+      title:
+        "No users to show",
+      filtered:
+        "No users match the current filters.",
+      unfiltered:
+        "There are no registered users yet.",
+    },
+    pagination: {
+      zero: "0 users",
+      range:
+        "{{first}}–{{last}} of {{total}}",
+      rows: "Rows",
+      pageSizeAria:
+        "Number of users per page",
+      page:
+        "Page {{page}} of {{total}}",
+    },
+  },
+
+  adminUserDetail: {
+    fallbacks: {
+      name: "Unnamed user",
+      email: "No email",
+      unavailable: "—",
+    },
+    actions: {
+      back:
+        "← Back to users",
+      retry: "Retry",
+      clearFilters:
+        "Clear filters",
+      previous: "Previous",
+      next: "Next",
+      viewDetail:
+        "View details",
+      clearSearch:
+        "Clear search",
+      close: "Close",
+      viewExperiment:
+        "View experiment",
+      viewResults:
+        "View results",
+    },
+    header: {
+      eyebrow:
+        "Administration",
+      title:
+        "User details",
+      description:
+        "Profile, submissions, executions, and administrative activity.",
+    },
+    loading: {
+      title:
+        "Loading user",
+      description:
+        "Querying profile and activity.",
+    },
+    errors: {
+      title:
+        "Could not load user",
+      load:
+        "The user profile could not be loaded.",
+      network:
+        "Could not connect to the service. Check your connection and try again.",
+      session:
+        "Your session expired. Sign in again.",
+      forbidden:
+        "Your account does not have permission to view this user.",
+      notFound:
+        "The requested user is not available.",
+      service:
+        "The service is temporarily unavailable. Try again in a few moments.",
+    },
+    profile: {
+      created: "Created",
+      lastLogin:
+        "Last session",
+      lastActivity:
+        "Last activity",
+    },
+    summary: {
+      submissions:
+        "Submissions",
+      executions: "Executions",
+      completed: "Completed",
+      failed: "Failed",
+      active: "Active",
+    },
+    tabs: {
+      aria:
+        "Administrative details",
+      executions:
+        "Executions",
+      submissions:
+        "Submissions",
+      audit: "Activity",
+    },
+    pagination: {
+      zero: "0 records",
+      range:
+        "{{first}}–{{last}} of {{total}}",
+      page:
+        "Page {{page}} of {{total}}",
+    },
+    executions: {
+      title: "Executions",
+      description:
+        "Technical history based on canonical execution states.",
+      kpis: {
+        completed:
+          "completed",
+        failed: "failed",
+        active: "active",
+      },
+      searchLabel:
+        "Search submission",
+      searchPlaceholder:
+        "E.g. LCS, SIZE, CAMMR...",
+      statusLabel: "Status",
+      errors: {
+        title:
+          "Could not load executions",
+        load:
+          "The executions could not be loaded.",
+      },
+      loading: {
+        title:
+          "Loading executions",
+        description:
+          "Querying the user's execution history.",
+      },
+      empty: {
+        title:
+          "No executions to show",
+        filtered:
+          "No executions match the current filters.",
+        unfiltered:
+          "This user does not have any registered executions yet.",
+      },
+      table: {
+        execution: "Execution",
+        submission: "Submission",
+        state: "Status",
+        duration: "Duration",
+        hardware: "Hardware",
+        updated: "Updated",
+        detail: "Details",
+      },
+      noCodename:
+        "No codename",
+      submissionFallback:
+        "Submission #{{id}}",
+    },
+    submissions: {
+      title: "Submissions",
+      description:
+        "The user's submissions and the distribution of their executions.",
+      total:
+        "{{count}} total",
+      searchLabel:
+        "Search submission",
+      searchPlaceholder:
+        "Submission title",
+      errors: {
+        title:
+          "Could not load submissions",
+        load:
+          "The submissions could not be loaded.",
+      },
+      loading: {
+        title:
+          "Loading submissions",
+        description:
+          "Querying the user's submissions.",
+      },
+      empty: {
+        title:
+          "No submissions to show",
+        filtered:
+          "No submissions match the current search.",
+        unfiltered:
+          "This user does not have any registered submissions yet.",
+      },
+      table: {
+        submission: "Submission",
+        status: "Status",
+        executions: "Executions",
+        completed: "Completed",
+        failed: "Failed",
+        active: "Active",
+        created: "Created",
+      },
+      status: {
+        approved: "Approved",
+        errors:
+          "Recurring errors",
+        mixed: "Mixed",
+        review: "In review",
+      },
+      fallback:
+        "Submission #{{id}}",
+    },
+    audit: {
+      title: "Activity",
+      description:
+        "Persisted audit-log actions for this user.",
+      total:
+        "{{count}} events",
+      errors: {
+        title:
+          "Could not load activity",
+        load:
+          "The action history could not be loaded.",
+      },
+      loading: {
+        title:
+          "Loading activity",
+        description:
+          "Querying the audit log.",
+      },
+      empty: {
+        title:
+          "No recorded activity",
+        description:
+          "There are no audit events associated with this user.",
+      },
+      fallbackAction: "Action",
+      fallbackDescription:
+        "No description recorded.",
+    },
+    modal: {
+      eyebrow:
+        "Technical details",
+      title:
+        "Execution #{{id}}",
+      closeAria:
+        "Close details",
+      loading: {
+        title:
+          "Loading details",
+        description:
+          "Querying the canonical execution.",
+      },
+      errors: {
+        title:
+          "Could not load details",
+        load:
+          "The execution details could not be loaded.",
+      },
+      summary: {
+        submission: "Submission",
+        benchmark: "Benchmark",
+        state: "Status",
+        duration: "Duration",
+      },
+      submissionFallback:
+        "Submission #{{id}}",
+      configuration: {
+        title: "Configuration",
+        input: "Maximum input",
+        samplesPerPoint:
+          "Samples/point",
+        points: "Points",
+        warmup: "Warm-up",
+        profile: "Profile",
+        compilation: "Compilation",
+      },
+      hardware: {
+        title:
+          "Hardware and measurement",
+        cpu: "CPU",
+        architecture:
+          "Architecture",
+        logicalCpus:
+          "Logical CPUs",
+        backend: "Backend",
+        scope: "Scope",
+        result: "Result",
+        available: "Available",
+        unavailable:
+          "Unavailable",
+      },
+      failure: {
+        title:
+          "Recorded failure",
+        noCode: "No code",
+        unknownStage:
+          "Unknown stage",
+        noMessage:
+          "No additional message.",
+      },
+      timestamps: {
+        started:
+          "Started {{date}}",
+        processing:
+          "Processing {{date}}",
+        finished:
+          "Finished {{date}}",
+      },
+    },
+  },
+
+  commonErrors: {
+    network:
+      "Could not connect to the server. Check that the backend is available and try again.",
+    session:
+      "Your session expired. Sign in again to continue.",
+    forbidden:
+      "Your account does not have permission to perform this action.",
+    notFound:
+      "The requested resource is not available.",
+    service:
+      "The service is temporarily unavailable. Try again in a few moments.",
+    generic:
+      "The request could not be completed. Try again.",
+    conflict:
+      "The request has already been resolved.",
+  },
+
+  adminAccessRequests: {
+    header: {
+      eyebrow:
+        "Administration",
+      title:
+        "Access requests",
+      description:
+        "Review and resolve institutional access requests.",
+    },
+    summary: {
+      aria:
+        "Access request summary",
+      pending: "Pending",
+      approved: "Approved",
+      rejected: "Rejected",
+    },
+    filters: {
+      search: "Search",
+      searchPlaceholder:
+        "Name, email, or course",
+      status: "Status",
+    },
+    status: {
+      pending: "Pending",
+      approved: "Approved",
+      rejected: "Rejected",
+      pendingPlural:
+        "Pending",
+      approvedPlural:
+        "Approved",
+      rejectedPlural:
+        "Rejected",
+      all: "All",
+    },
+    table: {
+      user: "User",
+      role:
+        "Requested role",
+      course:
+        "Course / professor",
+      status: "Status",
+      date: "Date",
+      action: "Action",
+    },
+    loading: {
+      title:
+        "Loading requests",
+    },
+    errors: {
+      title:
+        "Could not load access requests",
+      load:
+        "The access requests could not be loaded.",
+      resolve:
+        "The access request could not be processed.",
+    },
+    empty: {
+      title:
+        "No access requests to show",
+    },
+    actions: {
+      retry: "Retry",
+      approve: "Approve",
+      reject: "Reject",
+      previous: "Previous",
+      next: "Next",
+    },
+    confirm: {
+      approve:
+        "Approve access request #{{id}}?",
+      reject:
+        "Reject access request #{{id}}?",
+    },
+    prompt: {
+      rejectReason:
+        "Rejection reason (optional):",
+    },
+    resolution: {
+      resolved: "Resolved",
+    },
+    pagination: {
+      requests: {
+        one:
+          "{{count}} request",
+        other:
+          "{{count}} requests",
+      },
+      page:
+        "Page {{page}} of {{total}}",
+    },
+    fallbacks: {
+      unavailable: "—",
+      unknownStatus:
+        "Unknown status",
+    },
+  },
+
+  adminAuditLog: {
+    header: {
+      eyebrow:
+        "Administration",
+      title:
+        "Audit log",
+      description:
+        "Persistent record of administrative actions.",
+    },
+    filters: {
+      action:
+        "Exact action",
+      actionPlaceholder:
+        "E.g. approve_access_request",
+      from: "From",
+      to: "To",
+    },
+    loading: {
+      title:
+        "Loading audit log",
+    },
+    errors: {
+      title:
+        "Could not load the audit log",
+      load:
+        "The audit log could not be loaded.",
+    },
+    empty: {
+      title:
+        "No events to show",
+    },
+    actions: {
+      clear: "Clear",
+      retry: "Retry",
+      previous: "Previous",
+      next: "Next",
+    },
+    pagination: {
+      events: {
+        one: "{{count}} event",
+        other:
+          "{{count}} events",
+      },
+      page:
+        "Page {{page}} of {{total}}",
+    },
+    fallbacks: {
+      action: "Action",
+      description:
+        "No description recorded.",
+      user:
+        "User unavailable",
+      unavailable: "—",
+    },
+  },
+
+  tutorialPage: {
+    screenshot: {
+      expandAria: "Enlarge screenshot: {{alt}}",
+      zoom: "Enlarge",
+    },
+    hero: {
+      eyebrow: "User guide",
+      title: "How Performance System works",
+      subtitle:
+        "From uploading code to interpreting results: a short guide to running reproducible measurements of C/C++ algorithms.",
+      featuresAria: "Features",
+      badges: {
+        controlled: "Controlled execution",
+        performance: "Performance metrics",
+        visualization: "Visualization and analysis",
+      },
+    },
+    flow: {
+      kicker: "Main flow",
+      title: "From your code to an interpretable measurement",
+      description:
+        "The system separates submission preparation, execution, and result presentation so that each stage remains traceable.",
+      visualReferenceLabel: "Visual reference:",
+      visualReferenceText:
+        "the current screenshots show the Spanish interface and were captured in dark mode. Control locations and behavior are equivalent in English and light mode.",
+      step1: {
+        title: "Prepare and upload your project",
+        description:
+          "Upload a ZIP file containing your C/C++ implementation. Performance System validates the submission before adding it to the execution workflow.",
+        shot: {
+          alt: "ZIP file selected in the new analysis form",
+          caption:
+            "The selected file must contain at least one .cpp source file.",
+        },
+      },
+      step2: {
+        title: "Configure the analysis",
+        description:
+          "Select the available benchmark, input size, repetitions per point, and the execution profile you need.",
+        profileShot: {
+          alt: "Measurement environment and profile selection",
+          caption:
+            "The profile controls how many times each point is repeated.",
+        },
+        summaryShot: {
+          alt: "Complete experiment summary ready to review and run",
+          caption:
+            "The summary lets you verify the parameters before submission.",
+        },
+      },
+      step3: {
+        title: "Submit and follow the execution",
+        description:
+          "After confirming the configuration, the job enters the queue and progresses through controlled states while it is compiled, executed, measured, and processed.",
+        overviewShot: {
+          alt: "View of a registered execution waiting in the queue",
+          caption:
+            "The active stage is distinguished from work that has already completed.",
+        },
+        detailsShot: {
+          alt:
+            "View of an execution taking measurements and showing technical details",
+          caption:
+            "Technical details let you follow messages from the process.",
+        },
+      },
+      step4: {
+        title: "Interpret the results",
+        description:
+          "When the execution finishes, review the available metrics, their charts, and the explanations that help interpret the observed behavior.",
+        shot: {
+          alt:
+            "Summary of a completed execution with key indicators and guided interpretation",
+          caption:
+            "The header preserves the configuration and summarizes the latest measured point.",
+        },
+      },
+    },
+    zip: {
+      kicker: "Before running",
+      title: "Prepare the ZIP correctly",
+      description:
+        "The compressed file must contain the source code you want to measure. The platform validates the submission before registering it to prevent unexpected formats or files that cannot be processed.",
+      exampleAria: "ZIP example",
+      note:
+        "Do not include absolute paths, symbolic links, or content unrelated to the test. If the submission does not pass validation, the system will reject it before execution.",
+    },
+    configuration: {
+      kicker: "Configuration",
+      title: "What each parameter controls",
+      benchmark:
+        "Defines the input type and scenario used to evaluate the code.",
+      inputSizeLabel: "Input size",
+      inputSize:
+        "Determines the scale of the problem used during measurement.",
+      repetitionsLabel: "Repetitions per point",
+      repetitions:
+        "Indicates how many times each input size is measured to obtain more stable results.",
+      profileLabel: "Profile",
+      profile:
+        "Groups execution settings designed for quick, balanced, or more exhaustive analyses.",
+    },
+    examples: {
+      kicker: "Examples to get started",
+      title: "Classic algorithms ready to measure",
+      description:
+        "Download a ZIP, inspect its code, and upload it from New analysis. Each example follows its benchmark input contract and is designed to produce an interpretable trend.",
+      observeLabel: "What to observe",
+      download: "Download {{benchmark}} example",
+      sizeNote:
+        "The SIZE example contains two .cpp files. Performance System registers them as independent implementations within the same experiment, so you can compare them later without mixing their measurements.",
+      size: {
+        title: "Insertion Sort vs. Merge Sort",
+        description:
+          "Two classic sorting algorithms receive exactly the same size N and generate the same deterministic data set.",
+        observe:
+          "Compare how time and instructions change as N grows, then open the comparison between both implementations.",
+      },
+      lcs: {
+        title: "Longest Common Subsequence",
+        description:
+          "Classic dynamic-programming implementation over two sequences built from the lines in the text file supplied by the benchmark.",
+        observe:
+          "Observe how the work grows as the number of processed lines increases and relate the trend to the dynamic-programming table.",
+      },
+      camm: {
+        title: "Blocked matrix multiplication",
+        description:
+          "Classic matrix multiplication organized in blocks to operate on the numeric values supplied through the benchmark arguments.",
+        observe:
+          "Review time, instructions, and available cache metrics as the amount of input data increases.",
+      },
+    },
+    states: {
+      kicker: "Tracking",
+      title: "Execution states",
+      description:
+        "An execution keeps a persistent state so you can leave the view and return later to check its progress.",
+      items: {
+        queued: {
+          name: "Queued",
+          description:
+            "The execution was registered and is waiting for a measurement resource.",
+        },
+        running: {
+          name: "Running",
+          description:
+            "The code is compiled and/or executed in the measurement environment.",
+        },
+        processing: {
+          name: "Processing",
+          description:
+            "Performance System transforms the measurements into queryable results.",
+        },
+        completed: {
+          name: "Completed",
+          description:
+            "The results are available for review.",
+        },
+      },
+      failure: {
+        title: "What if something fails?",
+        description:
+          "Validation, compilation, execution, measurement, or processing errors are presented as an execution failure. The available detail helps identify the stage that requires correction.",
+      },
+    },
+    continuity: {
+      kicker: "Continuity",
+      title: "Resume your latest result from your profile",
+      description:
+        "The execution remains persisted even if you leave the tracking screen. From your profile, you can review your activity status and open the most recent result directly.",
+      lastResultLabel: "View latest result",
+      lastResultDescription:
+        "opens the visualization for the most recent completed execution; it does not run the code again or alter stored measurements.",
+      shot: {
+        alt:
+          "Student profile with activity summary and access to the latest result",
+        caption:
+          "The shortcut is located in the Latest execution card.",
+      },
+    },
+    results: {
+      kicker: "Results",
+      title: "What you can observe",
+      description:
+        "Exact availability depends on the execution, profile, and measurement hardware. Performance System only shows metrics that are actually available.",
+      metrics: {
+        time: {
+          title: "Time",
+          text:
+            "Shows how long the implementation takes under the selected configuration.",
+        },
+        cpu: {
+          title: "CPU",
+          text:
+            "Includes available processor events and counters for studying the work performed by the algorithm.",
+        },
+        memory: {
+          title: "Memory",
+          text:
+            "Helps contextualize resource usage and the behavior of the implementation.",
+        },
+        energy: {
+          title: "Energy",
+          text:
+            "Shown when the hardware and measurement environment can obtain it reliably.",
+        },
+      },
+      example: {
+        kicker: "Reading example",
+        title: "Relate input size to the trend",
+        description:
+          "In this example, the horizontal axis represents input size and the vertical axis execution time. Each point summarizes the repetitions performed for that size: focus on the overall direction of the series rather than an isolated point.",
+        points: {
+          unit: "Always check the unit shown on each axis.",
+          trend:
+            "Observe whether the metric increases, decreases, or remains stable.",
+          compare:
+            "Only compare executions performed under equivalent conditions.",
+        },
+        shot: {
+          alt: "Execution-time chart by input size",
+          caption:
+            "The series shows an increasing trend across the measured sizes.",
+        },
+      },
+    },
+    interpretation: {
+      kicker: "Interpretation",
+      title: "How to read a measurement",
+      description:
+        "A chart should not be analyzed in isolation. Observe the trend, compare executions under equivalent conditions, and use the system explanations as support for relating metrics to algorithm behavior.",
+      preview: {
+        trend: "Observed trend",
+        metrics: "Comparison across metrics",
+        implementation: "Implementation context",
+      },
+    },
+    goodPractices: {
+      kicker: "Good practices",
+      title: "Obtain comparable results",
+      items: {
+        sameConfig:
+          "Compare implementations using the same input configuration and number of repetitions.",
+        externalProcesses:
+          "Avoid unnecessary external processes during measurement when working in a local test environment.",
+        repetitions:
+          "Use several repetitions per point to reduce the effect of isolated variations.",
+        jointInterpretation:
+          "Interpret metrics together: an improvement in one metric does not necessarily imply an overall improvement.",
+      },
+    },
+    final: {
+      kicker: "Before you begin",
+      title: "Review the ZIP and preserve comparable conditions",
+      description:
+        "Once the file is ready, configure the benchmark and verify the summary before running it. When repeating a comparison, keep the same environment, profile, and input size so the interpretation remains valid.",
+    },
+    lightbox: {
+      aria: "Enlarged tutorial screenshot",
+      closeAria: "Close enlarged screenshot",
+    },
+  },
+};
+
+export default en;

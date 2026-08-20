@@ -18,6 +18,10 @@ import {
 } from "lucide-react";
 
 import { serverURL } from "../common/Constants";
+import {
+  translate,
+  useI18n,
+} from "../i18n";
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 import SourceViewerModal, {
   formatBytes,
@@ -26,31 +30,69 @@ import SourceViewerModal, {
 
 import "./ReproducibilityPanel.css";
 
-const FALLBACK = "No disponible";
+const INTEGRITY_KEYS = Object.freeze({
+  verified: "verified",
+  unavailable: "unavailable",
+  unverified: "unverified",
+  mismatch: "mismatch",
+  invalid_reference: "invalidReference",
+  invalid_archive: "invalidArchive",
+});
 
-const INTEGRITY_LABELS = {
-  verified: "Verificado",
-  unavailable: "No disponible",
-  unverified: "Sin verificar",
-  mismatch: "No coincide",
-  invalid_reference: "Referencia inválida",
-  invalid_archive: "ZIP inválido",
-};
+const resolveText = (
+  t,
+  key,
+  params = {}
+) =>
+  typeof t === "function"
+    ? t(key, params)
+    : translate("es", key, params);
 
-const displayValue = (value) => {
-  if (value === null || value === undefined || value === "") {
-    return FALLBACK;
+const displayValue = (
+  value,
+  {
+    fallback = translate(
+      "es",
+      "reproducibilityPanel.common.unavailable"
+    ),
+    yes = translate(
+      "es",
+      "reproducibilityPanel.common.yes"
+    ),
+    no = translate(
+      "es",
+      "reproducibilityPanel.common.no"
+    ),
+  } = {}
+) => {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+    return fallback;
   }
-  if (typeof value === "boolean") return value ? "Sí" : "No";
+  if (typeof value === "boolean") {
+    return value ? yes : no;
+  }
   return String(value);
 };
 
-const formatDateTime = (value) => {
-  if (!value) return FALLBACK;
+const formatDateTime = (
+  value,
+  locale = "es-CL",
+  fallback = translate(
+    "es",
+    "reproducibilityPanel.common.unavailable"
+  )
+) => {
+  if (!value) return fallback;
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return FALLBACK;
+  if (Number.isNaN(date.getTime())) {
+    return fallback;
+  }
 
-  return new Intl.DateTimeFormat("es-CL", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   })
@@ -59,97 +101,250 @@ const formatDateTime = (value) => {
     .trim();
 };
 
-const integrityLabel = (value) =>
-  INTEGRITY_LABELS[value] || displayValue(value);
+const integrityLabel = (
+  value,
+  t
+) => {
+  const normalized = String(value || "").trim();
+  const key = INTEGRITY_KEYS[normalized];
 
-const requestStateMessage = (error, resource) => {
+  if (!key) {
+    return displayValue(value);
+  }
+
+  return resolveText(
+    t,
+    `reproducibilityPanel.integrity.${key}`
+  );
+};
+
+const resourceLabel = (
+  resourceKey,
+  t
+) =>
+  resolveText(
+    t,
+    `reproducibilityPanel.resources.${resourceKey}`
+  );
+
+const requestStateMessage = (
+  error,
+  resourceKey,
+  t
+) => {
   const status = error?.response?.status;
+  const resource = resourceLabel(
+    resourceKey,
+    t
+  );
+
   if (!error?.response) {
-    return `No fue posible conectar para cargar ${resource}.`;
+    return resolveText(
+      t,
+      "reproducibilityPanel.requestErrors.network",
+      { resource }
+    );
   }
   if (status === 401 || status === 403) {
-    return `Tu sesión no permite consultar ${resource}.`;
+    return resolveText(
+      t,
+      "reproducibilityPanel.requestErrors.forbidden",
+      { resource }
+    );
   }
   if (status === 404) {
-    return `${resource} no está disponible para esta ejecución.`;
+    return resolveText(
+      t,
+      "reproducibilityPanel.requestErrors.notFound",
+      { resource }
+    );
   }
-  return `No fue posible cargar ${resource}.`;
+  return resolveText(
+    t,
+    "reproducibilityPanel.requestErrors.generic",
+    { resource }
+  );
 };
 
-const downloadErrorMessage = (error, label) => {
+const downloadErrorMessage = (
+  error,
+  resourceKey,
+  t
+) => {
   const status = error?.response?.status;
+  const resource = resourceLabel(
+    resourceKey,
+    t
+  );
+
   if (!error?.response) {
-    return `No pudimos conectar para descargar ${label}.`;
+    return resolveText(
+      t,
+      "reproducibilityPanel.downloadErrors.network",
+      { resource }
+    );
   }
   if (status === 401 || status === 403) {
-    return `Tu sesión no permite descargar ${label}.`;
+    return resolveText(
+      t,
+      "reproducibilityPanel.downloadErrors.forbidden",
+      { resource }
+    );
   }
-  if (status === 404 || status === 409 || status === 422) {
-    return `${label} no está disponible para esta ejecución.`;
+  if (
+    status === 404 ||
+    status === 409 ||
+    status === 422
+  ) {
+    return resolveText(
+      t,
+      "reproducibilityPanel.downloadErrors.notFound",
+      { resource }
+    );
   }
-  return `No fue posible descargar ${label}.`;
+  return resolveText(
+    t,
+    "reproducibilityPanel.downloadErrors.generic",
+    { resource }
+  );
 };
 
-const DataItem = ({ label, value, code = false }) => (
-  <div className="reproducibility-panel__data-item">
-    <dt>{label}</dt>
-    <dd className={displayValue(value) === FALLBACK ? "is-unavailable" : ""}>
-      {code ? <code>{displayValue(value)}</code> : displayValue(value)}
-    </dd>
-  </div>
-);
+const DataItem = ({
+  label,
+  value,
+  code = false,
+}) => {
+  const { t } = useI18n();
+  const fallback = t(
+    "reproducibilityPanel.common.unavailable"
+  );
+  const displayed = displayValue(value, {
+    fallback,
+    yes: t("reproducibilityPanel.common.yes"),
+    no: t("reproducibilityPanel.common.no"),
+  });
 
-const Availability = ({ available, label }) => (
-  <span
-    className={[
-      "reproducibility-panel__availability",
-      available
-        ? "reproducibility-panel__availability--available"
-        : "reproducibility-panel__availability--unavailable",
-    ].join(" ")}
-  >
-    {available ? <CheckCircle2 size={14} /> : <Archive size={14} />}
-    {label || (available ? "Disponible" : "No disponible")}
-  </span>
-);
-
-const ArtifactCard = ({ title, filename, sha, available, integrity, size }) => (
-  <article className="reproducibility-panel__artifact">
-    <div className="reproducibility-panel__artifact-heading">
-      <div>
-        <span>{title}</span>
-        <strong>{displayValue(filename)}</strong>
-      </div>
-      <Availability
-        available={available}
-        label={integrity ? integrityLabel(integrity) : undefined}
-      />
+  return (
+    <div className="reproducibility-panel__data-item">
+      <dt>{label}</dt>
+      <dd
+        className={
+          displayed === fallback
+            ? "is-unavailable"
+            : ""
+        }
+      >
+        {code ? <code>{displayed}</code> : displayed}
+      </dd>
     </div>
-    <dl>
-      <DataItem label="SHA-256" value={sha} code />
-      {size !== undefined && (
-        <DataItem
-          label="Tamaño"
-          value={available ? formatBytes(size) : FALLBACK}
-        />
+  );
+};
+
+const Availability = ({
+  available,
+  label,
+}) => {
+  const { t } = useI18n();
+
+  return (
+    <span
+      className={[
+        "reproducibility-panel__availability",
+        available
+          ? "reproducibility-panel__availability--available"
+          : "reproducibility-panel__availability--unavailable",
+      ].join(" ")}
+    >
+      {available ? (
+        <CheckCircle2 size={14} />
+      ) : (
+        <Archive size={14} />
       )}
-    </dl>
-  </article>
-);
+      {label ||
+        (available
+          ? t(
+              "reproducibilityPanel.availability.available"
+            )
+          : t(
+              "reproducibilityPanel.availability.unavailable"
+            ))}
+    </span>
+  );
+};
+
+const ArtifactCard = ({
+  title,
+  filename,
+  sha,
+  available,
+  integrity,
+  size,
+}) => {
+  const { locale, t } = useI18n();
+  const fallback = t(
+    "reproducibilityPanel.common.unavailable"
+  );
+
+  return (
+    <article className="reproducibility-panel__artifact">
+      <div className="reproducibility-panel__artifact-heading">
+        <div>
+          <span>{title}</span>
+          <strong>
+            {displayValue(filename, { fallback })}
+          </strong>
+        </div>
+        <Availability
+          available={available}
+          label={
+            integrity
+              ? integrityLabel(integrity, t)
+              : undefined
+          }
+        />
+      </div>
+      <dl>
+        <DataItem
+          label="SHA-256"
+          value={sha}
+          code
+        />
+        {size !== undefined && (
+          <DataItem
+            label={t(
+              "reproducibilityPanel.fields.size"
+            )}
+            value={
+              available
+                ? formatBytes(
+                    size,
+                    locale,
+                    fallback
+                  )
+                : fallback
+            }
+          />
+        )}
+      </dl>
+    </article>
+  );
+};
 
 const ReproducibilityPanel = ({ codename, onContextChange }) => {
+  const { locale, t } = useI18n();
   const [manifest, setManifest] = useState(null);
   const [manifestLoading, setManifestLoading] = useState(true);
-  const [manifestError, setManifestError] = useState("");
+  const [manifestError, setManifestError] = useState(null);
   const [trace, setTrace] = useState(null);
   const [traceLoading, setTraceLoading] = useState(true);
-  const [traceError, setTraceError] = useState("");
+  const [traceError, setTraceError] = useState(null);
   const [viewerOpen, setViewerOpen] = useState(false);
-  const [copyFeedback, setCopyFeedback] = useState("");
+  const [copyFeedbackKey, setCopyFeedbackKey] = useState("");
   const [downloadState, setDownloadState] = useState({
     key: "",
     kind: "",
-    message: "",
+    resourceKey: "",
+    error: null,
   });
 
   const encodedCodename = useMemo(
@@ -162,13 +357,18 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
 
     setManifest(null);
     setManifestLoading(true);
-    setManifestError("");
+    setManifestError(null);
     setTrace(null);
     setTraceLoading(true);
-    setTraceError("");
+    setTraceError(null);
     setViewerOpen(false);
-    setCopyFeedback("");
-    setDownloadState({ key: "", kind: "", message: "" });
+    setCopyFeedbackKey("");
+    setDownloadState({
+      key: "",
+      kind: "",
+      resourceKey: "",
+      error: null,
+    });
 
     axios
       .get(`${serverURL}api/executions/${encodedCodename}/manifest`, {
@@ -179,7 +379,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
       })
       .catch((error) => {
         if (active) {
-          setManifestError(requestStateMessage(error, "el manifest"));
+          setManifestError(error);
         }
       })
       .finally(() => {
@@ -195,7 +395,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
       })
       .catch((error) => {
         if (active) {
-          setTraceError(requestStateMessage(error, "la procedencia"));
+          setTraceError(error);
         }
       })
       .finally(() => {
@@ -264,27 +464,50 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
     navigationSourceFilename,
   ]);
 
-  const copyText = async (value, successMessage) => {
+  const copyText = async (
+    value,
+    successKey
+  ) => {
     try {
       if (!navigator.clipboard?.writeText) {
-        throw new Error("Clipboard API no disponible");
+        throw new Error(
+          "Clipboard API unavailable"
+        );
       }
-      await navigator.clipboard.writeText(String(value));
-      setCopyFeedback(successMessage);
+      await navigator.clipboard.writeText(
+        String(value)
+      );
+      setCopyFeedbackKey(successKey);
     } catch {
-      setCopyFeedback("No se pudo copiar");
+      setCopyFeedbackKey(
+        "reproducibilityPanel.copy.error"
+      );
     }
   };
 
   const handleCopyLink = () => {
-    const canonicalURL = `${window.location.origin}/code/${encodedCodename}`;
-    return copyText(canonicalURL, "Enlace copiado");
+    const canonicalURL =
+      `${window.location.origin}/code/${encodedCodename}`;
+    return copyText(
+      canonicalURL,
+      "reproducibilityPanel.copy.linkSuccess"
+    );
   };
 
-  const handleDownload = async ({ key, path, filename, label }) => {
+  const handleDownload = async ({
+    key,
+    path,
+    filename,
+    resourceKey,
+  }) => {
     if (downloadState.key) return;
 
-    setDownloadState({ key, kind: "", message: "" });
+    setDownloadState({
+      key,
+      kind: "",
+      resourceKey,
+      error: null,
+    });
     try {
       await downloadAuthenticatedFile(
         `${serverURL}api/executions/${encodedCodename}/${path}`,
@@ -293,16 +516,41 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
       setDownloadState({
         key: "",
         kind: "success",
-        message: `${label} descargado correctamente.`,
+        resourceKey,
+        error: null,
       });
     } catch (error) {
       setDownloadState({
         key: "",
         kind: "error",
-        message: downloadErrorMessage(error, label),
+        resourceKey,
+        error,
       });
     }
   };
+
+  const copyFeedback = copyFeedbackKey
+    ? t(copyFeedbackKey)
+    : "";
+
+  const downloadFeedback =
+    downloadState.kind === "success"
+      ? t(
+          "reproducibilityPanel.download.success",
+          {
+            resource: resourceLabel(
+              downloadState.resourceKey,
+              t
+            ),
+          }
+        )
+      : downloadState.kind === "error"
+      ? downloadErrorMessage(
+          downloadState.error,
+          downloadState.resourceKey,
+          t
+        )
+      : "";
 
   return (
     <section
@@ -312,11 +560,13 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
       <header className="reproducibility-panel__header">
         <div>
           <span className="reproducibility-panel__eyebrow">
-            Identidad experimental
+            {t("reproducibilityPanel.header.eyebrow")}
           </span>
-          <h2 id="reproducibility-title">Reproducibilidad</h2>
+          <h2 id="reproducibility-title">
+            {t("reproducibilityPanel.header.title")}
+          </h2>
           <p>
-            Procedencia, configuración y artefactos verificables de esta ejecución.
+            {t("reproducibilityPanel.header.description")}
           </p>
         </div>
         <Fingerprint size={24} aria-hidden="true" />
@@ -325,15 +575,35 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
       {(manifestLoading || traceLoading) && (
         <div className="reproducibility-panel__loading" role="status">
           <Loader2 aria-hidden="true" />
-          Cargando identidad reproducible…
+          {t("reproducibilityPanel.loading")}
         </div>
       )}
 
       {(manifestError || traceError) && (
         <div className="reproducibility-panel__partial-state">
-          {manifestError && <p role="alert">{manifestError}</p>}
-          {traceError && <p role="alert">{traceError}</p>}
-          <span>Los resultados científicos permanecen disponibles.</span>
+          {manifestError && (
+            <p role="alert">
+              {requestStateMessage(
+                manifestError,
+                "manifest",
+                t
+              )}
+            </p>
+          )}
+          {traceError && (
+            <p role="alert">
+              {requestStateMessage(
+                traceError,
+                "provenance",
+                t
+              )}
+            </p>
+          )}
+          <span>
+            {t(
+              "reproducibilityPanel.partial.scientificResultsRemain"
+            )}
+          </span>
         </div>
       )}
 
@@ -343,39 +613,74 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
             <div className="reproducibility-panel__source-title">
               <Code2 size={22} aria-hidden="true" />
               <div>
-                <span>Fuente de esta ejecución</span>
-                <h3>{displayValue(visibleSourceFilename)}</h3>
+                <span>
+                  {t("reproducibilityPanel.source.title")}
+                </span>
+                <h3>
+                  {displayValue(
+                    visibleSourceFilename,
+                    {
+                      fallback: t(
+                        "reproducibilityPanel.common.unavailable"
+                      ),
+                    }
+                  )}
+                </h3>
               </div>
             </div>
 
             <dl className="reproducibility-panel__identity-grid">
               <DataItem label="Public ID" value={publicId} code />
-              <DataItem label="ID técnico" value={visibleCodename} code />
-              <DataItem label="Estado" value={execution.state} />
               <DataItem
-                label="Creada"
-                value={formatDateTime(execution.createdAt)}
+                label={t("reproducibilityPanel.fields.technicalId")}
+                value={visibleCodename}
+                code
               />
               <DataItem
-                label="Finalizada"
-                value={formatDateTime(execution.finishedAt)}
+                label={t("reproducibilityPanel.fields.state")}
+                value={execution.state}
+              />
+              <DataItem
+                label={t("reproducibilityPanel.fields.created")}
+                value={formatDateTime(
+                  execution.createdAt,
+                  locale,
+                  t("reproducibilityPanel.common.unavailable")
+                )}
+              />
+              <DataItem
+                label={t("reproducibilityPanel.fields.finished")}
+                value={formatDateTime(
+                  execution.finishedAt,
+                  locale,
+                  t("reproducibilityPanel.common.unavailable")
+                )}
               />
             </dl>
 
             <div className="reproducibility-panel__copy-actions">
               <button
                 type="button"
-                onClick={() => copyText(publicId, "Public ID copiado")}
+                onClick={() =>
+                  copyText(
+                    publicId,
+                    "reproducibilityPanel.copy.publicIdSuccess"
+                  )
+                }
                 disabled={!publicId}
               >
                 <ClipboardCopy size={15} aria-hidden="true" />
-                Copiar ID
+                {t("reproducibilityPanel.copy.idAction")}
               </button>
               <button type="button" onClick={handleCopyLink}>
                 <Link2 size={15} aria-hidden="true" />
-                Copiar enlace
+                {t("reproducibilityPanel.copy.linkAction")}
               </button>
-              {copyFeedback && <span role="status">{copyFeedback}</span>}
+              {copyFeedback && (
+                <span role="status">
+                  {copyFeedback}
+                </span>
+              )}
             </div>
           </div>
 
@@ -384,19 +689,49 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
               <article className="reproducibility-panel__block">
                 <div className="reproducibility-panel__block-title">
                   <Settings2 size={18} aria-hidden="true" />
-                  <h3>Configuración</h3>
+                  <h3>
+                    {t("reproducibilityPanel.configuration.title")}
+                  </h3>
                 </div>
                 <dl>
                   <DataItem label="Benchmark" value={execution.benchmark} />
-                  <DataItem label="Perfil" value={execution.profile} />
-                  <DataItem label="Tamaño de entrada" value={configuration.inputSize} />
-                  <DataItem label="Muestras" value={configuration.samples} />
-                  <DataItem label="Flags del compilador" value={configuration.compilerFlags} code />
-                  <DataItem label="Puntos" value={measurement.points} />
-                  <DataItem label="Muestras por punto" value={measurement.samplesPerPoint} />
-                  <DataItem label="Warmup rounds" value={measurement.warmupRounds} />
-                  <DataItem label="Ámbito perf" value={measurement.perfScope} />
-                  <DataItem label="Fallback por evento" value={measurement.singleEventFallback} />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.profile")}
+                    value={execution.profile}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.inputSize")}
+                    value={configuration.inputSize}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.samples")}
+                    value={configuration.samples}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.compilerFlags")}
+                    value={configuration.compilerFlags}
+                    code
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.points")}
+                    value={measurement.points}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.samplesPerPoint")}
+                    value={measurement.samplesPerPoint}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.warmupRounds")}
+                    value={measurement.warmupRounds}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.perfScope")}
+                    value={measurement.perfScope}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.eventFallback")}
+                    value={measurement.singleEventFallback}
+                  />
                 </dl>
               </article>
 
@@ -404,18 +739,43 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                 <div className="reproducibility-panel__block-title">
                   <Cpu size={18} aria-hidden="true" />
                   <div>
-                    <h3>Hardware observado durante la ejecución</h3>
-                    <span>No representa el perfil solicitado.</span>
+                    <h3>
+                      {t("reproducibilityPanel.hardware.title")}
+                    </h3>
+                    <span>
+                      {t("reproducibilityPanel.hardware.note")}
+                    </span>
                   </div>
                 </div>
                 <dl>
-                  <DataItem label="Fabricante CPU" value={cpu.vendor} />
-                  <DataItem label="Modelo CPU" value={cpu.model} />
-                  <DataItem label="Arquitectura" value={cpu.architecture} />
-                  <DataItem label="CPU lógicas" value={cpu.logicalCpus} />
-                  <DataItem label="Backend" value={measurementBackend.name} />
-                  <DataItem label="Versión" value={measurementBackend.version} />
-                  <DataItem label="Ámbito solicitado" value={measurementBackend.requestedScope} />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.cpuVendor")}
+                    value={cpu.vendor}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.cpuModel")}
+                    value={cpu.model}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.architecture")}
+                    value={cpu.architecture}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.logicalCpus")}
+                    value={cpu.logicalCpus}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.backend")}
+                    value={measurementBackend.name}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.version")}
+                    value={measurementBackend.version}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.requestedScope")}
+                    value={measurementBackend.requestedScope}
+                  />
                   <DataItem label="perf_event_paranoid" value={measurementBackend.perfEventParanoid} />
                 </dl>
               </article>
@@ -424,21 +784,21 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
 
           <div className="reproducibility-panel__artifacts">
             <ArtifactCard
-              title="Fuente"
+              title={t("reproducibilityPanel.artifacts.source")}
               filename={visibleSourceFilename}
               sha={source.sha256}
               size={source.sizeBytes}
               available={source.available === true}
             />
             <ArtifactCard
-              title="Mediciones"
+              title={t("reproducibilityPanel.artifacts.measurements")}
               filename={measurements.filename || "CombinedResults.csv"}
               sha={measurements.sha256}
               size={measurements.sizeBytes}
               available={measurements.available === true}
             />
             <ArtifactCard
-              title="Archivo original"
+              title={t("reproducibilityPanel.artifacts.originalArchive")}
               filename={archive.originalFilename}
               sha={archive.sha256}
               available={archive.available === true}
@@ -446,14 +806,19 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
             />
           </div>
 
-          <div className="reproducibility-panel__actions" aria-label="Acciones de reproducibilidad">
+          <div
+            className="reproducibility-panel__actions"
+            aria-label={t(
+              "reproducibilityPanel.actions.aria"
+            )}
+          >
             <button
               type="button"
               onClick={() => setViewerOpen(true)}
               disabled={!canViewSource}
             >
               <Code2 size={16} aria-hidden="true" />
-              Ver código
+              {t("reproducibilityPanel.actions.viewCode")}
             </button>
             <button
               type="button"
@@ -464,13 +829,15 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                   filename: sourceFilename
                     ? safeFilename(sourceFilename)
                     : "fuente.cpp",
-                  label: "La fuente",
+                  resourceKey: "source",
                 })
               }
               disabled={!canDownloadSource || Boolean(downloadState.key)}
             >
               <Download size={16} aria-hidden="true" />
-              {downloadState.key === "source" ? "Descargando…" : "Descargar fuente .cpp"}
+              {downloadState.key === "source"
+                ? t("reproducibilityPanel.actions.downloading")
+                : t("reproducibilityPanel.actions.downloadSource")}
             </button>
             <button
               type="button"
@@ -479,13 +846,15 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                   key: "manifest",
                   path: "manifest/download",
                   filename: `performance-system-${visibleCodename}-manifest.json`,
-                  label: "El manifest JSON",
+                  resourceKey: "manifestJson",
                 })
               }
               disabled={!manifest || Boolean(downloadState.key)}
             >
               <FileJson2 size={16} aria-hidden="true" />
-              {downloadState.key === "manifest" ? "Descargando…" : "Descargar manifest JSON"}
+              {downloadState.key === "manifest"
+                ? t("reproducibilityPanel.actions.downloading")
+                : t("reproducibilityPanel.actions.downloadManifest")}
             </button>
             <button
               type="button"
@@ -494,13 +863,15 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                   key: "measurements",
                   path: "measurements/download",
                   filename: `performance-system-${visibleCodename}.csv`,
-                  label: "El CSV",
+                  resourceKey: "csv",
                 })
               }
               disabled={!canDownloadMeasurements || Boolean(downloadState.key)}
             >
               <HardDriveDownload size={16} aria-hidden="true" />
-              {downloadState.key === "measurements" ? "Descargando…" : "Descargar CSV"}
+              {downloadState.key === "measurements"
+                ? t("reproducibilityPanel.actions.downloading")
+                : t("reproducibilityPanel.actions.downloadCsv")}
             </button>
             <button
               type="button"
@@ -509,23 +880,25 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                   key: "bundle",
                   path: "bundle",
                   filename: `performance-system-${visibleCodename}-bundle.zip`,
-                  label: "El paquete reproducible",
+                  resourceKey: "bundle",
                 })
               }
               disabled={!canDownloadBundle || Boolean(downloadState.key)}
             >
               <PackageCheck size={16} aria-hidden="true" />
-              {downloadState.key === "bundle" ? "Descargando…" : "Descargar paquete reproducible"}
+              {downloadState.key === "bundle"
+                ? t("reproducibilityPanel.actions.downloading")
+                : t("reproducibilityPanel.actions.downloadBundle")}
             </button>
           </div>
 
-          {downloadState.message && (
+          {downloadFeedback && (
             <div
               className={`reproducibility-panel__feedback reproducibility-panel__feedback--${downloadState.kind}`}
               role={downloadState.kind === "error" ? "alert" : "status"}
             >
               <Clipboard size={15} aria-hidden="true" />
-              {downloadState.message}
+              {downloadFeedback}
             </div>
           )}
         </>

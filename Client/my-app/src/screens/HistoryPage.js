@@ -1,4 +1,9 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { Link } from "react-router-dom";
 import {
   Archive,
@@ -17,10 +22,11 @@ import {
 } from "lucide-react";
 
 import { requestJson } from "../common/requestErrorModel";
+import { useI18n } from "../i18n";
 import {
   formatAcademicPeriod,
-  formatCourseLabel,
-} from "./submissionOverviewModel";
+  formatDateTime,
+} from "../i18n/formatters";
 
 import "./HistoryPage.css";
 
@@ -50,18 +56,6 @@ const buildHistoryUrl = (page, filters) => {
   return `/api/submissions?${params.toString()}`;
 };
 
-const formatDateTime = (value) => {
-  if (!value) return "Sin registro";
-
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Sin registro";
-
-  return new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
-};
-
 const normalizeStringList = (value) =>
   Array.isArray(value)
     ? value
@@ -69,22 +63,22 @@ const normalizeStringList = (value) =>
         .filter(Boolean)
     : [];
 
-const formatBenchmarkFamilies = (item) => {
+const formatBenchmarkFamilies = (item, t) => {
   const families = normalizeStringList(item?.benchmarkFamilies);
   if (families.length > 0) return families.join(" · ");
 
   const benchmarks = normalizeStringList(item?.benchmarks);
   return benchmarks.length > 0
     ? benchmarks.join(" · ")
-    : "Benchmark no informado";
+    : t("history.benchmarkUnavailable");
 };
 
-const sourcePreview = (item) => {
+const sourcePreview = (item, t) => {
   const sources = normalizeStringList(item?.sourceFilenames);
 
   if (sources.length === 0) {
     return {
-      text: "Fuentes no disponibles",
+      text: t("history.sourcesUnavailable"),
       extra: null,
     };
   }
@@ -94,22 +88,67 @@ const sourcePreview = (item) => {
 
   return {
     text: visible.join(" · "),
-    extra: remaining > 0 ? `+${remaining} más` : null,
+    extra:
+      remaining > 0
+        ? t("history.moreSources", { count: remaining })
+        : null,
   };
 };
 
-const statusClass = (state) => {
-  const normalized = String(state || "").trim().toUpperCase();
+const courseLabel = (course, t) => {
+  if (!course || typeof course !== "object") {
+    return t("history.noCourse");
+  }
 
-  if (normalized === "COMPLETED") return "history-status--success";
-  if (normalized === "PARTIAL") return "history-status--warning";
-  if (normalized === "FAILED") return "history-status--danger";
-  if (normalized === "IN_PROGRESS") return "history-status--info";
+  const code = String(course.code || "").trim();
+  const name = String(course.name || "").trim();
+
+  return (
+    [code, name].filter(Boolean).join(" · ") ||
+    t("history.noCourse")
+  );
+};
+
+const aggregateStateLabel = (state, t) => {
+  const normalized = String(state || "")
+    .trim()
+    .toUpperCase();
+
+  const keys = {
+    EMPTY: "history.states.empty",
+    IN_PROGRESS: "history.states.inProgress",
+    COMPLETED: "history.states.completed",
+    PARTIAL: "history.states.partial",
+    FAILED: "history.states.failed",
+  };
+
+  return t(keys[normalized] || "history.states.empty");
+};
+
+const statusClass = (state) => {
+  const normalized = String(state || "")
+    .trim()
+    .toUpperCase();
+
+  if (normalized === "COMPLETED") {
+    return "history-status--success";
+  }
+  if (normalized === "PARTIAL") {
+    return "history-status--warning";
+  }
+  if (normalized === "FAILED") {
+    return "history-status--danger";
+  }
+  if (normalized === "IN_PROGRESS") {
+    return "history-status--info";
+  }
 
   return "history-status--neutral";
 };
 
 const HistoryPage = () => {
+  const { locale, t } = useI18n();
+
   const [page, setPage] = useState(1);
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
@@ -128,7 +167,7 @@ const HistoryPage = () => {
       const body = await requestJson(
         buildHistoryUrl(page, filters),
         { credentials: "include" },
-        { fallback: "No fue posible cargar tu historial." }
+        { fallback: t("history.errors.load") }
       );
 
       if (
@@ -136,29 +175,37 @@ const HistoryPage = () => {
         typeof body !== "object" ||
         !Array.isArray(body.items)
       ) {
-        throw new Error("El servidor devolvió un historial incompleto.");
+        throw new Error(t("history.errors.incomplete"));
       }
 
       setItems(body.items);
       setTotal(Number(body.total || 0));
       setPageSize(Number(body.pageSize || PAGE_SIZE));
     } catch (loadError) {
-      console.error("Error cargando /api/submissions:", loadError);
+      console.error(
+        "Error cargando /api/submissions:",
+        loadError
+      );
       setItems([]);
       setError(
-        loadError?.message || "No fue posible cargar tu historial."
+        loadError?.message ||
+          t("history.errors.load")
       );
     } finally {
       setIsLoading(false);
     }
-  }, [filters, page]);
+  }, [filters, page, t]);
 
   const loadFilterOptions = useCallback(async () => {
     try {
       const body = await requestJson(
         HISTORY_FILTER_OPTIONS_URL,
         { credentials: "include" },
-        { fallback: "No fue posible cargar los cursos del historial." }
+        {
+          fallback: t(
+            "history.errors.filterOptions"
+          ),
+        }
       );
 
       setCourseOptions(
@@ -173,7 +220,7 @@ const HistoryPage = () => {
       );
       setCourseOptions([]);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadHistory();
@@ -213,23 +260,32 @@ const HistoryPage = () => {
         1,
         Math.ceil(
           Math.max(0, Number(total || 0)) /
-            Math.max(1, Number(pageSize || PAGE_SIZE))
+            Math.max(
+              1,
+              Number(pageSize || PAGE_SIZE)
+            )
         )
       ),
     [pageSize, total]
   );
 
-  const canGoPrevious = page > 1 && !isLoading;
-  const canGoNext = page < totalPages && !isLoading;
+  const canGoPrevious =
+    page > 1 && !isLoading;
+  const canGoNext =
+    page < totalPages && !isLoading;
 
   const goPrevious = () => {
     if (!canGoPrevious) return;
-    setPage((current) => Math.max(1, current - 1));
+    setPage((current) =>
+      Math.max(1, current - 1)
+    );
   };
 
   const goNext = () => {
     if (!canGoNext) return;
-    setPage((current) => Math.min(totalPages, current + 1));
+    setPage((current) =>
+      Math.min(totalPages, current + 1)
+    );
   };
 
   return (
@@ -238,30 +294,36 @@ const HistoryPage = () => {
         <div className="history-container">
           <header className="history-header">
             <div>
-              <span className="history-eyebrow">Trabajo persistido</span>
-              <h1>Historial</h1>
-              <p>
-                Recupera tus experimentos anteriores y vuelve a sus
-                ejecuciones, resultados y trazabilidad.
-              </p>
+              <span className="history-eyebrow">
+                {t("history.eyebrow")}
+              </span>
+              <h1>{t("history.title")}</h1>
+              <p>{t("history.description")}</p>
             </div>
 
-            <Link to="/" className="history-button history-button--primary">
-              <UploadCloud size={18} aria-hidden="true" />
-              Nuevo análisis
+            <Link
+              to="/"
+              className="history-button history-button--primary"
+            >
+              <UploadCloud
+                size={18}
+                aria-hidden="true"
+              />
+              {t("history.newAnalysis")}
             </Link>
           </header>
 
           <section
             className="history-filters"
-            aria-label="Filtros del historial"
+            aria-label={t("history.filtersAria")}
           >
             <div className="history-filters__heading">
               <div>
-                <span>Filtrar experimentos</span>
+                <span>
+                  {t("history.filtersTitle")}
+                </span>
                 <small>
-                  Los filtros se aplican sobre todo tu historial, antes de
-                  paginar los resultados.
+                  {t("history.filtersHint")}
                 </small>
               </div>
 
@@ -271,8 +333,11 @@ const HistoryPage = () => {
                 onClick={clearFilters}
                 disabled={!hasActiveFilters}
               >
-                <RotateCcw size={15} aria-hidden="true" />
-                Limpiar filtros
+                <RotateCcw
+                  size={15}
+                  aria-hidden="true"
+                />
+                {t("history.clearFilters")}
               </button>
             </div>
 
@@ -282,85 +347,150 @@ const HistoryPage = () => {
               onSubmit={submitQuery}
             >
               <label htmlFor="history-query">
-                Buscar
+                {t("history.search")}
                 <span>
-                  Título, archivo ZIP o fuente C/C++
+                  {t("history.searchHint")}
                 </span>
               </label>
 
               <div className="history-filter-search__control">
-                <Search size={17} aria-hidden="true" />
+                <Search
+                  size={17}
+                  aria-hidden="true"
+                />
                 <input
                   id="history-query"
                   type="search"
                   value={queryDraft}
                   maxLength={200}
-                  placeholder="Ej. ordenamiento, sorting.zip, merge.cpp"
-                  onChange={(event) => setQueryDraft(event.target.value)}
+                  placeholder={t(
+                    "history.searchPlaceholder"
+                  )}
+                  onChange={(event) =>
+                    setQueryDraft(
+                      event.target.value
+                    )
+                  }
                 />
                 <button
                   type="submit"
                   className="history-button history-button--secondary"
                 >
-                  Buscar
+                  {t("history.search")}
                 </button>
               </div>
             </form>
 
             <div className="history-filter-grid">
               <label>
-                <span>Estado</span>
+                <span>{t("history.status")}</span>
                 <select
-                  aria-label="Filtrar por estado"
+                  aria-label={t(
+                    "history.filterByStatus"
+                  )}
                   value={filters.status}
                   onChange={(event) =>
-                    updateFilter("status", event.target.value)
+                    updateFilter(
+                      "status",
+                      event.target.value
+                    )
                   }
                 >
-                  <option value="">Todos los estados</option>
-                  <option value="EMPTY">Sin ejecuciones</option>
-                  <option value="IN_PROGRESS">En progreso</option>
-                  <option value="COMPLETED">Completado</option>
-                  <option value="PARTIAL">Parcial</option>
-                  <option value="FAILED">Error</option>
+                  <option value="">
+                    {t("history.allStatuses")}
+                  </option>
+                  <option value="EMPTY">
+                    {t("history.states.empty")}
+                  </option>
+                  <option value="IN_PROGRESS">
+                    {t(
+                      "history.states.inProgress"
+                    )}
+                  </option>
+                  <option value="COMPLETED">
+                    {t(
+                      "history.states.completed"
+                    )}
+                  </option>
+                  <option value="PARTIAL">
+                    {t("history.states.partial")}
+                  </option>
+                  <option value="FAILED">
+                    {t("history.states.failed")}
+                  </option>
                 </select>
               </label>
 
               <label>
-                <span>Benchmark</span>
+                <span>
+                  {t("history.benchmark")}
+                </span>
                 <select
-                  aria-label="Filtrar por benchmark"
+                  aria-label={t(
+                    "history.filterByBenchmark"
+                  )}
                   value={filters.benchmark}
                   onChange={(event) =>
-                    updateFilter("benchmark", event.target.value)
+                    updateFilter(
+                      "benchmark",
+                      event.target.value
+                    )
                   }
                 >
-                  <option value="">Todos los benchmarks</option>
-                  <option value="SIZE">SIZE</option>
-                  <option value="LCS">LCS</option>
-                  <option value="CAMM">CAMM</option>
+                  <option value="">
+                    {t(
+                      "history.allBenchmarks"
+                    )}
+                  </option>
+                  <option value="SIZE">
+                    SIZE
+                  </option>
+                  <option value="LCS">
+                    LCS
+                  </option>
+                  <option value="CAMM">
+                    CAMM
+                  </option>
                 </select>
               </label>
 
               <label>
-                <span>Contexto</span>
+                <span>
+                  {t("history.context")}
+                </span>
                 <select
-                  aria-label="Filtrar por curso"
+                  aria-label={t(
+                    "history.filterByCourse"
+                  )}
                   value={filters.courseId}
                   onChange={(event) =>
-                    updateFilter("courseId", event.target.value)
+                    updateFilter(
+                      "courseId",
+                      event.target.value
+                    )
                   }
                 >
-                  <option value="">Todos los contextos</option>
-                  <option value="personal">Personal</option>
-                  {courseOptions.map((course) => (
-                    <option
-                      key={course.id}
-                      value={String(course.id)}
-                    >
-                      {formatCourseLabel(course)}
-                    </option>
-                  ))}
+                  <option value="">
+                    {t("history.allContexts")}
+                  </option>
+                  <option value="personal">
+                    {t("history.personal")}
+                  </option>
+                  {courseOptions.map(
+                    (course) => (
+                      <option
+                        key={course.id}
+                        value={String(
+                          course.id
+                        )}
+                      >
+                        {courseLabel(
+                          course,
+                          t
+                        )}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
             </div>
@@ -368,23 +498,32 @@ const HistoryPage = () => {
 
           <section
             className="history-summary"
-            aria-label="Resumen del historial"
+            aria-label={t("history.summaryAria")}
           >
             <div>
-              <Archive size={19} aria-hidden="true" />
+              <Archive
+                size={19}
+                aria-hidden="true"
+              />
               <span>
                 {hasActiveFilters
-                  ? "Resultados encontrados"
-                  : "Experimentos registrados"}
+                  ? t("history.resultsFound")
+                  : t(
+                      "history.registeredExperiments"
+                    )}
               </span>
               <strong>{total}</strong>
             </div>
 
             <div>
-              <FolderOpen size={19} aria-hidden="true" />
-              <span>Página</span>
+              <FolderOpen
+                size={19}
+                aria-hidden="true"
+              />
+              <span>{t("history.page")}</span>
               <strong>
-                {page} de {totalPages}
+                {page} {t("history.of")}{" "}
+                {totalPages}
               </strong>
             </div>
           </section>
@@ -401,56 +540,86 @@ const HistoryPage = () => {
                 aria-hidden="true"
               />
               <div>
-                <h2>Cargando historial</h2>
-                <p>Consultando tus experimentos persistidos.</p>
+                <h2>
+                  {t("history.loadingTitle")}
+                </h2>
+                <p>
+                  {t("history.loadingText")}
+                </p>
               </div>
             </section>
           ) : error ? (
             <section className="history-state-card history-state-card--error">
-              <XCircle size={27} aria-hidden="true" />
+              <XCircle
+                size={27}
+                aria-hidden="true"
+              />
               <div>
-                <h2>No pudimos cargar tu historial</h2>
+                <h2>
+                  {t("history.loadErrorTitle")}
+                </h2>
                 <p>{error}</p>
                 <button
                   type="button"
                   className="history-button history-button--primary"
                   onClick={loadHistory}
                 >
-                  <RefreshCw size={17} aria-hidden="true" />
-                  Reintentar
+                  <RefreshCw
+                    size={17}
+                    aria-hidden="true"
+                  />
+                  {t("history.retry")}
                 </button>
               </div>
             </section>
           ) : items.length === 0 ? (
             <section className="history-state-card">
-              <Archive size={28} aria-hidden="true" />
+              <Archive
+                size={28}
+                aria-hidden="true"
+              />
               <div>
                 <h2>
                   {hasActiveFilters
-                    ? "No encontramos experimentos"
-                    : "Aún no tienes experimentos registrados"}
+                    ? t(
+                        "history.emptyFilteredTitle"
+                      )
+                    : t("history.emptyTitle")}
                 </h2>
                 <p>
                   {hasActiveFilters
-                    ? "Prueba con otros criterios o limpia los filtros para volver a ver todo tu historial."
-                    : "Cuando ejecutes un análisis, aparecerá aquí para que puedas revisarlo posteriormente."}
+                    ? t(
+                        "history.emptyFilteredText"
+                      )
+                    : t("history.emptyText")}
                 </p>
+
                 {hasActiveFilters ? (
                   <button
                     type="button"
                     className="history-button history-button--secondary"
                     onClick={clearFilters}
                   >
-                    <RotateCcw size={17} aria-hidden="true" />
-                    Limpiar filtros
+                    <RotateCcw
+                      size={17}
+                      aria-hidden="true"
+                    />
+                    {t(
+                      "history.clearFilters"
+                    )}
                   </button>
                 ) : (
                   <Link
                     to="/"
                     className="history-button history-button--primary"
                   >
-                    <UploadCloud size={17} aria-hidden="true" />
-                    Crear primer análisis
+                    <UploadCloud
+                      size={17}
+                      aria-hidden="true"
+                    />
+                    {t(
+                      "history.createFirstAnalysis"
+                    )}
                   </Link>
                 )}
               </div>
@@ -459,11 +628,23 @@ const HistoryPage = () => {
             <>
               <section
                 className="history-list"
-                aria-label="Experimentos"
+                aria-label={t(
+                  "history.experimentsAria"
+                )}
               >
                 {items.map((item) => {
-                  const sources = sourcePreview(item);
-                  const coursePeriod = formatAcademicPeriod(item.course);
+                  const sources =
+                    sourcePreview(item, t);
+                  const coursePeriod =
+                    formatAcademicPeriod(
+                      item.course,
+                      {
+                        semesterLabel: t(
+                          "history.semester"
+                        ),
+                        fallback: "",
+                      }
+                    );
 
                   return (
                     <article
@@ -473,57 +654,108 @@ const HistoryPage = () => {
                       <div className="history-card__top">
                         <div className="history-card__heading">
                           <span className="history-card__identifier">
-                            Experimento #{item.id}
+                            {t(
+                              "history.experimentNumber",
+                              { id: item.id }
+                            )}
                           </span>
                           <h2>
-                            {String(item.title || "").trim() ||
-                              "Experimento sin título"}
+                            {String(
+                              item.title || ""
+                            ).trim() ||
+                              t(
+                                "history.untitledExperiment"
+                              )}
                           </h2>
                         </div>
 
                         <div className="history-card__badges">
                           {item.isPinned && (
                             <span className="history-reference-badge">
-                              <Pin size={14} aria-hidden="true" />
-                              Referencia
+                              <Pin
+                                size={14}
+                                aria-hidden="true"
+                              />
+                              {t(
+                                "history.reference"
+                              )}
                             </span>
                           )}
 
                           <span
                             className={[
                               "history-status",
-                              statusClass(item.aggregateState),
+                              statusClass(
+                                item.aggregateState
+                              ),
                             ].join(" ")}
                           >
-                            {item.aggregateStateLabel ||
-                              "Sin ejecuciones"}
+                            {aggregateStateLabel(
+                              item.aggregateState,
+                              t
+                            )}
                           </span>
                         </div>
                       </div>
 
                       <div className="history-card__metadata">
                         <div>
-                          <FileArchive size={17} aria-hidden="true" />
-                          <span>Archivo</span>
+                          <FileArchive
+                            size={17}
+                            aria-hidden="true"
+                          />
+                          <span>
+                            {t("history.file")}
+                          </span>
                           <strong>
                             {item.originalFilename ||
-                              "ZIP no disponible"}
+                              t(
+                                "history.zipUnavailable"
+                              )}
                           </strong>
                         </div>
 
                         <div>
-                          <GraduationCap size={17} aria-hidden="true" />
-                          <span>Contexto</span>
-                          <strong>{formatCourseLabel(item.course)}</strong>
-                          {coursePeriod && <small>{coursePeriod}</small>}
+                          <GraduationCap
+                            size={17}
+                            aria-hidden="true"
+                          />
+                          <span>
+                            {t(
+                              "history.context"
+                            )}
+                          </span>
+                          <strong>
+                            {courseLabel(
+                              item.course,
+                              t
+                            )}
+                          </strong>
+                          {coursePeriod && (
+                            <small>
+                              {coursePeriod}
+                            </small>
+                          )}
                         </div>
 
                         <div>
-                          <CalendarDays size={17} aria-hidden="true" />
-                          <span>Última actividad</span>
+                          <CalendarDays
+                            size={17}
+                            aria-hidden="true"
+                          />
+                          <span>
+                            {t(
+                              "history.lastActivity"
+                            )}
+                          </span>
                           <strong>
                             {formatDateTime(
-                              item.activityAt || item.createdAt
+                              item.activityAt ||
+                                item.createdAt,
+                              locale,
+                              t(
+                                "history.noRecord"
+                              )
                             )}
                           </strong>
                         </div>
@@ -531,31 +763,64 @@ const HistoryPage = () => {
 
                       <div className="history-card__details">
                         <div>
-                          <span>Benchmark</span>
-                          <strong>{formatBenchmarkFamilies(item)}</strong>
+                          <span>
+                            {t(
+                              "history.benchmark"
+                            )}
+                          </span>
+                          <strong>
+                            {formatBenchmarkFamilies(
+                              item,
+                              t
+                            )}
+                          </strong>
                         </div>
 
                         <div>
-                          <span>Implementaciones</span>
+                          <span>
+                            {t(
+                              "history.implementations"
+                            )}
+                          </span>
                           <strong>
-                            {Number(item.executionsCount || 0)}
+                            {Number(
+                              item.executionsCount ||
+                                0
+                            )}
                           </strong>
                         </div>
 
                         <div className="history-card__sources">
-                          <span>Fuentes</span>
-                          <strong>{sources.text}</strong>
-                          {sources.extra && <small>{sources.extra}</small>}
+                          <span>
+                            {t(
+                              "history.sources"
+                            )}
+                          </span>
+                          <strong>
+                            {sources.text}
+                          </strong>
+                          {sources.extra && (
+                            <small>
+                              {sources.extra}
+                            </small>
+                          )}
                         </div>
                       </div>
 
                       <div className="history-card__actions">
                         <Link
-                          to={`/submissions/${encodeURIComponent(item.id)}`}
+                          to={`/submissions/${encodeURIComponent(
+                            item.id
+                          )}`}
                           className="history-button history-button--secondary"
                         >
-                          Ver experimento
-                          <ArrowRight size={16} aria-hidden="true" />
+                          {t(
+                            "history.viewExperiment"
+                          )}
+                          <ArrowRight
+                            size={16}
+                            aria-hidden="true"
+                          />
                         </Link>
                       </div>
                     </article>
@@ -565,7 +830,9 @@ const HistoryPage = () => {
 
               <nav
                 className="history-pagination"
-                aria-label="Paginación del historial"
+                aria-label={t(
+                  "history.paginationAria"
+                )}
               >
                 <button
                   type="button"
@@ -573,12 +840,17 @@ const HistoryPage = () => {
                   onClick={goPrevious}
                   disabled={!canGoPrevious}
                 >
-                  <ArrowLeft size={16} aria-hidden="true" />
-                  Anterior
+                  <ArrowLeft
+                    size={16}
+                    aria-hidden="true"
+                  />
+                  {t("history.previous")}
                 </button>
 
                 <span>
-                  Página <strong>{page}</strong> de{" "}
+                  {t("history.page")}{" "}
+                  <strong>{page}</strong>{" "}
+                  {t("history.of")}{" "}
                   <strong>{totalPages}</strong>
                 </span>
 
@@ -588,8 +860,11 @@ const HistoryPage = () => {
                   onClick={goNext}
                   disabled={!canGoNext}
                 >
-                  Siguiente
-                  <ArrowRight size={16} aria-hidden="true" />
+                  {t("history.next")}
+                  <ArrowRight
+                    size={16}
+                    aria-hidden="true"
+                  />
                 </button>
               </nav>
             </>

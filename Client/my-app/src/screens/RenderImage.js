@@ -42,6 +42,7 @@ import {
   isAdminUser,
   isTeacherUser,
 } from "../common/userAccessModel";
+import { useI18n } from "../i18n";
 import {
   formatAcademicPeriod,
   formatCourseLabel,
@@ -342,7 +343,23 @@ const normalizeNavigationFilename = (value) => {
   return normalized.split("/").filter(Boolean).pop() || null;
 };
 
+const localizedText = (
+  t,
+  key,
+  fallback,
+  params = {}
+) => {
+  if (typeof t !== "function") {
+    return fallback;
+  }
+
+  const value = t(key, params);
+  return value === key ? fallback : value;
+};
+
+
 function RenderImage({ currentUser }) {
+  const { locale, t } = useI18n();
   const location = useLocation();
   const { codename } = useParams();
 
@@ -391,7 +408,7 @@ function RenderImage({ currentUser }) {
   const [downloadFeedback, setDownloadFeedback] =
     useState({
       kind: "",
-      message: "",
+      key: "",
     });
 
   const isAdmin = isAdminUser(currentUser);
@@ -537,17 +554,17 @@ function RenderImage({ currentUser }) {
           if (!error?.response) {
             setLoadErrorType("network");
             setLoadError(
-              "No pudimos comunicarnos con el servidor. Verifica que el backend esté disponible e inténtalo nuevamente."
+              "renderImage.errors.descriptions.network"
             );
           } else if (status === 403) {
             setLoadErrorType("forbidden");
             setLoadError(
-              "Esta ejecución existe, pero tu cuenta no tiene permisos para consultar sus resultados."
+              "renderImage.errors.descriptions.forbidden"
             );
           } else if (status === 404) {
             setLoadErrorType("not-found");
             setLoadError(
-              "La ejecución o alguno de sus artefactos de resultados ya no está disponible."
+              "renderImage.errors.descriptions.notFound"
             );
           } else if (
             status === 409 ||
@@ -555,17 +572,17 @@ function RenderImage({ currentUser }) {
           ) {
             setLoadErrorType("unavailable");
             setLoadError(
-              "La ejecución todavía no tiene resultados listos para visualizar."
+              "renderImage.errors.descriptions.unavailable"
             );
           } else if (status === 401) {
             setLoadErrorType("forbidden");
             setLoadError(
-              "Tu sesión ya no permite consultar esta ejecución. Vuelve a iniciar sesión."
+              "renderImage.errors.descriptions.session"
             );
           } else {
             setLoadErrorType("error");
             setLoadError(
-              "No fue posible cargar los resultados de esta ejecución."
+              "renderImage.errors.descriptions.generic"
             );
           }
         }
@@ -664,11 +681,15 @@ function RenderImage({ currentUser }) {
       return stripExtension(originalFile);
     }
 
-    return `Ejecución ${codename}`;
+    return t(
+      "renderImage.executionFallback",
+      { codename }
+    );
   }, [
     location.state,
     statusData,
     codename,
+    t,
   ]);
 
   useEffect(() => {
@@ -796,13 +817,17 @@ function RenderImage({ currentUser }) {
         resultsData,
         aggregation,
         effectiveDispersion,
-        effectiveRange
+        effectiveRange,
+        locale,
+        t
       ),
     [
       resultsData,
       aggregation,
       effectiveDispersion,
       effectiveRange,
+      locale,
+      t,
     ]
   );
 
@@ -900,7 +925,7 @@ function RenderImage({ currentUser }) {
     setDownloadLoading(true);
     setDownloadFeedback({
       kind: "",
-      message: "",
+      key: "",
     });
 
     try {
@@ -913,8 +938,7 @@ function RenderImage({ currentUser }) {
 
       setDownloadFeedback({
         kind: "success",
-        message:
-          "CSV descargado correctamente.",
+        key: "renderImage.download.success",
       });
     } catch (error) {
       console.error(
@@ -925,23 +949,23 @@ function RenderImage({ currentUser }) {
       const status =
         error?.response?.status;
 
-      let message =
-        "No fue posible descargar el CSV en este momento.";
+      let key =
+        "renderImage.download.errors.generic";
 
       if (!error?.response) {
-        message =
-          "No pudimos conectar con el servidor para descargar el CSV.";
+        key =
+          "renderImage.download.errors.network";
       } else if (status === 403) {
-        message =
-          "Tu cuenta no tiene permisos para descargar este CSV.";
+        key =
+          "renderImage.download.errors.forbidden";
       } else if (status === 404) {
-        message =
-          "El CSV de esta ejecución ya no está disponible.";
+        key =
+          "renderImage.download.errors.notFound";
       }
 
       setDownloadFeedback({
         kind: "error",
-        message,
+        key,
       });
     } finally {
       setDownloadLoading(false);
@@ -954,8 +978,10 @@ function RenderImage({ currentUser }) {
         <div className="results-shell">
           <InlineState
             type="loading"
-            title="Cargando resultados"
-            description="Preparando el dashboard de la ejecución."
+            title={t("renderImage.loading.title")}
+            description={t(
+              "renderImage.loading.description"
+            )}
           />
         </div>
       </main>
@@ -964,11 +990,21 @@ function RenderImage({ currentUser }) {
 
   if (loadError) {
     const stateTitle = {
-      network: "No pudimos conectar con el servidor",
-      forbidden: "No puedes abrir esta ejecución",
-      "not-found": "Ejecución no encontrada",
-      unavailable: "Resultado todavía no disponible",
-      error: "No pudimos abrir esta ejecución",
+      network: t(
+        "renderImage.errors.titles.network"
+      ),
+      forbidden: t(
+        "renderImage.errors.titles.forbidden"
+      ),
+      "not-found": t(
+        "renderImage.errors.titles.notFound"
+      ),
+      unavailable: t(
+        "renderImage.errors.titles.unavailable"
+      ),
+      error: t(
+        "renderImage.errors.titles.generic"
+      ),
     }[loadErrorType];
 
     return (
@@ -982,8 +1018,10 @@ function RenderImage({ currentUser }) {
           <InlineState
             type={loadErrorType}
             title={stateTitle}
-            description={loadError}
-            actionLabel="Reintentar"
+            description={t(loadError)}
+            actionLabel={t(
+              "renderImage.common.retry"
+            )}
             onAction={() => window.location.reload()}
           />
 
@@ -992,7 +1030,7 @@ function RenderImage({ currentUser }) {
             className="results-secondary-button"
           >
             <ArrowLeft size={16} />
-            Volver
+            {t("renderImage.common.back")}
           </Link>
         </div>
       </main>
@@ -1020,7 +1058,7 @@ function RenderImage({ currentUser }) {
               className="results-back-button"
             >
               <ArrowLeft size={17} />
-              Volver
+              {t("renderImage.common.back")}
             </Link>
 
             <div className="results-header-actions">
@@ -1032,13 +1070,17 @@ function RenderImage({ currentUser }) {
                   className="results-secondary-button"
                 >
                   <GitBranch size={14} />
-                  Ver experimento
+                  {t(
+                    "renderImage.header.viewExperiment"
+                  )}
                 </Link>
               )}
 
               <span className="results-status-chip">
                 <CheckCircle2 size={14} />
-                Análisis completado
+                {t(
+                  "renderImage.header.analysisCompleted"
+                )}
               </span>
 
               <button
@@ -1049,13 +1091,17 @@ function RenderImage({ currentUser }) {
               >
                 <Download size={16} />
                 {downloadLoading
-                  ? "Descargando..."
-                  : "Descargar CSV"}
+                  ? t(
+                      "renderImage.download.downloading"
+                    )
+                  : t(
+                      "renderImage.download.action"
+                    )}
               </button>
             </div>
           </div>
 
-          {downloadFeedback.message && (
+          {downloadFeedback.key && (
             <div
               className={
                 `results-download-feedback results-download-feedback-${downloadFeedback.kind}`
@@ -1075,22 +1121,20 @@ function RenderImage({ currentUser }) {
                 )}
 
               <span>
-                {downloadFeedback.message}
+                {t(downloadFeedback.key)}
               </span>
             </div>
           )}
 
           <div className="results-heading">
             <span className="results-eyebrow">
-              Resultados de rendimiento
+              {t("renderImage.header.eyebrow")}
             </span>
 
             <h1>{displayName}</h1>
 
             <p>
-              Explora cómo cambia el comportamiento
-              del programa a medida que aumenta el
-              tamaño de entrada.
+              {t("renderImage.header.description")}
             </p>
           </div>
 
@@ -1123,7 +1167,9 @@ function RenderImage({ currentUser }) {
           <div
             className="results-tabs"
             role="tablist"
-            aria-label="Categorías de métricas"
+            aria-label={t(
+              "renderImage.categories.aria"
+            )}
           >
             {DASHBOARD_CATEGORIES.map(
               (category) => {
@@ -1156,7 +1202,9 @@ function RenderImage({ currentUser }) {
                       )
                     }
                   >
-                    {category.label}
+                    {t(
+                      `renderImage.categories.${category.id}`
+                    )}
 
                     {count > 0 && (
                       <span>{count}</span>
@@ -1184,7 +1232,7 @@ function RenderImage({ currentUser }) {
               aria-expanded={filtersOpen}
             >
               <Filter size={15} />
-              Filtros
+              {t("renderImage.toolbar.filters")}
 
               {activeFilterCount > 0 && (
                 <span className="results-filter-count">
@@ -1212,7 +1260,9 @@ function RenderImage({ currentUser }) {
                 <SlidersHorizontal
                   size={15}
                 />
-                Métricas avanzadas
+                {t(
+                  "renderImage.toolbar.advancedMetrics"
+                )}
               </span>
             </label>
           </div>
@@ -1247,17 +1297,21 @@ function RenderImage({ currentUser }) {
           <section className="results-section-heading">
             <div>
               <span className="results-section-kicker">
-                Vista principal
+                {t(
+                  "renderImage.summary.eyebrow"
+                )}
               </span>
 
               <h2>
-                Métricas clave
+                {t(
+                  "renderImage.summary.title"
+                )}
               </h2>
 
               <p>
-                Estas métricas ofrecen una primera
-                lectura del tiempo, trabajo de CPU,
-                memoria y flujo de control.
+                {t(
+                  "renderImage.summary.description"
+                )}
               </p>
             </div>
 
@@ -1266,11 +1320,15 @@ function RenderImage({ currentUser }) {
                 <Layers3 size={16} />
 
                 <span>
-                  {missingPrimaryCount}{" "}
                   {missingPrimaryCount === 1
-                    ? "métrica principal no está disponible"
-                    : "métricas principales no están disponibles"}{" "}
-                  en esta ejecución.
+                    ? t(
+                        "renderImage.summary.missingPrimary.one",
+                        { count: missingPrimaryCount }
+                      )
+                    : t(
+                        "renderImage.summary.missingPrimary.other",
+                        { count: missingPrimaryCount }
+                      )}
                 </span>
               </div>
             )}
@@ -1334,13 +1392,15 @@ function RenderImage({ currentUser }) {
 
             <div>
               <h2>
-                No hay métricas disponibles
-                en esta categoría
+                {t(
+                  "renderImage.empty.title"
+                )}
               </h2>
 
               <p>
-                Esta ejecución no generó gráficos
-                para las métricas seleccionadas.
+                {t(
+                  "renderImage.empty.description"
+                )}
               </p>
             </div>
           </section>
@@ -1350,11 +1410,7 @@ function RenderImage({ currentUser }) {
           <Info size={15} />
 
           <p>
-            Las métricas disponibles se renderizan
-            desde la API JSON. Cuando una medición no
-            está disponible, el dashboard comunica su
-            causa explícitamente en lugar de dibujar un
-            gráfico vacío o asumir un valor cero.
+            {t("renderImage.footer.note")}
           </p>
         </footer>
       </div>
@@ -1370,6 +1426,7 @@ function PedagogicalOverview({
   aiError,
   onGenerateAI,
 }) {
+  const { t } = useI18n();
   const highlights =
     pedagogy?.summary?.highlights || [];
 
@@ -1390,18 +1447,24 @@ function PedagogicalOverview({
       <div className="results-pedagogy-heading">
         <div>
           <span className="results-section-kicker">
-            Interpretación guiada
+            {t(
+              "renderImageScientific.pedagogy.eyebrow"
+            )}
           </span>
 
           <h2 id="results-pedagogy-title">
-            Qué muestran los resultados
+            {t(
+              "renderImageScientific.pedagogy.title"
+            )}
           </h2>
         </div>
 
         {deterministic && (
           <span className="results-pedagogy-method">
             <CheckCircle2 size={14} />
-            Basada en reglas reproducibles
+            {t(
+              "renderImageScientific.pedagogy.deterministic"
+            )}
           </span>
         )}
       </div>
@@ -1417,13 +1480,15 @@ function PedagogicalOverview({
               <div className="results-pedagogy-highlight-top">
                 <span>
                   {getPedagogyMetricLabel(
-                    message.metric
+                    message.metric,
+                    t
                   )}
                 </span>
 
                 <span className="results-pedagogy-kind">
                   {getPedagogyKindLabel(
-                    message.kind
+                    message.kind,
+                    t
                   )}
                 </span>
               </div>
@@ -1439,10 +1504,9 @@ function PedagogicalOverview({
         <Info size={14} />
 
         <span>
-          Estas conclusiones describen únicamente
-          las mediciones de esta ejecución. No
-          califican por sí solas un algoritmo como
-          bueno, malo, eficiente o ineficiente.
+          {t(
+            "renderImageScientific.pedagogy.disclaimer"
+          )}
         </span>
       </div>
 
@@ -1636,6 +1700,7 @@ function ResultsFilters({
   onReset,
   activeFilterCount,
 }) {
+  const { t } = useI18n();
   const multipleInputSizes =
     inputSizes.length > 1;
 
@@ -1644,17 +1709,15 @@ function ResultsFilters({
       <div className="results-filters-header">
         <div>
           <span className="results-section-kicker">
-            Visualización
+            {t("renderImage.filters.eyebrow")}
           </span>
 
           <h2>
-            Filtros del análisis
+            {t("renderImage.filters.title")}
           </h2>
 
           <p>
-            Cambian únicamente la representación
-            de los resultados; no modifican las
-            mediciones originales.
+            {t("renderImage.filters.description")}
           </p>
         </div>
 
@@ -1667,13 +1730,15 @@ function ResultsFilters({
           }
         >
           <RotateCcw size={14} />
-          Restablecer
+          {t("renderImage.filters.reset")}
         </button>
       </div>
 
       <div className="results-filter-grid">
         <fieldset className="results-filter-group">
-          <legend>Agregación</legend>
+          <legend>
+            {t("renderImage.filters.aggregation")}
+          </legend>
 
           <div className="results-segmented-control">
             <button
@@ -1687,7 +1752,7 @@ function ResultsFilters({
                 setAggregation("mean")
               }
             >
-              Media
+              {t("renderImage.filters.mean")}
             </button>
 
             <button
@@ -1701,18 +1766,21 @@ function ResultsFilters({
                 setAggregation("median")
               }
             >
-              Mediana
+              {t("renderImage.filters.median")}
             </button>
           </div>
 
           <small>
-            Define el valor central mostrado en
-            gráficos y KPIs.
+            {t(
+              "renderImage.filters.aggregationHelp"
+            )}
           </small>
         </fieldset>
 
         <fieldset className="results-filter-group">
-          <legend>Dispersión</legend>
+          <legend>
+            {t("renderImage.filters.dispersion")}
+          </legend>
 
           <label className="results-filter-check">
             <input
@@ -1729,20 +1797,30 @@ function ResultsFilters({
 
             <span>
               {aggregation === "median"
-                ? "Intervalo Q1–Q3"
-                : "± desviación estándar"}
+                ? t(
+                    "renderImage.filters.iqrInterval"
+                  )
+                : t(
+                    "renderImage.filters.stddevInterval"
+                  )}
             </span>
           </label>
 
           <small>
             {aggregation === "median"
-              ? "Muestra el 50 % central de las observaciones alrededor de la mediana."
-              : "Muestra la desviación estándar muestral alrededor de la media."}
+              ? t(
+                  "renderImage.filters.iqrHelp"
+                )
+              : t(
+                  "renderImage.filters.stddevHelp"
+                )}
           </small>
         </fieldset>
 
         <fieldset className="results-filter-group">
-          <legend>Escala horizontal</legend>
+          <legend>
+            {t("renderImage.filters.horizontalScale")}
+          </legend>
 
           <div className="results-segmented-control">
             <button
@@ -1756,7 +1834,7 @@ function ResultsFilters({
                 setXScale("linear")
               }
             >
-              Lineal
+              {t("renderImage.filters.linear")}
             </button>
 
             <button
@@ -1778,17 +1856,22 @@ function ResultsFilters({
           </div>
 
           <small>
-            Afecta solo al eje de tamaño de
-            entrada.
+            {t(
+              "renderImage.filters.horizontalScaleHelp"
+            )}
           </small>
         </fieldset>
 
         <fieldset className="results-filter-group">
-          <legend>Rango de entrada</legend>
+          <legend>
+            {t("renderImage.filters.inputRange")}
+          </legend>
 
           <div className="results-range-controls">
             <label>
-              <span>Desde</span>
+              <span>
+                {t("renderImage.filters.from")}
+              </span>
 
               <select
                 value={rangeMin}
@@ -1802,7 +1885,7 @@ function ResultsFilters({
                 }
               >
                 <option value="">
-                  Mínimo
+                  {t("renderImage.filters.minimum")}
                 </option>
 
                 {inputSizes.map(
@@ -1819,7 +1902,9 @@ function ResultsFilters({
             </label>
 
             <label>
-              <span>Hasta</span>
+              <span>
+                {t("renderImage.filters.to")}
+              </span>
 
               <select
                 value={rangeMax}
@@ -1833,7 +1918,7 @@ function ResultsFilters({
                 }
               >
                 <option value="">
-                  Máximo
+                  {t("renderImage.filters.maximum")}
                 </option>
 
                 {inputSizes.map(
@@ -1852,8 +1937,12 @@ function ResultsFilters({
 
           <small>
             {multipleInputSizes
-              ? "Limita los puntos visibles sin alterar el CSV."
-              : "Esta ejecución contiene un único tamaño de entrada."}
+              ? t(
+                  "renderImage.filters.rangeHelp"
+                )
+              : t(
+                  "renderImage.filters.singleInputHelp"
+                )}
           </small>
         </fieldset>
       </div>
@@ -1867,14 +1956,16 @@ function KpiOverview({
   aggregation,
   effectiveRange,
 }) {
+  const { t } = useI18n();
   const aggregationLabel =
     aggregation === "median"
-      ? "mediana"
-      : "media";
+      ? t("renderImage.filters.median").toLowerCase()
+      : t("renderImage.filters.mean").toLowerCase();
 
   const rangeLabel =
     formatRangeLabel(
-      effectiveRange
+      effectiveRange,
+      t
     );
 
   return (
@@ -1885,20 +1976,24 @@ function KpiOverview({
       <div className="results-kpi-heading">
         <div>
           <span className="results-section-kicker">
-            Lectura rápida
+            {t("renderImage.kpiOverview.eyebrow")}
           </span>
 
           <h2 id="results-kpi-title">
-            Indicadores principales
+            {t("renderImage.kpiOverview.title")}
           </h2>
         </div>
 
         <p>
-          Valor de {aggregationLabel} en el mayor
-          tamaño de entrada visible
-          {rangeLabel
-            ? ` · ${rangeLabel}`
-            : ""}.
+          {t(
+            "renderImage.kpiOverview.description",
+            {
+              aggregation: aggregationLabel,
+              range: rangeLabel
+                ? ` · ${rangeLabel}`
+                : "",
+            }
+          )}
         </p>
       </div>
 
@@ -1916,7 +2011,14 @@ function KpiOverview({
 
 
 function KpiCard({ item }) {
+  const { t } = useI18n();
   const Icon = item.icon;
+  const label = t(
+    `renderImage.kpis.${item.metric}.label`
+  );
+  const description = t(
+    `renderImage.kpis.${item.metric}.description`
+  );
 
   return (
     <article
@@ -1932,7 +2034,7 @@ function KpiCard({ item }) {
         </div>
 
         <span className="results-kpi-label">
-          {item.label}
+          {label}
         </span>
       </div>
 
@@ -1944,7 +2046,10 @@ function KpiCard({ item }) {
 
           <div className="results-kpi-context">
             <span>
-              Tamaño {item.inputSize}
+              {t(
+                "renderImage.kpiCard.inputSize",
+                { inputSize: item.inputSize }
+              )}
             </span>
 
             {item.dispersion && (
@@ -1955,7 +2060,7 @@ function KpiCard({ item }) {
           </div>
 
           <p className="results-kpi-description">
-            {item.description}
+            {description}
           </p>
 
           {item.sourceSummary && (
@@ -1967,12 +2072,13 @@ function KpiCard({ item }) {
       ) : (
         <>
           <div className="results-kpi-value results-kpi-value-unavailable">
-            No disponible
+            {t("renderImage.kpiCard.unavailable")}
           </div>
 
           <p className="results-kpi-description">
-            No se obtuvieron datos válidos para
-            este indicador.
+            {t(
+              "renderImage.kpiCard.noValidData"
+            )}
           </p>
         </>
       )}
@@ -1985,8 +2091,12 @@ function ExecutionMetadata({
   statusData,
   courseContext,
 }) {
+  const { t } = useI18n();
   const taskLabel =
-    getTaskLabel(statusData?.task_type);
+    getTaskLabel(
+      statusData?.task_type,
+      t
+    );
 
   const inputLabel =
     statusData?.input_size ??
@@ -1996,44 +2106,65 @@ function ExecutionMetadata({
     statusData?.samples ??
     "—";
   const courseLabel = courseContext
-    ? formatCourseLabel(courseContext.course)
+    ? formatCourseLabel(
+        courseContext.course,
+        t("renderImage.metadata.noCourse")
+      )
     : null;
   const academicPeriod = courseContext
-    ? formatAcademicPeriod(courseContext.course)
+    ? formatAcademicPeriod(
+        courseContext.course,
+        {
+          periodLabel: t(
+            "renderImage.metadata.period"
+          ),
+        }
+      )
     : null;
   const courseDescription = courseContext
-    ? academicPeriod || "Análisis personal"
+    ? academicPeriod ||
+      t(
+        "renderImage.metadata.personalAnalysis"
+      )
     : null;
 
   return (
     <div className="results-metadata-grid">
       <MetadataCard
-        label="Benchmark"
+        label={t("renderImage.metadata.benchmark")}
         value={taskLabel}
-        description="Tipo de prueba ejecutada"
+        description={t(
+          "renderImage.metadata.benchmarkDescription"
+        )}
       />
 
       <MetadataCard
-        label="Tamaño máximo"
+        label={t("renderImage.metadata.maxSize")}
         value={inputLabel}
-        description="Límite de entrada configurado"
+        description={t(
+          "renderImage.metadata.maxSizeDescription"
+        )}
       />
 
       <MetadataCard
-        label="Repeticiones"
+        label={t("renderImage.metadata.repetitions")}
         value={samplesLabel}
-        description="Por punto de medición"
+        description={t(
+          "renderImage.metadata.repetitionsDescription"
+        )}
       />
 
       <MetadataCard
-        label="Entorno"
-        value="Administrado"
-        description="Nodo configurado por Performance System"
+        label={t("renderImage.metadata.environment")}
+        value={t("renderImage.metadata.managed")}
+        description={t(
+          "renderImage.metadata.environmentDescription"
+        )}
       />
 
       {courseContext && (
         <MetadataCard
-          label="Curso"
+          label={t("renderImage.metadata.course")}
           value={courseLabel}
           description={courseDescription}
         />
@@ -2073,12 +2204,23 @@ function MetricCard({
   expanded,
   onToggleDescription,
 }) {
+  const { t } = useI18n();
   const presentation =
-    getMetricPresentation(metric);
+    getMetricPresentation(
+      metric,
+      t
+    );
 
   const description =
-    METRIC_DESCRIPTIONS[metric] ||
-    "Esta métrica no tiene una descripción pedagógica configurada todavía.";
+    METRIC_DESCRIPTIONS[metric]
+      ? localizedText(
+          t,
+          `renderImageScientific.metrics.${metric}.description`,
+          METRIC_DESCRIPTIONS[metric]
+        )
+      : t(
+          "renderImageScientific.metricCard.genericDescription"
+        );
 
   return (
     <article className="results-metric-card">
@@ -2102,7 +2244,10 @@ function MetricCard({
           }`}
           onClick={onToggleDescription}
           aria-expanded={expanded}
-          aria-label={`Explicar ${presentation.label}`}
+          aria-label={t(
+            "renderImageScientific.metricCard.explainAria",
+            { metric: presentation.label }
+          )}
         >
           <Info size={16} />
         </button>
@@ -2111,7 +2256,11 @@ function MetricCard({
       {expanded && (
         <div className="results-metric-explanation">
           <div className="results-metric-explanation-block">
-            <strong>Qué representa</strong>
+            <strong>
+              {t(
+                "renderImageScientific.metricCard.represents"
+              )}
+            </strong>
             <p>{description}</p>
           </div>
 
@@ -2169,15 +2318,21 @@ function MetricCard({
                 aggregation,
                 showDispersion,
                 xScale,
-                inputRange
+                inputRange,
+                t
               )
             : metricData
             ? buildAvailabilityFooter(
-                metricData
+                metricData,
+                t
               )
             : file
-            ? "Compatibilidad legacy"
-            : "Sin datos de visualización"}
+            ? t(
+                "renderImageScientific.metricCard.legacyCompatibility"
+              )
+            : t(
+                "renderImageScientific.metricCard.noVisualizationData"
+              )}
         </span>
 
         <ChevronDown
@@ -2193,6 +2348,7 @@ function MetricCard({
 function MetricPedagogy({
   pedagogyMetric,
 }) {
+  const { t } = useI18n();
   const messages =
     pedagogyMetric?.messages || [];
 
@@ -2221,7 +2377,9 @@ function MetricPedagogy({
   return (
     <div className="results-metric-pedagogy">
       <strong>
-        Qué ocurrió en esta ejecución
+        {t(
+          "renderImageScientific.pedagogy.metricHeading"
+        )}
       </strong>
 
       <div className="results-metric-pedagogy-list">
@@ -2233,7 +2391,8 @@ function MetricPedagogy({
             >
               <span className="results-metric-pedagogy-badge">
                 {getPedagogyKindLabel(
-                  message.kind
+                  message.kind,
+                  t
                 )}
               </span>
 
@@ -2259,6 +2418,7 @@ function NativeMetricChart({
   xScale,
   inputRange,
 }) {
+  const { locale, t } = useI18n();
   const points =
     Array.isArray(metricData?.points)
       ? filterMetricPoints(
@@ -2270,7 +2430,10 @@ function NativeMetricChart({
   const pointsBySource =
     points.reduce((groups, point) => {
       const source =
-        point.source || "Ejecución";
+        point.source ||
+        t(
+          "renderImageScientific.chart.executionSeries"
+        );
 
       if (!groups[source]) {
         groups[source] = [];
@@ -2353,6 +2516,15 @@ function NativeMetricChart({
             return Number(transformedStddev[index]) || 0;
           });
 
+        const centralLabel =
+          aggregation === "median"
+            ? t(
+                "renderImageScientific.chart.median"
+              )
+            : t(
+                "renderImageScientific.chart.mean"
+              );
+
         return {
           type: "scatter",
           mode:
@@ -2385,27 +2557,33 @@ function NativeMetricChart({
                 metric,
                 point[
                   aggregation
-                ]
+                ],
+                locale
               ),
               formatMetricValue(
                 metric,
-                point.mean
+                point.mean,
+                locale
               ),
               formatMetricValue(
                 metric,
-                point.median
+                point.median,
+                locale
               ),
               formatMetricValue(
                 metric,
-                point.stddev || 0
+                point.stddev || 0,
+                locale
               ),
               formatMetricValue(
                 metric,
-                point.q1
+                point.q1,
+                locale
               ),
               formatMetricValue(
                 metric,
-                point.q3
+                point.q3,
+                locale
               ),
               Number(point.samples_valid),
               Number(point.samples_total),
@@ -2415,15 +2593,27 @@ function NativeMetricChart({
             ]
           ),
           hovertemplate:
-            `<b>Tamaño de entrada %{x}</b><br>` +
-            `${aggregation === "median" ? "Mediana" : "Media"}: %{customdata[0]}<br>` +
-            "Media: %{customdata[1]}<br>" +
-            "Mediana: %{customdata[2]}<br>" +
-            "Desv. estándar: %{customdata[3]}<br>" +
+            `<b>${t(
+              "renderImageScientific.chart.inputSize"
+            )} %{x}</b><br>` +
+            `${centralLabel}: %{customdata[0]}<br>` +
+            `${t(
+              "renderImageScientific.chart.mean"
+            )}: %{customdata[1]}<br>` +
+            `${t(
+              "renderImageScientific.chart.median"
+            )}: %{customdata[2]}<br>` +
+            `${t(
+              "renderImageScientific.chart.stddev"
+            )}: %{customdata[3]}<br>` +
             "Q1: %{customdata[4]}<br>" +
             "Q3: %{customdata[5]}<br>" +
-            "Muestras numéricas: %{customdata[6]}/%{customdata[7]}<br>" +
-            "Outliers IQR detectados: %{customdata[8]}" +
+            `${t(
+              "renderImageScientific.chart.numericSamples"
+            )}: %{customdata[6]}/%{customdata[7]}<br>` +
+            `${t(
+              "renderImageScientific.chart.iqrOutliers"
+            )}: %{customdata[8]}` +
             "<extra>%{fullData.name}</extra>",
         };
       });
@@ -2492,7 +2682,9 @@ function NativeMetricChart({
           xaxis: applyAxisTheme(
             {
               title: {
-                text: "Tamaño de entrada",
+                text: t(
+                  "renderImageScientific.chart.inputSize"
+                ),
               },
               automargin: true,
               type:
@@ -2550,11 +2742,16 @@ function LegacyMetricChart({
   filesBaseURL,
   title,
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="results-chart-frame">
       <iframe
         src={`${filesBaseURL}${file}`}
-        title={`Gráfico de ${title}`}
+        title={t(
+          "renderImageScientific.chart.legacyFrameTitle",
+          { title }
+        )}
         loading="lazy"
       />
     </div>
@@ -2565,6 +2762,7 @@ function LegacyMetricChart({
 function PartialAvailabilityNotice({
   metricData,
 }) {
+  const { t } = useI18n();
   const availability =
     metricData?.availability || {};
 
@@ -2573,10 +2771,15 @@ function PartialAvailabilityNotice({
       <Info size={15} />
 
       <span>
-        Disponibilidad parcial:{" "}
-        {availability.numeric || 0} de{" "}
-        {availability.rows_total || 0} muestras
-        contienen un valor numérico.
+        {t(
+          "renderImageScientific.availability.partial",
+          {
+            numeric:
+              availability.numeric || 0,
+            total:
+              availability.rows_total || 0,
+          }
+        )}
       </span>
     </div>
   );
@@ -2588,25 +2791,30 @@ function MetricAvailabilityState({
   measurementContext,
   presentation,
 }) {
+  const { t } = useI18n();
   const statusInfo =
     getMetricAvailabilityPresentation(
-      metricData?.status
+      metricData?.status,
+      t
     );
 
   const summary =
     buildMetricAvailabilitySummary(
-      metricData
+      metricData,
+      t
     );
 
   const hardwareExplanation =
     buildHardwareAvailabilityExplanation(
-      metricData
+      metricData,
+      t
     );
 
   const environmentSummary =
     metricData?.hardware_context
       ? buildMeasurementContextSummary(
-          measurementContext
+          measurementContext,
+          t
         )
       : "";
 
@@ -2634,7 +2842,9 @@ function MetricAvailabilityState({
         {hardwareExplanation && (
           <div className="results-availability-summary">
             <strong>
-              Contexto de medición
+              {t(
+                "renderImageScientific.availability.measurementContext"
+              )}
             </strong>
 
             <div>
@@ -2656,8 +2866,9 @@ function MetricAvailabilityState({
         )}
 
         <small>
-          La ausencia de una medición no se
-          interpreta como un valor cero.
+          {t(
+            "renderImageScientific.availability.notZero"
+          )}
         </small>
       </div>
     </div>
@@ -2666,7 +2877,8 @@ function MetricAvailabilityState({
 
 
 function buildHardwareAvailabilityExplanation(
-  metricData
+  metricData,
+  t = null
 ) {
   const context =
     metricData?.hardware_context;
@@ -2677,37 +2889,76 @@ function buildHardwareAvailabilityExplanation(
 
   const event =
     context.event ||
-    "el evento solicitado";
+    localizedText(
+      t,
+      "renderImageScientific.hardware.requestedEvent",
+      "el evento solicitado"
+    );
 
   const state =
     context.probe_state;
 
   if (state === "event_not_exposed") {
-    return `El backend perf de este entorno no expone ${event}.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.eventNotExposed",
+      `El backend perf de este entorno no expone ${event}.`,
+      { event }
+    );
   }
 
   if (state === "not_supported") {
-    return `El evento ${event} aparece expuesto por perf, pero la prueba de disponibilidad no pudo medirlo en este entorno.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.notSupported",
+      `El evento ${event} aparece expuesto por perf, pero la prueba de disponibilidad no pudo medirlo en este entorno.`,
+      { event }
+    );
   }
 
   if (state === "not_counted") {
-    return `El evento ${event} fue reconocido, pero la prueba de disponibilidad no produjo un conteo válido.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.notCounted",
+      `El evento ${event} fue reconocido, pero la prueba de disponibilidad no produjo un conteo válido.`,
+      { event }
+    );
   }
 
   if (state === "backend_error") {
-    return `No fue posible verificar ${event} por un problema del backend de medición.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.backendError",
+      `No fue posible verificar ${event} por un problema del backend de medición.`,
+      { event }
+    );
   }
 
   if (state === "no_numeric_sample") {
-    return `La prueba de ${event} no produjo una muestra numérica válida.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.noNumericSample",
+      `La prueba de ${event} no produjo una muestra numérica válida.`,
+      { event }
+    );
   }
 
   if (state === "numeric") {
-    return `La prueba de ${event} produjo una muestra numérica válida.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.numeric",
+      `La prueba de ${event} produjo una muestra numérica válida.`,
+      { event }
+    );
   }
 
   if (context.event_exposed === false) {
-    return `El backend de medición no expone ${event} en este entorno.`;
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.notExposedGeneric",
+      `El backend de medición no expone ${event} en este entorno.`,
+      { event }
+    );
   }
 
   return "";
@@ -2715,7 +2966,8 @@ function buildHardwareAvailabilityExplanation(
 
 
 function buildMeasurementContextSummary(
-  measurementContext
+  measurementContext,
+  t = null
 ) {
   if (!measurementContext) {
     return "";
@@ -2739,52 +2991,92 @@ function buildMeasurementContextSummary(
 
   if (backend.requested_scope) {
     parts.push(
-      `scope solicitado: ${backend.requested_scope}`
+      localizedText(
+        t,
+        "renderImageScientific.hardware.requestedScope",
+        `scope solicitado: ${backend.requested_scope}`,
+        { scope: backend.requested_scope }
+      )
     );
   }
 
   return parts.length > 0
-    ? `Entorno observado: ${parts.join(" · ")}.`
+    ? localizedText(
+        t,
+        "renderImageScientific.hardware.observedEnvironment",
+        `Entorno observado: ${parts.join(" · ")}.`,
+        { details: parts.join(" · ") }
+      )
     : "";
 }
 
 function getMetricAvailabilityPresentation(
-  status
+  status,
+  t = null
 ) {
   const map = {
     unsupported: {
-      label: "No disponible",
+      label: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.unsupported.label",
+        "No disponible"
+      ),
       tone: "unsupported",
-      description:
-        "La medición no produjo muestras numéricas válidas en el entorno utilizado para esta ejecución.",
+      description: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.unsupported.description",
+        "La medición no produjo muestras numéricas válidas en el entorno utilizado para esta ejecución."
+      ),
     },
     not_counted: {
-      label: "No contabilizada",
+      label: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.notCounted.label",
+        "No contabilizada"
+      ),
       tone: "not-counted",
-      description:
-        "El evento fue reconocido, pero perf no pudo obtener un conteo válido durante esta ejecución.",
+      description: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.notCounted.description",
+        "El evento fue reconocido, pero perf no pudo obtener un conteo válido durante esta ejecución."
+      ),
     },
     no_data: {
-      label: "Sin datos válidos",
+      label: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.noData.label",
+        "Sin datos válidos"
+      ),
       tone: "no-data",
-      description:
-        "No se obtuvieron observaciones numéricas suficientes para representar esta métrica.",
+      description: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.noData.description",
+        "No se obtuvieron observaciones numéricas suficientes para representar esta métrica."
+      ),
     },
   };
 
   return (
     map[status] || {
-      label: "No disponible",
+      label: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.default.label",
+        "No disponible"
+      ),
       tone: "no-data",
-      description:
-        "Esta métrica no dispone de datos representables en la ejecución actual.",
+      description: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.default.description",
+        "Esta métrica no dispone de datos representables en la ejecución actual."
+      ),
     }
   );
 }
 
 
 function buildMetricAvailabilitySummary(
-  metricData
+  metricData,
+  t = null
 ) {
   const availability =
     metricData?.availability || {};
@@ -2809,41 +3101,90 @@ function buildMetricAvailabilitySummary(
       ?.probe_state;
 
   if (probeState === "event_not_exposed") {
-    return `${total}/${total} muestras no dispusieron de este evento en el backend de medición.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.eventNotExposed",
+      `${total}/${total} muestras no dispusieron de este evento en el backend de medición.`,
+      { total }
+    );
   }
 
   if (probeState === "not_supported") {
-    return `${total}/${total} muestras no pudieron medir este evento en el entorno observado.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.notSupported",
+      `${total}/${total} muestras no pudieron medir este evento en el entorno observado.`,
+      { total }
+    );
   }
 
   if (probeState === "not_counted") {
-    return `${total}/${total} muestras no produjeron un conteo válido para este evento.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.notCounted",
+      `${total}/${total} muestras no produjeron un conteo válido para este evento.`,
+      { total }
+    );
   }
 
   if (probeState === "backend_error") {
-    return `No fue posible verificar la disponibilidad del evento para las ${total} muestras por un problema del backend de medición.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.backendError",
+      `No fue posible verificar la disponibilidad del evento para las ${total} muestras por un problema del backend de medición.`,
+      { total }
+    );
   }
 
   if (probeState === "no_numeric_sample") {
-    return `${total}/${total} muestras quedaron sin una observación numérica válida para este evento.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.noNumericSample",
+      `${total}/${total} muestras quedaron sin una observación numérica válida para este evento.`,
+      { total }
+    );
   }
 
   if (
     metricData?.status === "unsupported"
   ) {
-    return `${availability.unsupported || 0}/${total} muestras reportaron el evento como no disponible.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.unsupported",
+      `${availability.unsupported || 0}/${total} muestras reportaron el evento como no disponible.`,
+      {
+        count: availability.unsupported || 0,
+        total,
+      }
+    );
   }
 
   if (
     metricData?.status === "not_counted"
   ) {
-    return `${availability.not_counted || 0}/${total} muestras no pudieron ser contabilizadas.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.notCountedRows",
+      `${availability.not_counted || 0}/${total} muestras no pudieron ser contabilizadas.`,
+      {
+        count: availability.not_counted || 0,
+        total,
+      }
+    );
   }
 
   if (
     metricData?.status === "no_data"
   ) {
-    return `${availability.missing || 0}/${total} muestras sin un valor numérico válido.`;
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.noData",
+      `${availability.missing || 0}/${total} muestras sin un valor numérico válido.`,
+      {
+        count: availability.missing || 0,
+        total,
+      }
+    );
   }
 
   return "";
@@ -2851,18 +3192,20 @@ function buildMetricAvailabilitySummary(
 
 
 function buildAvailabilityFooter(
-  metricData
+  metricData,
+  t = null
 ) {
   const statusInfo =
     getMetricAvailabilityPresentation(
-      metricData?.status
+      metricData?.status,
+      t
     );
 
   const provenance =
     metricData?.availability
       ?.provenance;
 
-  const provenanceLabel = {
+  const provenanceFallback = {
     metric_availability_sidecar:
       "procedencia preservada",
     raw_csv_fallback:
@@ -2870,6 +3213,17 @@ function buildAvailabilityFooter(
     combined_results:
       "CombinedResults",
   }[provenance];
+
+  const provenanceLabel =
+    provenance === "combined_results"
+      ? provenanceFallback
+      : provenanceFallback
+      ? localizedText(
+          t,
+          `renderImageScientific.availability.provenance.${provenance}`,
+          provenanceFallback
+        )
+      : "";
 
   return provenanceLabel
     ? `${statusInfo.label} · ${provenanceLabel}`
@@ -2880,18 +3234,24 @@ function buildAvailabilityFooter(
 function MetricUnavailableState({
   title,
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="results-native-chart-state">
       <BarChart3 size={22} />
 
       <div>
         <strong>
-          {title} no disponible
+          {t(
+            "renderImageScientific.availability.metricUnavailableTitle",
+            { title }
+          )}
         </strong>
 
         <p>
-          No hay datos estructurados ni una
-          visualización legacy para esta métrica.
+          {t(
+            "renderImageScientific.availability.metricUnavailableDescription"
+          )}
         </p>
       </div>
     </div>
@@ -2938,7 +3298,8 @@ function transformMetricValue(
 
 function formatMetricValue(
   metric,
-  value
+  value,
+  locale = "es-CL"
 ) {
   const numeric =
     transformMetricValue(
@@ -2957,25 +3318,48 @@ function formatMetricValue(
     presentation.displayKind
   ) {
     case "percentage":
-      return `${formatFixed(numeric, 2)} %`;
+      return `${formatFixed(
+        numeric,
+        2,
+        locale
+      )} %`;
 
     case "milliseconds":
-      return `${formatAdaptive(numeric)} ms`;
+      return `${formatAdaptive(
+        numeric,
+        locale
+      )} ms`;
 
     case "ratio":
-      return formatFixed(numeric, 3);
+      return formatFixed(
+        numeric,
+        3,
+        locale
+      );
 
     case "perMillion":
-      return `${formatAdaptive(numeric)} / M instr.`;
+      return `${formatAdaptive(
+        numeric,
+        locale
+      )} / M instr.`;
 
     case "energy":
-      return `${formatAdaptive(numeric)} J`;
+      return `${formatAdaptive(
+        numeric,
+        locale
+      )} J`;
 
     case "count":
-      return formatCompactCount(numeric);
+      return formatCompactCount(
+        numeric,
+        locale
+      );
 
     default:
-      return formatAdaptive(numeric);
+      return formatAdaptive(
+        numeric,
+        locale
+      );
   }
 }
 
@@ -3014,26 +3398,63 @@ function buildYAxisConfig(
 
 
 function getMetricPresentation(
-  metric
+  metric,
+  t = null
 ) {
-  return (
-    METRIC_PRESENTATION[metric] || {
-      label: humanizeMetric(metric),
-      eyebrow: "Métrica",
-      axisTitle: humanizeMetric(metric),
+  const fallback =
+    METRIC_PRESENTATION[metric];
+
+  if (!fallback) {
+    const humanized =
+      humanizeMetric(metric);
+
+    return {
+      label: humanized,
+      eyebrow: localizedText(
+        t,
+        "renderImageScientific.metricCard.genericMetric",
+        "Métrica"
+      ),
+      axisTitle: humanized,
       displayKind: "number",
-    }
-  );
+    };
+  }
+
+  if (typeof t !== "function") {
+    return fallback;
+  }
+
+  return {
+    ...fallback,
+    label: localizedText(
+      t,
+      `renderImageScientific.metrics.${metric}.label`,
+      fallback.label
+    ),
+    eyebrow: localizedText(
+      t,
+      `renderImageScientific.metrics.${metric}.eyebrow`,
+      fallback.eyebrow
+    ),
+    axisTitle: localizedText(
+      t,
+      `renderImageScientific.metrics.${metric}.axisTitle`,
+      fallback.axisTitle
+    ),
+  };
 }
 
 
-function formatCompactCount(value) {
+function formatCompactCount(
+  value,
+  locale = "es-CL"
+) {
   const absolute =
     Math.abs(value);
 
   if (absolute < 1000) {
     return new Intl.NumberFormat(
-      "es-CL",
+      locale,
       {
         maximumFractionDigits: 2,
       }
@@ -3041,7 +3462,7 @@ function formatCompactCount(value) {
   }
 
   return new Intl.NumberFormat(
-    "es-CL",
+    locale,
     {
       notation: "compact",
       maximumFractionDigits: 3,
@@ -3050,7 +3471,10 @@ function formatCompactCount(value) {
 }
 
 
-function formatAdaptive(value) {
+function formatAdaptive(
+  value,
+  locale = "es-CL"
+) {
   const absolute =
     Math.abs(value);
 
@@ -3058,23 +3482,36 @@ function formatAdaptive(value) {
     absolute === 0 ||
     absolute >= 100
   ) {
-    return formatFixed(value, 2);
+    return formatFixed(
+      value,
+      2,
+      locale
+    );
   }
 
   if (absolute >= 1) {
-    return formatFixed(value, 3);
+    return formatFixed(
+      value,
+      3,
+      locale
+    );
   }
 
-  return formatFixed(value, 4);
+  return formatFixed(
+    value,
+    4,
+    locale
+  );
 }
 
 
 function formatFixed(
   value,
-  decimals
+  decimals,
+  locale = "es-CL"
 ) {
   return new Intl.NumberFormat(
-    "es-CL",
+    locale,
     {
       minimumFractionDigits: 0,
       maximumFractionDigits: decimals,
@@ -3480,7 +3917,8 @@ function countActiveFilters({
 
 
 function formatRangeLabel(
-  inputRange
+  inputRange,
+  t
 ) {
   if (
     !inputRange ||
@@ -3489,7 +3927,15 @@ function formatRangeLabel(
     return "";
   }
 
-  return `rango ${inputRange.min}–${inputRange.max}`;
+  return typeof t === "function"
+    ? t(
+        "renderImage.common.range",
+        {
+          min: inputRange.min,
+          max: inputRange.max,
+        }
+      )
+    : `rango ${inputRange.min}–${inputRange.max}`;
 }
 
 
@@ -3497,25 +3943,48 @@ function buildChartFooterText(
   aggregation,
   showDispersion,
   xScale,
-  inputRange
+  inputRange,
+  t = null
 ) {
   const parts = [
-    "Datos API",
+    localizedText(
+      t,
+      "renderImageScientific.footer.apiData",
+      "Datos API"
+    ),
     aggregation === "median"
-      ? "mediana"
-      : "media",
+      ? localizedText(
+          t,
+          "renderImageScientific.footer.median",
+          "mediana"
+        )
+      : localizedText(
+          t,
+          "renderImageScientific.footer.mean",
+          "media"
+        ),
   ];
 
   if (showDispersion) {
     parts.push(
       aggregation === "median"
         ? "Q1–Q3"
-        : "± desviación estándar"
+        : localizedText(
+            t,
+            "renderImageScientific.footer.stddev",
+            "± desviación estándar"
+          )
     );
   }
 
   if (xScale === "log") {
-    parts.push("escala log X");
+    parts.push(
+      localizedText(
+        t,
+        "renderImageScientific.footer.logScale",
+        "escala log X"
+      )
+    );
   }
 
   if (
@@ -3523,7 +3992,15 @@ function buildChartFooterText(
     inputRange.isFiltered
   ) {
     parts.push(
-      `rango ${inputRange.min}–${inputRange.max}`
+      localizedText(
+        t,
+        "renderImageScientific.footer.range",
+        `rango ${inputRange.min}–${inputRange.max}`,
+        {
+          min: inputRange.min,
+          max: inputRange.max,
+        }
+      )
     );
   }
 
@@ -3535,7 +4012,9 @@ function buildKpiItems(
   resultsData,
   aggregation,
   showDispersion,
-  inputRange
+  inputRange,
+  locale = "es-CL",
+  t = null
 ) {
   return KPI_DEFINITIONS.map(
     (definition) =>
@@ -3546,7 +4025,9 @@ function buildKpiItems(
         ],
         aggregation,
         showDispersion,
-        inputRange
+        inputRange,
+        locale,
+        t
       )
   );
 }
@@ -3557,7 +4038,9 @@ function buildKpiItem(
   metricData,
   aggregation,
   showDispersion,
-  inputRange
+  inputRange,
+  locale = "es-CL",
+  t = null
 ) {
   const points =
     metricData &&
@@ -3669,7 +4152,8 @@ function buildKpiItem(
             metric,
             point[
               aggregation
-            ]
+            ],
+            locale
           ),
         inputSize:
           maxInputSize,
@@ -3679,16 +4163,19 @@ function buildKpiItem(
               ? formatKpiIqr(
                   metric,
                   point.q1,
-                  point.q3
+                  point.q3,
+                  locale
                 )
               : formatKpiDispersion(
                   metric,
-                  point.stddev
+                  point.stddev,
+                  locale
                 )
             : "",
         sourceSummary:
           buildSingleSourceSummary(
-            point
+            point,
+            t
           ),
       }
     );
@@ -3708,16 +4195,25 @@ function buildKpiItem(
       value:
         `${formatKpiValue(
           metric,
-          min
+          min,
+          locale
         )} – ${formatKpiValue(
           metric,
-          max
+          max,
+          locale
         )}`,
       inputSize:
         maxInputSize,
       dispersion: "",
       sourceSummary:
-        `${values.length} implementaciones`,
+        typeof t === "function"
+          ? t(
+              values.length === 1
+                ? "renderImage.kpiCard.implementations.one"
+                : "renderImage.kpiCard.implementations.other",
+              { count: values.length }
+            )
+          : `${values.length} implementaciones`,
     }
   );
 }
@@ -3725,7 +4221,8 @@ function buildKpiItem(
 
 function formatKpiValue(
   metric,
-  value
+  value,
+  locale = "es-CL"
 ) {
   const numeric =
     Number(value);
@@ -3736,13 +4233,15 @@ function formatKpiValue(
 
   if (metric === "Instructions") {
     return formatScientificCount(
-      numeric
+      numeric,
+      locale
     );
   }
 
   return formatMetricValue(
     metric,
-    numeric
+    numeric,
+    locale
   );
 }
 
@@ -3750,7 +4249,8 @@ function formatKpiValue(
 function formatKpiIqr(
   metric,
   q1,
-  q3
+  q3,
+  locale = "es-CL"
 ) {
   const lower = Number(q1);
   const upper = Number(q3);
@@ -3764,17 +4264,20 @@ function formatKpiIqr(
 
   return `Q1–Q3: ${formatKpiValue(
     metric,
-    lower
+    lower,
+    locale
   )} – ${formatKpiValue(
     metric,
-    upper
+    upper,
+    locale
   )}`;
 }
 
 
 function formatKpiDispersion(
   metric,
-  stddev
+  stddev,
+  locale = "es-CL"
 ) {
   const numeric =
     Number(stddev);
@@ -3787,7 +4290,7 @@ function formatKpiDispersion(
 
   if (metric === "Instructions") {
     return `± ${new Intl.NumberFormat(
-      "es-CL",
+      locale,
       {
         maximumFractionDigits: 0,
       }
@@ -3798,13 +4301,15 @@ function formatKpiDispersion(
 
   return `± ${formatMetricValue(
     metric,
-    numeric
+    numeric,
+    locale
   )}`;
 }
 
 
 function formatScientificCount(
-  value
+  value,
+  locale = "es-CL"
 ) {
   const numeric =
     Number(value);
@@ -3818,7 +4323,7 @@ function formatScientificCount(
 
   if (absolute < 1000) {
     return new Intl.NumberFormat(
-      "es-CL",
+      locale,
       {
         maximumFractionDigits: 0,
       }
@@ -3836,7 +4341,8 @@ function formatScientificCount(
 
   return `${formatFixed(
     coefficient,
-    3
+    3,
+    locale
   )} × 10${toSuperscript(
     exponent
   )}`;
@@ -3868,7 +4374,8 @@ function toSuperscript(
 
 
 function buildSingleSourceSummary(
-  point
+  point,
+  t = null
 ) {
   const valid =
     Number(
@@ -3884,7 +4391,12 @@ function buildSingleSourceSummary(
     Number.isFinite(valid) &&
     Number.isFinite(total)
   ) {
-    return `${valid}/${total} muestras válidas`;
+    return typeof t === "function"
+      ? t(
+          "renderImage.kpiCard.validSamples",
+          { valid, total }
+        )
+      : `${valid}/${total} muestras válidas`;
   }
 
   return point.source || "";
@@ -3892,34 +4404,75 @@ function buildSingleSourceSummary(
 
 
 function getPedagogyMetricLabel(
-  metric
+  metric,
+  t = null
 ) {
   const presentation =
-    getMetricPresentation(metric);
+    getMetricPresentation(
+      metric,
+      t
+    );
 
   return (
     presentation?.label ||
     metric ||
-    "Métrica"
+    localizedText(
+      t,
+      "renderImageScientific.metricCard.genericMetric",
+      "Métrica"
+    )
   );
 }
 
 
 function getPedagogyKindLabel(
-  kind
+  kind,
+  t = null
 ) {
   const labels = {
-    snapshot: "Valor observado",
-    trend: "Tendencia",
-    observed_scaling:
+    snapshot: [
+      "renderImageScientific.pedagogy.kinds.snapshot",
+      "Valor observado",
+    ],
+    trend: [
+      "renderImageScientific.pedagogy.kinds.trend",
+      "Tendencia",
+    ],
+    observed_scaling: [
+      "renderImageScientific.pedagogy.kinds.observedScaling",
       "Escalamiento observado",
-    outliers: "Variabilidad",
-    coverage: "Cobertura",
-    limitation: "Alcance",
-    availability: "Disponibilidad",
+    ],
+    outliers: [
+      "renderImageScientific.pedagogy.kinds.outliers",
+      "Variabilidad",
+    ],
+    coverage: [
+      "renderImageScientific.pedagogy.kinds.coverage",
+      "Cobertura",
+    ],
+    limitation: [
+      "renderImageScientific.pedagogy.kinds.limitation",
+      "Alcance",
+    ],
+    availability: [
+      "renderImageScientific.pedagogy.kinds.availability",
+      "Disponibilidad",
+    ],
   };
 
-  return labels[kind] || "Análisis";
+  const entry = labels[kind];
+
+  return entry
+    ? localizedText(
+        t,
+        entry[0],
+        entry[1]
+      )
+    : localizedText(
+        t,
+        "renderImageScientific.pedagogy.kinds.analysis",
+        "Análisis"
+      );
 }
 
 
@@ -3941,13 +4494,18 @@ function getPedagogyPriorityWeight(
 }
 
 
-function getTaskLabel(taskType) {
+function getTaskLabel(
+  taskType,
+  t = null
+) {
   const task =
     String(taskType || "")
       .toUpperCase();
 
   if (task === "LCS") {
-    return "Entrada de texto";
+    return typeof t === "function"
+      ? t("renderImage.metadata.tasks.lcs")
+      : "Entrada de texto";
   }
 
   if (
@@ -3956,11 +4514,15 @@ function getTaskLabel(taskType) {
     task === "CAMMS" ||
     task === "CAMMSO"
   ) {
-    return "Datos numéricos";
+    return typeof t === "function"
+      ? t("renderImage.metadata.tasks.numeric")
+      : "Datos numéricos";
   }
 
   if (task === "SIZE") {
-    return "Tamaño parametrizado";
+    return typeof t === "function"
+      ? t("renderImage.metadata.tasks.size")
+      : "Tamaño parametrizado";
   }
 
   return taskType || "—";

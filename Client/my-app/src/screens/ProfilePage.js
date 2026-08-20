@@ -18,9 +18,15 @@ import {
   XCircle,
 } from "lucide-react";
 import { requestJson } from "../common/requestErrorModel";
+import { translate, useI18n } from "../i18n";
+import {
+  formatAcademicPeriod,
+  formatDateTime,
+  formatDuration,
+} from "../i18n/formatters";
 import "./ProfilePage.css";
 
-const formatRole = (role) => {
+const formatRole = (role, t) => {
   const normalized = String(role ?? "").trim().toLowerCase();
 
   if (
@@ -28,51 +34,54 @@ const formatRole = (role) => {
     normalized === "administrator" ||
     normalized === "administrador"
   ) {
-    return "Administrador";
+    return t("profile.roles.admin");
   }
 
-  if (normalized === "student" || normalized === "estudiante") {
-    return "Estudiante";
+  if (
+    normalized === "teacher" ||
+    normalized === "professor" ||
+    normalized === "profesor"
+  ) {
+    return t("profile.roles.teacher");
   }
 
-  return role || "Usuario";
+  if (
+    normalized === "student" ||
+    normalized === "estudiante"
+  ) {
+    return t("profile.roles.student");
+  }
+
+  return t("profile.roles.user");
 };
 
-const formatDateTime = (value) => {
-  if (!value) return "Sin registro";
+const formatExecutionState = (state, t) => {
+  const normalized = String(state || "").trim().toUpperCase();
+  const keys = {
+    QUEUED: "profile.executionStates.queued",
+    RUNNING: "profile.executionStates.running",
+    PROCESSING: "profile.executionStates.processing",
+    COMPLETED: "profile.executionStates.completed",
+    FAILED: "profile.executionStates.failed",
+    CANCELLED: "profile.executionStates.cancelled",
+  };
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Sin registro";
+  if (!normalized) return t("profile.executionStates.none");
 
-  return new Intl.DateTimeFormat("es-CL", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return t(
+    keys[normalized] ||
+      "profile.executionStates.unavailable"
+  );
 };
 
-const formatDuration = (milliseconds) => {
-  const value = Number(milliseconds);
+const localizedErrorText = (error, language, t) => {
+  if (!error) return "";
 
-  if (!Number.isFinite(value) || value < 0) return "Sin datos";
-  if (value < 1000) return `${Math.round(value)} ms`;
+  if (language === "es" && error.rawText) {
+    return error.rawText;
+  }
 
-  const seconds = value / 1000;
-  if (seconds < 60) return `${seconds.toFixed(1)} s`;
-
-  const minutes = Math.floor(seconds / 60);
-  const remainingSeconds = Math.round(seconds % 60);
-
-  return `${minutes} min ${remainingSeconds} s`;
-};
-
-const formatAcademicPeriod = (course) => {
-  const year = String(course?.academicYear ?? "").trim();
-  const term = String(course?.academicTerm ?? "").trim();
-
-  if (!year && !term) return "Período no disponible";
-  if (year && term) return `${year} · Semestre ${term}`;
-  if (year) return year;
-  return `Semestre ${term}`;
+  return t(error.key);
 };
 
 const getInitials = (fullName, email) => {
@@ -112,14 +121,17 @@ const ProfileMetricCard = ({
   </article>
 );
 
-const ProfileCourseCard = ({ course }) => {
+const ProfileCourseCard = ({ course, locale, t }) => {
   const courseId = String(course?.id ?? "").trim();
-  const courseCode = String(course?.code || "").trim() || "Curso";
+  const courseCode =
+    String(course?.code || "").trim() ||
+    t("profile.courseFallback");
   const courseName =
-    String(course?.name || "").trim() || "Curso sin nombre";
+    String(course?.name || "").trim() ||
+    t("profile.unnamedCourse");
   const teacherName =
     String(course?.teacher?.fullName || "").trim() ||
-    "Profesor no disponible";
+    t("profile.teacherUnavailable");
   const analysisPath = courseId
     ? `/?course=${encodeURIComponent(courseId)}`
     : "/";
@@ -139,17 +151,22 @@ const ProfileCourseCard = ({ course }) => {
 
       <div className="profile-course-card__metadata">
         <div>
-          <span>Período</span>
-          <strong>{formatAcademicPeriod(course)}</strong>
+          <span>{t("profile.period")}</span>
+          <strong>
+            {formatAcademicPeriod(course, {
+              semesterLabel: t("profile.semester"),
+              fallback: t("profile.noPeriod"),
+            })}
+          </strong>
         </div>
         <div>
-          <span>Profesor</span>
+          <span>{t("profile.professor")}</span>
           <strong>{teacherName}</strong>
         </div>
       </div>
 
       <Link to={analysisPath} className="profile-course-card__action">
-        Nuevo análisis en este curso
+        {t("profile.newAnalysisInCourse")}
         <ArrowRight size={16} aria-hidden="true" />
       </Link>
     </article>
@@ -157,22 +174,23 @@ const ProfileCourseCard = ({ course }) => {
 };
 
 const ProfilePage = () => {
+  const { language, locale, t } = useI18n();
   const [data, setData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(null);
   const [courses, setCourses] = useState([]);
   const [coursesLoading, setCoursesLoading] = useState(true);
-  const [coursesError, setCoursesError] = useState("");
+  const [coursesError, setCoursesError] = useState(null);
 
   const loadProfile = useCallback(async () => {
     setIsLoading(true);
-    setError("");
+    setError(null);
 
     try {
       const body = await requestJson(
         "/api/profile",
         { credentials: "include" },
-        { fallback: "No fue posible cargar tu perfil." }
+        { fallback: translate("es", "profile.errors.load") }
       );
 
       if (
@@ -181,13 +199,21 @@ const ProfilePage = () => {
         !body.profile ||
         !body.summary
       ) {
-        throw new Error("El servidor devolvió un perfil incompleto.");
+        setData(null);
+        setError({
+          key: "profile.errors.incomplete",
+          rawText: "",
+        });
+        return;
       }
 
       setData(body);
     } catch (loadError) {
       console.error("Error cargando /api/profile:", loadError);
-      setError(loadError?.message || "No fue posible cargar tu perfil.");
+      setError({
+        key: "profile.errors.load",
+        rawText: loadError?.message || "",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -195,13 +221,13 @@ const ProfilePage = () => {
 
   const loadCourses = useCallback(async () => {
     setCoursesLoading(true);
-    setCoursesError("");
+    setCoursesError(null);
 
     try {
       const body = await requestJson(
         "/api/student/courses",
         { credentials: "include" },
-        { fallback: "No fue posible cargar tus cursos activos." }
+        { fallback: translate("es", "profile.errors.courses") }
       );
 
       setCourses(
@@ -212,9 +238,10 @@ const ProfilePage = () => {
     } catch (loadError) {
       console.error("Error cargando /api/student/courses:", loadError);
       setCourses([]);
-      setCoursesError(
-        loadError?.message || "No fue posible cargar tus cursos activos."
-      );
+      setCoursesError({
+        key: "profile.errors.courses",
+        rawText: loadError?.message || "",
+      });
     } finally {
       setCoursesLoading(false);
     }
@@ -224,6 +251,9 @@ const ProfilePage = () => {
     loadProfile();
     loadCourses();
   }, [loadProfile, loadCourses]);
+
+  const profileErrorText = localizedErrorText(error, language, t);
+  const coursesErrorText = localizedErrorText(coursesError, language, t);
 
   const profile = data?.profile ?? {};
   const summary = data?.summary ?? {};
@@ -257,8 +287,8 @@ const ProfilePage = () => {
             <div className="profile-loading" role="status" aria-live="polite">
               <RefreshCw size={22} className="profile-loading__icon" />
               <div>
-                <strong>Cargando tu perfil</strong>
-                <span>Consultando actividad y resumen de ejecuciones.</span>
+                <strong>{t("profile.loadingTitle")}</strong>
+                <span>{t("profile.loadingText")}</span>
               </div>
             </div>
           </div>
@@ -276,9 +306,9 @@ const ProfilePage = () => {
               <XCircle size={28} strokeWidth={1.8} />
 
               <div>
-                <span className="profile-eyebrow">Mi perfil</span>
-                <h1>No pudimos cargar tu información</h1>
-                <p>{error}</p>
+                <span className="profile-eyebrow">{t("profile.eyebrow")}</span>
+                <h1>{t("profile.loadErrorTitle")}</h1>
+                <p>{profileErrorText}</p>
 
                 <button
                   type="button"
@@ -286,7 +316,7 @@ const ProfilePage = () => {
                   onClick={loadProfile}
                 >
                   <RefreshCw size={17} />
-                  Reintentar
+                  {t("profile.retry")}
                 </button>
               </div>
             </section>
@@ -302,17 +332,14 @@ const ProfilePage = () => {
         <div className="profile-container">
           <header className="profile-header">
             <div>
-              <span className="profile-eyebrow">Cuenta personal</span>
-              <h1>Mi perfil</h1>
-              <p>
-                Revisa tu identidad institucional y un resumen de la actividad
-                registrada en Performance System.
-              </p>
+              <span className="profile-eyebrow">{t("profile.accountEyebrow")}</span>
+              <h1>{t("profile.title")}</h1>
+              <p>{t("profile.description")}</p>
             </div>
 
             <Link to="/" className="profile-button profile-button--primary">
               <PlayCircle size={18} />
-              Nuevo análisis
+              {t("profile.newAnalysis")}
             </Link>
           </header>
 
@@ -322,18 +349,18 @@ const ProfilePage = () => {
             <div className="profile-identity-card__body">
               <div className="profile-identity-card__heading">
                 <div>
-                  <h2>{profile.full_name || "Usuario"}</h2>
+                  <h2>{profile.full_name || t("profile.roles.user")}</h2>
 
                   <span className="profile-email">
                     <Mail size={16} />
-                    {profile.email || "Sin correo registrado"}
+                    {profile.email || t("profile.noEmail")}
                   </span>
                 </div>
 
                 <div className="profile-badges">
                   <span className="profile-badge profile-badge--role">
                     <ShieldCheck size={15} />
-                    {formatRole(profile.role)}
+                    {formatRole(profile.role, t)}
                   </span>
 
                   <span
@@ -344,8 +371,9 @@ const ProfilePage = () => {
                     }
                   >
                     <span className="profile-badge__dot" />
-                    {profile.statusLabel ||
-                      (profile.isActive ? "Activo" : "Inactivo")}
+                    {profile.isActive
+                      ? t("profile.accountStatus.active")
+                      : t("profile.accountStatus.inactive")}
                   </span>
                 </div>
               </div>
@@ -353,20 +381,20 @@ const ProfilePage = () => {
               <div className="profile-account-grid">
                 <div>
                   <CalendarDays size={18} />
-                  <span>Cuenta creada</span>
-                  <strong>{formatDateTime(profile.createdAt)}</strong>
+                  <span>{t("profile.accountCreated")}</span>
+                  <strong>{formatDateTime(profile.createdAt, locale, t("profile.noRecord"))}</strong>
                 </div>
 
                 <div>
                   <LogIn size={18} />
-                  <span>Última sesión</span>
-                  <strong>{formatDateTime(profile.lastLogin)}</strong>
+                  <span>{t("profile.lastSession")}</span>
+                  <strong>{formatDateTime(profile.lastLogin, locale, t("profile.noRecord"))}</strong>
                 </div>
 
                 <div>
                   <Activity size={18} />
-                  <span>Última ejecución</span>
-                  <strong>{formatDateTime(summary.lastExecutionAt)}</strong>
+                  <span>{t("profile.lastExecution")}</span>
+                  <strong>{formatDateTime(summary.lastExecutionAt, locale, t("profile.noRecord"))}</strong>
                 </div>
               </div>
             </div>
@@ -378,13 +406,11 @@ const ProfilePage = () => {
           >
             <div className="profile-section-heading">
               <div>
-                <span className="profile-eyebrow">Contexto académico</span>
-                <h2 id="profile-courses-title">Mis cursos</h2>
+                <span className="profile-eyebrow">{t("profile.academicContext")}</span>
+                <h2 id="profile-courses-title">{t("profile.coursesTitle")}</h2>
               </div>
 
-              <p>
-                Cursos activos en los que puedes asociar nuevos experimentos.
-              </p>
+              <p>{t("profile.coursesDescription")}</p>
             </div>
 
             {coursesLoading ? (
@@ -399,23 +425,23 @@ const ProfilePage = () => {
                   aria-hidden="true"
                 />
                 <div>
-                  <strong>Cargando tus cursos</strong>
-                  <p>Consultando tu contexto académico activo.</p>
+                  <strong>{t("profile.coursesLoadingTitle")}</strong>
+                  <p>{t("profile.coursesLoadingText")}</p>
                 </div>
               </div>
             ) : coursesError ? (
               <div className="profile-courses-state profile-courses-state--error">
                 <XCircle size={22} strokeWidth={1.8} aria-hidden="true" />
                 <div>
-                  <strong>No pudimos cargar tus cursos</strong>
-                  <p>{coursesError}</p>
+                  <strong>{t("profile.coursesLoadErrorTitle")}</strong>
+                  <p>{coursesErrorText}</p>
                   <button
                     type="button"
                     className="profile-button profile-button--primary"
                     onClick={loadCourses}
                   >
                     <RefreshCw size={16} aria-hidden="true" />
-                    Reintentar cursos
+                    {t("profile.retryCourses")}
                   </button>
                 </div>
               </div>
@@ -423,13 +449,10 @@ const ProfilePage = () => {
               <div className="profile-courses-state">
                 <GraduationCap size={24} strokeWidth={1.8} aria-hidden="true" />
                 <div>
-                  <strong>Actualmente no tienes cursos activos.</strong>
-                  <p>
-                    Puedes realizar un análisis personal sin asociarlo a un
-                    curso.
-                  </p>
+                  <strong>{t("profile.noCoursesTitle")}</strong>
+                  <p>{t("profile.noCoursesText")}</p>
                   <Link to="/" className="profile-inline-link">
-                    Iniciar análisis personal
+                    {t("profile.startPersonalAnalysis")}
                     <ArrowRight size={16} aria-hidden="true" />
                   </Link>
                 </div>
@@ -437,7 +460,12 @@ const ProfilePage = () => {
             ) : (
               <div className="profile-courses-grid">
                 {courses.map((course) => (
-                  <ProfileCourseCard key={course.id} course={course} />
+                  <ProfileCourseCard
+                    key={course.id}
+                    course={course}
+                    locale={locale}
+                    t={t}
+                  />
                 ))}
               </div>
             )}
@@ -446,44 +474,41 @@ const ProfilePage = () => {
           <section className="profile-section">
             <div className="profile-section-heading">
               <div>
-                <span className="profile-eyebrow">Actividad</span>
-                <h2>Resumen de uso</h2>
+                <span className="profile-eyebrow">{t("profile.activity")}</span>
+                <h2>{t("profile.usageSummary")}</h2>
               </div>
 
-              <p>
-                Las cifras se calculan desde tus submissions y ejecuciones
-                persistidas.
-              </p>
+              <p>{t("profile.usageDescription")}</p>
             </div>
 
             <div className="profile-metrics-grid">
               <ProfileMetricCard
                 icon={UploadCloud}
-                label="Submissions"
+                label={t("profile.metrics.submissions")}
                 value={summary.submissionsCount || 0}
-                hint="Envíos registrados"
+                hint={t("profile.metrics.submissionsHint")}
               />
 
               <ProfileMetricCard
                 icon={Activity}
-                label="Ejecuciones"
+                label={t("profile.metrics.executions")}
                 value={summary.executionsCount || 0}
-                hint="Ejecuciones totales"
+                hint={t("profile.metrics.executionsHint")}
               />
 
               <ProfileMetricCard
                 icon={CheckCircle2}
-                label="Completadas"
+                label={t("profile.metrics.completed")}
                 value={summary.completedExecutions || 0}
-                hint="Con procesamiento finalizado"
+                hint={t("profile.metrics.completedHint")}
                 tone="success"
               />
 
               <ProfileMetricCard
                 icon={XCircle}
-                label="Fallidas"
+                label={t("profile.metrics.failed")}
                 value={summary.failedExecutions || 0}
-                hint="Con fallo registrado"
+                hint={t("profile.metrics.failedHint")}
                 tone="danger"
               />
             </div>
@@ -494,30 +519,30 @@ const ProfilePage = () => {
               <div className="profile-panel__title">
                 <Gauge size={20} />
                 <div>
-                  <span className="profile-eyebrow">Ejecuciones</span>
-                  <h2>Estado actual</h2>
+                  <span className="profile-eyebrow">{t("profile.executionsEyebrow")}</span>
+                  <h2>{t("profile.currentState")}</h2>
                 </div>
               </div>
 
               <div className="profile-state-list">
                 <div>
-                  <span>En curso</span>
+                  <span>{t("profile.active")}</span>
                   <strong>{activeExecutions}</strong>
                 </div>
                 <div>
-                  <span>En cola</span>
+                  <span>{t("profile.queued")}</span>
                   <strong>{summary.queuedExecutions || 0}</strong>
                 </div>
                 <div>
-                  <span>En ejecución</span>
+                  <span>{t("profile.running")}</span>
                   <strong>{summary.runningExecutions || 0}</strong>
                 </div>
                 <div>
-                  <span>Procesando</span>
+                  <span>{t("profile.processing")}</span>
                   <strong>{summary.processingExecutions || 0}</strong>
                 </div>
                 <div>
-                  <span>Canceladas</span>
+                  <span>{t("profile.cancelled")}</span>
                   <strong>{summary.cancelledExecutions || 0}</strong>
                 </div>
               </div>
@@ -527,27 +552,27 @@ const ProfilePage = () => {
               <div className="profile-panel__title">
                 <Clock3 size={20} />
                 <div>
-                  <span className="profile-eyebrow">Última actividad</span>
-                  <h2>Ejecución más reciente</h2>
+                  <span className="profile-eyebrow">{t("profile.latestActivity")}</span>
+                  <h2>{t("profile.latestExecution")}</h2>
                 </div>
               </div>
 
               <div className="profile-last-execution">
                 <div>
-                  <span>Estado</span>
+                  <span>{t("profile.status")}</span>
                   <strong>
-                    {summary.lastExecutionStatus || "Sin ejecuciones"}
+                    {formatExecutionState(summary.lastExecutionState, t)}
                   </strong>
                 </div>
 
                 <div>
-                  <span>Fecha</span>
-                  <strong>{formatDateTime(summary.lastExecutionAt)}</strong>
+                  <span>{t("profile.date")}</span>
+                  <strong>{formatDateTime(summary.lastExecutionAt, locale, t("profile.noRecord"))}</strong>
                 </div>
 
                 <div>
-                  <span>Duración media</span>
-                  <strong>{formatDuration(summary.avgDurationMs)}</strong>
+                  <span>{t("profile.averageDuration")}</span>
+                  <strong>{formatDuration(summary.avgDurationMs, locale, t("profile.noData"))}</strong>
                 </div>
               </div>
 
@@ -559,7 +584,7 @@ const ProfilePage = () => {
                     )}`}
                     className="profile-inline-link"
                   >
-                    Ver experimento
+                    {t("profile.viewExperiment")}
                     <ArrowRight size={16} />
                   </Link>
                 )}
@@ -569,13 +594,13 @@ const ProfilePage = () => {
                     to={`/code/${summary.lastExecutionCodename}`}
                     className="profile-inline-link"
                   >
-                    Ver último resultado
+                    {t("profile.viewLastResult")}
                     <ArrowRight size={16} />
                   </Link>
                 )}
 
                 <Link to="/history" className="profile-inline-link">
-                  Ver historial completo
+                  {t("profile.viewFullHistory")}
                   <ArrowRight size={16} />
                 </Link>
               </div>
@@ -583,8 +608,8 @@ const ProfilePage = () => {
               {!canOpenLastSubmission && !canOpenLastResult && (
                 <span className="profile-inline-note">
                   {summary.executionsCount
-                    ? "La ejecución más reciente todavía no tiene un resultado final disponible."
-                    : "Cuando completes tu primer análisis, aquí aparecerá su estado."}
+                    ? t("profile.noFinalResult")
+                    : t("profile.firstAnalysisState")}
                 </span>
               )}
             </article>
@@ -593,11 +618,8 @@ const ProfilePage = () => {
           <section className="profile-footnote">
             <UserRound size={19} />
             <div>
-              <strong>Datos institucionales</strong>
-              <p>
-                El nombre, correo y rol mostrados provienen de tu cuenta
-                registrada en el sistema. No se editan desde esta pantalla.
-              </p>
+              <strong>{t("profile.institutionalData")}</strong>
+              <p>{t("profile.institutionalDataText")}</p>
             </div>
           </section>
         </div>

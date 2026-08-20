@@ -1,10 +1,26 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { requestJson } from "../common/requestErrorModel";
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 import "./Login.css";
+
+const AUTH_MESSAGE_KEYS = {
+  INVALID_OAUTH_STATE: "login.auth.invalidOauthState",
+  GOOGLE_AUTH_ERROR: "login.auth.googleAuthError",
+  MISSING_AUTH_CODE: "login.auth.missingAuthCode",
+  MISSING_ID_TOKEN: "login.auth.missingIdToken",
+  EXTERNAL_DOMAIN: "login.auth.externalDomain",
+  ACCESS_REQUIRED: "login.auth.accessRequired",
+  ACCESS_PENDING: "login.auth.accessPending",
+  ACCOUNT_DISABLED: "login.auth.accountDisabled",
+  ACCESS_DENIED: "login.auth.accessDenied",
+  LOGIN_ERROR: "login.auth.generic",
+};
 
 const Login = () => {
   const [searchParams] = useSearchParams();
+  const { language, t } = useI18n();
 
   // Estado para el botón de Google
   const [googleLoading, setGoogleLoading] = useState(false);
@@ -30,8 +46,7 @@ const Login = () => {
 
     const code = searchParams.get("auth_code") || "LOGIN_ERROR";
     const message =
-      searchParams.get("auth_message") ||
-      "No fue posible completar el inicio de sesión.";
+      searchParams.get("auth_message") || "";
     const email = (searchParams.get("auth_email") || "").trim();
 
     const informationalCodes = new Set([
@@ -41,7 +56,8 @@ const Login = () => {
 
     setAuthFeedback({
       type: informationalCodes.has(code) ? "info" : "error",
-      text: message,
+      code,
+      message,
     });
 
     if (
@@ -86,20 +102,19 @@ const Login = () => {
     const errors = {};
 
     if (!fullName.trim()) {
-      errors.fullName = "El nombre completo es obligatorio.";
+      errors.fullName = "login.validation.fullNameRequired";
     }
 
     if (!requestEmail.trim()) {
-      errors.requestEmail = "El correo institucional es obligatorio.";
+      errors.requestEmail = "login.validation.emailRequired";
     } else if (!requestEmail.endsWith("@udec.cl")) {
-      errors.requestEmail =
-        "Este formulario es solo para correos institucionales @udec.cl.";
+      errors.requestEmail = "login.validation.emailDomain";
     }
 
     if (!professorEmail.trim()) {
-      errors.professorEmail = "Debe indicar el correo del profesor responsable.";
+      errors.professorEmail = "login.validation.professorRequired";
     } else if (!professorEmail.includes("@")) {
-      errors.professorEmail = "El correo del profesor no parece ser válido.";
+      errors.professorEmail = "login.validation.professorInvalid";
     }
 
     setRequestErrors(errors);
@@ -134,8 +149,7 @@ const Login = () => {
           }),
         },
         {
-          fallback:
-            "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
+          fallback: t("login.request.error"),
         }
       );
 
@@ -149,26 +163,54 @@ const Login = () => {
 
       setRequestFeedback({
         type: "success",
-        text:
-          "Solicitud enviada correctamente. " +
-          "Cuando tu cuenta sea aprobada, podrás ingresar usando 'Continuar con Google' con el mismo correo @udec.cl.",
+        key: "login.request.success",
       });
     } catch (err) {
       const apiError = err?.payload?.error;
+      let key = "login.request.error";
+
+      if (apiError?.status === "PENDING") {
+        key = "login.request.pending";
+      } else if (apiError?.field === "email") {
+        key = "login.request.emailRejected";
+      } else if (apiError?.field === "professor_email") {
+        key = "login.request.professorRejected";
+      }
+
       setRequestFeedback({
         type: apiError?.status === "PENDING" ? "info" : "error",
-        text:
-          err?.message ||
-          "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
+        key,
+        rawText: err?.message || "",
       });
     } finally {
       setRequestSubmitting(false);
     }
   };
 
+  const authFeedbackText = authFeedback
+    ? (
+        AUTH_MESSAGE_KEYS[authFeedback.code]
+          ? t(AUTH_MESSAGE_KEYS[authFeedback.code])
+          : (
+              language === "es" && authFeedback.message
+                ? authFeedback.message
+                : t("login.auth.generic")
+            )
+      )
+    : "";
+
+  const requestFeedbackText = requestFeedback
+    ? (
+        language === "es" && requestFeedback.rawText
+          ? requestFeedback.rawText
+          : t(requestFeedback.key || "login.request.error")
+      )
+    : "";
+
   return (
     <div className="login-page">
       <div className="login-overlay" />
+      <LanguageSwitcher variant="login" />
 
       <div className="login-layout">
         {/* Panel de marca / explicación */}
@@ -176,48 +218,50 @@ const Login = () => {
           <div className="login-brand">
             <img
               src="/iconSP.png"
-              alt="Logo Performance System"
+              alt={t("login.logoAlt")}
               className="login-logo"
             />
             <h1 className="login-brand-title">Performance System</h1>
             <p className="login-brand-subtitle">
-              Plataforma para medir y analizar el rendimiento de código C++
-              usando métricas de hardware reales.
+              {t("login.brandSubtitle")}
             </p>
           </div>
 
           <ul className="login-highlights">
             <li>
-              Análisis de rendimiento para{" "}
-              <strong>LCS, CAMM y SIZE</strong>.
+              {t("login.highlights.analysisLead")}{" "}
+              <strong>{t("login.highlights.benchmarks")}</strong>.
             </li>
             <li>
-              Métricas avanzadas:{" "}
-              <strong>IPC, caché, energía, ciclos</strong>.
+              {t("login.highlights.metricsLead")}{" "}
+              <strong>{t("login.highlights.metrics")}</strong>.
             </li>
             <li>
-              Integración con cuentas institucionales{" "}
-              <strong>@inf.udec.cl y @udec.cl*</strong>.
+              {t("login.highlights.integrationLead")}{" "}
+              <strong>{t("login.highlights.accounts")}</strong>.
             </li>
           </ul>
 
           <p className="login-note">
-            El acceso estándar es con tu correo{" "}
-            <strong>@inf.udec.cl</strong>. Si perteneces a otra carrera de la
-            UdeC, puedes solicitar acceso con tu correo{" "}
-            <strong>@udec.cl</strong> usando el formulario de esta página.
+            {t("login.note.standardLead")}{" "}
+            <strong>@inf.udec.cl</strong>.{" "}
+            {t("login.note.otherLead")}{" "}
+            <strong>@udec.cl</strong>{" "}
+            {t("login.note.formSuffix")}
           </p>
         </section>
 
         {/* Panel de login */}
         <section className="login-card">
           <header className="login-header">
-            <h2 className="login-title">Acceso institucional</h2>
+            <h2 className="login-title">{t("login.title")}</h2>
             <p className="login-subtitle">
-              Ingresa con tu cuenta institucional:
+              {t("login.subtitle.lead")}
               <br />
-              <strong>@inf.udec.cl</strong> (acceso directo) o{" "}
-              <strong>@udec.cl</strong> (previa aprobación).
+              <strong>@inf.udec.cl</strong>{" "}
+              {t("login.subtitle.direct")}{" "}
+              <strong>@udec.cl</strong>{" "}
+              {t("login.subtitle.approval")}
             </p>
           </header>
 
@@ -230,7 +274,7 @@ const Login = () => {
               }`}
               role="status"
             >
-              {authFeedback.text}
+              {authFeedbackText}
             </div>
           )}
 
@@ -245,15 +289,16 @@ const Login = () => {
               <span className="login-google-icon">G</span>
               <span>
                 {googleLoading
-                  ? "Redirigiendo a Google..."
-                  : "Continuar con Google"}
+                  ? t("login.google.redirecting")
+                  : t("login.google.continue")}
               </span>
             </button>
             <p className="login-oauth-hint">
-              Se utilizará tu cuenta institucional para autenticarte de forma
-              segura. Si tu correo pertenece a <strong>@inf.udec.cl</strong>, el
-              acceso es inmediato. Si usas <strong>@udec.cl</strong>, primero
-              debes solicitar acceso y esperar la aprobación.
+              {t("login.google.hintLead")}{" "}
+              <strong>@inf.udec.cl</strong>,{" "}
+              {t("login.google.hintImmediate")}{" "}
+              <strong>@udec.cl</strong>,{" "}
+              {t("login.google.hintRequest")}
             </p>
           </div>
 
@@ -261,7 +306,7 @@ const Login = () => {
           <div className="login-divider">
             <span className="login-divider-line" />
             <span className="login-divider-label">
-              Solicitud de acceso (correo @udec.cl)
+              {t("login.accessRequestDivider")}
             </span>
             <span className="login-divider-line" />
           </div>
@@ -277,7 +322,7 @@ const Login = () => {
                     : "login-alert--error"
               }`}
             >
-              {requestFeedback.text}
+              {requestFeedbackText}
             </div>
           )}
 
@@ -291,7 +336,7 @@ const Login = () => {
             {/* Fila 1: Nombre completo | Correo UdeC */}
             <div className="login-field login-field--half">
               <label htmlFor="fullName" className="login-label">
-                Nombre completo
+                {t("login.fields.fullName")}
               </label>
               <input
                 id="fullName"
@@ -302,18 +347,18 @@ const Login = () => {
                 className={`login-input ${
                   requestErrors.fullName ? "login-input--error" : ""
                 }`}
-                placeholder="Nombre Apellido"
+                placeholder={t("login.fields.fullNamePlaceholder")}
               />
               {requestErrors.fullName && (
                 <span className="login-error-text">
-                  {requestErrors.fullName}
+                  {t(requestErrors.fullName)}
                 </span>
               )}
             </div>
 
             <div className="login-field login-field--half">
               <label htmlFor="requestEmail" className="login-label">
-                Correo institucional UdeC
+                {t("login.fields.institutionalEmail")}
               </label>
               <input
                 id="requestEmail"
@@ -327,7 +372,7 @@ const Login = () => {
               />
               {requestErrors.requestEmail && (
                 <span className="login-error-text">
-                  {requestErrors.requestEmail}
+                  {t(requestErrors.requestEmail)}
                 </span>
               )}
             </div>
@@ -335,7 +380,7 @@ const Login = () => {
             {/* Fila 2: Correo profesor | Curso */}
             <div className="login-field login-field--half">
               <label htmlFor="professorEmail" className="login-label">
-                Correo del profesor responsable
+                {t("login.fields.professorEmail")}
               </label>
               <input
                 id="professorEmail"
@@ -349,15 +394,17 @@ const Login = () => {
               />
               {requestErrors.professorEmail && (
                 <span className="login-error-text">
-                  {requestErrors.professorEmail}
+                  {t(requestErrors.professorEmail)}
                 </span>
               )}
             </div>
 
             <div className="login-field login-field--half">
               <label htmlFor="courseCode" className="login-label">
-                Curso / Asignatura{" "}
-                <span className="login-label-optional">opcional</span>
+                {t("login.fields.course")}{" "}
+                <span className="login-label-optional">
+                  {t("login.fields.optional")}
+                </span>
               </label>
               <input
                 id="courseCode"
@@ -365,32 +412,34 @@ const Login = () => {
                 value={courseCode}
                 onChange={(e) => setCourseCode(e.target.value)}
                 className="login-input"
-                placeholder="Ej: INF-253 Estructuras de Datos"
+                placeholder={t("login.fields.coursePlaceholder")}
               />
             </div>
 
             {/* Fila 3: Comentario ancho completo */}
             <div className="login-field login-field--full">
               <label htmlFor="message" className="login-label">
-                Comentario{" "}
-                <span className="login-label-optional">opcional</span>
+                {t("login.fields.comment")}{" "}
+                <span className="login-label-optional">
+                  {t("login.fields.optional")}
+                </span>
               </label>
               <textarea
                 id="message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 className="login-input login-input--textarea"
-                placeholder="Explica brevemente por qué necesitas acceso (2–3 líneas)."
+                placeholder={t("login.fields.commentPlaceholder")}
                 rows={3}
               />
             </div>
 
             <div className="login-meta login-field--full">
               <span className="login-meta-text">
-                Al enviar esta solicitud, un administrador revisará tu caso. Si
-                es aprobada, recibirás un correo de confirmación y podrás
-                ingresar usando <strong>'Continuar con Google'</strong> con el
-                mismo correo <strong>@udec.cl</strong>.
+                {t("login.request.metaLead")}{" "}
+                <strong>'{t("login.google.continue")}'</strong>{" "}
+                {t("login.request.metaSuffix")}{" "}
+                <strong>@udec.cl</strong>.
               </span>
             </div>
 
@@ -401,17 +450,16 @@ const Login = () => {
                 disabled={requestSubmitting}
               >
                 {requestSubmitting
-                  ? "Enviando solicitud..."
-                  : "Enviar solicitud de acceso"}
+                  ? t("login.request.submitting")
+                  : t("login.request.submit")}
               </button>
             </div>
           </form>
 
           <footer className="login-footer">
             <p className="login-footer-text">
-              ¿Problemas para acceder? Contacta al docente responsable del ramo
-              o al administrador del laboratorio{" "}
-              <strong>(ej: josefuentes@inf.udec.cl)</strong>.
+              {t("login.footer.lead")}{" "}
+              <strong>{t("login.footer.example")}</strong>
             </p>
           </footer>
         </section>

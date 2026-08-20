@@ -297,8 +297,8 @@ describe("SubmissionOverviewPage", () => {
     [
       "Admin",
       ADMIN_USER,
-      "Usuarios",
-      "/admin/users",
+      "CC4102 · Diseño y Análisis de Algoritmos",
+      "/teacher/courses/9",
     ],
   ])(
     "builds the %s breadcrumb from currentUser and canonical Submission data",

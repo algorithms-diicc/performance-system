@@ -14,84 +14,215 @@ import {
 import "./AdminUserDetail.css";
 
 import {
-  EXECUTION_STATE_OPTIONS,
+  useI18n,
+} from "../i18n";
+import {
+  formatDateTime as formatLocalizedDateTime,
+} from "../i18n/formatters";
+
+import {
+  adminAccountStatusBadgeClass,
+  adminAccountStatusLabel,
+  adminRoleLabel,
   executionStateBadgeClass,
-  executionStateLabel,
+  localizedExecutionStateLabel,
+  localizedExecutionStateOptions,
 } from "./adminExecutionStateModel";
+
 
 const PAGE_SIZE = 15;
 
-const dateTimeFormatter = new Intl.DateTimeFormat("es-CL", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
-async function fetchJson(url, options = {}) {
+async function fetchJson(
+  url,
+  options = {}
+) {
   return requestJson(
     url,
     {
-      credentials: "include",
+      credentials:
+        "include",
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type":
+          "application/json",
         ...(options.headers || {}),
       },
       ...options,
     },
     {
-      fallback: "No fue posible completar la operación solicitada.",
+      fallback:
+        "No fue posible completar la operación solicitada.",
     }
   );
 }
 
-function formatDateTime(value) {
-  if (!value) return "—";
 
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return "—";
-
-  return dateTimeFormatter.format(parsed);
-}
-
-function formatDuration(value) {
-  if (value === null || value === undefined) return "—";
-
-  const numeric = Number(value);
-  if (!Number.isFinite(numeric)) return "—";
-
-  if (numeric < 1000) {
-    return `${Math.round(numeric)} ms`;
-  }
-
-  return `${(numeric / 1000).toFixed(2)} s`;
-}
-
-function initials(name) {
-  const parts = String(name || "")
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean);
-
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-
-  return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-}
-
-function userStatusClass(status) {
-  return status === "Activo"
-    ? "app-status-badge--success"
-    : "app-status-badge--warning";
-}
-
-function activeExecutions(summary) {
-  return (
-    (summary?.queuedExecutions || 0) +
-    (summary?.runningExecutions || 0) +
-    (summary?.processingExecutions || 0)
+function formatDateTime(
+  value,
+  locale = "es-CL",
+  fallback = "—"
+) {
+  return formatLocalizedDateTime(
+    value,
+    locale,
+    fallback
   );
 }
+
+
+function formatDuration(
+  value,
+  locale = "es-CL",
+  fallback = "—"
+) {
+  if (
+    value === null
+    || value === undefined
+  ) {
+    return fallback;
+  }
+
+  const numeric =
+    Number(value);
+
+  if (
+    !Number.isFinite(
+      numeric
+    )
+  ) {
+    return fallback;
+  }
+
+  if (numeric < 1000) {
+    return `${Math.round(
+      numeric
+    )} ms`;
+  }
+
+  const number =
+    new Intl.NumberFormat(
+      locale,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
+
+  return `${number.format(
+    numeric / 1000
+  )} s`;
+}
+
+
+function formatInteger(
+  value,
+  locale
+) {
+  const numeric =
+    Number(value);
+
+  return new Intl.NumberFormat(
+    locale,
+    {
+      maximumFractionDigits: 0,
+    }
+  ).format(
+    Number.isFinite(numeric)
+      ? numeric
+      : 0
+  );
+}
+
+
+function adminDetailErrorMessage(
+  error,
+  t,
+  fallbackKey
+) {
+  if (
+    error?.name === "AbortError"
+  ) {
+    return "";
+  }
+
+  const status =
+    Number(error?.status);
+
+  if (
+    error?.code === "NETWORK_ERROR"
+    || !Number.isFinite(status)
+  ) {
+    return t(
+      "adminUserDetail.errors.network"
+    );
+  }
+
+  if (status === 401) {
+    return t(
+      "adminUserDetail.errors.session"
+    );
+  }
+
+  if (status === 403) {
+    return t(
+      "adminUserDetail.errors.forbidden"
+    );
+  }
+
+  if (status === 404) {
+    return t(
+      "adminUserDetail.errors.notFound"
+    );
+  }
+
+  if (status >= 500) {
+    return t(
+      "adminUserDetail.errors.service"
+    );
+  }
+
+  return t(fallbackKey);
+}
+
+
+function initials(
+  name
+) {
+  const parts =
+    String(name || "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean);
+
+  if (
+    parts.length === 0
+  ) {
+    return "?";
+  }
+
+  if (
+    parts.length === 1
+  ) {
+    return parts[0]
+      .slice(0, 2)
+      .toUpperCase();
+  }
+
+  return `${parts[0][0]}${parts[1][0]}`
+    .toUpperCase();
+}
+
+
+function activeExecutions(
+  summary
+) {
+  return (
+    (summary?.queuedExecutions || 0)
+    + (summary?.runningExecutions || 0)
+    + (summary?.processingExecutions || 0)
+  );
+}
+
 
 function Pagination({
   page,
@@ -100,130 +231,370 @@ function Pagination({
   onPageChange,
   disabled,
 }) {
-  const totalPages = Math.max(
-    1,
-    Math.ceil(total / pageSize)
-  );
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const totalPages =
+    Math.max(
+      1,
+      Math.ceil(
+        total / pageSize
+      )
+    );
+
   const first =
-    total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const last = Math.min(page * pageSize, total);
+    total === 0
+      ? 0
+      : (
+          (page - 1)
+          * pageSize
+          + 1
+        );
+
+  const last =
+    Math.min(
+      page * pageSize,
+      total
+    );
 
   return (
     <div className="admin-detail-pagination">
+
       <span>
-        {total === 0 ? "0 registros" : `${first}–${last} de ${total}`}
+        {total === 0
+          ? t(
+              "adminUserDetail.pagination.zero"
+            )
+          : t(
+              "adminUserDetail.pagination.range",
+              {
+                first:
+                  formatInteger(
+                    first,
+                    locale
+                  ),
+                last:
+                  formatInteger(
+                    last,
+                    locale
+                  ),
+                total:
+                  formatInteger(
+                    total,
+                    locale
+                  ),
+              }
+            )}
       </span>
 
-      <div className="admin-detail-pagination-controls">
-        <button
-          type="button"
-          className="btn btn-sm admin-detail-secondary-button"
-          onClick={() => onPageChange(Math.max(1, page - 1))}
-          disabled={disabled || page <= 1}
-        >
-          Anterior
-        </button>
 
-        <span>
-          Página {Math.min(page, totalPages)} de {totalPages}
-        </span>
+      <div className="admin-detail-pagination-controls">
 
         <button
           type="button"
           className="btn btn-sm admin-detail-secondary-button"
           onClick={() =>
-            onPageChange(Math.min(totalPages, page + 1))
+            onPageChange(
+              Math.max(
+                1,
+                page - 1
+              )
+            )
           }
           disabled={
-            disabled ||
-            total === 0 ||
-            page >= totalPages
+            disabled
+            || page <= 1
           }
         >
-          Siguiente
+          {t(
+            "adminUserDetail.actions.previous"
+          )}
         </button>
+
+
+        <span>
+          {t(
+            "adminUserDetail.pagination.page",
+            {
+              page:
+                formatInteger(
+                  Math.min(
+                    page,
+                    totalPages
+                  ),
+                  locale
+                ),
+              total:
+                formatInteger(
+                  totalPages,
+                  locale
+                ),
+            }
+          )}
+        </span>
+
+
+        <button
+          type="button"
+          className="btn btn-sm admin-detail-secondary-button"
+          onClick={() =>
+            onPageChange(
+              Math.min(
+                totalPages,
+                page + 1
+              )
+            )
+          }
+          disabled={
+            disabled
+            || total === 0
+            || page
+              >= totalPages
+          }
+        >
+          {t(
+            "adminUserDetail.actions.next"
+          )}
+        </button>
+
       </div>
+
     </div>
   );
 }
 
-function ProfileOverview({ profile, summary }) {
-  const active = activeExecutions(summary);
+
+function ProfileOverview({
+  profile,
+  summary,
+}) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const active =
+    activeExecutions(
+      summary
+    );
+
+  const displayName =
+    profile.fullName
+    || t(
+      "adminUserDetail.fallbacks.name"
+    );
 
   return (
     <section className="admin-user-overview">
+
       <div className="admin-user-overview-main">
-        <div className="admin-user-detail-avatar" aria-hidden="true">
-          {initials(profile.fullName)}
+
+        <div
+          className="admin-user-detail-avatar"
+          aria-hidden="true"
+        >
+          {initials(
+            displayName
+          )}
         </div>
+
 
         <div className="admin-user-overview-copy">
+
           <div className="admin-user-overview-heading">
+
             <div>
-              <h2>{profile.fullName}</h2>
-              <p>{profile.email}</p>
+              <h2>
+                {displayName}
+              </h2>
+              <p>
+                {profile.email
+                  || t(
+                    "adminUserDetail.fallbacks.email"
+                  )}
+              </p>
             </div>
+
 
             <div className="admin-user-overview-badges">
+
               <span className="admin-user-role-chip">
-                {profile.role}
+                {adminRoleLabel(
+                  profile.role,
+                  t
+                )}
               </span>
+
               <span
-                className={`app-status-badge ${userStatusClass(
-                  profile.status
+                className={`app-status-badge ${adminAccountStatusBadgeClass(
+                  profile.isActive
                 )}`}
               >
-                {profile.status}
+                {adminAccountStatusLabel(
+                  profile.isActive,
+                  t
+                )}
               </span>
+
             </div>
+
           </div>
 
+
           <dl className="admin-user-overview-meta">
+
             <div>
               <dt>ID</dt>
-              <dd>{profile.id}</dd>
+              <dd>
+                {profile.id
+                  ?? t(
+                    "adminUserDetail.fallbacks.unavailable"
+                  )}
+              </dd>
             </div>
+
             <div>
-              <dt>Creado</dt>
-              <dd>{formatDateTime(profile.createdAt)}</dd>
+              <dt>
+                {t(
+                  "adminUserDetail.profile.created"
+                )}
+              </dt>
+              <dd>
+                {formatDateTime(
+                  profile.createdAt,
+                  locale,
+                  t(
+                    "adminUserDetail.fallbacks.unavailable"
+                  )
+                )}
+              </dd>
             </div>
+
             <div>
-              <dt>Última sesión</dt>
-              <dd>{formatDateTime(profile.lastLogin)}</dd>
+              <dt>
+                {t(
+                  "adminUserDetail.profile.lastLogin"
+                )}
+              </dt>
+              <dd>
+                {formatDateTime(
+                  profile.lastLogin,
+                  locale,
+                  t(
+                    "adminUserDetail.fallbacks.unavailable"
+                  )
+                )}
+              </dd>
             </div>
+
             <div>
-              <dt>Última actividad</dt>
-              <dd>{formatDateTime(summary.lastExecutionAt)}</dd>
+              <dt>
+                {t(
+                  "adminUserDetail.profile.lastActivity"
+                )}
+              </dt>
+              <dd>
+                {formatDateTime(
+                  summary.lastExecutionAt,
+                  locale,
+                  t(
+                    "adminUserDetail.fallbacks.unavailable"
+                  )
+                )}
+              </dd>
             </div>
+
           </dl>
+
         </div>
+
       </div>
 
+
       <div className="admin-user-kpis">
+
         <article>
-          <span>Envíos</span>
-          <strong>{summary.submissionsCount || 0}</strong>
+          <span>
+            {t(
+              "adminUserDetail.summary.submissions"
+            )}
+          </span>
+          <strong>
+            {formatInteger(
+              summary.submissionsCount
+                || 0,
+              locale
+            )}
+          </strong>
         </article>
+
         <article>
-          <span>Ejecuciones</span>
-          <strong>{summary.executionsCount || 0}</strong>
+          <span>
+            {t(
+              "adminUserDetail.summary.executions"
+            )}
+          </span>
+          <strong>
+            {formatInteger(
+              summary.executionsCount
+                || 0,
+              locale
+            )}
+          </strong>
         </article>
+
         <article>
-          <span>Completadas</span>
-          <strong>{summary.completedExecutions || 0}</strong>
+          <span>
+            {t(
+              "adminUserDetail.summary.completed"
+            )}
+          </span>
+          <strong>
+            {formatInteger(
+              summary.completedExecutions
+                || 0,
+              locale
+            )}
+          </strong>
         </article>
+
         <article>
-          <span>Fallidas</span>
-          <strong>{summary.failedExecutions || 0}</strong>
+          <span>
+            {t(
+              "adminUserDetail.summary.failed"
+            )}
+          </span>
+          <strong>
+            {formatInteger(
+              summary.failedExecutions
+                || 0,
+              locale
+            )}
+          </strong>
         </article>
+
         <article>
-          <span>Activas</span>
-          <strong>{active}</strong>
+          <span>
+            {t(
+              "adminUserDetail.summary.active"
+            )}
+          </span>
+          <strong>
+            {formatInteger(
+              active,
+              locale
+            )}
+          </strong>
         </article>
+
       </div>
+
     </section>
   );
 }
+
 
 function TabButton({
   active,
@@ -234,88 +605,179 @@ function TabButton({
     <button
       type="button"
       className={`admin-detail-tab ${
-        active ? "admin-detail-tab--active" : ""
+        active
+          ? "admin-detail-tab--active"
+          : ""
       }`}
-      onClick={onClick}
+      onClick={
+        onClick
+      }
+      aria-pressed={
+        active
+      }
     >
       {children}
     </button>
   );
 }
 
+
 function ExecutionsTab({
   userId,
   summary,
   onOpenDetail,
 }) {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(
-    summary?.executionsCount || 0
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const [
+    items,
+    setItems,
+  ] = useState([]);
+
+  const [
+    total,
+    setTotal,
+  ] = useState(
+    summary?.executionsCount
+      || 0
   );
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState("all");
-  const [search, setSearch] = useState("");
-  const [reloadToken, setReloadToken] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+  const [
+    page,
+    setPage,
+  ] = useState(1);
+
+  const [
+    status,
+    setStatus,
+  ] = useState("all");
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    reloadToken,
+    setReloadToken,
+  ] = useState(0);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(null);
+
 
   useEffect(() => {
     setPage(1);
-  }, [status, search]);
+  }, [
+    status,
+    search,
+  ]);
+
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    const timer = window.setTimeout(
-      async () => {
-        try {
-          setLoading(true);
-          setError(null);
+    const timer =
+      window.setTimeout(
+        async () => {
+          try {
+            setLoading(true);
+            setError(null);
 
-          const params = new URLSearchParams({
-            page: String(page),
-            page_size: String(PAGE_SIZE),
-          });
+            const params =
+              new URLSearchParams({
+                page:
+                  String(page),
+                page_size:
+                  String(
+                    PAGE_SIZE
+                  ),
+              });
 
-          if (status !== "all") {
-            params.set("status", status);
+            if (
+              status !== "all"
+            ) {
+              params.set(
+                "status",
+                status
+              );
+            }
+
+            if (
+              search.trim()
+            ) {
+              params.set(
+                "problem",
+                search.trim()
+              );
+            }
+
+            const data =
+              await fetchJson(
+                `/api/admin/users/${userId}/executions?${params.toString()}`,
+                {
+                  signal:
+                    controller.signal,
+                }
+              );
+
+            setItems(
+              Array.isArray(
+                data.items
+              )
+                ? data.items
+                : []
+            );
+
+            setTotal(
+              data.total
+              ?? 0
+            );
+          } catch (err) {
+            if (
+              err.name
+              === "AbortError"
+            ) {
+              return;
+            }
+
+            console.error(
+              "[AdminUserDetail] Error cargando ejecuciones:",
+              err
+            );
+
+            setError(err);
+          } finally {
+            if (
+              !controller
+                .signal
+                .aborted
+            ) {
+              setLoading(false);
+            }
           }
-
-          if (search.trim()) {
-            params.set("problem", search.trim());
-          }
-
-          const data = await fetchJson(
-            `/api/admin/users/${userId}/executions?${params.toString()}`,
-            { signal: controller.signal }
-          );
-
-          setItems(
-            Array.isArray(data.items) ? data.items : []
-          );
-          setTotal(data.total ?? 0);
-        } catch (err) {
-          if (err.name === "AbortError") return;
-
-          console.error(
-            "[AdminUserDetail] Error cargando ejecuciones:",
-            err
-          );
-          setError(
-            err.message ||
-              "No se pudieron cargar las ejecuciones."
-          );
-        } finally {
-          if (!controller.signal.aborted) {
-            setLoading(false);
-          }
-        }
-      },
-      search.trim() ? 250 : 0
-    );
+        },
+        search.trim()
+          ? 250
+          : 0
+      );
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
+
       controller.abort();
     };
   }, [
@@ -326,333 +788,740 @@ function ExecutionsTab({
     reloadToken,
   ]);
 
-  const clearFilters = () => {
-    setSearch("");
-    setStatus("all");
-    setPage(1);
-  };
+
+  const clearFilters =
+    () => {
+      setSearch("");
+      setStatus("all");
+      setPage(1);
+    };
+
+
+  const errorMessage =
+    error
+      ? adminDetailErrorMessage(
+          error,
+          t,
+          "adminUserDetail.executions.errors.load"
+        )
+      : "";
+
+
+  const stateOptions =
+    localizedExecutionStateOptions(
+      t
+    );
+
 
   return (
     <div>
+
       <div className="admin-detail-section-header">
+
         <div>
-          <h3>Ejecuciones</h3>
+          <h3>
+            {t(
+              "adminUserDetail.executions.title"
+            )}
+          </h3>
           <p>
-            Historial técnico basado en los estados canónicos de
-            ejecución.
+            {t(
+              "adminUserDetail.executions.description"
+            )}
           </p>
         </div>
 
+
         <div className="admin-detail-inline-kpis">
+
           <span>
-            <strong>{summary?.completedExecutions || 0}</strong>
-            completadas
+            <strong>
+              {formatInteger(
+                summary?.completedExecutions
+                  || 0,
+                locale
+              )}
+            </strong>
+            {" "}
+            {t(
+              "adminUserDetail.executions.kpis.completed"
+            )}
           </span>
+
           <span>
-            <strong>{summary?.failedExecutions || 0}</strong>
-            fallidas
+            <strong>
+              {formatInteger(
+                summary?.failedExecutions
+                  || 0,
+                locale
+              )}
+            </strong>
+            {" "}
+            {t(
+              "adminUserDetail.executions.kpis.failed"
+            )}
           </span>
+
           <span>
-            <strong>{activeExecutions(summary)}</strong>
-            activas
+            <strong>
+              {formatInteger(
+                activeExecutions(
+                  summary
+                ),
+                locale
+              )}
+            </strong>
+            {" "}
+            {t(
+              "adminUserDetail.executions.kpis.active"
+            )}
           </span>
+
         </div>
+
       </div>
 
+
       <div className="admin-detail-toolbar">
+
         <div className="admin-detail-search">
-          <label htmlFor="admin-execution-search">
-            Buscar submission
+
+          <label
+            htmlFor="admin-execution-search"
+          >
+            {t(
+              "adminUserDetail.executions.searchLabel"
+            )}
           </label>
+
           <input
             id="admin-execution-search"
             className="form-control"
             type="search"
-            placeholder="Ej. LCS, SIZE, CAMMR..."
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
+            placeholder={t(
+              "adminUserDetail.executions.searchPlaceholder"
+            )}
+            value={
+              search
+            }
+            onChange={
+              (event) =>
+                setSearch(
+                  event.target.value
+                )
             }
           />
+
         </div>
 
+
         <div>
-          <label htmlFor="admin-execution-status">
-            Estado
+
+          <label
+            htmlFor="admin-execution-status"
+          >
+            {t(
+              "adminUserDetail.executions.statusLabel"
+            )}
           </label>
+
           <select
             id="admin-execution-status"
             className="form-select"
-            value={status}
-            onChange={(event) =>
-              setStatus(event.target.value)
+            value={
+              status
+            }
+            onChange={
+              (event) =>
+                setStatus(
+                  event.target.value
+                )
             }
           >
-            {EXECUTION_STATE_OPTIONS.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-              >
-                {option.label}
-              </option>
-            ))}
+            {stateOptions.map(
+              (option) => (
+                <option
+                  key={
+                    option.value
+                  }
+                  value={
+                    option.value
+                  }
+                >
+                  {option.label}
+                </option>
+              )
+            )}
           </select>
+
         </div>
+
 
         <button
           type="button"
           className="btn admin-detail-secondary-button"
-          onClick={clearFilters}
+          onClick={
+            clearFilters
+          }
           disabled={
-            status === "all" && search.trim() === ""
+            status === "all"
+            && search.trim()
+              === ""
           }
         >
-          Limpiar
+          {t(
+            "adminUserDetail.actions.clearFilters"
+          )}
         </button>
+
       </div>
+
 
       {error && (
         <InlineState
           type="error"
-          title="No pudimos cargar las ejecuciones"
-          description={error}
-          actionLabel="Reintentar"
-          onAction={() =>
-            setReloadToken((value) => value + 1)
-          }
-          compact
-        />
-      )}
-
-      {!error && loading && items.length === 0 && (
-        <InlineState
-          type="loading"
-          title="Cargando ejecuciones"
-          description="Consultando el historial del usuario."
-          compact
-        />
-      )}
-
-      {!error && !loading && items.length === 0 && (
-        <InlineState
-          type="empty"
-          title="No hay ejecuciones para mostrar"
+          title={t(
+            "adminUserDetail.executions.errors.title"
+          )}
           description={
-            status !== "all" || search.trim()
-              ? "No hay coincidencias con los filtros actuales."
-              : "Este usuario todavía no tiene ejecuciones registradas."
+            errorMessage
           }
-          actionLabel={
-            status !== "all" || search.trim()
-              ? "Limpiar filtros"
-              : undefined
-          }
-          onAction={
-            status !== "all" || search.trim()
-              ? clearFilters
-              : undefined
+          actionLabel={t(
+            "adminUserDetail.actions.retry"
+          )}
+          onAction={() =>
+            setReloadToken(
+              (value) =>
+                value + 1
+            )
           }
           compact
         />
       )}
 
-      {!error && items.length > 0 && (
-        <>
-          <div className="table-responsive admin-detail-table-shell">
-            <table className="table align-middle admin-detail-table mb-0">
-              <thead>
-                <tr>
-                  <th>Ejecución</th>
-                  <th>Submission</th>
-                  <th>Estado</th>
-                  <th>Duración</th>
-                  <th>Hardware</th>
-                  <th>Actualizada</th>
-                  <th className="text-end">Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((execution) => {
-                  const state = String(
-                    execution.state || ""
-                  ).toUpperCase();
-                  const updatedAt =
-                    execution.finishedAt ||
-                    execution.processingAt ||
-                    execution.startedAt;
 
-                  return (
-                    <tr key={execution.executionId}>
-                      <td>
-                        <div className="admin-detail-primary-cell">
-                          <strong>
-                            #{execution.executionId}
-                          </strong>
-                          <span>
-                            {execution.codename || "Sin codename"}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
-                        <Link
-                          to={`/submissions/${encodeURIComponent(
-                            String(execution.submissionId)
-                          )}`}
-                          className="admin-detail-primary-cell admin-detail-submission-link"
-                        >
-                          <strong>
-                            {execution.submissionTitle ||
-                              `Submission #${execution.submissionId}`}
-                          </strong>
-                          <span>
-                            ID {execution.submissionId}
-                          </span>
-                        </Link>
-                      </td>
-                      <td>
-                        <span
-                          className={`app-status-badge ${executionStateBadgeClass(
-                            state
-                          )}`}
-                        >
-                          {execution.stateLabel ||
-                            executionStateLabel(state)}
-                        </span>
-                      </td>
-                      <td>
-                        {formatDuration(
-                          execution.durationMs
-                        )}
-                      </td>
-                      <td>
-                        {execution.hardwareProfile || "—"}
-                      </td>
-                      <td>{formatDateTime(updatedAt)}</td>
-                      <td className="text-end">
-                        <button
-                          type="button"
-                          className="btn btn-sm admin-detail-primary-button"
-                          onClick={() =>
-                            onOpenDetail(
-                              execution.executionId
-                            )
+      {!error
+        && loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="loading"
+            title={t(
+              "adminUserDetail.executions.loading.title"
+            )}
+            description={t(
+              "adminUserDetail.executions.loading.description"
+            )}
+            compact
+          />
+        )}
+
+
+      {!error
+        && !loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="empty"
+            title={t(
+              "adminUserDetail.executions.empty.title"
+            )}
+            description={
+              status !== "all"
+                || search.trim()
+                ? t(
+                    "adminUserDetail.executions.empty.filtered"
+                  )
+                : t(
+                    "adminUserDetail.executions.empty.unfiltered"
+                  )
+            }
+            actionLabel={
+              status !== "all"
+                || search.trim()
+                ? t(
+                    "adminUserDetail.actions.clearFilters"
+                  )
+                : undefined
+            }
+            onAction={
+              status !== "all"
+                || search.trim()
+                ? clearFilters
+                : undefined
+            }
+            compact
+          />
+        )}
+
+
+      {!error
+        && items.length > 0
+        && (
+          <>
+
+            <div className="table-responsive admin-detail-table-shell">
+
+              <table className="table align-middle admin-detail-table mb-0">
+
+                <thead>
+                  <tr>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.execution"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.submission"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.state"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.duration"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.hardware"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.executions.table.updated"
+                      )}
+                    </th>
+                    <th className="text-end">
+                      {t(
+                        "adminUserDetail.executions.table.detail"
+                      )}
+                    </th>
+                  </tr>
+                </thead>
+
+
+                <tbody>
+
+                  {items.map(
+                    (execution) => {
+                      const state =
+                        String(
+                          execution.state
+                            || ""
+                        )
+                          .toUpperCase();
+
+                      const updatedAt =
+                        execution.finishedAt
+                        || execution.processingAt
+                        || execution.startedAt;
+
+                      return (
+                        <tr
+                          key={
+                            execution.executionId
                           }
                         >
-                          Ver detalle
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
 
-          <Pagination
-            page={page}
-            total={total}
-            onPageChange={setPage}
-            disabled={loading}
-          />
-        </>
-      )}
+                          <td>
+                            <div className="admin-detail-primary-cell">
+                              <strong>
+                                #{execution.executionId}
+                              </strong>
+                              <span>
+                                {execution.codename
+                                  || t(
+                                    "adminUserDetail.executions.noCodename"
+                                  )}
+                              </span>
+                            </div>
+                          </td>
+
+
+                          <td>
+                            <Link
+                              to={`/submissions/${encodeURIComponent(
+                                String(
+                                  execution.submissionId
+                                )
+                              )}`}
+                              className="admin-detail-primary-cell admin-detail-submission-link"
+                            >
+                              <strong>
+                                {execution.submissionTitle
+                                  || t(
+                                    "adminUserDetail.executions.submissionFallback",
+                                    {
+                                      id:
+                                        execution.submissionId,
+                                    }
+                                  )}
+                              </strong>
+                              <span>
+                                ID {execution.submissionId}
+                              </span>
+                            </Link>
+                          </td>
+
+
+                          <td>
+                            <span
+                              className={`app-status-badge ${executionStateBadgeClass(
+                                state
+                              )}`}
+                            >
+                              {localizedExecutionStateLabel(
+                                state,
+                                t,
+                                t(
+                                  "adminUserDetail.fallbacks.unavailable"
+                                )
+                              )}
+                            </span>
+                          </td>
+
+
+                          <td>
+                            {formatDuration(
+                              execution.durationMs,
+                              locale,
+                              t(
+                                "adminUserDetail.fallbacks.unavailable"
+                              )
+                            )}
+                          </td>
+
+
+                          <td>
+                            {execution.hardwareProfile
+                              || t(
+                                "adminUserDetail.fallbacks.unavailable"
+                              )}
+                          </td>
+
+
+                          <td>
+                            {formatDateTime(
+                              updatedAt,
+                              locale,
+                              t(
+                                "adminUserDetail.fallbacks.unavailable"
+                              )
+                            )}
+                          </td>
+
+
+                          <td className="text-end">
+                            <button
+                              type="button"
+                              className="btn btn-sm admin-detail-primary-button"
+                              onClick={() =>
+                                onOpenDetail(
+                                  execution.executionId
+                                )
+                              }
+                            >
+                              {t(
+                                "adminUserDetail.actions.viewDetail"
+                              )}
+                            </button>
+                          </td>
+
+                        </tr>
+                      );
+                    }
+                  )}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+
+            <Pagination
+              page={
+                page
+              }
+              total={
+                total
+              }
+              onPageChange={
+                setPage
+              }
+              disabled={
+                loading
+              }
+            />
+
+          </>
+        )}
+
     </div>
   );
 }
 
-function SubmissionsTab({ userId }) {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [reloadToken, setReloadToken] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+function submissionStatusLabel(
+  submission,
+  t
+) {
+  const completed =
+    Number(
+      submission?.completedExecutions
+      || 0
+    );
+
+  const failed =
+    Number(
+      submission?.failedExecutions
+      || 0
+    );
+
+  if (
+    completed > 0
+    && failed === 0
+  ) {
+    return t(
+      "adminUserDetail.submissions.status.approved"
+    );
+  }
+
+  if (
+    completed === 0
+    && failed > 0
+  ) {
+    return t(
+      "adminUserDetail.submissions.status.errors"
+    );
+  }
+
+  if (
+    completed > 0
+    && failed > 0
+  ) {
+    return t(
+      "adminUserDetail.submissions.status.mixed"
+    );
+  }
+
+  return t(
+    "adminUserDetail.submissions.status.review"
+  );
+}
+
+
+function SubmissionsTab({
+  userId,
+}) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const [
+    items,
+    setItems,
+  ] = useState([]);
+
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
+
+  const [
+    page,
+    setPage,
+  ] = useState(1);
+
+  const [
+    search,
+    setSearch,
+  ] = useState("");
+
+  const [
+    reloadToken,
+    setReloadToken,
+  ] = useState(0);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(null);
 
   useEffect(() => {
     setPage(1);
   }, [search]);
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    const timer = window.setTimeout(
-      async () => {
-        try {
-          setLoading(true);
-          setError(null);
+    const timer =
+      window.setTimeout(
+        async () => {
+          try {
+            setLoading(true);
+            setError(null);
 
-          const params = new URLSearchParams({
-            page: String(page),
-            page_size: String(PAGE_SIZE),
-          });
+            const params =
+              new URLSearchParams({
+                page:
+                  String(page),
+                page_size:
+                  String(
+                    PAGE_SIZE
+                  ),
+              });
 
-          if (search.trim()) {
-            params.set("problem", search.trim());
+            if (
+              search.trim()
+            ) {
+              params.set(
+                "problem",
+                search.trim()
+              );
+            }
+
+            const data =
+              await fetchJson(
+                `/api/admin/users/${userId}/submissions?${params.toString()}`,
+                {
+                  signal:
+                    controller.signal,
+                }
+              );
+
+            setItems(
+              Array.isArray(
+                data.items
+              )
+                ? data.items
+                : []
+            );
+
+            setTotal(
+              data.total
+              ?? 0
+            );
+          } catch (err) {
+            if (
+              err.name
+              === "AbortError"
+            ) {
+              return;
+            }
+
+            console.error(
+              "[AdminUserDetail] Error cargando submissions:",
+              err
+            );
+
+            setError(err);
+          } finally {
+            if (
+              !controller
+                .signal
+                .aborted
+            ) {
+              setLoading(false);
+            }
           }
-
-          const data = await fetchJson(
-            `/api/admin/users/${userId}/submissions?${params.toString()}`,
-            { signal: controller.signal }
-          );
-
-          setItems(
-            Array.isArray(data.items) ? data.items : []
-          );
-          setTotal(data.total ?? 0);
-        } catch (err) {
-          if (err.name === "AbortError") return;
-
-          console.error(
-            "[AdminUserDetail] Error cargando submissions:",
-            err
-          );
-          setError(
-            err.message ||
-              "No se pudieron cargar los submissions."
-          );
-        } finally {
-          if (!controller.signal.aborted) {
-            setLoading(false);
-          }
-        }
-      },
-      search.trim() ? 250 : 0
-    );
+        },
+        search.trim()
+          ? 250
+          : 0
+      );
 
     return () => {
-      window.clearTimeout(timer);
+      window.clearTimeout(
+        timer
+      );
+
       controller.abort();
     };
-  }, [userId, page, search, reloadToken]);
+  }, [
+    userId,
+    page,
+    search,
+    reloadToken,
+  ]);
+
+  const errorMessage =
+    error
+      ? adminDetailErrorMessage(
+          error,
+          t,
+          "adminUserDetail.submissions.errors.load"
+        )
+      : "";
 
   return (
     <div>
+
       <div className="admin-detail-section-header">
         <div>
-          <h3>Submissions</h3>
+          <h3>
+            {t(
+              "adminUserDetail.submissions.title"
+            )}
+          </h3>
           <p>
-            Entregas del usuario y distribución de sus ejecuciones.
+            {t(
+              "adminUserDetail.submissions.description"
+            )}
           </p>
         </div>
+
         <span className="admin-detail-total-chip">
-          {total} total
+          {t(
+            "adminUserDetail.submissions.total",
+            {
+              count:
+                formatInteger(
+                  total,
+                  locale
+                ),
+            }
+          )}
         </span>
       </div>
 
       <div className="admin-detail-toolbar admin-detail-toolbar--compact">
         <div className="admin-detail-search">
-          <label htmlFor="admin-submission-search">
-            Buscar submission
+          <label
+            htmlFor="admin-submission-search"
+          >
+            {t(
+              "adminUserDetail.submissions.searchLabel"
+            )}
           </label>
+
           <input
             id="admin-submission-search"
             className="form-control"
             type="search"
-            placeholder="Título de la entrega"
-            value={search}
-            onChange={(event) =>
-              setSearch(event.target.value)
+            placeholder={t(
+              "adminUserDetail.submissions.searchPlaceholder"
+            )}
+            value={
+              search
+            }
+            onChange={
+              (event) =>
+                setSearch(
+                  event.target.value
+                )
             }
           />
         </div>
@@ -660,343 +1529,701 @@ function SubmissionsTab({ userId }) {
         <button
           type="button"
           className="btn admin-detail-secondary-button"
-          onClick={() => setSearch("")}
-          disabled={!search.trim()}
+          onClick={() =>
+            setSearch("")
+          }
+          disabled={
+            !search.trim()
+          }
         >
-          Limpiar
+          {t(
+            "adminUserDetail.actions.clearSearch"
+          )}
         </button>
       </div>
 
       {error && (
         <InlineState
           type="error"
-          title="No pudimos cargar los submissions"
-          description={error}
-          actionLabel="Reintentar"
-          onAction={() =>
-            setReloadToken((value) => value + 1)
-          }
-          compact
-        />
-      )}
-
-      {!error && loading && items.length === 0 && (
-        <InlineState
-          type="loading"
-          title="Cargando submissions"
-          description="Consultando las entregas del usuario."
-          compact
-        />
-      )}
-
-      {!error && !loading && items.length === 0 && (
-        <InlineState
-          type="empty"
-          title="No hay submissions para mostrar"
+          title={t(
+            "adminUserDetail.submissions.errors.title"
+          )}
           description={
-            search.trim()
-              ? "No hay coincidencias con la búsqueda actual."
-              : "Este usuario todavía no tiene submissions registrados."
+            errorMessage
           }
-          actionLabel={
-            search.trim() ? "Limpiar búsqueda" : undefined
-          }
-          onAction={
-            search.trim()
-              ? () => setSearch("")
-              : undefined
+          actionLabel={t(
+            "adminUserDetail.actions.retry"
+          )}
+          onAction={() =>
+            setReloadToken(
+              (value) =>
+                value + 1
+            )
           }
           compact
         />
       )}
 
-      {!error && items.length > 0 && (
-        <>
-          <div className="table-responsive admin-detail-table-shell">
-            <table className="table align-middle admin-detail-table mb-0">
-              <thead>
-                <tr>
-                  <th>Submission</th>
-                  <th>Estado</th>
-                  <th>Ejecuciones</th>
-                  <th>Completadas</th>
-                  <th>Fallidas</th>
-                  <th>Activas</th>
-                  <th>Creado</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((submission) => {
-                  const active =
-                    (submission.queuedExecutions || 0) +
-                    (submission.runningExecutions || 0) +
-                    (submission.processingExecutions || 0);
-
-                  return (
-                    <tr key={submission.id}>
-                      <td>
-                        <Link
-                          to={`/submissions/${encodeURIComponent(
-                            String(submission.id)
-                          )}`}
-                          className="admin-detail-primary-cell admin-detail-submission-link"
-                        >
-                          <strong>
-                            {submission.title ||
-                              `Submission #${submission.id}`}
-                          </strong>
-                          <span>ID {submission.id}</span>
-                        </Link>
-                      </td>
-                      <td>
-                        <span className="admin-submission-status">
-                          {submission.status || "—"}
-                        </span>
-                      </td>
-                      <td>{submission.executionsCount || 0}</td>
-                      <td>{submission.completedExecutions || 0}</td>
-                      <td>{submission.failedExecutions || 0}</td>
-                      <td>{active}</td>
-                      <td>
-                        {formatDateTime(
-                          submission.createdAt
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          <Pagination
-            page={page}
-            total={total}
-            onPageChange={setPage}
-            disabled={loading}
+      {!error
+        && loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="loading"
+            title={t(
+              "adminUserDetail.submissions.loading.title"
+            )}
+            description={t(
+              "adminUserDetail.submissions.loading.description"
+            )}
+            compact
           />
-        </>
-      )}
+        )}
+
+      {!error
+        && !loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="empty"
+            title={t(
+              "adminUserDetail.submissions.empty.title"
+            )}
+            description={
+              search.trim()
+                ? t(
+                    "adminUserDetail.submissions.empty.filtered"
+                  )
+                : t(
+                    "adminUserDetail.submissions.empty.unfiltered"
+                  )
+            }
+            actionLabel={
+              search.trim()
+                ? t(
+                    "adminUserDetail.actions.clearSearch"
+                  )
+                : undefined
+            }
+            onAction={
+              search.trim()
+                ? () =>
+                    setSearch("")
+                : undefined
+            }
+            compact
+          />
+        )}
+
+      {!error
+        && items.length > 0
+        && (
+          <>
+            <div className="table-responsive admin-detail-table-shell">
+              <table className="table align-middle admin-detail-table mb-0">
+                <thead>
+                  <tr>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.submission"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.status"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.executions"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.completed"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.failed"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.active"
+                      )}
+                    </th>
+                    <th>
+                      {t(
+                        "adminUserDetail.submissions.table.created"
+                      )}
+                    </th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {items.map(
+                    (submission) => {
+                      const active =
+                        (submission.queuedExecutions
+                          || 0)
+                        + (submission.runningExecutions
+                          || 0)
+                        + (submission.processingExecutions
+                          || 0);
+
+                      return (
+                        <tr
+                          key={
+                            submission.id
+                          }
+                        >
+                          <td>
+                            <Link
+                              to={`/submissions/${encodeURIComponent(
+                                String(
+                                  submission.id
+                                )
+                              )}`}
+                              className="admin-detail-primary-cell admin-detail-submission-link"
+                            >
+                              <strong>
+                                {submission.title
+                                  || t(
+                                    "adminUserDetail.submissions.fallback",
+                                    {
+                                      id:
+                                        submission.id,
+                                    }
+                                  )}
+                              </strong>
+                              <span>
+                                ID {submission.id}
+                              </span>
+                            </Link>
+                          </td>
+
+                          <td>
+                            <span className="admin-submission-status">
+                              {submissionStatusLabel(
+                                submission,
+                                t
+                              )}
+                            </span>
+                          </td>
+
+                          <td>
+                            {formatInteger(
+                              submission.executionsCount
+                                || 0,
+                              locale
+                            )}
+                          </td>
+
+                          <td>
+                            {formatInteger(
+                              submission.completedExecutions
+                                || 0,
+                              locale
+                            )}
+                          </td>
+
+                          <td>
+                            {formatInteger(
+                              submission.failedExecutions
+                                || 0,
+                              locale
+                            )}
+                          </td>
+
+                          <td>
+                            {formatInteger(
+                              active,
+                              locale
+                            )}
+                          </td>
+
+                          <td>
+                            {formatDateTime(
+                              submission.createdAt,
+                              locale,
+                              t(
+                                "adminUserDetail.fallbacks.unavailable"
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    }
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              page={
+                page
+              }
+              total={
+                total
+              }
+              onPageChange={
+                setPage
+              }
+              disabled={
+                loading
+              }
+            />
+          </>
+        )}
     </div>
   );
 }
 
-function AuditTab({ userId }) {
-  const [items, setItems] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [page, setPage] = useState(1);
-  const [reloadToken, setReloadToken] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+
+function AuditTab({
+  userId,
+}) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const [
+    items,
+    setItems,
+  ] = useState([]);
+
+  const [
+    total,
+    setTotal,
+  ] = useState(0);
+
+  const [
+    page,
+    setPage,
+  ] = useState(1);
+
+  const [
+    reloadToken,
+    setReloadToken,
+  ] = useState(0);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    const load =
+      async () => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const params = new URLSearchParams({
-          page: String(page),
-          page_size: String(PAGE_SIZE),
-        });
+          const params =
+            new URLSearchParams({
+              page:
+                String(page),
+              page_size:
+                String(
+                  PAGE_SIZE
+                ),
+            });
 
-        const data = await fetchJson(
-          `/api/admin/users/${userId}/audit-log?${params.toString()}`,
-          { signal: controller.signal }
-        );
+          const data =
+            await fetchJson(
+              `/api/admin/users/${userId}/audit-log?${params.toString()}`,
+              {
+                signal:
+                  controller.signal,
+              }
+            );
 
-        setItems(
-          Array.isArray(data.items) ? data.items : []
-        );
-        setTotal(data.total ?? 0);
-      } catch (err) {
-        if (err.name === "AbortError") return;
+          setItems(
+            Array.isArray(
+              data.items
+            )
+              ? data.items
+              : []
+          );
 
-        console.error(
-          "[AdminUserDetail] Error cargando auditoría:",
-          err
-        );
-        setError(
-          err.message ||
-            "No se pudo cargar el historial de acciones."
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+          setTotal(
+            data.total
+            ?? 0
+          );
+        } catch (err) {
+          if (
+            err.name
+            === "AbortError"
+          ) {
+            return;
+          }
+
+          console.error(
+            "[AdminUserDetail] Error cargando auditoría:",
+            err
+          );
+
+          setError(err);
+        } finally {
+          if (
+            !controller
+              .signal
+              .aborted
+          ) {
+            setLoading(false);
+          }
         }
-      }
-    };
+      };
 
     load();
 
-    return () => controller.abort();
-  }, [userId, page, reloadToken]);
+    return () =>
+      controller.abort();
+  }, [
+    userId,
+    page,
+    reloadToken,
+  ]);
+
+  const errorMessage =
+    error
+      ? adminDetailErrorMessage(
+          error,
+          t,
+          "adminUserDetail.audit.errors.load"
+        )
+      : "";
 
   return (
     <div>
       <div className="admin-detail-section-header">
         <div>
-          <h3>Actividad</h3>
+          <h3>
+            {t(
+              "adminUserDetail.audit.title"
+            )}
+          </h3>
           <p>
-            Acciones persistidas en el registro de auditoría.
+            {t(
+              "adminUserDetail.audit.description"
+            )}
           </p>
         </div>
+
         <span className="admin-detail-total-chip">
-          {total} eventos
+          {t(
+            "adminUserDetail.audit.total",
+            {
+              count:
+                formatInteger(
+                  total,
+                  locale
+                ),
+            }
+          )}
         </span>
       </div>
 
       {error && (
         <InlineState
           type="error"
-          title="No pudimos cargar la actividad"
-          description={error}
-          actionLabel="Reintentar"
+          title={t(
+            "adminUserDetail.audit.errors.title"
+          )}
+          description={
+            errorMessage
+          }
+          actionLabel={t(
+            "adminUserDetail.actions.retry"
+          )}
           onAction={() =>
-            setReloadToken((value) => value + 1)
+            setReloadToken(
+              (value) =>
+                value + 1
+            )
           }
           compact
         />
       )}
 
-      {!error && loading && items.length === 0 && (
-        <InlineState
-          type="loading"
-          title="Cargando actividad"
-          description="Consultando el registro de auditoría."
-          compact
-        />
-      )}
-
-      {!error && !loading && items.length === 0 && (
-        <InlineState
-          type="empty"
-          title="Sin actividad registrada"
-          description="No existen eventos de auditoría asociados a este usuario."
-          compact
-        />
-      )}
-
-      {!error && items.length > 0 && (
-        <>
-          <div className="admin-audit-list">
-            {items.map((item) => (
-              <article
-                key={item.id}
-                className="admin-audit-item"
-              >
-                <div className="admin-audit-marker" aria-hidden="true" />
-                <div>
-                  <div className="admin-audit-item-heading">
-                    <strong>{item.action || "Acción"}</strong>
-                    <span>
-                      {formatDateTime(item.createdAt)}
-                    </span>
-                  </div>
-                  <p>
-                    {item.description ||
-                      "Sin descripción registrada."}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-
-          <Pagination
-            page={page}
-            total={total}
-            onPageChange={setPage}
-            disabled={loading}
+      {!error
+        && loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="loading"
+            title={t(
+              "adminUserDetail.audit.loading.title"
+            )}
+            description={t(
+              "adminUserDetail.audit.loading.description"
+            )}
+            compact
           />
-        </>
-      )}
+        )}
+
+      {!error
+        && !loading
+        && items.length === 0
+        && (
+          <InlineState
+            type="empty"
+            title={t(
+              "adminUserDetail.audit.empty.title"
+            )}
+            description={t(
+              "adminUserDetail.audit.empty.description"
+            )}
+            compact
+          />
+        )}
+
+      {!error
+        && items.length > 0
+        && (
+          <>
+            <div className="admin-audit-list">
+              {items.map(
+                (item) => (
+                  <article
+                    key={
+                      item.id
+                    }
+                    className="admin-audit-item"
+                  >
+                    <div
+                      className="admin-audit-marker"
+                      aria-hidden="true"
+                    />
+
+                    <div>
+                      <div className="admin-audit-item-heading">
+                        <strong>
+                          {item.action
+                            || t(
+                              "adminUserDetail.audit.fallbackAction"
+                            )}
+                        </strong>
+
+                        <span>
+                          {formatDateTime(
+                            item.createdAt,
+                            locale,
+                            t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )
+                          )}
+                        </span>
+                      </div>
+
+                      <p>
+                        {item.description
+                          || t(
+                            "adminUserDetail.audit.fallbackDescription"
+                          )}
+                      </p>
+                    </div>
+                  </article>
+                )
+              )}
+            </div>
+
+            <Pagination
+              page={
+                page
+              }
+              total={
+                total
+              }
+              onPageChange={
+                setPage
+              }
+              disabled={
+                loading
+              }
+            />
+          </>
+        )}
     </div>
   );
 }
+
 
 function ExecutionDetailModal({
   executionId,
   onClose,
 }) {
-  const [detail, setDetail] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const [
+    detail,
+    setDetail,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(null);
 
   useEffect(() => {
-    if (!executionId) return undefined;
+    if (
+      !executionId
+    ) {
+      return undefined;
+    }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        setDetail(null);
+    const load =
+      async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          setDetail(null);
 
-        const data = await fetchJson(
-          `/api/admin/executions/${executionId}`,
-          { signal: controller.signal }
-        );
+          const data =
+            await fetchJson(
+              `/api/admin/executions/${executionId}`,
+              {
+                signal:
+                  controller.signal,
+              }
+            );
 
-        setDetail(data.execution || null);
-      } catch (err) {
-        if (err.name === "AbortError") return;
+          setDetail(
+            data.execution
+            || null
+          );
+        } catch (err) {
+          if (
+            err.name
+            === "AbortError"
+          ) {
+            return;
+          }
 
-        console.error(
-          "[AdminUserDetail] Error cargando detalle de ejecución:",
-          err
-        );
-        setError(
-          err.message ||
-            "No se pudo cargar el detalle de la ejecución."
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+          console.error(
+            "[AdminUserDetail] Error cargando detalle de ejecución:",
+            err
+          );
+
+          setError(err);
+        } finally {
+          if (
+            !controller
+              .signal
+              .aborted
+          ) {
+            setLoading(false);
+          }
         }
-      }
-    };
+      };
 
     load();
 
-    return () => controller.abort();
+    return () =>
+      controller.abort();
   }, [executionId]);
 
   useEffect(() => {
-    const onKeyDown = (event) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
+    const onKeyDown =
+      (event) => {
+        if (
+          event.key
+          === "Escape"
+        ) {
+          onClose();
+        }
+      };
 
-    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener(
+      "keydown",
+      onKeyDown
+    );
+
     return () =>
-      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener(
+        "keydown",
+        onKeyDown
+      );
   }, [onClose]);
 
-  if (!executionId) return null;
+  if (
+    !executionId
+  ) {
+    return null;
+  }
 
-  const state = String(detail?.state || "").toUpperCase();
+  const state =
+    String(
+      detail?.state
+      || ""
+    )
+      .toUpperCase();
+
   const measurement =
-    detail?.executionConfig?.measurement || {};
-  const hardware = detail?.hardwareSnapshot || {};
-  const node = hardware.node || {};
-  const hardwareMeasurement = hardware.measurement || {};
-  const failure = detail?.failure || null;
+    detail?.executionConfig
+      ?.measurement
+    || {};
+
+  const hardware =
+    detail?.hardwareSnapshot
+    || {};
+
+  const node =
+    hardware.node
+    || {};
+
+  const hardwareMeasurement =
+    hardware.measurement
+    || {};
+
+  const failure =
+    detail?.failure
+    || null;
+
+  const errorMessage =
+    error
+      ? adminDetailErrorMessage(
+          error,
+          t,
+          "adminUserDetail.modal.errors.load"
+        )
+      : "";
 
   return (
     <div
       className="admin-execution-modal-backdrop"
       role="presentation"
-      onMouseDown={(event) => {
-        if (
-          event.target === event.currentTarget
-        ) {
-          onClose();
+      onMouseDown={
+        (event) => {
+          if (
+            event.target
+            === event.currentTarget
+          ) {
+            onClose();
+          }
         }
-      }}
+      }
     >
       <section
         className="admin-execution-modal"
@@ -1006,17 +2233,31 @@ function ExecutionDetailModal({
       >
         <header className="admin-execution-modal-header">
           <div>
-            <p>Detalle técnico</p>
+            <p>
+              {t(
+                "adminUserDetail.modal.eyebrow"
+              )}
+            </p>
             <h2 id="admin-execution-modal-title">
-              Ejecución #{executionId}
+              {t(
+                "adminUserDetail.modal.title",
+                {
+                  id:
+                    executionId,
+                }
+              )}
             </h2>
           </div>
 
           <button
             type="button"
             className="admin-execution-modal-close"
-            onClick={onClose}
-            aria-label="Cerrar detalle"
+            onClick={
+              onClose
+            }
+            aria-label={t(
+              "adminUserDetail.modal.closeAria"
+            )}
           >
             ×
           </button>
@@ -1026,8 +2267,12 @@ function ExecutionDetailModal({
           {loading && (
             <InlineState
               type="loading"
-              title="Cargando detalle"
-              description="Consultando la ejecución canónica."
+              title={t(
+                "adminUserDetail.modal.loading.title"
+              )}
+              description={t(
+                "adminUserDetail.modal.loading.description"
+              )}
               compact
             />
           )}
@@ -1035,198 +2280,423 @@ function ExecutionDetailModal({
           {error && (
             <InlineState
               type="error"
-              title="No pudimos cargar el detalle"
-              description={error}
+              title={t(
+                "adminUserDetail.modal.errors.title"
+              )}
+              description={
+                errorMessage
+              }
               compact
             />
           )}
 
-          {!loading && !error && detail && (
-            <>
-              <div className="admin-execution-modal-summary">
-                <div>
-                  <span>Submission</span>
-                  <strong>
-                    {detail.submissionTitle ||
-                      `Submission #${detail.submissionId}`}
-                  </strong>
-                </div>
-                <div>
-                  <span>Benchmark</span>
-                  <strong>{detail.benchmark || "—"}</strong>
-                </div>
-                <div>
-                  <span>Estado</span>
-                  <strong>
-                    <span
-                      className={`app-status-badge ${executionStateBadgeClass(
-                        state
-                      )}`}
-                    >
-                      {detail.stateLabel ||
-                        executionStateLabel(state)}
-                    </span>
-                  </strong>
-                </div>
-                <div>
-                  <span>Duración</span>
-                  <strong>
-                    {formatDuration(detail.durationMs)}
-                  </strong>
-                </div>
-              </div>
-
-              <div className="admin-execution-detail-grid">
-                <article>
-                  <h3>Configuración</h3>
-                  <dl>
-                    <div>
-                      <dt>Input máximo</dt>
-                      <dd>{detail.inputSize ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Muestras/punto</dt>
-                      <dd>
-                        {measurement.samples_per_point ??
-                          detail.samples ??
-                          "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Puntos</dt>
-                      <dd>{measurement.points ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Warmup</dt>
-                      <dd>
-                        {measurement.warmup_rounds ?? "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Perfil</dt>
-                      <dd>
-                        {detail.executionProfile || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Compilación</dt>
-                      <dd>
-                        {detail.executionConfig?.compiler_flags ||
-                          "—"}
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
-
-                <article>
-                  <h3>Hardware y medición</h3>
-                  <dl>
-                    <div>
-                      <dt>CPU</dt>
-                      <dd>
-                        {node.cpu_model ||
-                          detail.hardwareProfile ||
-                          "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Arquitectura</dt>
-                      <dd>{node.architecture || "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>CPU lógicas</dt>
-                      <dd>{node.logical_cpus ?? "—"}</dd>
-                    </div>
-                    <div>
-                      <dt>Backend</dt>
-                      <dd>
-                        {hardwareMeasurement.backend || "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Scope</dt>
-                      <dd>
-                        {hardwareMeasurement.requested_perf_scope ||
-                          measurement.perf_scope ||
-                          "—"}
-                      </dd>
-                    </div>
-                    <div>
-                      <dt>Resultado</dt>
-                      <dd>
-                        {detail.resultAvailable
-                          ? "Disponible"
-                          : "No disponible"}
-                      </dd>
-                    </div>
-                  </dl>
-                </article>
-              </div>
-
-              {failure && (
-                <article className="admin-execution-failure">
-                  <h3>Fallo registrado</h3>
+          {!loading
+            && !error
+            && detail
+            && (
+              <>
+                <div className="admin-execution-modal-summary">
                   <div>
-                    <strong>
-                      {failure.code || "Sin código"}
-                    </strong>
                     <span>
-                      {failure.stage || "Etapa desconocida"}
+                      {t(
+                        "adminUserDetail.modal.summary.submission"
+                      )}
                     </span>
+                    <strong>
+                      {detail.submissionTitle
+                        || t(
+                          "adminUserDetail.modal.submissionFallback",
+                          {
+                            id:
+                              detail.submissionId,
+                          }
+                        )}
+                    </strong>
                   </div>
-                  <p>
-                    {failure.message ||
-                      "Sin mensaje adicional."}
-                  </p>
-                </article>
-              )}
 
-              <div className="admin-execution-timestamps">
-                <span>
-                  Iniciada {formatDateTime(detail.startedAt)}
-                </span>
-                <span>
-                  Procesando {formatDateTime(detail.processingAt)}
-                </span>
-                <span>
-                  Finalizada {formatDateTime(detail.finishedAt)}
-                </span>
-              </div>
-            </>
-          )}
+                  <div>
+                    <span>
+                      {t(
+                        "adminUserDetail.modal.summary.benchmark"
+                      )}
+                    </span>
+                    <strong>
+                      {detail.benchmark
+                        || t(
+                          "adminUserDetail.fallbacks.unavailable"
+                        )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      {t(
+                        "adminUserDetail.modal.summary.state"
+                      )}
+                    </span>
+                    <strong>
+                      <span
+                        className={`app-status-badge ${executionStateBadgeClass(
+                          state
+                        )}`}
+                      >
+                        {localizedExecutionStateLabel(
+                          state,
+                          t,
+                          t(
+                            "adminUserDetail.fallbacks.unavailable"
+                          )
+                        )}
+                      </span>
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      {t(
+                        "adminUserDetail.modal.summary.duration"
+                      )}
+                    </span>
+                    <strong>
+                      {formatDuration(
+                        detail.durationMs,
+                        locale,
+                        t(
+                          "adminUserDetail.fallbacks.unavailable"
+                        )
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className="admin-execution-detail-grid">
+                  <article>
+                    <h3>
+                      {t(
+                        "adminUserDetail.modal.configuration.title"
+                      )}
+                    </h3>
+
+                    <dl>
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.input"
+                          )}
+                        </dt>
+                        <dd>
+                          {detail.inputSize
+                            ?? t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.samplesPerPoint"
+                          )}
+                        </dt>
+                        <dd>
+                          {measurement.samples_per_point
+                            ?? detail.samples
+                            ?? t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.points"
+                          )}
+                        </dt>
+                        <dd>
+                          {measurement.points
+                            ?? t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.warmup"
+                          )}
+                        </dt>
+                        <dd>
+                          {measurement.warmup_rounds
+                            ?? t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.profile"
+                          )}
+                        </dt>
+                        <dd>
+                          {detail.executionProfile
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.configuration.compilation"
+                          )}
+                        </dt>
+                        <dd>
+                          {detail.executionConfig
+                            ?.compiler_flags
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+
+                  <article>
+                    <h3>
+                      {t(
+                        "adminUserDetail.modal.hardware.title"
+                      )}
+                    </h3>
+
+                    <dl>
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.cpu"
+                          )}
+                        </dt>
+                        <dd>
+                          {node.cpu_model
+                            || detail.hardwareProfile
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.architecture"
+                          )}
+                        </dt>
+                        <dd>
+                          {node.architecture
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.logicalCpus"
+                          )}
+                        </dt>
+                        <dd>
+                          {node.logical_cpus
+                            ?? t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.backend"
+                          )}
+                        </dt>
+                        <dd>
+                          {hardwareMeasurement.backend
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.scope"
+                          )}
+                        </dt>
+                        <dd>
+                          {hardwareMeasurement.requested_perf_scope
+                            || measurement.perf_scope
+                            || t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )}
+                        </dd>
+                      </div>
+
+                      <div>
+                        <dt>
+                          {t(
+                            "adminUserDetail.modal.hardware.result"
+                          )}
+                        </dt>
+                        <dd>
+                          {detail.resultAvailable
+                            ? t(
+                                "adminUserDetail.modal.hardware.available"
+                              )
+                            : t(
+                                "adminUserDetail.modal.hardware.unavailable"
+                              )}
+                        </dd>
+                      </div>
+                    </dl>
+                  </article>
+                </div>
+
+                {failure && (
+                  <article className="admin-execution-failure">
+                    <h3>
+                      {t(
+                        "adminUserDetail.modal.failure.title"
+                      )}
+                    </h3>
+
+                    <div>
+                      <strong>
+                        {failure.code
+                          || t(
+                            "adminUserDetail.modal.failure.noCode"
+                          )}
+                      </strong>
+
+                      <span>
+                        {failure.stage
+                          || t(
+                            "adminUserDetail.modal.failure.unknownStage"
+                          )}
+                      </span>
+                    </div>
+
+                    <p>
+                      {failure.message
+                        || t(
+                          "adminUserDetail.modal.failure.noMessage"
+                        )}
+                    </p>
+                  </article>
+                )}
+
+                <div className="admin-execution-timestamps">
+                  <span>
+                    {t(
+                      "adminUserDetail.modal.timestamps.started",
+                      {
+                        date:
+                          formatDateTime(
+                            detail.startedAt,
+                            locale,
+                            t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )
+                          ),
+                      }
+                    )}
+                  </span>
+
+                  <span>
+                    {t(
+                      "adminUserDetail.modal.timestamps.processing",
+                      {
+                        date:
+                          formatDateTime(
+                            detail.processingAt,
+                            locale,
+                            t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )
+                          ),
+                      }
+                    )}
+                  </span>
+
+                  <span>
+                    {t(
+                      "adminUserDetail.modal.timestamps.finished",
+                      {
+                        date:
+                          formatDateTime(
+                            detail.finishedAt,
+                            locale,
+                            t(
+                              "adminUserDetail.fallbacks.unavailable"
+                            )
+                          ),
+                      }
+                    )}
+                  </span>
+                </div>
+              </>
+            )}
         </div>
 
         <footer className="admin-execution-modal-footer">
           <button
             type="button"
             className="btn admin-detail-secondary-button"
-            onClick={onClose}
+            onClick={
+              onClose
+            }
           >
-            Cerrar
+            {t(
+              "adminUserDetail.actions.close"
+            )}
           </button>
 
           <div className="admin-execution-modal-actions">
-            {detail?.submissionId !== null &&
-              detail?.submissionId !== undefined && (
+            {detail?.submissionId
+              !== null
+              && detail?.submissionId
+                !== undefined
+              && (
                 <Link
                   to={`/submissions/${encodeURIComponent(
-                    String(detail.submissionId)
+                    String(
+                      detail.submissionId
+                    )
                   )}`}
                   className="btn admin-detail-secondary-button"
                 >
-                  Ver experimento
+                  {t(
+                    "adminUserDetail.actions.viewExperiment"
+                  )}
                 </Link>
               )}
 
-            {detail?.resultAvailable &&
-              detail?.codename && (
-              <Link
-                to={`/code/${detail.codename}`}
-                className="btn admin-detail-primary-button"
-              >
-                Ver resultados
-              </Link>
-            )}
+            {detail?.resultAvailable
+              && detail?.codename
+              && (
+                <Link
+                  to={`/code/${detail.codename}`}
+                  className="btn admin-detail-primary-button"
+                >
+                  {t(
+                    "adminUserDetail.actions.viewResults"
+                  )}
+                </Link>
+              )}
           </div>
         </footer>
       </section>
@@ -1234,238 +2704,464 @@ function ExecutionDetailModal({
   );
 }
 
+
 const AdminUserDetail = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const {
+    id,
+  } = useParams();
 
-  const [activeTab, setActiveTab] =
-    useState("executions");
-  const [profile, setProfile] = useState(null);
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [reloadToken, setReloadToken] = useState(0);
-  const [executionId, setExecutionId] =
-    useState(null);
+  const navigate =
+    useNavigate();
 
-  const closeExecutionDetail = useCallback(() => {
-    setExecutionId(null);
-  }, []);
+  const {
+    locale,
+    t,
+  } = useI18n();
+
+  const [
+    activeTab,
+    setActiveTab,
+  ] = useState(
+    "executions"
+  );
+
+  const [
+    profile,
+    setProfile,
+  ] = useState(null);
+
+  const [
+    summary,
+    setSummary,
+  ] = useState(null);
+
+  const [
+    loading,
+    setLoading,
+  ] = useState(true);
+
+  const [
+    error,
+    setError,
+  ] = useState(null);
+
+  const [
+    reloadToken,
+    setReloadToken,
+  ] = useState(0);
+
+  const [
+    executionId,
+    setExecutionId,
+  ] = useState(null);
+
+
+  const closeExecutionDetail =
+    useCallback(
+      () => {
+        setExecutionId(null);
+      },
+      []
+    );
+
 
   useEffect(() => {
-    if (!id) return undefined;
+    if (!id) {
+      return undefined;
+    }
 
-    const controller = new AbortController();
+    const controller =
+      new AbortController();
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    const load =
+      async () => {
+        try {
+          setLoading(true);
+          setError(null);
 
-        const data = await fetchJson(
-          `/api/admin/users/${id}`,
-          { signal: controller.signal }
-        );
+          const data =
+            await fetchJson(
+              `/api/admin/users/${id}`,
+              {
+                signal:
+                  controller.signal,
+              }
+            );
 
-        const rawProfile = data.profile || {};
-        const rawSummary = data.summary || {};
+          const rawProfile =
+            data.profile || {};
 
-        setProfile({
-          id: rawProfile.id,
-          fullName:
-            rawProfile.full_name ||
-            rawProfile.fullName ||
-            "Usuario sin nombre",
-          email: rawProfile.email || "—",
-          role:
-            rawProfile.role ||
-            rawProfile.role_name ||
-            "Sin rol",
-          status:
-            rawProfile.statusLabel ||
-            (rawProfile.isActive
-              ? "Activo"
-              : "Inactivo"),
-          createdAt: rawProfile.createdAt,
-          lastLogin: rawProfile.lastLogin,
-        });
+          const rawSummary =
+            data.summary || {};
 
-        setSummary({
-          submissionsCount:
-            rawSummary.submissionsCount || 0,
-          executionsCount:
-            rawSummary.executionsCount || 0,
-          completedExecutions:
-            rawSummary.completedExecutions ||
-            rawSummary.okExecutions ||
-            0,
-          failedExecutions:
-            rawSummary.failedExecutions ||
-            ((rawSummary.timeoutExecutions || 0) +
-              (rawSummary.errorExecutions || 0)),
-          queuedExecutions:
-            rawSummary.queuedExecutions || 0,
-          runningExecutions:
-            rawSummary.runningExecutions || 0,
-          processingExecutions:
-            rawSummary.processingExecutions || 0,
-          cancelledExecutions:
-            rawSummary.cancelledExecutions || 0,
-          lastExecutionAt:
-            rawSummary.lastExecutionAt || null,
-        });
-      } catch (err) {
-        if (err.name === "AbortError") return;
+          setProfile({
+            id:
+              rawProfile.id,
+            fullName:
+              rawProfile.full_name
+              || rawProfile.fullName
+              || "",
+            email:
+              rawProfile.email
+              || "",
+            role:
+              rawProfile.role
+              || rawProfile.role_name
+              || "",
+            isActive:
+              typeof rawProfile.isActive
+                === "boolean"
+                ? rawProfile.isActive
+                : null,
+            createdAt:
+              rawProfile.createdAt,
+            lastLogin:
+              rawProfile.lastLogin,
+          });
 
-        console.error(
-          "[AdminUserDetail] Error cargando perfil:",
-          err
-        );
-        setError(
-          err.message ||
-            "No se pudo cargar el perfil del usuario."
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading(false);
+          setSummary({
+            submissionsCount:
+              rawSummary.submissionsCount
+              || 0,
+            executionsCount:
+              rawSummary.executionsCount
+              || 0,
+            completedExecutions:
+              rawSummary.completedExecutions
+              || rawSummary.okExecutions
+              || 0,
+            failedExecutions:
+              rawSummary.failedExecutions
+              || (
+                (rawSummary.timeoutExecutions
+                  || 0)
+                + (rawSummary.errorExecutions
+                  || 0)
+              ),
+            queuedExecutions:
+              rawSummary.queuedExecutions
+              || 0,
+            runningExecutions:
+              rawSummary.runningExecutions
+              || 0,
+            processingExecutions:
+              rawSummary.processingExecutions
+              || 0,
+            cancelledExecutions:
+              rawSummary.cancelledExecutions
+              || 0,
+            lastExecutionAt:
+              rawSummary.lastExecutionAt
+              || null,
+          });
+        } catch (err) {
+          if (
+            err.name
+            === "AbortError"
+          ) {
+            return;
+          }
+
+          console.error(
+            "[AdminUserDetail] Error cargando perfil:",
+            err
+          );
+
+          setError(err);
+        } finally {
+          if (
+            !controller
+              .signal
+              .aborted
+          ) {
+            setLoading(false);
+          }
         }
-      }
-    };
+      };
 
     load();
 
-    return () => controller.abort();
-  }, [id, reloadToken]);
+    return () =>
+      controller.abort();
+  }, [
+    id,
+    reloadToken,
+  ]);
+
 
   useEffect(() => {
-    setActiveTab("executions");
+    setActiveTab(
+      "executions"
+    );
     setExecutionId(null);
   }, [id]);
 
-  const tabs = useMemo(
-    () => [
-      {
-        value: "executions",
-        label: "Ejecuciones",
-        count: summary?.executionsCount || 0,
-      },
-      {
-        value: "submissions",
-        label: "Submissions",
-        count: summary?.submissionsCount || 0,
-      },
-      {
-        value: "audit",
-        label: "Actividad",
-        count: null,
-      },
-    ],
-    [summary]
-  );
+
+  const tabs =
+    useMemo(
+      () => [
+        {
+          value:
+            "executions",
+          label:
+            t(
+              "adminUserDetail.tabs.executions"
+            ),
+          count:
+            summary?.executionsCount
+            || 0,
+        },
+        {
+          value:
+            "submissions",
+          label:
+            t(
+              "adminUserDetail.tabs.submissions"
+            ),
+          count:
+            summary?.submissionsCount
+            || 0,
+        },
+        {
+          value:
+            "audit",
+          label:
+            t(
+              "adminUserDetail.tabs.audit"
+            ),
+          count:
+            null,
+        },
+      ],
+      [
+        summary,
+        t,
+      ]
+    );
+
+
+  const errorMessage =
+    error
+      ? adminDetailErrorMessage(
+          error,
+          t,
+          "adminUserDetail.errors.load"
+        )
+      : "";
+
 
   return (
     <div className="app-page admin-page admin-user-detail-page container-fluid py-4">
+
       <div className="row justify-content-center">
+
         <div className="col-12 col-xxl-11">
+
           <header className="admin-user-detail-header">
+
             <div>
+
               <button
                 type="button"
                 className="admin-detail-back"
-                onClick={() => navigate("/admin/users")}
+                onClick={() =>
+                  navigate(
+                    "/admin/users"
+                  )
+                }
               >
-                ← Volver a usuarios
+                {t(
+                  "adminUserDetail.actions.back"
+                )}
               </button>
+
               <p className="admin-user-detail-eyebrow">
-                Administración
+                {t(
+                  "adminUserDetail.header.eyebrow"
+                )}
               </p>
-              <h1>Detalle de usuario</h1>
+
+              <h1>
+                {t(
+                  "adminUserDetail.header.title"
+                )}
+              </h1>
+
               <p>
-                Perfil, entregas, ejecuciones y actividad
-                administrativa.
+                {t(
+                  "adminUserDetail.header.description"
+                )}
               </p>
+
             </div>
+
           </header>
 
-          {loading && !profile && (
-            <InlineState
-              type="loading"
-              title="Cargando usuario"
-              description="Consultando perfil y actividad."
-            />
-          )}
 
-          {error && !profile && (
-            <InlineState
-              type="error"
-              title="No pudimos cargar el usuario"
-              description={error}
-              actionLabel="Reintentar"
-              onAction={() =>
-                setReloadToken((value) => value + 1)
-              }
-            />
-          )}
-
-          {profile && summary && (
-            <>
-              <ProfileOverview
-                profile={profile}
-                summary={summary}
+          {loading
+            && !profile
+            && (
+              <InlineState
+                type="loading"
+                title={t(
+                  "adminUserDetail.loading.title"
+                )}
+                description={t(
+                  "adminUserDetail.loading.description"
+                )}
               />
+            )}
 
-              <section className="admin-user-detail-content">
-                <nav
-                  className="admin-detail-tabs"
-                  aria-label="Detalle administrativo"
-                >
-                  {tabs.map((tab) => (
-                    <TabButton
-                      key={tab.value}
-                      active={activeTab === tab.value}
-                      onClick={() =>
-                        setActiveTab(tab.value)
-                      }
-                    >
-                      <span>{tab.label}</span>
-                      {tab.count !== null && (
-                        <span className="admin-detail-tab-count">
-                          {tab.count}
-                        </span>
+
+          {error
+            && !profile
+            && (
+              <InlineState
+                type="error"
+                title={t(
+                  "adminUserDetail.errors.title"
+                )}
+                description={
+                  errorMessage
+                }
+                actionLabel={t(
+                  "adminUserDetail.actions.retry"
+                )}
+                onAction={() =>
+                  setReloadToken(
+                    (value) =>
+                      value + 1
+                  )
+                }
+              />
+            )}
+
+
+          {profile
+            && summary
+            && (
+              <>
+
+                <ProfileOverview
+                  profile={
+                    profile
+                  }
+                  summary={
+                    summary
+                  }
+                />
+
+
+                <section className="admin-user-detail-content">
+
+                  <nav
+                    className="admin-detail-tabs"
+                    aria-label={t(
+                      "adminUserDetail.tabs.aria"
+                    )}
+                  >
+
+                    {tabs.map(
+                      (tab) => (
+                        <TabButton
+                          key={
+                            tab.value
+                          }
+                          active={
+                            activeTab
+                              === tab.value
+                          }
+                          onClick={() =>
+                            setActiveTab(
+                              tab.value
+                            )
+                          }
+                        >
+                          <span>
+                            {tab.label}
+                          </span>
+
+                          {tab.count
+                            !== null
+                            && (
+                              <span className="admin-detail-tab-count">
+                                {formatInteger(
+                                  tab.count,
+                                  locale
+                                )}
+                              </span>
+                            )}
+                        </TabButton>
+                      )
+                    )}
+
+                  </nav>
+
+
+                  <div className="admin-detail-tab-panel">
+
+                    {activeTab
+                      === "executions"
+                      && (
+                        <ExecutionsTab
+                          userId={
+                            id
+                          }
+                          summary={
+                            summary
+                          }
+                          onOpenDetail={
+                            setExecutionId
+                          }
+                        />
                       )}
-                    </TabButton>
-                  ))}
-                </nav>
 
-                <div className="admin-detail-tab-panel">
-                  {activeTab === "executions" && (
-                    <ExecutionsTab
-                      userId={id}
-                      summary={summary}
-                      onOpenDetail={setExecutionId}
-                    />
-                  )}
 
-                  {activeTab === "submissions" && (
-                    <SubmissionsTab userId={id} />
-                  )}
+                    {activeTab
+                      === "submissions"
+                      && (
+                        <SubmissionsTab
+                          userId={
+                            id
+                          }
+                        />
+                      )}
 
-                  {activeTab === "audit" && (
-                    <AuditTab userId={id} />
-                  )}
-                </div>
-              </section>
-            </>
-          )}
+
+                    {activeTab
+                      === "audit"
+                      && (
+                        <AuditTab
+                          userId={
+                            id
+                          }
+                        />
+                      )}
+
+                  </div>
+
+                </section>
+
+              </>
+            )}
+
         </div>
+
       </div>
 
+
       <ExecutionDetailModal
-        executionId={executionId}
-        onClose={closeExecutionDetail}
+        executionId={
+          executionId
+        }
+        onClose={
+          closeExecutionDetail
+        }
       />
+
     </div>
   );
 };
+
 
 export default AdminUserDetail;

@@ -1,5 +1,7 @@
 // src/screens/RenderForm/components/TestNameAndUploadCard.js
 import React from "react";
+
+import { useI18n } from "../../../i18n";
 import {
   MAX_SUBMISSION_NOTE_CHARS,
   MAX_SUBMISSION_TITLE_CHARS,
@@ -21,6 +23,7 @@ function TestNameAndUploadCard({
   fileInputRef,
   maxZipMb,
 }) {
+  const { t } = useI18n();
   const noteLength = String(note || "").length;
 
   const handleDropzoneKeyDown = (event) => {
@@ -31,32 +34,32 @@ function TestNameAndUploadCard({
 
   return (
     <div className="rf-row rf-row-two">
-      {/* Panel: Nombre del test */}
       <section className="rf-panel">
         <label className="form-label" htmlFor="rf-test-name">
           <span className="label-icon">🏷️</span>
-          Nombre del test
+          {t("renderForm.upload.testNameLabel")}
         </label>
         <input
           id="rf-test-name"
           type="text"
-          aria-label="Nombre del test"
+          aria-label={t("renderForm.upload.testNameLabel")}
           value={testName}
           onChange={(e) => onTestNameChange(e.target.value)}
           maxLength={MAX_SUBMISSION_TITLE_CHARS}
           className="form-input"
-          placeholder="Ej: LCS optimizado, CAMM bloqueado, etc."
+          placeholder={t("renderForm.upload.testNamePlaceholder")}
         />
         <p className="form-help-text">
-          Este nombre se usará para identificar la ejecución en la vista de
-          resultados.
+          {t("renderForm.upload.testNameHelp")}
         </p>
 
         <div className="rf-note-field">
           <label className="form-label" htmlFor="rf-submission-note">
             <span className="label-icon">🗒️</span>
-            Nota personal
-            <span className="rf-note-optional">(opcional)</span>
+            {t("renderForm.upload.noteLabel")}{" "}
+            <span className="rf-note-optional">
+              {t("renderForm.upload.optional")}
+            </span>
           </label>
           <textarea
             id="rf-submission-note"
@@ -71,24 +74,26 @@ function TestNameAndUploadCard({
               id="rf-submission-note-help"
               className="form-help-text"
             >
-              Solo tú podrás ver esta nota.
+              {t("renderForm.upload.notePrivate")}
             </p>
             <span
               id="rf-submission-note-counter"
               className="rf-note-counter"
               aria-live="polite"
             >
-              {noteLength} / {MAX_SUBMISSION_NOTE_CHARS} caracteres
+              {t("renderForm.upload.characters", {
+                count: noteLength,
+                max: MAX_SUBMISSION_NOTE_CHARS,
+              })}
             </span>
           </div>
         </div>
       </section>
 
-      {/* Panel: Upload de archivo .zip */}
       <section className="rf-panel">
         <label className="form-label" htmlFor="rf-code-archive">
           <span className="label-icon">📁</span>
-          Archivo de código (.zip)
+          {t("renderForm.upload.archiveLabel")}
         </label>
 
         <div
@@ -102,20 +107,21 @@ function TestNameAndUploadCard({
           onKeyDown={handleDropzoneKeyDown}
           role="button"
           tabIndex={0}
-          aria-label="Seleccionar archivo de código ZIP"
+          aria-label={t("renderForm.upload.selectAria")}
         >
           <div className="file-upload-content">
             <div className="file-upload-icon">⬆️</div>
             <div className="file-upload-text">
               <span className="file-upload-title">
-                Arrastra y suelta el .zip aquí
+                {t("renderForm.upload.dropTitle")}
               </span>
               <span className="file-upload-hint">
-                o haz clic para seleccionar un archivo desde tu equipo.
+                {t("renderForm.upload.dropHint")}
               </span>
               <span className="file-upload-hint">
-                Máx recomendado: {maxZipMb} MB. El .zip debe contener al
-                menos un archivo <code>.cpp</code>.
+                {t("renderForm.upload.maxHint", {
+                  max: maxZipMb,
+                })}
               </span>
             </div>
           </div>
@@ -125,11 +131,17 @@ function TestNameAndUploadCard({
               <div className="file-meta-name">{fileMeta.name}</div>
               <div className="file-meta-extra">
                 <span>{fileMeta.sizeLabel}</span>
-                {isInspectingZip && <span>· Analizando contenido…</span>}
+                {isInspectingZip && (
+                  <span>
+                    · {t("renderForm.upload.inspecting")}
+                  </span>
+                )}
                 {!isInspectingZip && (
                   <span>
-                    · {fileMeta.cppCount} archivo
-                    {fileMeta.cppCount === 1 ? "" : "s"} .cpp
+                    ·{" "}
+                    {t("renderForm.upload.cppFiles", {
+                      count: fileMeta.cppCount,
+                    })}
                   </span>
                 )}
               </div>
@@ -137,7 +149,9 @@ function TestNameAndUploadCard({
                 fileMeta.cppSample &&
                 fileMeta.cppSample.length > 0 && (
                   <div className="file-meta-extra">
-                    <span>Ejemplos dentro del .zip:</span>
+                    <span>
+                      {t("renderForm.upload.examplesInside")}
+                    </span>
                     <span>
                       {fileMeta.cppSample.join(" · ")}
                       {fileMeta.cppCount > fileMeta.cppSample.length

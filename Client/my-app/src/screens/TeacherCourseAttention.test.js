@@ -93,7 +93,7 @@ describe("TeacherCourseAttention", () => {
         "button",
         {
           name:
-            /1 estudiantes sin ejecuciones/i,
+            /1 estudiante sin ejecuciones/i,
         }
       )
     );
@@ -108,7 +108,7 @@ describe("TeacherCourseAttention", () => {
         "button",
         {
           name:
-            /1 estudiantes con más fallos/i,
+            /1 estudiante con más fallos/i,
         }
       )
     );

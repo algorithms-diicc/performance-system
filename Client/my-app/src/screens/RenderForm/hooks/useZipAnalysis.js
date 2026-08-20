@@ -2,10 +2,8 @@
 import { useState, useCallback } from "react";
 import JSZip from "jszip";
 
-/**
- * Límite de tamaño del .zip en MB.
- * 👉 Si en el futuro necesitas cambiarlo, basta con modificar este valor.
- */
+import { useI18n } from "../../../i18n";
+
 const MAX_ZIP_MB = 500;
 const MAX_ZIP_BYTES = MAX_ZIP_MB * 1024 * 1024;
 
@@ -18,24 +16,17 @@ function formatBytes(bytes) {
   return `${kb.toFixed(1)} KB`;
 }
 
-/**
- * Hook responsable de:
- * - Validar extensión (.zip)
- * - Validar tamaño máximo
- * - Inspeccionar contenido con JSZip y contar .cpp
- * - Exponer handlers para input file + drag & drop
- * - Exponer reset() para limpiar el estado del archivo
- */
 function useZipAnalysis() {
+  const { t } = useI18n();
   const [file, setFile] = useState(null);
-  const [fileError, setFileError] = useState("");
+  const [fileErrorState, setFileErrorState] = useState(null);
   const [fileMeta, setFileMeta] = useState(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [isInspectingZip, setIsInspectingZip] = useState(false);
 
   const reset = useCallback(() => {
     setFile(null);
-    setFileError("");
+    setFileErrorState(null);
     setFileMeta(null);
     setIsDraggingFile(false);
     setIsInspectingZip(false);
@@ -43,26 +34,28 @@ function useZipAnalysis() {
 
   const analyzeZipFile = useCallback(
     async (zipFile) => {
-      // limpiamos cualquier estado previo
       reset();
 
       if (!zipFile) return false;
 
-      // Extensión
       if (!zipFile.name.toLowerCase().endsWith(".zip")) {
         setFile(null);
-        setFileError("El archivo debe tener extensión .zip.");
+        setFileErrorState({
+          key: "renderForm.workflow.zip.extension",
+          params: {},
+        });
         return false;
       }
 
-      // Tamaño
       if (zipFile.size > MAX_ZIP_BYTES) {
         setFile(null);
-        setFileError(
-          `El tamaño máximo recomendado es de ${MAX_ZIP_MB} MB. El archivo actual pesa ${formatBytes(
-            zipFile.size
-          )}.`
-        );
+        setFileErrorState({
+          key: "renderForm.workflow.zip.tooLarge",
+          params: {
+            max: MAX_ZIP_MB,
+            size: formatBytes(zipFile.size),
+          },
+        });
         return false;
       }
 
@@ -75,7 +68,10 @@ function useZipAnalysis() {
 
         const cppFiles = [];
         zip.forEach((relativePath, entry) => {
-          if (!entry.dir && relativePath.toLowerCase().endsWith(".cpp")) {
+          if (
+            !entry.dir &&
+            relativePath.toLowerCase().endsWith(".cpp")
+          ) {
             cppFiles.push(relativePath);
           }
         });
@@ -89,17 +85,19 @@ function useZipAnalysis() {
         });
 
         if (cppFiles.length === 0) {
-          setFileError(
-            "El .zip no contiene archivos .cpp. Revisa el contenido antes de volver a subirlo."
-          );
+          setFileErrorState({
+            key: "renderForm.workflow.zip.noCpp",
+            params: {},
+          });
         }
 
         return true;
       } catch (err) {
         console.error("Error al leer el .zip:", err);
-        setFileError(
-          "No se pudo leer el contenido del .zip. Inténtalo nuevamente o con otro archivo."
-        );
+        setFileErrorState({
+          key: "renderForm.workflow.zip.unreadable",
+          params: {},
+        });
         setFile(null);
         setFileMeta(null);
         return false;
@@ -112,10 +110,10 @@ function useZipAnalysis() {
 
   const handleFileInputChange = useCallback(
     async (event) => {
-      const uploadedFile = event.target.files && event.target.files[0];
+      const uploadedFile =
+        event.target.files && event.target.files[0];
       const ok = await analyzeZipFile(uploadedFile);
       if (!ok) {
-        // Permite volver a seleccionar el mismo archivo
         event.target.value = "";
       }
     },
@@ -131,8 +129,7 @@ function useZipAnalysis() {
       const droppedFiles = event.dataTransfer.files;
       if (!droppedFiles || droppedFiles.length === 0) return;
 
-      const zipFile = droppedFiles[0];
-      await analyzeZipFile(zipFile);
+      await analyzeZipFile(droppedFiles[0]);
     },
     [analyzeZipFile]
   );
@@ -148,6 +145,10 @@ function useZipAnalysis() {
     event.stopPropagation();
     setIsDraggingFile(false);
   }, []);
+
+  const fileError = fileErrorState
+    ? t(fileErrorState.key, fileErrorState.params)
+    : "";
 
   return {
     file,

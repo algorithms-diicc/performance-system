@@ -3,7 +3,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { serverURL } from "../../common/Constants.js";
-import { friendlyRequestError } from "../../common/requestErrorModel";
+import { useI18n } from "../../i18n";
 import {
   buildExecutionSearch,
   buildRecoveredExecutionState,
@@ -214,7 +214,59 @@ const PARAM_LIMITS = {
   },
 };
 
+const messageState = (key, params = {}) => ({
+  key,
+  params,
+});
+
+const resolveMessageState = (state, t) => {
+  if (!state) return "";
+  if (typeof state === "string") return state;
+  return t(state.key, state.params || {});
+};
+
+const normalizeRecoveredTaskId = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "lcs") return "lcs";
+  if (normalized === "size") return "size";
+  if (normalized.startsWith("camm")) return "camm";
+  return "";
+};
+
+const normalizeRecoveredDataType = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return ["cammr", "cammso", "camms"].includes(normalized)
+    ? normalized
+    : "";
+};
+
+const normalizeRecoveredProfileId = (value) => {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  const map = {
+    quick: "rapido",
+    rapido: "rapido",
+    balanced: "equilibrado",
+    equilibrado: "equilibrado",
+    exhaustive: "exhaustivo",
+    exhaustivo: "exhaustivo",
+    custom: "personalizado",
+    personalizado: "personalizado",
+  };
+
+  return map[normalized] || "";
+};
+
 function RenderFormPage({ currentUser }) {
+  const { t } = useI18n();
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -354,12 +406,15 @@ function RenderFormPage({ currentUser }) {
         setSelectedCourseId("");
         setCourseSelectionRequired(false);
 
-        setCourseContextError(
-          friendlyRequestError(
-            error,
-            "No fue posible consultar tus cursos activos."
-          )
-        );
+        const status = error?.response?.status;
+        const key =
+          status === 401
+            ? "renderForm.page.errors.coursesSession"
+            : status === 403
+            ? "renderForm.page.errors.coursesForbidden"
+            : "renderForm.page.errors.courses";
+
+        setCourseContextError(messageState(key));
       } finally {
         if (!cancelled) {
           setCourseContextLoading(false);
@@ -448,18 +503,38 @@ function RenderFormPage({ currentUser }) {
 
         if (!recovered) {
           setSubmissionError(
-            "No fue posible reconstruir la ejecución guardada."
+            messageState(
+              "renderForm.page.errors.restoreInvalid"
+            )
           );
           return;
         }
 
-        setExecutionSnapshot(recovered.executionSnapshot);
+        const first = recovered.firstSnapshot;
+
+        setExecutionSnapshot({
+          ...recovered.executionSnapshot,
+          recoveredTaskId: normalizeRecoveredTaskId(
+            first?.benchmark
+          ),
+          recoveredDataType: normalizeRecoveredDataType(
+            first?.benchmark
+          ),
+          recoveredProfileId: normalizeRecoveredProfileId(
+            first?.executionProfile
+          ),
+          recoveredHardwareProfile: String(
+            first?.hardwareProfile || ""
+          ).trim(),
+          recoveredSubmissionTitle: String(
+            first?.submissionTitle || ""
+          ).trim(),
+          recoveredFileCount: recovered.fileList.length,
+        });
         setFileList(recovered.fileList);
         setShowOverview(false);
         setSubmissionError("");
         setIsSubmitting(!recovered.allTerminal);
-
-        const first = recovered.firstSnapshot;
 
         if (first?.submissionTitle) {
           setTitleState(
@@ -481,23 +556,16 @@ function RenderFormPage({ currentUser }) {
         );
 
         const status = error?.response?.status;
-        if (status === 401) {
-          setSubmissionError(
-            "Tu sesión expiró. Inicia sesión nuevamente para recuperar la ejecución."
-          );
-        } else if (status === 403) {
-          setSubmissionError(
-            "No tienes permiso para recuperar esta ejecución."
-          );
-        } else if (status === 404) {
-          setSubmissionError(
-            "La ejecución indicada en la URL ya no existe."
-          );
-        } else {
-          setSubmissionError(
-            "No fue posible recuperar la ejecución desde el servidor."
-          );
-        }
+        const key =
+          status === 401
+            ? "renderForm.page.errors.restoreSession"
+            : status === 403
+            ? "renderForm.page.errors.restoreForbidden"
+            : status === 404
+            ? "renderForm.page.errors.restoreNotFound"
+            : "renderForm.page.errors.restoreGeneric";
+
+        setSubmissionError(messageState(key));
       }
     };
 
@@ -626,7 +694,9 @@ function RenderFormPage({ currentUser }) {
 
         if (!reuse) {
           setSubmissionError(
-            "No fue posible interpretar la configuración histórica."
+            messageState(
+              "renderForm.page.errors.reuseInvalid"
+            )
           );
           return;
         }
@@ -673,24 +743,16 @@ function RenderFormPage({ currentUser }) {
         if (cancelled) return;
 
         const status = error?.response?.status;
+        const key =
+          status === 401
+            ? "renderForm.page.errors.reuseSession"
+            : status === 403
+            ? "renderForm.page.errors.reuseForbidden"
+            : status === 404
+            ? "renderForm.page.errors.reuseNotFound"
+            : "renderForm.page.errors.reuseGeneric";
 
-        if (status === 401) {
-          setSubmissionError(
-            "Tu sesión expiró. Inicia sesión nuevamente para reutilizar esta configuración."
-          );
-        } else if (status === 403) {
-          setSubmissionError(
-            "No tienes permiso para reutilizar esta ejecución."
-          );
-        } else if (status === 404) {
-          setSubmissionError(
-            "La ejecución usada como referencia ya no existe."
-          );
-        } else {
-          setSubmissionError(
-            "No fue posible reutilizar la configuración histórica."
-          );
-        }
+        setSubmissionError(messageState(key));
       }
     };
 
@@ -763,17 +825,33 @@ function RenderFormPage({ currentUser }) {
     const limits = getLimits(field);
     if (!limits) return;
 
-    let error = "";
-    if (rawValue === "" || rawValue === null || rawValue === undefined) {
-      error = "Ingresa un valor numérico.";
+    let error = null;
+
+    if (
+      rawValue === "" ||
+      rawValue === null ||
+      rawValue === undefined
+    ) {
+      error = messageState(
+        "renderForm.page.validations.numberRequired"
+      );
     } else {
       const num = Number(rawValue);
+
       if (Number.isNaN(num)) {
-        error = "Ingresa un número válido.";
+        error = messageState(
+          "renderForm.page.validations.numberInvalid"
+        );
       } else if (num < limits.min) {
-        error = `Mínimo permitido: ${limits.min}.`;
+        error = messageState(
+          "renderForm.page.validations.minimum",
+          { min: limits.min }
+        );
       } else if (num > limits.max) {
-        error = `Máximo permitido: ${limits.max}.`;
+        error = messageState(
+          "renderForm.page.validations.maximum",
+          { max: limits.max }
+        );
       }
     }
 
@@ -924,37 +1002,35 @@ function RenderFormPage({ currentUser }) {
 
     // Chequeos básicos
     if (!file) {
-      alert("Por favor, sube un archivo .zip antes de continuar.");
+      alert(t("renderForm.page.alerts.fileRequired"));
       return;
     }
     if (!selectedTaskType) {
-      alert("Selecciona un tipo de test antes de ejecutar.");
+      alert(t("renderForm.page.alerts.benchmarkRequired"));
       return;
     }
     if (fileError) {
-      alert("Corrige el error del archivo antes de ejecutar.");
+      alert(t("renderForm.page.alerts.fileError"));
       return;
     }
     if (paramErrors.inputSize || paramErrors.samples) {
-      alert("Corrige los parámetros numéricos antes de ejecutar.");
+      alert(t("renderForm.page.alerts.parameterError"));
       return;
     }
     if (selectedTaskType === "camm" && !dataType) {
-      alert("Selecciona el tipo de datos para CAMM antes de ejecutar.");
+      alert(t("renderForm.page.alerts.dataTypeRequired"));
       return;
     }
     if (courseContextLoading) {
-      alert("Espera mientras se carga tu contexto académico.");
+      alert(t("renderForm.page.alerts.courseLoading"));
       return;
     }
     if (courseContextError) {
-      alert(
-        "No podemos iniciar la ejecución hasta verificar tus cursos activos."
-      );
+      alert(t("renderForm.page.alerts.courseUnavailable"));
       return;
     }
     if (courseSelectionRequired && !selectedCourseId) {
-      alert("Selecciona el curso correspondiente antes de ejecutar.");
+      alert(t("renderForm.page.alerts.courseRequired"));
       return;
     }
 
@@ -1000,7 +1076,8 @@ function RenderFormPage({ currentUser }) {
       resolveSubmissionTitle({
         testName,
         archiveFilename: file.name,
-        fallbackTitle: getTaskTitle(),
+        fallbackTitle:
+          taskDisplayNames[selectedTaskType] || "-",
       })
     );
 
@@ -1026,15 +1103,12 @@ function RenderFormPage({ currentUser }) {
     setExecutionSnapshot({
       testName,
       fileName: file.name,
-      taskTitle: getTaskTitle(),
+      taskId: selectedTaskType,
       inputSize,
-      inputSizeLabel: getInputSizeLabel(),
       samples,
-      samplesLabel: `${samples} por punto`,
-      profileLabel: getExecutionProfileLabel(),
-      environmentLabel: getEnvironmentLabel(),
-      dataTypeLabel: getDataTypeLabel(),
-      courseLabel: getSelectedCourseLabel(),
+      executionProfileId: executionProfile,
+      dataType,
+      courseId: selectedCourseId || null,
     });
 
     setSubmissionError("");
@@ -1089,7 +1163,9 @@ function RenderFormPage({ currentUser }) {
             "No se encontraron ejecuciones en la respuesta del backend."
           );
           setSubmissionError(
-            "El servidor registró la solicitud, pero no devolvió ejecuciones en cola."
+            messageState(
+              "renderForm.page.errors.submitNoExecutions"
+            )
           );
           setIsSubmitting(false);
         }
@@ -1099,27 +1175,18 @@ function RenderFormPage({ currentUser }) {
 
         const status = error?.response?.status;
 
-        if (!error?.response) {
-          setSubmissionError(
-            "No pudimos conectar con el servidor. Verifica que el backend esté disponible e inténtalo nuevamente."
-          );
-        } else if (status === 401) {
-          setSubmissionError(
-            "Tu sesión expiró. Inicia sesión nuevamente antes de enviar el análisis."
-          );
-        } else if (status === 403) {
-          setSubmissionError(
-            "Tu cuenta no tiene permisos para registrar este análisis."
-          );
-        } else if (status === 413) {
-          setSubmissionError(
-            "El archivo enviado supera el tamaño permitido por el servidor."
-          );
-        } else {
-          setSubmissionError(
-            "No fue posible registrar el análisis en el servidor. Inténtalo nuevamente."
-          );
-        }
+        const key =
+          !error?.response
+            ? "renderForm.page.errors.submitNetwork"
+            : status === 401
+            ? "renderForm.page.errors.submitSession"
+            : status === 403
+            ? "renderForm.page.errors.submitForbidden"
+            : status === 413
+            ? "renderForm.page.errors.submitTooLarge"
+            : "renderForm.page.errors.submitGeneric";
+
+        setSubmissionError(messageState(key));
 
         setIsSubmitting(false);
       })
@@ -1158,7 +1225,11 @@ function RenderFormPage({ currentUser }) {
 
     if (!destination.path) {
       if (destination.error) {
-        setSubmissionError(destination.error);
+        setSubmissionError(
+          messageState(
+            "renderForm.page.errors.resultsDestination"
+          )
+        );
       }
       return;
     }
@@ -1179,69 +1250,194 @@ function RenderFormPage({ currentUser }) {
     });
   };
 
-  // ======= Utilitarios para el modal =======
-  const getTaskTitle = () =>
-    taskDisplayNames[selectedTaskType] || "-";
+  // ======= Utilitarios de presentación =======
+  const getTaskTitle = (taskId = selectedTaskType) => {
+    if (!taskId) return "-";
+
+    const key =
+      `renderForm.benchmark.tasks.${taskId}.name`;
+    const translated = t(key);
+
+    return translated === key
+      ? taskDisplayNames[taskId] || taskId
+      : translated;
+  };
 
   const getEnvironmentLabel = () =>
-    executionEnvironment.name;
+    t("renderForm.measurement.environmentName");
 
-  const getInputSizeLabel = () => {
+  const getInputSizeLabel = (
+    taskId = selectedTaskType,
+    value = inputSize
+  ) => {
     if (
-      inputSize === "" ||
-      inputSize === null ||
-      inputSize === undefined
+      value === "" ||
+      value === null ||
+      value === undefined
     ) {
       return "—";
     }
 
-    if (selectedTaskType === "lcs") {
-      return `${inputSize} líneas`;
+    if (taskId === "lcs") {
+      return t("renderForm.page.inputSize.lines", {
+        count: value,
+      });
     }
 
-    if (selectedTaskType === "camm") {
-      return `${inputSize} valores`;
+    if (taskId === "camm") {
+      return t("renderForm.page.inputSize.values", {
+        count: value,
+      });
     }
 
-    if (selectedTaskType === "size") {
-      return String(inputSize);
+    return String(value);
+  };
+
+  const getSamplesLabel = (value = samples) => {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric)) {
+      return "—";
     }
 
-    return String(inputSize);
+    return t("renderForm.measurement.repetitions", {
+      count: numeric,
+    });
   };
 
-  const getExecutionProfileLabel = () => {
-    const p = executionProfiles.find((opt) => opt.id === executionProfile);
-    return p ? p.name : "-";
+  const getExecutionProfileLabel = (
+    profileId = executionProfile
+  ) => {
+    if (!profileId) return "-";
+
+    const key =
+      `renderForm.measurement.profiles.${profileId}.name`;
+    const translated = t(key);
+
+    if (translated !== key) {
+      return translated;
+    }
+
+    const profile = executionProfiles.find(
+      (option) => option.id === profileId
+    );
+
+    return profile?.name || profileId;
   };
 
-  const getDataTypeLabel = () => {
-    if (!dataType) return "No aplica";
-    const opt = numericalInputOptionsUI.find((o) => o.value === dataType);
-    return opt ? opt.label : dataType;
+  const getDataTypeLabel = (type = dataType) => {
+    if (!type) {
+      return t("renderForm.benchmark.notApplicable");
+    }
+
+    const key =
+      `renderForm.benchmark.dataTypes.${type}`;
+    const translated = t(key);
+
+    if (translated !== key) {
+      return translated;
+    }
+
+    const option = numericalInputOptionsUI.find(
+      (item) => item.value === type
+    );
+
+    return option?.label || type;
   };
 
-  const getSelectedCourse = () => {
-    if (!selectedCourseId) {
+  const getSelectedCourse = (
+    courseId = selectedCourseId
+  ) => {
+    if (!courseId) {
       return null;
     }
 
-    return activeCourses.find(
-      (course) =>
-        String(course.id) ===
-        String(selectedCourseId)
-    ) || null;
+    return (
+      activeCourses.find(
+        (course) =>
+          String(course.id) === String(courseId)
+      ) || null
+    );
   };
 
-
-  const getSelectedCourseLabel = () => {
-    const course = getSelectedCourse();
+  const getSelectedCourseLabel = (
+    courseId = selectedCourseId
+  ) => {
+    const course = getSelectedCourse(courseId);
 
     if (!course) {
-      return "Sin curso asociado";
+      return t("renderForm.course.noCourse");
     }
 
     return `${course.code} · ${course.academicYear}-${course.academicTerm}`;
+  };
+
+  const buildExecutionDisplaySummary = (snapshot) => {
+    if (!snapshot) return null;
+
+    const recovered =
+      snapshot.recoveredFromPersistence === true;
+    const taskId =
+      snapshot.taskId ||
+      snapshot.recoveredTaskId ||
+      "";
+    const dataTypeId =
+      snapshot.dataType ||
+      snapshot.recoveredDataType ||
+      "";
+    const profileId =
+      snapshot.executionProfileId ||
+      snapshot.recoveredProfileId ||
+      "";
+
+    return {
+      ...snapshot,
+      testName: recovered
+        ? snapshot.recoveredSubmissionTitle ||
+          t("renderForm.page.recoveredExecution")
+        : snapshot.testName,
+      fileName:
+        recovered &&
+        Number(snapshot.recoveredFileCount) > 1
+          ? t("renderForm.page.recoveredFiles", {
+              count: Number(
+                snapshot.recoveredFileCount
+              ),
+            })
+          : snapshot.fileName,
+      taskTitle: taskId
+        ? getTaskTitle(taskId)
+        : snapshot.taskTitle || "-",
+      inputSizeLabel:
+        taskId &&
+        snapshot.inputSize !== null &&
+        snapshot.inputSize !== undefined
+          ? getInputSizeLabel(
+              taskId,
+              snapshot.inputSize
+            )
+          : snapshot.inputSizeLabel || "—",
+      samplesLabel:
+        snapshot.samples !== null &&
+        snapshot.samples !== undefined
+          ? getSamplesLabel(snapshot.samples)
+          : snapshot.samplesLabel || "—",
+      profileLabel: profileId
+        ? getExecutionProfileLabel(profileId)
+        : snapshot.profileLabel || "-",
+      environmentLabel: recovered
+        ? snapshot.recoveredHardwareProfile ||
+          t("renderForm.page.registeredEnvironment")
+        : snapshot.environmentLabel ||
+          getEnvironmentLabel(),
+      dataTypeLabel: dataTypeId
+        ? getDataTypeLabel(dataTypeId)
+        : t("renderForm.benchmark.notApplicable"),
+      courseLabel: snapshot.courseId
+        ? getSelectedCourseLabel(snapshot.courseId)
+        : snapshot.courseLabel ||
+          getSelectedCourseLabel(),
+    };
   };
 
 
@@ -1277,7 +1473,7 @@ function RenderFormPage({ currentUser }) {
     samples,
     samplesLabel:
       selectedTaskType
-        ? `${samples} por punto`
+        ? getSamplesLabel()
         : "—",
     profileLabel: getExecutionProfileLabel(),
     environmentLabel: getEnvironmentLabel(),
@@ -1285,30 +1481,52 @@ function RenderFormPage({ currentUser }) {
     courseLabel: getSelectedCourseLabel(),
   };
 
+  const executionDisplaySummary =
+    buildExecutionDisplaySummary(
+      executionSnapshot
+    );
+
   const statusSummary =
     fileList.length > 0 ||
     isSubmitting ||
     submissionError
-      ? executionSnapshot || liveSummary
+      ? executionDisplaySummary || liveSummary
       : liveSummary;
+
+  const submissionErrorText =
+    resolveMessageState(submissionError, t);
+  const courseContextErrorText =
+    resolveMessageState(courseContextError, t);
+  const localizedParamErrors = {
+    inputSize: resolveMessageState(
+      paramErrors.inputSize,
+      t
+    ),
+    samples: resolveMessageState(
+      paramErrors.samples,
+      t
+    ),
+  };
 
   return (
     <div className="rf-page inicio-container">
       {/* Header superior */}
       <HeaderSection
-        title="Nuevo análisis de rendimiento"
-        subtitle="Sube una implementación y configura cómo Performance System evaluará su comportamiento."
+        title={t("renderForm.page.headerTitle")}
+        subtitle={t("renderForm.page.headerSubtitle")}
       />
 
       <form onSubmit={handleOpenOverview}>
         {/* Encabezado de paso dentro del cuerpo */}
         <div className="rf-step-header">
-          <span className="rf-step-kicker">Configuración</span>
-          <h2 className="rf-step-title">Prepara tu experimento</h2>
+          <span className="rf-step-kicker">
+            {t("renderForm.page.configKicker")}
+          </span>
+          <h2 className="rf-step-title">
+            {t("renderForm.page.configTitle")}
+          </h2>
           <p className="rf-step-description">
-            Selecciona el código, el tipo de benchmark y los parámetros de
-            medición. Podrás revisar toda la configuración antes de iniciar
-            la ejecución.
+            {t("renderForm.page.configDescription")}
           </p>
         </div>
 
@@ -1319,7 +1537,7 @@ function RenderFormPage({ currentUser }) {
             <AcademicCourseCard
               courses={activeCourses}
               loading={courseContextLoading}
-              error={courseContextError}
+              error={courseContextErrorText}
               selectedCourseId={selectedCourseId}
               selectionRequired={courseSelectionRequired}
               onCourseChange={setSelectedCourseId}
@@ -1359,7 +1577,7 @@ function RenderFormPage({ currentUser }) {
               onInputSizeSliderChange={handleInputSizeSliderChange}
               onSamplesChange={handleSamplesChange}
               onSamplesSliderChange={handleSamplesSliderChange}
-              paramErrors={paramErrors}
+              paramErrors={localizedParamErrors}
               inputSizePresets={inputSizePresets}
               samplesPresets={samplesPresets}
               numericalInputOptions={numericalInputOptionsUI}
@@ -1372,7 +1590,7 @@ function RenderFormPage({ currentUser }) {
               taskBadges={taskBadges}
               inputSizeHelp={inputSizeHelp}
               paramLimits={PARAM_LIMITS}
-              executionProfile={getExecutionProfileLabel()}
+              executionProfile={executionProfile}
             />
 
             {/* Bloque: Sistema de medición + perfil de ejecución */}
@@ -1393,7 +1611,7 @@ function RenderFormPage({ currentUser }) {
             allDone={allDone}
             allTerminal={allTerminal}
             hasError={hasError}
-            submissionError={submissionError}
+            submissionError={submissionErrorText}
             firstErrorMessage={firstErrorMessage}
             pollingRequestError={pollingRequestError}
             summary={statusSummary}
@@ -1416,14 +1634,18 @@ function RenderFormPage({ currentUser }) {
         testName={testName}
         fileName={file ? file.name : null}
         taskTitle={getTaskTitle()}
+        taskId={selectedTaskType}
         inputSize={inputSize}
         inputLimits={currentInputLimits}
         samples={samples}
         sampleLimits={currentSamplesLimits}
         dataTypeLabel={getDataTypeLabel()}
+        dataType={dataType}
         environmentLabel={getEnvironmentLabel()}
         executionProfileLabel={getExecutionProfileLabel()}
+        executionProfileId={executionProfile}
         courseLabel={getSelectedCourseLabel()}
+        hasCourse={Boolean(getSelectedCourse())}
         username={
           currentUser?.email ||
           currentUser?.username ||

@@ -13,9 +13,14 @@ import InlineState
   from "../components/InlineState";
 
 import {
+  useI18n,
+} from "../i18n";
+
+import {
   coursePeriod,
   formatDateTime,
   teacherApi,
+  teacherRequestErrorMessage,
 } from "./teacherApi";
 
 import "./TeacherDashboard.css";
@@ -24,35 +29,74 @@ import "./TeacherDashboard.css";
 const PAGE_SIZE = 15;
 
 
-function formatDuration(value) {
+function formatDuration(
+  value,
+  locale = "es-CL",
+  fallback = "—"
+) {
   if (
     value === null ||
     value === undefined
   ) {
-    return "—";
+    return fallback;
   }
 
-  const numeric = Number(value);
+  const numeric =
+    Number(value);
 
-  if (!Number.isFinite(numeric)) {
-    return "—";
+  if (
+    !Number.isFinite(
+      numeric
+    )
+  ) {
+    return fallback;
   }
 
   if (numeric < 1000) {
     return `${Math.round(numeric)} ms`;
   }
 
-  return `${(numeric / 1000).toFixed(2)} s`;
+  const number =
+    new Intl.NumberFormat(
+      locale,
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    );
+
+  return `${number.format(
+    numeric / 1000
+  )} s`;
 }
 
 
-function stateLabel(value) {
+function stateLabel(
+  value,
+  t = null,
+  fallback = "—"
+) {
   const state =
     String(value || "")
       .trim()
       .toUpperCase();
 
-  const labels = {
+  const keys = {
+    QUEUED:
+      "teacherStudentDetail.states.queued",
+    RUNNING:
+      "teacherStudentDetail.states.running",
+    PROCESSING:
+      "teacherStudentDetail.states.processing",
+    COMPLETED:
+      "teacherStudentDetail.states.completed",
+    FAILED:
+      "teacherStudentDetail.states.failed",
+    CANCELLED:
+      "teacherStudentDetail.states.cancelled",
+  };
+
+  const legacy = {
     QUEUED: "En cola",
     RUNNING: "Ejecutando",
     PROCESSING: "Procesando",
@@ -61,7 +105,86 @@ function stateLabel(value) {
     CANCELLED: "Cancelada",
   };
 
-  return labels[state] || state || "—";
+  if (
+    typeof t === "function"
+    && keys[state]
+  ) {
+    return t(
+      keys[state]
+    );
+  }
+
+  return legacy[state]
+    || state
+    || fallback;
+}
+
+
+function submissionStatusLabel(
+  submission,
+  t
+) {
+  const executions =
+    Number(
+      submission?.executions || 0
+    );
+  const completed =
+    Number(
+      submission?.completed || 0
+    );
+  const failed =
+    Number(
+      submission?.failed || 0
+    );
+  const active =
+    Number(
+      submission?.queued || 0
+    )
+    + Number(
+      submission?.running || 0
+    )
+    + Number(
+      submission?.processing || 0
+    );
+
+  if (executions === 0) {
+    return t(
+      "teacherStudentDetail.submissions.status.noExecutions"
+    );
+  }
+  if (active > 0) {
+    return t(
+      "teacherStudentDetail.submissions.status.active"
+    );
+  }
+  if (
+    completed > 0
+    && failed === 0
+  ) {
+    return t(
+      "teacherStudentDetail.submissions.status.completed"
+    );
+  }
+  if (
+    failed > 0
+    && completed === 0
+  ) {
+    return t(
+      "teacherStudentDetail.submissions.status.failed"
+    );
+  }
+  if (
+    completed > 0
+    && failed > 0
+  ) {
+    return t(
+      "teacherStudentDetail.submissions.status.mixed"
+    );
+  }
+
+  return t(
+    "teacherStudentDetail.submissions.status.unknown"
+  );
 }
 
 
@@ -97,6 +220,10 @@ function Pagination({
   onPageChange,
   disabled,
 }) {
+  const {
+    t,
+  } = useI18n();
+
   const totalPages =
     Math.max(
       1,
@@ -107,7 +234,14 @@ function Pagination({
     <footer className="teacher-pagination">
 
       <span>
-        {total} {total === 1 ? "registro" : "registros"}
+        {t(
+          total === 1
+            ? "teacherStudentDetail.pagination.records.one"
+            : "teacherStudentDetail.pagination.records.other",
+          {
+            count: total,
+          }
+        )}
       </span>
 
       <div>
@@ -122,11 +256,20 @@ function Pagination({
             )
           }
         >
-          Anterior
+          {t(
+            "teacherStudentDetail.actions.previous"
+          )}
         </button>
 
         <span>
-          Página {page} de {totalPages}
+          {t(
+            "teacherStudentDetail.pagination.page",
+            {
+              page,
+              total:
+                totalPages,
+            }
+          )}
         </span>
 
         <button
@@ -145,7 +288,9 @@ function Pagination({
             )
           }
         >
-          Siguiente
+          {t(
+            "teacherStudentDetail.actions.next"
+          )}
         </button>
 
       </div>
@@ -161,6 +306,11 @@ function ExecutionDetailModal({
   executionId,
   onClose,
 }) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
   const [
     detail,
     setDetail,
@@ -209,10 +359,7 @@ function ExecutionDetailModal({
           return;
         }
 
-        setError(
-          err.message ||
-          "No fue posible cargar el detalle."
-        );
+        setError(err);
       } finally {
         if (
           !controller.signal.aborted
@@ -267,6 +414,19 @@ function ExecutionDetailModal({
   const hardwareMeasurement =
     hardware.measurement || {};
 
+  const errorMessage =
+    error
+      ? teacherRequestErrorMessage(
+          error,
+          t,
+          {
+            fallbackKey:
+              "teacherStudentDetail.modal.errors.load",
+          }
+        )
+      : "";
+
+
   return (
     <div
       className="teacher-execution-modal-backdrop"
@@ -290,9 +450,19 @@ function ExecutionDetailModal({
         <header className="teacher-execution-modal-header">
 
           <div>
-            <p>Detalle técnico</p>
+            <p>
+              {t(
+                "teacherStudentDetail.modal.eyebrow"
+              )}
+            </p>
             <h2 id="teacher-execution-title">
-              Ejecución #{executionId}
+              {t(
+                "teacherStudentDetail.modal.title",
+                {
+                  id:
+                    executionId,
+                }
+              )}
             </h2>
           </div>
 
@@ -300,7 +470,9 @@ function ExecutionDetailModal({
             type="button"
             className="teacher-execution-modal-close"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t(
+              "teacherStudentDetail.modal.closeAria"
+            )}
           >
             ×
           </button>
@@ -313,7 +485,9 @@ function ExecutionDetailModal({
           {loading && (
             <InlineState
               type="loading"
-              title="Cargando detalle"
+              title={t(
+                "teacherStudentDetail.modal.loading"
+              )}
               compact
             />
           )}
@@ -321,8 +495,12 @@ function ExecutionDetailModal({
           {error && (
             <InlineState
               type="error"
-              title="No pudimos cargar la ejecución"
-              description={error}
+              title={t(
+                "teacherStudentDetail.modal.errors.title"
+              )}
+              description={
+                errorMessage
+              }
               compact
             />
           )}
@@ -335,7 +513,11 @@ function ExecutionDetailModal({
                 <div className="teacher-execution-modal-summary">
 
                   <div>
-                    <span>Submission</span>
+                    <span>
+                      {t(
+                        "teacherStudentDetail.modal.summary.submission"
+                      )}
+                    </span>
                     <strong>
                       {detail.submissionTitle ||
                         `#${detail.submissionId}`}
@@ -343,33 +525,55 @@ function ExecutionDetailModal({
                   </div>
 
                   <div>
-                    <span>Benchmark</span>
+                    <span>
+                      {t(
+                        "teacherStudentDetail.modal.summary.benchmark"
+                      )}
+                    </span>
                     <strong>
-                      {detail.benchmark || "—"}
+                      {detail.benchmark ||
+                        t(
+                          "teacherStudentDetail.common.unavailable"
+                        )}
                     </strong>
                   </div>
 
                   <div>
-                    <span>Estado</span>
+                    <span>
+                      {t(
+                        "teacherStudentDetail.modal.summary.state"
+                      )}
+                    </span>
                     <strong>
                       <span
                         className={stateClass(
                           detail.state
                         )}
                       >
-                        {detail.stateLabel ||
-                          stateLabel(
-                            detail.state
-                          )}
+                        {stateLabel(
+                          detail.state,
+                          t,
+                          t(
+                            "teacherStudentDetail.common.unavailable"
+                          )
+                        )}
                       </span>
                     </strong>
                   </div>
 
                   <div>
-                    <span>Duración</span>
+                    <span>
+                      {t(
+                        "teacherStudentDetail.modal.summary.duration"
+                      )}
+                    </span>
                     <strong>
                       {formatDuration(
-                        detail.durationMs
+                        detail.durationMs,
+                        locale,
+                        t(
+                          "teacherStudentDetail.common.unavailable"
+                        )
                       )}
                     </strong>
                   </div>
@@ -380,52 +584,96 @@ function ExecutionDetailModal({
                 <div className="teacher-execution-detail-grid">
 
                   <article>
-                    <h3>Configuración</h3>
+                    <h3>
+                      {t(
+                        "teacherStudentDetail.modal.configuration.title"
+                      )}
+                    </h3>
 
                     <dl>
 
                       <div>
-                        <dt>Input máximo</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.input"
+                          )}
+                        </dt>
                         <dd>
-                          {detail.inputSize ?? "—"}
+                          {detail.inputSize ??
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Muestras/punto</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.samplesPerPoint"
+                          )}
+                        </dt>
                         <dd>
                           {measurement.samples_per_point ??
                             detail.samples ??
-                            "—"}
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Puntos</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.points"
+                          )}
+                        </dt>
                         <dd>
-                          {measurement.points ?? "—"}
+                          {measurement.points ??
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Warmup</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.warmup"
+                          )}
+                        </dt>
                         <dd>
-                          {measurement.warmup_rounds ?? "—"}
+                          {measurement.warmup_rounds ??
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Perfil</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.profile"
+                          )}
+                        </dt>
                         <dd>
-                          {detail.executionProfile || "—"}
+                          {detail.executionProfile ||
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Compilación</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.configuration.compilation"
+                          )}
+                        </dt>
                         <dd>
                           {detail.executionConfig?.compiler_flags ||
-                            "—"}
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
@@ -434,56 +682,100 @@ function ExecutionDetailModal({
 
 
                   <article>
-                    <h3>Hardware y medición</h3>
+                    <h3>
+                      {t(
+                        "teacherStudentDetail.modal.hardware.title"
+                      )}
+                    </h3>
 
                     <dl>
 
                       <div>
-                        <dt>CPU</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.cpu"
+                          )}
+                        </dt>
                         <dd>
                           {node.cpu_model ||
                             detail.hardwareProfile ||
-                            "—"}
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Arquitectura</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.architecture"
+                          )}
+                        </dt>
                         <dd>
-                          {node.architecture || "—"}
+                          {node.architecture ||
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>CPU lógicas</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.logicalCpus"
+                          )}
+                        </dt>
                         <dd>
-                          {node.logical_cpus ?? "—"}
+                          {node.logical_cpus ??
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Backend</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.backend"
+                          )}
+                        </dt>
                         <dd>
                           {hardwareMeasurement.backend ||
-                            "—"}
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Scope</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.scope"
+                          )}
+                        </dt>
                         <dd>
                           {hardwareMeasurement.requested_perf_scope ||
                             measurement.perf_scope ||
-                            "—"}
+                            t(
+                              "teacherStudentDetail.common.unavailable"
+                            )}
                         </dd>
                       </div>
 
                       <div>
-                        <dt>Resultado</dt>
+                        <dt>
+                          {t(
+                            "teacherStudentDetail.modal.hardware.result"
+                          )}
+                        </dt>
                         <dd>
                           {detail.resultAvailable
-                            ? "Disponible"
-                            : "No disponible"}
+                            ? t(
+                                "teacherStudentDetail.modal.hardware.available"
+                              )
+                            : t(
+                                "teacherStudentDetail.modal.hardware.unavailable"
+                              )}
                         </dd>
                       </div>
 
@@ -496,16 +788,24 @@ function ExecutionDetailModal({
                 {detail.failure && (
                   <article className="teacher-execution-failure">
 
-                    <h3>Fallo registrado</h3>
+                    <h3>
+                      {t(
+                        "teacherStudentDetail.modal.failure.title"
+                      )}
+                    </h3>
 
                     <strong>
                       {detail.failure.code ||
-                        "Sin código"}
+                        t(
+                          "teacherStudentDetail.modal.failure.noCode"
+                        )}
                     </strong>
 
                     <p>
                       {detail.failure.message ||
-                        "Sin mensaje adicional."}
+                        t(
+                          "teacherStudentDetail.modal.failure.noMessage"
+                        )}
                     </p>
 
                   </article>
@@ -524,7 +824,9 @@ function ExecutionDetailModal({
             className="btn teacher-secondary-button"
             onClick={onClose}
           >
-            Cerrar
+            {t(
+              "teacherStudentDetail.actions.close"
+            )}
           </button>
 
           <div className="teacher-execution-modal-actions">
@@ -536,7 +838,9 @@ function ExecutionDetailModal({
                   )}`}
                   className="btn teacher-secondary-button"
                 >
-                  Ver experimento
+                  {t(
+                    "teacherStudentDetail.actions.viewExperiment"
+                  )}
                 </Link>
               )}
 
@@ -546,7 +850,9 @@ function ExecutionDetailModal({
                 to={`/code/${detail.codename}`}
                 className="btn teacher-primary-button"
               >
-                Ver resultados
+                {t(
+                  "teacherStudentDetail.actions.viewResults"
+                )}
               </Link>
             )}
           </div>
@@ -564,6 +870,11 @@ export default function TeacherStudentDetail() {
     courseId,
     userId,
   } = useParams();
+
+  const {
+    locale,
+    t,
+  } = useI18n();
 
   const [
     profile,
@@ -708,8 +1019,7 @@ export default function TeacherStudentDetail() {
         }
 
         setProfileError(
-          err.message ||
-          "No fue posible cargar la ficha."
+          err
         );
       } finally {
         if (
@@ -811,8 +1121,7 @@ export default function TeacherStudentDetail() {
             setExecutionTotal(0);
 
             setExecutionError(
-              err.message ||
-              "No fue posible cargar las ejecuciones."
+              err
             );
           } finally {
             if (
@@ -913,8 +1222,7 @@ export default function TeacherStudentDetail() {
             setSubmissionTotal(0);
 
             setSubmissionError(
-              err.message ||
-              "No fue posible cargar los envíos."
+              err
             );
           } finally {
             if (
@@ -944,6 +1252,44 @@ export default function TeacherStudentDetail() {
   ]);
 
 
+  const profileErrorMessage =
+    profileError
+      ? teacherRequestErrorMessage(
+          profileError,
+          t,
+          {
+            fallbackKey:
+              "teacherStudentDetail.profile.errors.load",
+          }
+        )
+      : "";
+
+  const executionErrorMessage =
+    executionError
+      ? teacherRequestErrorMessage(
+          executionError,
+          t,
+          {
+            fallbackKey:
+              "teacherStudentDetail.executions.errors.load",
+          }
+        )
+      : "";
+
+
+  const submissionErrorMessage =
+    submissionError
+      ? teacherRequestErrorMessage(
+          submissionError,
+          t,
+          {
+            fallbackKey:
+              "teacherStudentDetail.submissions.errors.load",
+          }
+        )
+      : "";
+
+
   const activeExecutions =
     useMemo(
       () =>
@@ -963,7 +1309,7 @@ export default function TeacherStudentDetail() {
         <div className="teacher-page-inner">
           <InlineState
             type="loading"
-            title="Cargando ficha del estudiante"
+            title={t("teacherStudentDetail.profile.loading")}
             compact
           />
         </div>
@@ -981,9 +1327,9 @@ export default function TeacherStudentDetail() {
         <div className="teacher-page-inner">
           <InlineState
             type="error"
-            title="No pudimos cargar la ficha"
-            description={profileError}
-            actionLabel="Reintentar"
+            title={t("teacherStudentDetail.profile.errors.title")}
+            description={profileErrorMessage}
+            actionLabel={t("teacherStudentDetail.actions.retry")}
             onAction={() =>
               setReloadProfile(
                 (value) =>
@@ -1016,7 +1362,7 @@ export default function TeacherStudentDetail() {
             to={`/teacher/courses/${courseId}`}
             className="teacher-back-link"
           >
-            ← Volver al curso
+            {t("teacherStudentDetail.actions.back")}
           </Link>
         </div>
 
@@ -1026,7 +1372,7 @@ export default function TeacherStudentDetail() {
           <div>
 
             <p className="teacher-eyebrow">
-              Estudiante del curso
+              {t("teacherStudentDetail.profile.eyebrow")}
             </p>
 
             <h1>
@@ -1055,8 +1401,8 @@ export default function TeacherStudentDetail() {
                 }
               >
                 {profile.membership?.isActive
-                  ? "En el curso"
-                  : "Retirado"}
+                  ? t("teacherStudentDetail.profile.membership.active")
+                  : t("teacherStudentDetail.profile.membership.removed")}
               </span>
 
             </div>
@@ -1068,22 +1414,26 @@ export default function TeacherStudentDetail() {
 
             <div>
               <span>
-                Última actividad
+                {t("teacherStudentDetail.profile.lastActivity")}
               </span>
               <strong>
                 {formatDateTime(
-                  summary?.lastActivityAt
+                  summary?.lastActivityAt,
+                  locale,
+                  t("teacherStudentDetail.common.unavailable")
                 )}
               </strong>
             </div>
 
             <div>
               <span>
-                Último acceso
+                {t("teacherStudentDetail.profile.lastAccess")}
               </span>
               <strong>
                 {formatDateTime(
-                  profile.lastLogin
+                  profile.lastLogin,
+                  locale,
+                  t("teacherStudentDetail.common.unavailable")
                 )}
               </strong>
             </div>
@@ -1096,35 +1446,35 @@ export default function TeacherStudentDetail() {
         <section className="teacher-summary-grid teacher-summary-grid--student">
 
           <article>
-            <span>Envíos</span>
+            <span>{t("teacherStudentDetail.summary.submissions")}</span>
             <strong>
               {summary?.submissions || 0}
             </strong>
           </article>
 
           <article>
-            <span>Ejecuciones</span>
+            <span>{t("teacherStudentDetail.summary.executions")}</span>
             <strong>
               {summary?.executions || 0}
             </strong>
           </article>
 
           <article>
-            <span>Completadas</span>
+            <span>{t("teacherStudentDetail.summary.completed")}</span>
             <strong>
               {summary?.completedExecutions || 0}
             </strong>
           </article>
 
           <article>
-            <span>Fallidas</span>
+            <span>{t("teacherStudentDetail.summary.failed")}</span>
             <strong>
               {summary?.failedExecutions || 0}
             </strong>
           </article>
 
           <article>
-            <span>Activas</span>
+            <span>{t("teacherStudentDetail.summary.active")}</span>
             <strong>
               {activeExecutions}
             </strong>
@@ -1149,8 +1499,11 @@ export default function TeacherStudentDetail() {
                   "executions"
                 )
               }
+              aria-pressed={
+                activeTab === "executions"
+              }
             >
-              Ejecuciones
+              {t("teacherStudentDetail.tabs.executions")}
             </button>
 
             <button
@@ -1165,8 +1518,11 @@ export default function TeacherStudentDetail() {
                   "submissions"
                 )
               }
+              aria-pressed={
+                activeTab === "submissions"
+              }
             >
-              Envíos
+              {t("teacherStudentDetail.tabs.submissions")}
             </button>
 
           </div>
@@ -1182,7 +1538,7 @@ export default function TeacherStudentDetail() {
                   <label
                     htmlFor="teacher-student-execution-search"
                   >
-                    Buscar ejecución
+                    {t("teacherStudentDetail.executions.searchLabel")}
                   </label>
 
                   <input
@@ -1196,7 +1552,9 @@ export default function TeacherStudentDetail() {
                         event.target.value
                       )
                     }
-                    placeholder="Título de la entrega"
+                    placeholder={t(
+                      "teacherStudentDetail.executions.searchPlaceholder"
+                    )}
                   />
 
                 </div>
@@ -1207,7 +1565,7 @@ export default function TeacherStudentDetail() {
                   <label
                     htmlFor="teacher-student-execution-state"
                   >
-                    Estado
+                    {t("teacherStudentDetail.executions.statusLabel")}
                   </label>
 
                   <select
@@ -1223,25 +1581,25 @@ export default function TeacherStudentDetail() {
                     }
                   >
                     <option value="all">
-                      Todos
+                      {t("teacherStudentDetail.executions.statusAll")}
                     </option>
                     <option value="QUEUED">
-                      En cola
+                      {t("teacherStudentDetail.states.queued")}
                     </option>
                     <option value="RUNNING">
-                      Ejecutando
+                      {t("teacherStudentDetail.states.running")}
                     </option>
                     <option value="PROCESSING">
-                      Procesando
+                      {t("teacherStudentDetail.states.processing")}
                     </option>
                     <option value="COMPLETED">
-                      Completadas
+                      {t("teacherStudentDetail.states.completed")}
                     </option>
                     <option value="FAILED">
-                      Fallidas
+                      {t("teacherStudentDetail.states.failed")}
                     </option>
                     <option value="CANCELLED">
-                      Canceladas
+                      {t("teacherStudentDetail.states.cancelled")}
                     </option>
                   </select>
 
@@ -1253,8 +1611,8 @@ export default function TeacherStudentDetail() {
               {executionError && (
                 <InlineState
                   type="error"
-                  title="No pudimos cargar las ejecuciones"
-                  description={executionError}
+                  title={t("teacherStudentDetail.executions.errors.title")}
+                  description={executionErrorMessage}
                   compact
                 />
               )}
@@ -1265,7 +1623,7 @@ export default function TeacherStudentDetail() {
                 executions.length === 0 && (
                   <InlineState
                     type="loading"
-                    title="Cargando ejecuciones"
+                    title={t("teacherStudentDetail.executions.loading")}
                     compact
                   />
                 )}
@@ -1276,8 +1634,8 @@ export default function TeacherStudentDetail() {
                 executions.length === 0 && (
                   <InlineState
                     type="empty"
-                    title="Sin ejecuciones en este curso"
-                    description="No existen ejecuciones que coincidan con los filtros actuales."
+                    title={t("teacherStudentDetail.executions.emptyTitle")}
+                    description={t("teacherStudentDetail.executions.emptyDescription")}
                     compact
                   />
                 )}
@@ -1294,25 +1652,25 @@ export default function TeacherStudentDetail() {
                         <thead>
                           <tr>
                             <th>
-                              Ejecución
+                              {t("teacherStudentDetail.executions.table.execution")}
                             </th>
                             <th>
-                              Envío
+                              {t("teacherStudentDetail.executions.table.submission")}
                             </th>
                             <th>
-                              Estado
+                              {t("teacherStudentDetail.executions.table.state")}
                             </th>
                             <th>
-                              Duración
+                              {t("teacherStudentDetail.executions.table.duration")}
                             </th>
                             <th>
-                              Hardware
+                              {t("teacherStudentDetail.executions.table.hardware")}
                             </th>
                             <th>
-                              Actualizada
+                              {t("teacherStudentDetail.executions.table.updated")}
                             </th>
                             <th className="text-end">
-                              Detalle
+                              {t("teacherStudentDetail.executions.table.detail")}
                             </th>
                           </tr>
                         </thead>
@@ -1340,7 +1698,7 @@ export default function TeacherStudentDetail() {
                                     </strong>
                                     <small>
                                       {execution.codename ||
-                                        "Sin codename"}
+                                        t("teacherStudentDetail.executions.noCodename")}
                                     </small>
                                   </td>
 
@@ -1353,7 +1711,13 @@ export default function TeacherStudentDetail() {
                                     >
                                       <strong>
                                         {execution.submissionTitle ||
-                                          `Envío #${execution.submissionId}`}
+                                          t(
+                                            "teacherStudentDetail.executions.submissionFallback",
+                                            {
+                                              id:
+                                                execution.submissionId,
+                                            }
+                                          )}
                                       </strong>
                                       <small>
                                         ID {execution.submissionId}
@@ -1367,16 +1731,19 @@ export default function TeacherStudentDetail() {
                                         execution.state
                                       )}
                                     >
-                                      {execution.stateLabel ||
-                                        stateLabel(
-                                          execution.state
-                                        )}
+                                      {stateLabel(
+                                        execution.state,
+                                        t,
+                                        t("teacherStudentDetail.common.unavailable")
+                                      )}
                                     </span>
                                   </td>
 
                                   <td>
                                     {formatDuration(
-                                      execution.durationMs
+                                      execution.durationMs,
+                                      locale,
+                                      t("teacherStudentDetail.common.unavailable")
                                     )}
                                   </td>
 
@@ -1387,7 +1754,9 @@ export default function TeacherStudentDetail() {
 
                                   <td>
                                     {formatDateTime(
-                                      updatedAt
+                                      updatedAt,
+                                      locale,
+                                      t("teacherStudentDetail.common.unavailable")
                                     )}
                                   </td>
 
@@ -1401,7 +1770,7 @@ export default function TeacherStudentDetail() {
                                         )
                                       }
                                     >
-                                      Ver detalle
+                                      {t("teacherStudentDetail.actions.viewDetail")}
                                     </button>
                                   </td>
 
@@ -1449,7 +1818,9 @@ export default function TeacherStudentDetail() {
                   <label
                     htmlFor="teacher-student-submission-search"
                   >
-                    Buscar envío
+                    {t(
+                      "teacherStudentDetail.submissions.searchLabel"
+                    )}
                   </label>
 
                   <input
@@ -1463,7 +1834,9 @@ export default function TeacherStudentDetail() {
                         event.target.value
                       )
                     }
-                    placeholder="Título de la entrega"
+                    placeholder={t(
+                      "teacherStudentDetail.submissions.searchPlaceholder"
+                    )}
                   />
 
                 </div>
@@ -1474,8 +1847,12 @@ export default function TeacherStudentDetail() {
               {submissionError && (
                 <InlineState
                   type="error"
-                  title="No pudimos cargar los envíos"
-                  description={submissionError}
+                  title={t(
+                    "teacherStudentDetail.submissions.errors.title"
+                  )}
+                  description={
+                    submissionErrorMessage
+                  }
                   compact
                 />
               )}
@@ -1486,7 +1863,9 @@ export default function TeacherStudentDetail() {
                 submissions.length === 0 && (
                   <InlineState
                     type="loading"
-                    title="Cargando envíos"
+                    title={t(
+                      "teacherStudentDetail.submissions.loading"
+                    )}
                     compact
                   />
                 )}
@@ -1497,8 +1876,12 @@ export default function TeacherStudentDetail() {
                 submissions.length === 0 && (
                   <InlineState
                     type="empty"
-                    title="Sin envíos en este curso"
-                    description="Este estudiante todavía no tiene envíos asociados a esta instancia académica."
+                    title={t(
+                      "teacherStudentDetail.submissions.emptyTitle"
+                    )}
+                    description={t(
+                      "teacherStudentDetail.submissions.emptyDescription"
+                    )}
                     compact
                   />
                 )}
@@ -1515,25 +1898,39 @@ export default function TeacherStudentDetail() {
                         <thead>
                           <tr>
                             <th>
-                              Envío
+                              {t(
+                                "teacherStudentDetail.submissions.table.submission"
+                              )}
                             </th>
                             <th>
-                              Estado
+                              {t(
+                                "teacherStudentDetail.submissions.table.status"
+                              )}
                             </th>
                             <th>
-                              Ejec.
+                              {t(
+                                "teacherStudentDetail.submissions.table.executions"
+                              )}
                             </th>
                             <th>
-                              Completadas
+                              {t(
+                                "teacherStudentDetail.submissions.table.completed"
+                              )}
                             </th>
                             <th>
-                              Fallidas
+                              {t(
+                                "teacherStudentDetail.submissions.table.failed"
+                              )}
                             </th>
                             <th>
-                              Activas
+                              {t(
+                                "teacherStudentDetail.submissions.table.active"
+                              )}
                             </th>
                             <th>
-                              Creado
+                              {t(
+                                "teacherStudentDetail.submissions.table.created"
+                              )}
                             </th>
                           </tr>
                         </thead>
@@ -1564,7 +1961,13 @@ export default function TeacherStudentDetail() {
                                     >
                                       <strong>
                                         {submission.title ||
-                                          `Envío #${submission.id}`}
+                                          t(
+                                            "teacherStudentDetail.submissions.fallback",
+                                            {
+                                              id:
+                                                submission.id,
+                                            }
+                                          )}
                                       </strong>
                                       <small>
                                         ID {submission.id}
@@ -1574,8 +1977,10 @@ export default function TeacherStudentDetail() {
 
                                   <td>
                                     <span className="teacher-submission-status">
-                                      {submission.status ||
-                                        "—"}
+                                      {submissionStatusLabel(
+                                        submission,
+                                        t
+                                      )}
                                     </span>
                                   </td>
 
@@ -1600,7 +2005,11 @@ export default function TeacherStudentDetail() {
 
                                   <td>
                                     {formatDateTime(
-                                      submission.createdAt
+                                      submission.createdAt,
+                                      locale,
+                                      t(
+                                        "teacherStudentDetail.common.unavailable"
+                                      )
                                     )}
                                   </td>
 

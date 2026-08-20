@@ -38,18 +38,19 @@ import resultsOverviewShot from "../assets/tutorial/tutorial-results-overview.pn
 import timeChartShot from "../assets/tutorial/tutorial-time-chart.png";
 import uploadShot from "../assets/tutorial/tutorial-upload.png";
 
+import { useI18n } from "../i18n";
+
 const FLOW_STEPS = [
   {
     number: "01",
     icon: UploadCloud,
-    title: "Prepara y sube tu proyecto",
-    description:
-      "Carga un archivo ZIP con tu implementación en C/C++. Performance System valida el envío antes de incorporarlo a la ejecución.",
+    titleKey: "tutorialPage.flow.step1.title",
+    descriptionKey: "tutorialPage.flow.step1.description",
     shots: [
       {
         src: uploadShot,
-        alt: "Archivo ZIP seleccionado en el formulario de nuevo análisis",
-        caption: "El archivo seleccionado debe contener al menos una fuente .cpp.",
+        altKey: "tutorialPage.flow.step1.shot.alt",
+        captionKey: "tutorialPage.flow.step1.shot.caption",
         variant: "upload",
       },
     ],
@@ -57,20 +58,19 @@ const FLOW_STEPS = [
   {
     number: "02",
     icon: Settings2,
-    title: "Configura el análisis",
-    description:
-      "Selecciona el benchmark disponible, el tamaño de entrada, las repeticiones por punto y el perfil de ejecución que necesites.",
+    titleKey: "tutorialPage.flow.step2.title",
+    descriptionKey: "tutorialPage.flow.step2.description",
     shots: [
       {
         src: profileSettingsShot,
-        alt: "Selección del entorno y del perfil de medición",
-        caption: "El perfil controla cuántas veces se repite cada punto.",
+        altKey: "tutorialPage.flow.step2.profileShot.alt",
+        captionKey: "tutorialPage.flow.step2.profileShot.caption",
         variant: "profiles",
       },
       {
         src: configSummaryShot,
-        alt: "Resumen completo del experimento listo para revisar y ejecutar",
-        caption: "El resumen permite comprobar los parámetros antes del envío.",
+        altKey: "tutorialPage.flow.step2.summaryShot.alt",
+        captionKey: "tutorialPage.flow.step2.summaryShot.caption",
         variant: "summary",
       },
     ],
@@ -78,20 +78,19 @@ const FLOW_STEPS = [
   {
     number: "03",
     icon: PlayCircle,
-    title: "Envía y sigue la ejecución",
-    description:
-      "Después de confirmar la configuración, el trabajo entra a la cola y avanza por estados controlados mientras se compila, ejecuta, mide y procesa.",
+    titleKey: "tutorialPage.flow.step3.title",
+    descriptionKey: "tutorialPage.flow.step3.description",
     shots: [
       {
         src: progressOverviewShot,
-        alt: "Vista de una ejecución registrada y en cola",
-        caption: "La etapa activa se distingue del trabajo ya completado.",
+        altKey: "tutorialPage.flow.step3.overviewShot.alt",
+        captionKey: "tutorialPage.flow.step3.overviewShot.caption",
         variant: "portrait",
       },
       {
         src: progressDetailsShot,
-        alt: "Vista de una ejecución realizando mediciones y mostrando detalles técnicos",
-        caption: "Los detalles técnicos permiten seguir los mensajes del proceso.",
+        altKey: "tutorialPage.flow.step3.detailsShot.alt",
+        captionKey: "tutorialPage.flow.step3.detailsShot.caption",
         variant: "portrait",
       },
     ],
@@ -99,14 +98,13 @@ const FLOW_STEPS = [
   {
     number: "04",
     icon: BarChart3,
-    title: "Interpreta los resultados",
-    description:
-      "Cuando la ejecución finaliza, revisa las métricas disponibles, sus gráficos y las explicaciones que ayudan a interpretar el comportamiento observado.",
+    titleKey: "tutorialPage.flow.step4.title",
+    descriptionKey: "tutorialPage.flow.step4.description",
     shots: [
       {
         src: resultsOverviewShot,
-        alt: "Resumen de una ejecución completada con indicadores principales e interpretación guiada",
-        caption: "La cabecera conserva la configuración y resume el último punto medido.",
+        altKey: "tutorialPage.flow.step4.shot.alt",
+        captionKey: "tutorialPage.flow.step4.shot.caption",
         variant: "results",
       },
     ],
@@ -114,114 +112,96 @@ const FLOW_STEPS = [
 ];
 
 const EXECUTION_STATES = [
-  {
-    name: "En cola",
-    code: "QUEUED",
-    description: "La ejecución fue registrada y espera un recurso de medición.",
-  },
-  {
-    name: "En ejecución",
-    code: "RUNNING",
-    description: "El código se compila y/o ejecuta en el entorno de medición.",
-  },
-  {
-    name: "Procesando",
-    code: "PROCESSING",
-    description: "Performance System transforma las mediciones en resultados consultables.",
-  },
-  {
-    name: "Completado",
-    code: "COMPLETED",
-    description: "Los resultados están disponibles para revisión.",
-  },
+  { code: "QUEUED", key: "queued" },
+  { code: "RUNNING", key: "running" },
+  { code: "PROCESSING", key: "processing" },
+  { code: "COMPLETED", key: "completed" },
 ];
 
 const METRICS = [
-  {
-    icon: Clock3,
-    title: "Tiempo",
-    text: "Permite observar cuánto tarda la implementación bajo la configuración seleccionada.",
-  },
-  {
-    icon: Cpu,
-    title: "CPU",
-    text: "Incluye eventos y contadores de procesador disponibles para estudiar el trabajo realizado por el algoritmo.",
-  },
-  {
-    icon: MemoryStick,
-    title: "Memoria",
-    text: "Ayuda a contextualizar el uso de recursos y el comportamiento de la implementación.",
-  },
-  {
-    icon: Zap,
-    title: "Energía",
-    text: "Se muestra cuando el hardware y el entorno de medición permiten obtenerla de forma confiable.",
-  },
+  { icon: Clock3, key: "time" },
+  { icon: Cpu, key: "cpu" },
+  { icon: MemoryStick, key: "memory" },
+  { icon: Zap, key: "energy" },
 ];
 
-const GOOD_PRACTICES = [
-  "Compara implementaciones usando la misma configuración de entrada y número de repeticiones.",
-  "Evita procesos externos innecesarios durante una medición cuando estés trabajando en un entorno local de pruebas.",
-  "Usa varias repeticiones por punto para reducir el efecto de variaciones puntuales.",
-  "Interpreta las métricas en conjunto: una mejora en una métrica no implica necesariamente una mejora global.",
+const GOOD_PRACTICE_KEYS = [
+  "tutorialPage.goodPractices.items.sameConfig",
+  "tutorialPage.goodPractices.items.externalProcesses",
+  "tutorialPage.goodPractices.items.repetitions",
+  "tutorialPage.goodPractices.items.jointInterpretation",
 ];
 
 const STARTER_EXAMPLES = [
   {
     benchmark: "SIZE",
-    title: "Insertion Sort vs. Merge Sort",
-    description:
-      "Dos algoritmos clásicos de ordenamiento reciben exactamente el mismo tamaño N y generan el mismo conjunto determinista de datos.",
-    observe:
-      "Compara cómo cambian tiempo e instrucciones al crecer N y, después, abre la comparación entre ambas implementaciones.",
+    titleKey: "tutorialPage.examples.size.title",
+    descriptionKey: "tutorialPage.examples.size.description",
+    observeKey: "tutorialPage.examples.size.observe",
     files: ["insertion_sort.cpp", "merge_sort.cpp"],
     href: "/tutorial-codigos/size_template.zip",
   },
   {
     benchmark: "LCS",
-    title: "Longest Common Subsequence",
-    description:
-      "Implementación clásica por programación dinámica sobre dos secuencias formadas a partir de las líneas del archivo de texto entregado por el benchmark.",
-    observe:
-      "Observa el crecimiento del trabajo al aumentar la cantidad de líneas procesadas y relaciona la tendencia con la tabla dinámica.",
+    titleKey: "tutorialPage.examples.lcs.title",
+    descriptionKey: "tutorialPage.examples.lcs.description",
+    observeKey: "tutorialPage.examples.lcs.observe",
     files: ["longest_common_subsequence.cpp"],
     href: "/tutorial-codigos/lcs_template.zip",
   },
   {
     benchmark: "CAMM",
-    title: "Multiplicación de matrices por bloques",
-    description:
-      "Multiplicación clásica de matrices organizada en bloques para trabajar sobre los valores numéricos que el benchmark entrega por argumentos.",
-    observe:
-      "Revisa tiempo, instrucciones y métricas de caché disponibles mientras aumenta la cantidad de valores de entrada.",
+    titleKey: "tutorialPage.examples.camm.title",
+    descriptionKey: "tutorialPage.examples.camm.description",
+    observeKey: "tutorialPage.examples.camm.observe",
     files: ["blocked_matrix_multiplication.cpp"],
     href: "/tutorial-codigos/camm_template.zip",
   },
 ];
 
-const TutorialScreenshot = ({ shot, onOpen }) => (
-  <figure className={`tutorial-shot tutorial-shot--${shot.variant || "default"}`}>
-    <button
-      type="button"
-      className="tutorial-shot__button"
-      onClick={() => onOpen(shot)}
-      aria-label={`Ampliar captura: ${shot.alt}`}
-    >
-      <span className="tutorial-shot__viewport">
-        <img src={shot.src} alt={shot.alt} loading="lazy" />
-      </span>
-      <span className="tutorial-shot__zoom" aria-hidden="true">
-        <ZoomIn size={16} />
-        Ampliar
-      </span>
-    </button>
-    {shot.caption && <figcaption>{shot.caption}</figcaption>}
-  </figure>
-);
+const RECENT_RESULT_SHOT = {
+  src: recentResultShot,
+  altKey: "tutorialPage.continuity.shot.alt",
+  captionKey: "tutorialPage.continuity.shot.caption",
+  variant: "recent",
+};
+
+const TIME_CHART_SHOT = {
+  src: timeChartShot,
+  altKey: "tutorialPage.results.example.shot.alt",
+  captionKey: "tutorialPage.results.example.shot.caption",
+  variant: "chart",
+};
+
+const TutorialScreenshot = ({ shot, onOpen }) => {
+  const { t } = useI18n();
+  const alt = t(shot.altKey);
+
+  return (
+    <figure className={`tutorial-shot tutorial-shot--${shot.variant || "default"}`}>
+      <button
+        type="button"
+        className="tutorial-shot__button"
+        onClick={() => onOpen(shot)}
+        aria-label={t("tutorialPage.screenshot.expandAria", { alt })}
+      >
+        <span className="tutorial-shot__viewport">
+          <img src={shot.src} alt={alt} loading="lazy" />
+        </span>
+        <span className="tutorial-shot__zoom" aria-hidden="true">
+          <ZoomIn size={16} />
+          {t("tutorialPage.screenshot.zoom")}
+        </span>
+      </button>
+      {shot.captionKey && <figcaption>{t(shot.captionKey)}</figcaption>}
+    </figure>
+  );
+};
 
 const TutorialPage = () => {
   const [activeShot, setActiveShot] = useState(null);
   const location = useLocation();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!location.hash) return undefined;
@@ -262,52 +242,49 @@ const TutorialPage = () => {
           <header className="tutorial-hero">
             <div className="tutorial-eyebrow">
               <Sparkles size={16} />
-              <span>Guía de uso</span>
+              <span>{t("tutorialPage.hero.eyebrow")}</span>
             </div>
 
-            <h1 className="tutorial-title">Cómo funciona Performance System</h1>
+            <h1 className="tutorial-title">{t("tutorialPage.hero.title")}</h1>
 
-            <p className="tutorial-subtitle">
-              Desde la carga del código hasta la interpretación de resultados:
-              una guía breve para ejecutar mediciones reproducibles de
-              algoritmos en C/C++.
-            </p>
+            <p className="tutorial-subtitle">{t("tutorialPage.hero.subtitle")}</p>
 
-            <div className="tutorial-hero-badges" aria-label="Características">
+            <div
+              className="tutorial-hero-badges"
+              aria-label={t("tutorialPage.hero.featuresAria")}
+            >
               <span>
                 <FileCode2 size={16} />
                 C / C++
               </span>
               <span>
                 <ShieldCheck size={16} />
-                Ejecución controlada
+                {t("tutorialPage.hero.badges.controlled")}
               </span>
               <span>
                 <Activity size={16} />
-                Métricas de rendimiento
+                {t("tutorialPage.hero.badges.performance")}
               </span>
               <span>
                 <BarChart3 size={16} />
-                Visualización y análisis
+                {t("tutorialPage.hero.badges.visualization")}
               </span>
             </div>
           </header>
 
           <section className="tutorial-section">
             <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">Flujo principal</span>
-              <h2>De tu código a una medición interpretable</h2>
-              <p>
-                El sistema separa la preparación del envío, la ejecución y la
-                presentación de resultados para que cada etapa sea trazable.
-              </p>
+              <span className="tutorial-section-kicker">
+                {t("tutorialPage.flow.kicker")}
+              </span>
+              <h2>{t("tutorialPage.flow.title")}</h2>
+              <p>{t("tutorialPage.flow.description")}</p>
 
               <div className="tutorial-capture-context" role="note">
                 <Info size={16} aria-hidden="true" />
                 <span>
-                  <strong>Referencia visual:</strong> las capturas fueron
-                  tomadas en modo oscuro. La ubicación y el funcionamiento de
-                  los controles son idénticos en modo claro.
+                  <strong>{t("tutorialPage.flow.visualReferenceLabel")}</strong>{" "}
+                  {t("tutorialPage.flow.visualReferenceText")}
                 </span>
               </div>
             </div>
@@ -325,8 +302,8 @@ const TutorialPage = () => {
                       </div>
                     </div>
 
-                    <h3>{step.title}</h3>
-                    <p>{step.description}</p>
+                    <h3>{t(step.titleKey)}</h3>
+                    <p>{t(step.descriptionKey)}</p>
 
                     <div
                       className={`tutorial-flow-card__media tutorial-flow-card__media--${step.shots.length} tutorial-flow-card__media--step-${step.number}`}
@@ -358,19 +335,19 @@ const TutorialPage = () => {
               <div className="tutorial-panel-title">
                 <Archive size={21} />
                 <div>
-                  <span className="tutorial-section-kicker">Antes de ejecutar</span>
-                  <h2>Prepara correctamente el ZIP</h2>
+                  <span className="tutorial-section-kicker">
+                    {t("tutorialPage.zip.kicker")}
+                  </span>
+                  <h2>{t("tutorialPage.zip.title")}</h2>
                 </div>
               </div>
 
-              <p>
-                El archivo comprimido debe contener el código fuente que deseas
-                medir. La plataforma valida el envío antes de registrarlo para
-                evitar formatos inesperados o archivos que no puedan
-                procesarse.
-              </p>
+              <p>{t("tutorialPage.zip.description")}</p>
 
-              <div className="tutorial-file-tree" aria-label="Ejemplo de ZIP">
+              <div
+                className="tutorial-file-tree"
+                aria-label={t("tutorialPage.zip.exampleAria")}
+              >
                 <span>mi_algoritmo.zip</span>
                 <span className="tutorial-file-tree__child">
                   └── algoritmo.cpp
@@ -379,11 +356,7 @@ const TutorialPage = () => {
 
               <div className="tutorial-note">
                 <Info size={18} />
-                <p>
-                  No incluyas rutas absolutas, enlaces simbólicos ni contenido
-                  ajeno a la prueba. Si el envío no cumple las validaciones, el
-                  sistema lo rechazará antes de ejecutarlo.
-                </p>
+                <p>{t("tutorialPage.zip.note")}</p>
               </div>
             </article>
 
@@ -391,39 +364,29 @@ const TutorialPage = () => {
               <div className="tutorial-panel-title">
                 <Settings2 size={21} />
                 <div>
-                  <span className="tutorial-section-kicker">Configuración</span>
-                  <h2>Qué controla cada parámetro</h2>
+                  <span className="tutorial-section-kicker">
+                    {t("tutorialPage.configuration.kicker")}
+                  </span>
+                  <h2>{t("tutorialPage.configuration.title")}</h2>
                 </div>
               </div>
 
               <div className="tutorial-definition-list">
                 <div>
                   <strong>Benchmark</strong>
-                  <span>
-                    Define el tipo de entrada y el escenario con el que se
-                    evaluará el código.
-                  </span>
+                  <span>{t("tutorialPage.configuration.benchmark")}</span>
                 </div>
                 <div>
-                  <strong>Tamaño de entrada</strong>
-                  <span>
-                    Determina la escala del problema utilizado durante la
-                    medición.
-                  </span>
+                  <strong>{t("tutorialPage.configuration.inputSizeLabel")}</strong>
+                  <span>{t("tutorialPage.configuration.inputSize")}</span>
                 </div>
                 <div>
-                  <strong>Repeticiones por punto</strong>
-                  <span>
-                    Indica cuántas veces se mide cada tamaño de entrada para
-                    obtener resultados más estables.
-                  </span>
+                  <strong>{t("tutorialPage.configuration.repetitionsLabel")}</strong>
+                  <span>{t("tutorialPage.configuration.repetitions")}</span>
                 </div>
                 <div>
-                  <strong>Perfil</strong>
-                  <span>
-                    Agrupa configuraciones de ejecución pensadas para análisis
-                    rápidos, balanceados o más exhaustivos.
-                  </span>
+                  <strong>{t("tutorialPage.configuration.profileLabel")}</strong>
+                  <span>{t("tutorialPage.configuration.profile")}</span>
                 </div>
               </div>
             </article>
@@ -436,16 +399,10 @@ const TutorialPage = () => {
           >
             <div className="tutorial-section-heading">
               <span className="tutorial-section-kicker">
-                Ejemplos para comenzar
+                {t("tutorialPage.examples.kicker")}
               </span>
-              <h2 id="tutorial-examples-title">
-                Algoritmos clásicos listos para medir
-              </h2>
-              <p>
-                Descarga un ZIP, revisa su código y súbelo desde Nuevo análisis.
-                Cada ejemplo respeta el contrato de entrada de su benchmark y
-                está pensado para producir una tendencia interpretable.
-              </p>
+              <h2 id="tutorial-examples-title">{t("tutorialPage.examples.title")}</h2>
+              <p>{t("tutorialPage.examples.description")}</p>
             </div>
 
             <div className="tutorial-example-grid">
@@ -458,8 +415,8 @@ const TutorialPage = () => {
                     <FileCode2 size={21} aria-hidden="true" />
                   </div>
 
-                  <h3>{example.title}</h3>
-                  <p>{example.description}</p>
+                  <h3>{t(example.titleKey)}</h3>
+                  <p>{t(example.descriptionKey)}</p>
 
                   <div className="tutorial-example-files">
                     {example.files.map((filename) => (
@@ -468,8 +425,8 @@ const TutorialPage = () => {
                   </div>
 
                   <div className="tutorial-example-observe">
-                    <strong>Qué observar</strong>
-                    <span>{example.observe}</span>
+                    <strong>{t("tutorialPage.examples.observeLabel")}</strong>
+                    <span>{t(example.observeKey)}</span>
                   </div>
 
                   <a
@@ -478,7 +435,9 @@ const TutorialPage = () => {
                     className="tutorial-example-download"
                   >
                     <Download size={16} aria-hidden="true" />
-                    Descargar ejemplo {example.benchmark}
+                    {t("tutorialPage.examples.download", {
+                      benchmark: example.benchmark,
+                    })}
                   </a>
                 </article>
               ))}
@@ -486,23 +445,17 @@ const TutorialPage = () => {
 
             <div className="tutorial-note tutorial-examples-note">
               <Info size={18} aria-hidden="true" />
-              <p>
-                El ejemplo SIZE contiene dos archivos .cpp. Performance System
-                los registra como implementaciones independientes dentro del
-                mismo experimento, por lo que después puedes compararlas sin
-                mezclar sus mediciones.
-              </p>
+              <p>{t("tutorialPage.examples.sizeNote")}</p>
             </div>
           </section>
 
           <section className="tutorial-section">
             <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">Seguimiento</span>
-              <h2>Estados de una ejecución</h2>
-              <p>
-                La ejecución mantiene un estado persistente para que puedas
-                abandonar la vista y volver a consultar su progreso.
-              </p>
+              <span className="tutorial-section-kicker">
+                {t("tutorialPage.states.kicker")}
+              </span>
+              <h2>{t("tutorialPage.states.title")}</h2>
+              <p>{t("tutorialPage.states.description")}</p>
             </div>
 
             <div className="tutorial-state-grid">
@@ -511,10 +464,14 @@ const TutorialPage = () => {
                   <span className="tutorial-state-dot" aria-hidden="true" />
                   <div>
                     <div className="tutorial-state-card__title">
-                      <strong>{state.name}</strong>
+                      <strong>
+                        {t(`tutorialPage.states.items.${state.key}.name`)}
+                      </strong>
                       <code>{state.code}</code>
                     </div>
-                    <p>{state.description}</p>
+                    <p>
+                      {t(`tutorialPage.states.items.${state.key}.description`)}
+                    </p>
                   </div>
                 </article>
               ))}
@@ -523,13 +480,8 @@ const TutorialPage = () => {
             <div className="tutorial-failure-note">
               <ServerCog size={20} />
               <div>
-                <strong>¿Y si algo falla?</strong>
-                <p>
-                  Los errores de validación, compilación, ejecución, medición o
-                  procesamiento se presentan como un fallo de la ejecución. El
-                  detalle disponible ayuda a distinguir la etapa que requiere
-                  corrección.
-                </p>
+                <strong>{t("tutorialPage.states.failure.title")}</strong>
+                <p>{t("tutorialPage.states.failure.description")}</p>
               </div>
             </div>
           </section>
@@ -539,48 +491,37 @@ const TutorialPage = () => {
               <div className="tutorial-panel-title">
                 <History size={21} />
                 <div>
-                  <span className="tutorial-section-kicker">Continuidad</span>
-                  <h2>Retoma tu último resultado desde el perfil</h2>
+                  <span className="tutorial-section-kicker">
+                    {t("tutorialPage.continuity.kicker")}
+                  </span>
+                  <h2>{t("tutorialPage.continuity.title")}</h2>
                 </div>
               </div>
 
-              <p>
-                La ejecución queda persistida aunque abandones la pantalla de
-                seguimiento. En tu perfil puedes consultar el estado de tu
-                actividad y abrir directamente el resultado más reciente.
-              </p>
+              <p>{t("tutorialPage.continuity.description")}</p>
 
               <div className="tutorial-note">
                 <Info size={18} />
                 <p>
-                  <strong>Ver último resultado</strong> abre la visualización de
-                  la ejecución completada más reciente; no vuelve a ejecutar el
-                  código ni altera las mediciones guardadas.
+                  <strong>{t("tutorialPage.continuity.lastResultLabel")}</strong>{" "}
+                  {t("tutorialPage.continuity.lastResultDescription")}
                 </p>
               </div>
             </div>
 
             <TutorialScreenshot
-              shot={{
-                src: recentResultShot,
-                alt: "Perfil del estudiante con resumen de actividad y acceso al último resultado",
-                caption:
-                  "El acceso se encuentra en la tarjeta Ejecución más reciente.",
-                variant: "recent",
-              }}
+              shot={RECENT_RESULT_SHOT}
               onOpen={setActiveShot}
             />
           </section>
 
           <section className="tutorial-section">
             <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">Resultados</span>
-              <h2>Qué puedes observar</h2>
-              <p>
-                La disponibilidad exacta depende de la ejecución, del perfil y
-                del hardware de medición. Performance System muestra únicamente
-                las métricas que realmente están disponibles.
-              </p>
+              <span className="tutorial-section-kicker">
+                {t("tutorialPage.results.kicker")}
+              </span>
+              <h2>{t("tutorialPage.results.title")}</h2>
+              <p>{t("tutorialPage.results.description")}</p>
             </div>
 
             <div className="tutorial-metric-grid">
@@ -588,12 +529,16 @@ const TutorialPage = () => {
                 const Icon = metric.icon;
 
                 return (
-                  <article className="tutorial-metric-card" key={metric.title}>
+                  <article className="tutorial-metric-card" key={metric.key}>
                     <div className="tutorial-metric-card__icon">
                       <Icon size={22} strokeWidth={1.8} />
                     </div>
-                    <h3>{metric.title}</h3>
-                    <p>{metric.text}</p>
+                    <h3>
+                      {t(`tutorialPage.results.metrics.${metric.key}.title`)}
+                    </h3>
+                    <p>
+                      {t(`tutorialPage.results.metrics.${metric.key}.text`)}
+                    </p>
                   </article>
                 );
               })}
@@ -601,29 +546,20 @@ const TutorialPage = () => {
 
             <div className="tutorial-result-example">
               <div className="tutorial-result-example__copy">
-                <span className="tutorial-section-kicker">Ejemplo de lectura</span>
-                <h3>Relaciona el tamaño de entrada con la tendencia</h3>
-                <p>
-                  En este ejemplo, el eje horizontal representa el tamaño de
-                  entrada y el vertical el tiempo de ejecución. Cada punto
-                  resume las repeticiones realizadas para ese tamaño: interesa
-                  la dirección general de la serie, no un punto aislado.
-                </p>
+                <span className="tutorial-section-kicker">
+                  {t("tutorialPage.results.example.kicker")}
+                </span>
+                <h3>{t("tutorialPage.results.example.title")}</h3>
+                <p>{t("tutorialPage.results.example.description")}</p>
                 <ul>
-                  <li>Comprueba siempre la unidad indicada en cada eje.</li>
-                  <li>Observa si la métrica crece, disminuye o se mantiene.</li>
-                  <li>Compara solo ejecuciones con condiciones equivalentes.</li>
+                  <li>{t("tutorialPage.results.example.points.unit")}</li>
+                  <li>{t("tutorialPage.results.example.points.trend")}</li>
+                  <li>{t("tutorialPage.results.example.points.compare")}</li>
                 </ul>
               </div>
 
               <TutorialScreenshot
-                shot={{
-                  src: timeChartShot,
-                  alt: "Gráfico de tiempo de ejecución según tamaño de entrada",
-                  caption:
-                    "La serie muestra una tendencia creciente entre los tamaños medidos.",
-                  variant: "chart",
-                }}
+                shot={TIME_CHART_SHOT}
                 onOpen={setActiveShot}
               />
             </div>
@@ -634,30 +570,29 @@ const TutorialPage = () => {
               <div className="tutorial-panel-title">
                 <Gauge size={21} />
                 <div>
-                  <span className="tutorial-section-kicker">Interpretación</span>
-                  <h2>Cómo leer una medición</h2>
+                  <span className="tutorial-section-kicker">
+                    {t("tutorialPage.interpretation.kicker")}
+                  </span>
+                  <h2>{t("tutorialPage.interpretation.title")}</h2>
                 </div>
               </div>
 
-              <p>
-                Un gráfico no debe analizarse de forma aislada. Observa la
-                tendencia, compara ejecuciones bajo condiciones equivalentes y
-                utiliza las explicaciones del sistema como apoyo para relacionar
-                las métricas con el comportamiento del algoritmo.
-              </p>
+              <p>{t("tutorialPage.interpretation.description")}</p>
 
               <div className="tutorial-analysis-preview">
                 <div>
                   <Activity size={18} />
-                  <span>Tendencia observada</span>
+                  <span>{t("tutorialPage.interpretation.preview.trend")}</span>
                 </div>
                 <div>
                   <Layers3 size={18} />
-                  <span>Comparación entre métricas</span>
+                  <span>{t("tutorialPage.interpretation.preview.metrics")}</span>
                 </div>
                 <div>
                   <Code2 size={18} />
-                  <span>Contexto de la implementación</span>
+                  <span>
+                    {t("tutorialPage.interpretation.preview.implementation")}
+                  </span>
                 </div>
               </div>
             </article>
@@ -666,16 +601,18 @@ const TutorialPage = () => {
               <div className="tutorial-panel-title">
                 <CheckCircle2 size={21} />
                 <div>
-                  <span className="tutorial-section-kicker">Buenas prácticas</span>
-                  <h2>Obtén resultados comparables</h2>
+                  <span className="tutorial-section-kicker">
+                    {t("tutorialPage.goodPractices.kicker")}
+                  </span>
+                  <h2>{t("tutorialPage.goodPractices.title")}</h2>
                 </div>
               </div>
 
               <ul className="tutorial-check-list">
-                {GOOD_PRACTICES.map((practice) => (
-                  <li key={practice}>
+                {GOOD_PRACTICE_KEYS.map((practiceKey) => (
+                  <li key={practiceKey}>
                     <CheckCircle2 size={17} />
-                    <span>{practice}</span>
+                    <span>{t(practiceKey)}</span>
                   </li>
                 ))}
               </ul>
@@ -689,15 +626,10 @@ const TutorialPage = () => {
               </div>
               <div>
                 <span className="tutorial-section-kicker">
-                  Antes de comenzar
+                  {t("tutorialPage.final.kicker")}
                 </span>
-                <h2>Revisa el ZIP y conserva condiciones comparables</h2>
-                <p>
-                  Con el archivo preparado, configura el benchmark y comprueba
-                  el resumen antes de ejecutar. Cuando necesites repetir una
-                  comparación, mantén el mismo entorno, perfil y tamaño de
-                  entrada para que la lectura siga siendo válida.
-                </p>
+                <h2>{t("tutorialPage.final.title")}</h2>
+                <p>{t("tutorialPage.final.description")}</p>
               </div>
             </article>
           </section>
@@ -709,7 +641,7 @@ const TutorialPage = () => {
           className="tutorial-lightbox"
           role="dialog"
           aria-modal="true"
-          aria-label="Captura ampliada del tutorial"
+          aria-label={t("tutorialPage.lightbox.aria")}
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) setActiveShot(null);
           }}
@@ -719,16 +651,18 @@ const TutorialPage = () => {
               type="button"
               className="tutorial-lightbox__close"
               onClick={() => setActiveShot(null)}
-              aria-label="Cerrar captura ampliada"
+              aria-label={t("tutorialPage.lightbox.closeAria")}
             >
               <X size={20} />
             </button>
+
             <div
               className={`tutorial-lightbox__viewport tutorial-lightbox__viewport--${activeShot.variant || "default"}`}
             >
-              <img src={activeShot.src} alt={activeShot.alt} />
+              <img src={activeShot.src} alt={t(activeShot.altKey)} />
             </div>
-            {activeShot.caption && <p>{activeShot.caption}</p>}
+
+            {activeShot.captionKey && <p>{t(activeShot.captionKey)}</p>}
           </div>
         </div>
       )}

@@ -28,8 +28,10 @@ import {
 import {
   canAccessTeacherArea,
   isAdminUser,
-  roleLabel,
 } from "./userAccessModel";
+
+import LanguageSwitcher from "../components/LanguageSwitcher";
+import { useI18n } from "../i18n";
 
 import "./Navbar.css";
 
@@ -44,6 +46,8 @@ function Navbar({
 }) {
 
   const location = useLocation();
+
+  const { t } = useI18n();
 
   const userMenuRef = useRef(null);
 
@@ -153,7 +157,7 @@ function Navbar({
     ||
     user?.name
     ||
-    "Usuario";
+    t("common.user");
 
 
   const displayEmail =
@@ -163,7 +167,13 @@ function Navbar({
 
 
   const displayRole =
-    roleLabel(user);
+    isAdmin
+      ? t("roles.admin")
+      : (
+          canSupervise
+            ? t("roles.teacher")
+            : t("roles.student")
+        );
 
 
   /* ==========================================================
@@ -243,19 +253,19 @@ function Navbar({
     const items = [
       {
         path: "/",
-        label: "Nuevo análisis",
+        label: t("nav.newAnalysis"),
         icon: Plus,
         end: true,
       },
       {
         path: "/history",
-        label: "Historial",
+        label: t("nav.history"),
         icon: History,
         end: false,
       },
       {
         path: "/tutorial",
-        label: "Cómo funciona",
+        label: t("nav.tutorial"),
         icon: CircleHelp,
         end: false,
       },
@@ -266,7 +276,7 @@ function Navbar({
 
       items.push({
         path: "/teacher/courses",
-        label: "Supervisión",
+        label: t("nav.supervision"),
         icon: UserRound,
         end: false,
       });
@@ -278,7 +288,7 @@ function Navbar({
 
       items.push({
         path: "/admin/users",
-        label: "Administración",
+        label: t("nav.administration"),
         icon: ShieldCheck,
         end: false,
       });
@@ -288,7 +298,7 @@ function Navbar({
 
     return items;
 
-  }, [canSupervise, isAdmin]);
+  }, [canSupervise, isAdmin, t]);
 
 
   /* ==========================================================
@@ -506,7 +516,7 @@ function Navbar({
         <Link
           to="/"
           className="app-navbar-brand"
-          aria-label="Performance System — Nuevo análisis"
+          aria-label={t("navbar.brandAria")}
         >
 
           <img
@@ -530,7 +540,7 @@ function Navbar({
 
         <nav
           className="app-navbar-menu"
-          aria-label="Navegación principal"
+          aria-label={t("navbar.mainNavigationAria")}
         >
 
           {renderNavLinks(false)}
@@ -544,6 +554,8 @@ function Navbar({
 
         <div className="app-navbar-actions">
 
+          <LanguageSwitcher variant="navbar" />
+
           {/* THEME */}
 
           <button
@@ -552,13 +564,13 @@ function Navbar({
             onClick={toggleTheme}
             aria-label={
               theme === "dark"
-                ? "Cambiar a tema claro"
-                : "Cambiar a tema oscuro"
+                ? t("navbar.themeToLight")
+                : t("navbar.themeToDark")
             }
             title={
               theme === "dark"
-                ? "Cambiar a tema claro"
-                : "Cambiar a tema oscuro"
+                ? t("navbar.themeToLight")
+                : t("navbar.themeToDark")
             }
           >
 
@@ -698,7 +710,7 @@ function Navbar({
                   />
 
                   <span>
-                    Mi perfil
+                    {t("navbar.profile")}
                   </span>
 
                 </button>
@@ -723,7 +735,7 @@ function Navbar({
                   />
 
                   <span>
-                    Cerrar sesión
+                    {t("navbar.logout")}
                   </span>
 
                 </button>
@@ -755,8 +767,8 @@ function Navbar({
             }
             aria-label={
               isMobileMenuOpen
-                ? "Cerrar navegación"
-                : "Abrir navegación"
+                ? t("navbar.closeNavigation")
+                : t("navbar.openNavigation")
             }
           >
 
@@ -785,7 +797,7 @@ function Navbar({
 
           <nav
             className="app-navbar-mobile-menu"
-            aria-label="Navegación móvil"
+            aria-label={t("navbar.mobileNavigationAria")}
           >
 
             {renderNavLinks(true)}

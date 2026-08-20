@@ -9,6 +9,17 @@ export const TARGET_METRICS = Object.freeze([
   "EnergyPkg",
 ]);
 
+const resolveText = (
+  t,
+  key,
+  fallback,
+  params = {}
+) =>
+  typeof t === "function"
+    ? t(key, params)
+    : fallback;
+
+
 export const HISTORICAL_CANDIDATE_STATUSES = Object.freeze({
   COMPATIBLE: { label: "Compatible", tone: "success", selectable: true },
   LIMITED: {
@@ -71,6 +82,23 @@ export const COMPARISON_DIMENSIONS = Object.freeze([
   ["metrics", "Métricas"],
 ]);
 
+export const comparisonDimensionLabel = (
+  key,
+  t
+) => {
+  const fallback =
+    COMPARISON_DIMENSIONS.find(
+      ([dimensionKey]) => dimensionKey === key
+    )?.[1] || String(key || "");
+
+  return resolveText(
+    t,
+    `comparisonModel.dimensions.${key}`,
+    fallback
+  );
+};
+
+
 const MARKER_SYMBOLS = ["circle", "square", "diamond", "triangle-up"];
 const LINE_DASHES = ["solid", "dash", "dot", "dashdot"];
 
@@ -88,7 +116,10 @@ const uniqueNumericDomain = (values) =>
     )
   ).sort((left, right) => left - right);
 
-export const parseExecutionQuery = (value) => {
+export const parseExecutionQuery = (
+  value,
+  t
+) => {
   const searchParams =
     value instanceof URLSearchParams
       ? value
@@ -104,7 +135,11 @@ export const parseExecutionQuery = (value) => {
     return {
       valid: false,
       executions,
-      reason: "La URL debe incluir entre 2 y 4 implementaciones.",
+      reason: resolveText(
+        t,
+        "comparisonModel.query.count",
+        "La URL debe incluir entre 2 y 4 implementaciones."
+      ),
     };
   }
 
@@ -112,7 +147,11 @@ export const parseExecutionQuery = (value) => {
     return {
       valid: false,
       executions,
-      reason: "La URL contiene una implementación vacía.",
+      reason: resolveText(
+        t,
+        "comparisonModel.query.empty",
+        "La URL contiene una implementación vacía."
+      ),
     };
   }
 
@@ -120,7 +159,11 @@ export const parseExecutionQuery = (value) => {
     return {
       valid: false,
       executions,
-      reason: "Cada implementación debe aparecer una sola vez.",
+      reason: resolveText(
+        t,
+        "comparisonModel.query.duplicate",
+        "Cada implementación debe aparecer una sola vez."
+      ),
     };
   }
 
@@ -137,12 +180,28 @@ export const buildComparisonPath = (executions) => {
   return `/compare?${searchParams.toString()}`;
 };
 
-export const historicalCandidatePresentation = (status) => {
+export const historicalCandidatePresentation = (
+  status,
+  t
+) => {
   const normalized = String(status || "").trim().toUpperCase();
-  return (
-    HISTORICAL_CANDIDATE_STATUSES[normalized] ||
-    HISTORICAL_CANDIDATE_STATUSES.UNAVAILABLE
-  );
+  const statusKey = Object.prototype.hasOwnProperty.call(
+    HISTORICAL_CANDIDATE_STATUSES,
+    normalized
+  )
+    ? normalized
+    : "UNAVAILABLE";
+  const fallback =
+    HISTORICAL_CANDIDATE_STATUSES[statusKey];
+
+  return {
+    ...fallback,
+    label: resolveText(
+      t,
+      `comparisonModel.historicalStatuses.${statusKey.toLowerCase()}`,
+      fallback.label
+    ),
+  };
 };
 
 export const filterHistoricalCandidates = (items, showIncompatible) =>
@@ -207,16 +266,22 @@ export const canAddHistoricalCandidate = (
   );
 };
 
-export const formatHistoricalCandidateDate = (value) => {
+export const formatHistoricalCandidateDate = (
+  value,
+  locale = "es-CL",
+  fallback = "Fecha no disponible"
+) => {
   const date = value instanceof Date ? value : new Date(value);
-  if (!Number.isFinite(date.getTime())) return "Fecha no disponible";
+  if (!Number.isFinite(date.getTime())) {
+    return fallback;
+  }
 
-  return new Intl.DateTimeFormat("es-CL", {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   })
     .format(date)
-    .replace(/\s+/gu, " ")
+    .replace(/[\s\u00a0\u202f]+/gu, " ")
     .trim();
 };
 
@@ -225,23 +290,48 @@ export const isComparisonEligibleExecution = (execution) =>
   execution?.resultAvailable === true &&
   Boolean(cleanCodename(execution?.codename));
 
-export const comparisonIneligibilityReason = (execution) => {
+export const comparisonIneligibilityReason = (
+  execution,
+  t
+) => {
   const state = String(execution?.state || "").trim().toUpperCase();
 
   if (state !== "COMPLETED") {
-    if (state === "FAILED") return "La ejecución finalizó con error.";
-    if (["QUEUED", "RUNNING", "PROCESSING"].includes(state)) {
-      return "La ejecución todavía está en progreso.";
+    if (state === "FAILED") {
+      return resolveText(
+        t,
+        "comparisonModel.ineligibility.failed",
+        "La ejecución finalizó con error."
+      );
     }
-    return "La ejecución todavía no está completada.";
+    if (["QUEUED", "RUNNING", "PROCESSING"].includes(state)) {
+      return resolveText(
+        t,
+        "comparisonModel.ineligibility.active",
+        "La ejecución todavía está en progreso."
+      );
+    }
+    return resolveText(
+      t,
+      "comparisonModel.ineligibility.notCompleted",
+      "La ejecución todavía no está completada."
+    );
   }
 
   if (execution?.resultAvailable !== true) {
-    return "La ejecución no tiene resultados disponibles.";
+    return resolveText(
+      t,
+      "comparisonModel.ineligibility.noResults",
+      "La ejecución no tiene resultados disponibles."
+    );
   }
 
   if (!cleanCodename(execution?.codename)) {
-    return "La ejecución no tiene un identificador válido.";
+    return resolveText(
+      t,
+      "comparisonModel.ineligibility.invalidId",
+      "La ejecución no tiene un identificador válido."
+    );
   }
 
   return "";
@@ -286,11 +376,26 @@ export const orderSelectedExecutions = (orderedExecutions, selected) => {
     .filter((codename) => codename && selectedSet.has(codename));
 };
 
-export const humanMetricLabel = (metric) => {
-  if (METRIC_LABELS[metric]) return METRIC_LABELS[metric];
+export const humanMetricLabel = (
+  metric,
+  t
+) => {
+  if (METRIC_LABELS[metric]) {
+    return resolveText(
+      t,
+      `comparisonModel.metrics.${metric}.label`,
+      METRIC_LABELS[metric]
+    );
+  }
 
   const text = String(metric || "").trim();
-  if (!text) return "Métrica";
+  if (!text) {
+    return resolveText(
+      t,
+      "comparisonModel.genericMetric",
+      "Métrica"
+    );
+  }
 
   return text
     .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
@@ -327,12 +432,27 @@ const metricHasVisibleDispersion = (metricData, aggregation) =>
     })
   );
 
+const metricInterpretation = (
+  metric,
+  t
+) => {
+  const fallback = METRIC_INTERPRETATIONS[metric];
+  if (!fallback) return "";
+
+  return resolveText(
+    t,
+    `comparisonModel.metrics.${metric}.interpretation`,
+    fallback
+  );
+};
+
 export const buildComparisonInterpretation = ({
   compatibility,
   selectedMetric,
   metricData,
   aggregation = "median",
   showDispersion = true,
+  t = null,
 }) => {
   const contract =
     compatibility && typeof compatibility === "object"
@@ -341,7 +461,13 @@ export const buildComparisonInterpretation = ({
   const status = String(contract.status || "").trim().toUpperCase();
 
   if (status === "INCOMPATIBLE") {
-    return [INCOMPATIBLE_INTERPRETATION];
+    return [
+      resolveText(
+        t,
+        "comparisonModel.interpretations.incompatible",
+        INCOMPATIBLE_INTERPRETATION
+      ),
+    ];
   }
 
   const messages = [];
@@ -363,29 +489,57 @@ export const buildComparisonInterpretation = ({
     : []
   ).some((item) => String(item?.metric || "").trim() === "EnergyPkg");
 
-  addMessage(METRIC_INTERPRETATIONS[metric]);
-  if (energyExcluded) addMessage(METRIC_INTERPRETATIONS.EnergyPkg);
-  if (status === "LIMITED") addMessage(LIMITED_INTERPRETATION);
+  addMessage(metricInterpretation(metric, t));
+  if (energyExcluded) {
+    addMessage(metricInterpretation("EnergyPkg", t));
+  }
+  if (status === "LIMITED") {
+    addMessage(
+      resolveText(
+        t,
+        "comparisonModel.interpretations.limited",
+        LIMITED_INTERPRETATION
+      )
+    );
+  }
 
   if (
     inputStatus === "PARTIAL" ||
     issueCodes.has("PARTIAL_INPUT_OVERLAP")
   ) {
-    addMessage(PARTIAL_OVERLAP_INTERPRETATION);
+    addMessage(
+      resolveText(
+        t,
+        "comparisonModel.interpretations.partialOverlap",
+        PARTIAL_OVERLAP_INTERPRETATION
+      )
+    );
   }
 
   if (
     commonInputSizes.length === 1 ||
     issueCodes.has("SINGLE_COMMON_INPUT_SIZE")
   ) {
-    addMessage(SINGLE_INPUT_INTERPRETATION);
+    addMessage(
+      resolveText(
+        t,
+        "comparisonModel.interpretations.singleInput",
+        SINGLE_INPUT_INTERPRETATION
+      )
+    );
   }
 
   if (
     showDispersion &&
     metricHasVisibleDispersion(metricData, aggregation)
   ) {
-    addMessage(DISPERSION_INTERPRETATION);
+    addMessage(
+      resolveText(
+        t,
+        "comparisonModel.interpretations.dispersion",
+        DISPERSION_INTERPRETATION
+      )
+    );
   }
 
   return messages;
@@ -424,10 +578,19 @@ export const defaultComparisonMetric = (commonMetrics, metrics) => {
   return ordered.includes("DurationTime") ? "DurationTime" : ordered[0] || "";
 };
 
-export const buildUniqueSeriesLabels = (series) => {
+export const buildUniqueSeriesLabels = (
+  series,
+  t
+) => {
   const baseLabels = (Array.isArray(series) ? series : []).map(
     (item, index) =>
-      String(item?.sourceFilename || "").trim() || `Implementación ${index + 1}`
+      String(item?.sourceFilename || "").trim() ||
+      resolveText(
+        t,
+        "comparisonModel.seriesFallback",
+        `Implementación ${index + 1}`,
+        { index: index + 1 }
+      )
   );
   const totals = baseLabels.reduce((counts, label) => {
     counts.set(label, (counts.get(label) || 0) + 1);
@@ -512,12 +675,55 @@ export const buildComparisonTraces = ({
   showDispersion = true,
   minimum = null,
   maximum = null,
+  t = null,
 }) => {
   const series = Array.isArray(metricData?.series) ? metricData.series : [];
-  const labels = buildUniqueSeriesLabels(series);
+  const labels = buildUniqueSeriesLabels(series, t);
   const unit = String(metricData?.unit || "").trim();
   const centralKey = aggregation === "mean" ? "mean" : "median";
-  const centralLabel = aggregation === "mean" ? "Media" : "Mediana";
+  const centralLabel =
+    centralKey === "mean"
+      ? resolveText(
+          t,
+          "comparisonModel.aggregation.mean",
+          "Media"
+        )
+      : resolveText(
+          t,
+          "comparisonModel.aggregation.median",
+          "Mediana"
+        );
+
+  const medianLabel = resolveText(
+    t,
+    "comparisonModel.aggregation.median",
+    "Mediana"
+  );
+  const meanLabel = resolveText(
+    t,
+    "comparisonModel.aggregation.mean",
+    "Media"
+  );
+  const inputSizeLabel = resolveText(
+    t,
+    "comparisonModel.hover.inputSize",
+    "InputSize"
+  );
+  const stddevLabel = resolveText(
+    t,
+    "comparisonModel.hover.stddev",
+    "Desv. estándar"
+  );
+  const validSamplesLabel = resolveText(
+    t,
+    "comparisonModel.hover.validSamples",
+    "Muestras válidas"
+  );
+  const iqrOutliersLabel = resolveText(
+    t,
+    "comparisonModel.hover.iqrOutliers",
+    "Outliers IQR"
+  );
 
   return series.map((item, seriesIndex) => {
     const filtered = filterPointsByInputRange(item?.points, minimum, maximum);
@@ -564,14 +770,14 @@ export const buildComparisonTraces = ({
       },
       hovertemplate:
         "<b>%{customdata[0]}</b><br>" +
-        "InputSize: %{x}<br>" +
+        `${inputSizeLabel}: %{x}<br>` +
         `${centralLabel}: %{y}${unit ? ` ${unit}` : ""}<br>` +
-        "Mediana: %{customdata[1]}<br>" +
-        "Media: %{customdata[2]}<br>" +
+        `${medianLabel}: %{customdata[1]}<br>` +
+        `${meanLabel}: %{customdata[2]}<br>` +
         "Q1–Q3: %{customdata[3]} – %{customdata[4]}<br>" +
-        "Desv. estándar: %{customdata[5]}<br>" +
-        "Muestras válidas: %{customdata[6]}/%{customdata[7]}<br>" +
-        "Outliers IQR: %{customdata[8]}<extra></extra>",
+        `${stddevLabel}: %{customdata[5]}<br>` +
+        `${validSamplesLabel}: %{customdata[6]}/%{customdata[7]}<br>` +
+        `${iqrOutliersLabel}: %{customdata[8]}<extra></extra>`,
     };
 
     if (showDispersion && hasDispersion) {
@@ -589,20 +795,58 @@ export const buildComparisonTraces = ({
   });
 };
 
-export const comparisonDimensionPresentation = (status) => {
+export const comparisonDimensionPresentation = (
+  status,
+  t
+) => {
   const normalized = String(status || "").trim().toUpperCase();
 
   if (["MATCH", "VERIFIED", "AVAILABLE", "COMPATIBLE"].includes(normalized)) {
-    return { label: "Compatible", tone: "success" };
+    return {
+      label: resolveText(
+        t,
+        "comparisonModel.dimensionStatuses.compatible",
+        "Compatible"
+      ),
+      tone: "success",
+    };
   }
   if (["PARTIAL", "LIMITED"].includes(normalized)) {
-    return { label: "Con limitación", tone: "warning" };
+    return {
+      label: resolveText(
+        t,
+        "comparisonModel.dimensionStatuses.limited",
+        "Con limitación"
+      ),
+      tone: "warning",
+    };
   }
   if (["MISMATCH", "NO_OVERLAP", "AMBIGUOUS", "INCOMPATIBLE"].includes(normalized)) {
-    return { label: "Incompatible", tone: "danger" };
+    return {
+      label: resolveText(
+        t,
+        "comparisonModel.dimensionStatuses.incompatible",
+        "Incompatible"
+      ),
+      tone: "danger",
+    };
   }
   if (normalized === "UNAVAILABLE") {
-    return { label: "No disponible", tone: "neutral" };
+    return {
+      label: resolveText(
+        t,
+        "comparisonModel.dimensionStatuses.unavailable",
+        "No disponible"
+      ),
+      tone: "neutral",
+    };
   }
-  return { label: "No verificable", tone: "neutral" };
+  return {
+    label: resolveText(
+      t,
+      "comparisonModel.dimensionStatuses.unverifiable",
+      "No verificable"
+    ),
+    tone: "neutral",
+  };
 };

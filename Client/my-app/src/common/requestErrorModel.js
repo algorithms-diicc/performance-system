@@ -69,6 +69,129 @@ export function friendlyRequestError(
   return fallback;
 }
 
+export function localizedRequestError(
+  error,
+  t,
+  {
+    language = "es",
+    fallbackKey =
+      "commonErrors.generic",
+    codeKeys = {},
+    statusKeys = {},
+  } = {}
+) {
+  if (
+    error?.name
+    === "AbortError"
+  ) {
+    return "";
+  }
+
+  if (
+    typeof t
+    !== "function"
+  ) {
+    return friendlyRequestError(
+      error
+    );
+  }
+
+  const code =
+    String(
+      error?.code
+      || error?.payload?.error?.code
+      || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    code
+    && Object.prototype
+      .hasOwnProperty.call(
+        codeKeys,
+        code
+      )
+  ) {
+    return t(
+      codeKeys[code]
+    );
+  }
+
+  const status =
+    requestStatus(error);
+
+  if (
+    status !== null
+    && Object.prototype
+      .hasOwnProperty.call(
+        statusKeys,
+        status
+      )
+  ) {
+    return t(
+      statusKeys[status]
+    );
+  }
+
+  if (
+    code === "NETWORK_ERROR"
+    || status === null
+  ) {
+    return t(
+      "commonErrors.network"
+    );
+  }
+
+  if (status === 401) {
+    return t(
+      "commonErrors.session"
+    );
+  }
+
+  if (status === 403) {
+    return t(
+      "commonErrors.forbidden"
+    );
+  }
+
+  if (status === 404) {
+    return t(
+      "commonErrors.notFound"
+    );
+  }
+
+  if (status >= 500) {
+    return t(
+      "commonErrors.service"
+    );
+  }
+
+  if (
+    BUSINESS_MESSAGE_STATUSES
+      .has(status)
+    && String(language)
+      .toLowerCase()
+      .startsWith("es")
+  ) {
+    const message =
+      responseMessage(error);
+
+    if (
+      typeof message
+        === "string"
+      && message.trim()
+    ) {
+      return message.trim();
+    }
+  }
+
+  return t(
+    fallbackKey
+  );
+}
+
+
 export async function requestJson(
   url,
   options = {},

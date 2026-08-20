@@ -2,11 +2,15 @@ import React from "react";
 import { BookOpen, Gauge } from "lucide-react";
 import { Link } from "react-router-dom";
 
+import { useI18n } from "../../../i18n";
+
 function HeaderSection({
   title,
   subtitle,
   rightContent,
 }) {
+  const { t } = useI18n();
+
   return (
     <header className="inicio-header">
       <div className="inicio-header-main">
@@ -22,7 +26,7 @@ function HeaderSection({
 
         <div className="inicio-header-left">
           <span className="inicio-header-eyebrow">
-            Experimento de rendimiento
+            {t("renderForm.header.eyebrow")}
           </span>
 
           <h1 className="inicio-title">
@@ -40,7 +44,7 @@ function HeaderSection({
             className="inicio-examples-link"
           >
             <BookOpen size={15} aria-hidden="true" />
-            ¿Necesitas un ejemplo? Ver ejemplos de código
+            {t("renderForm.header.exampleLink")}
           </Link>
         </div>
       </div>

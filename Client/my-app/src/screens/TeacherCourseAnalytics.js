@@ -10,7 +10,12 @@ import InlineState
   from "../components/InlineState";
 
 import {
+  useI18n,
+} from "../i18n";
+
+import {
   teacherApi,
+  teacherRequestErrorMessage,
 } from "./teacherApi";
 
 
@@ -26,31 +31,20 @@ const COLORS = {
   emerald: "#10b981",
 };
 
-const dateFormatter =
-  new Intl.DateTimeFormat(
-    "es-CL",
-    {
-      day: "2-digit",
-      month: "short",
-    }
-  );
 
-const rateFormatter =
-  new Intl.NumberFormat(
-    "es-CL",
-    {
-      maximumFractionDigits: 1,
-    }
-  );
-
-
-function formatChartDate(value) {
+function formatChartDate(
+  value,
+  locale,
+  fallback = "—"
+) {
   if (!value) {
-    return "—";
+    return fallback;
   }
 
   const parsed =
-    new Date(`${value}T00:00:00`);
+    new Date(
+      `${value}T00:00:00`
+    );
 
   if (
     Number.isNaN(
@@ -60,15 +54,52 @@ function formatChartDate(value) {
     return value;
   }
 
-  return dateFormatter
+  return new Intl.DateTimeFormat(
+    locale,
+    {
+      day: "2-digit",
+      month: "short",
+    }
+  )
     .format(parsed);
+}
+
+
+function participationLabel(
+  item,
+  t
+) {
+  const key =
+    String(
+      item?.key || ""
+    ).trim();
+
+  const keys = {
+    zero:
+      "teacherCourseAnalytics.charts.participation.buckets.zero",
+    oneToFour:
+      "teacherCourseAnalytics.charts.participation.buckets.oneToFour",
+    fiveToNine:
+      "teacherCourseAnalytics.charts.participation.buckets.fiveToNine",
+    tenOrMore:
+      "teacherCourseAnalytics.charts.participation.buckets.tenOrMore",
+  };
+
+  return keys[key]
+    ? t(keys[key])
+    : (
+        item?.label ||
+        key ||
+        "—"
+      );
 }
 
 
 function readChartTheme() {
   const fallback = {
     text: "#64748b",
-    grid: "rgba(100, 116, 139, 0.18)",
+    grid:
+      "rgba(100, 116, 139, 0.18)",
   };
 
   if (
@@ -121,10 +152,18 @@ function ChartCard({
 }
 
 
-function EmptyChart({ children }) {
+function EmptyChart({
+  children,
+}) {
+  const { t } = useI18n();
+
   return (
     <div className="teacher-chart-empty">
-      <strong>Sin datos todavía</strong>
+      <strong>
+        {t(
+          "teacherCourseAnalytics.empty.title"
+        )}
+      </strong>
       <span>{children}</span>
     </div>
   );
@@ -135,6 +174,11 @@ export default function TeacherCourseAnalytics({
   courseId,
   reloadToken,
 }) {
+  const {
+    locale,
+    t,
+  } = useI18n();
+
   const [
     analytics,
     setAnalytics,
@@ -226,13 +270,11 @@ export default function TeacherCourseAnalytics({
         }
 
         setAnalytics(null);
-        setError(
-          err.message
-          || "No fue posible cargar la analítica del curso."
-        );
+        setError(err);
       } finally {
         if (
-          !controller.signal.aborted
+          !controller.signal
+            .aborted
         ) {
           setLoading(false);
         }
@@ -257,7 +299,8 @@ export default function TeacherCourseAnalytics({
         plot_bgcolor:
           "rgba(0, 0, 0, 0)",
         font: {
-          color: chartTheme.text,
+          color:
+            chartTheme.text,
           family:
             "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
           size: 12,
@@ -285,7 +328,9 @@ export default function TeacherCourseAnalytics({
       <section className="teacher-panel">
         <InlineState
           type="loading"
-          title="Cargando analítica"
+          title={t(
+            "teacherCourseAnalytics.loading"
+          )}
           compact
         />
       </section>
@@ -301,9 +346,22 @@ export default function TeacherCourseAnalytics({
       <section className="teacher-panel">
         <InlineState
           type="error"
-          title="No pudimos cargar la analítica"
-          description={error}
-          actionLabel="Reintentar"
+          title={t(
+            "teacherCourseAnalytics.errors.title"
+          )}
+          description={
+            teacherRequestErrorMessage(
+              error,
+              t,
+              {
+                fallbackKey:
+                  "teacherCourseAnalytics.errors.load",
+              }
+            )
+          }
+          actionLabel={t(
+            "teacherCommon.actions.retry"
+          )}
           onAction={() =>
             setRequestToken(
               (value) => value + 1
@@ -379,6 +437,14 @@ export default function TeacherCourseAnalytics({
       0
     );
 
+  const rateFormatter =
+    new Intl.NumberFormat(
+      locale,
+      {
+        maximumFractionDigits: 1,
+      }
+    );
+
 
   return (
     <section
@@ -388,13 +454,19 @@ export default function TeacherCourseAnalytics({
       <div className="teacher-analytics-heading">
         <div>
           <p className="teacher-eyebrow">
-            Seguimiento agregado
+            {t(
+              "teacherCourseAnalytics.header.eyebrow"
+            )}
           </p>
           <h2 id="teacher-analytics-title">
-            Analítica del curso
+            {t(
+              "teacherCourseAnalytics.header.title"
+            )}
           </h2>
           <p>
-            Participación, benchmarks y actividad sin comparar rendimiento entre equipos.
+            {t(
+              "teacherCourseAnalytics.header.description"
+            )}
           </p>
         </div>
       </div>
@@ -403,7 +475,9 @@ export default function TeacherCourseAnalytics({
       <div className="teacher-summary-grid teacher-summary-grid--analytics">
         <article>
           <span>
-            Estudiantes activos
+            {t(
+              "teacherCourseAnalytics.kpis.activeStudents"
+            )}
           </span>
           <strong>
             {kpis.activeStudents || 0}
@@ -411,21 +485,33 @@ export default function TeacherCourseAnalytics({
         </article>
 
         <article>
-          <span>Envíos</span>
+          <span>
+            {t(
+              "teacherCourseAnalytics.kpis.submissions"
+            )}
+          </span>
           <strong>
             {kpis.submissions || 0}
           </strong>
         </article>
 
         <article>
-          <span>Ejecuciones</span>
+          <span>
+            {t(
+              "teacherCourseAnalytics.kpis.executions"
+            )}
+          </span>
           <strong>
             {kpis.executions || 0}
           </strong>
         </article>
 
         <article>
-          <span>Tasa de finalización</span>
+          <span>
+            {t(
+              "teacherCourseAnalytics.kpis.completionRate"
+            )}
+          </span>
           <strong>
             {rateFormatter.format(
               kpis.completionRate || 0
@@ -438,8 +524,12 @@ export default function TeacherCourseAnalytics({
 
       <div className="teacher-analytics-grid">
         <ChartCard
-          title="Participación por estudiante"
-          description="Estudiantes activos agrupados por cantidad de ejecuciones."
+          title={t(
+            "teacherCourseAnalytics.charts.participation.title"
+          )}
+          description={t(
+            "teacherCourseAnalytics.charts.participation.description"
+          )}
         >
           {(kpis.activeStudents || 0) > 0 ? (
             <Plot
@@ -447,7 +537,11 @@ export default function TeacherCourseAnalytics({
                 {
                   type: "bar",
                   x: participation.map(
-                    (item) => item.label
+                    (item) =>
+                      participationLabel(
+                        item,
+                        t
+                      )
                   ),
                   y: participation.map(
                     (item) => item.students
@@ -455,10 +549,12 @@ export default function TeacherCourseAnalytics({
                   text: participation.map(
                     (item) => item.students
                   ),
-                  textposition: "outside",
+                  textposition:
+                    "outside",
                   cliponaxis: false,
                   marker: {
-                    color: COLORS.primary,
+                    color:
+                      COLORS.primary,
                     line: {
                       color:
                         "rgba(255, 255, 255, 0.18)",
@@ -466,7 +562,9 @@ export default function TeacherCourseAnalytics({
                     },
                   },
                   hovertemplate:
-                    "%{x}: %{y} estudiantes<extra></extra>",
+                    t(
+                      "teacherCourseAnalytics.charts.participation.hover"
+                    ),
                 },
               ]}
               layout={{
@@ -475,25 +573,33 @@ export default function TeacherCourseAnalytics({
                 xaxis: {
                   fixedrange: true,
                   tickfont: {
-                    color: chartTheme.text,
+                    color:
+                      chartTheme.text,
                   },
                 },
                 yaxis: {
                   fixedrange: true,
-                  rangemode: "tozero",
-                  tickmode: "linear",
+                  rangemode:
+                    "tozero",
+                  tickmode:
+                    "linear",
                   dtick: 1,
                   gridcolor:
                     chartTheme.grid,
                   zerolinecolor:
                     chartTheme.grid,
                   tickfont: {
-                    color: chartTheme.text,
+                    color:
+                      chartTheme.text,
                   },
                   title: {
-                    text: "Estudiantes",
+                    text:
+                      t(
+                        "teacherCourseAnalytics.axes.students"
+                      ),
                     font: {
-                      color: chartTheme.text,
+                      color:
+                        chartTheme.text,
                     },
                   },
                 },
@@ -508,30 +614,41 @@ export default function TeacherCourseAnalytics({
             />
           ) : (
             <EmptyChart>
-              Agrega estudiantes al curso para visualizar su participación.
+              {t(
+                "teacherCourseAnalytics.charts.participation.empty"
+              )}
             </EmptyChart>
           )}
         </ChartCard>
 
 
         <ChartCard
-          title="Benchmarks utilizados"
-          description="Distribución de ejecuciones entre LCS, CAMM y SIZE."
+          title={t(
+            "teacherCourseAnalytics.charts.benchmarks.title"
+          )}
+          description={t(
+            "teacherCourseAnalytics.charts.benchmarks.description"
+          )}
         >
           {benchmarkTotal > 0 ? (
             <Plot
               data={[
                 {
                   type: "pie",
-                  labels: usedBenchmarks.map(
-                    (item) => item.label
-                  ),
-                  values: usedBenchmarks.map(
-                    (item) => item.executions
-                  ),
+                  labels:
+                    usedBenchmarks.map(
+                      (item) =>
+                        item.label
+                    ),
+                  values:
+                    usedBenchmarks.map(
+                      (item) =>
+                        item.executions
+                    ),
                   hole: 0.62,
                   sort: false,
-                  direction: "clockwise",
+                  direction:
+                    "clockwise",
                   marker: {
                     colors:
                       usedBenchmarks.map(
@@ -547,9 +664,12 @@ export default function TeacherCourseAnalytics({
                       width: 1,
                     },
                   },
-                  textinfo: "percent",
+                  textinfo:
+                    "percent",
                   hovertemplate:
-                    "%{label}: %{value} ejecuciones (%{percent})<extra></extra>",
+                    t(
+                      "teacherCourseAnalytics.charts.benchmarks.hover"
+                    ),
                 },
               ]}
               layout={{
@@ -565,10 +685,12 @@ export default function TeacherCourseAnalytics({
                 legend: {
                   orientation: "h",
                   x: 0.5,
-                  xanchor: "center",
+                  xanchor:
+                    "center",
                   y: -0.06,
                   font: {
-                    color: chartTheme.text,
+                    color:
+                      chartTheme.text,
                   },
                 },
               }}
@@ -582,7 +704,9 @@ export default function TeacherCourseAnalytics({
             />
           ) : (
             <EmptyChart>
-              Las ejecuciones con benchmark aparecerán aquí.
+              {t(
+                "teacherCourseAnalytics.charts.benchmarks.empty"
+              )}
             </EmptyChart>
           )}
         </ChartCard>
@@ -590,35 +714,51 @@ export default function TeacherCourseAnalytics({
 
         <ChartCard
           className="teacher-chart-card--wide"
-          title="Actividad temporal"
-          description="Ejecuciones por día en los 30 días hasta la actividad más reciente."
+          title={t(
+            "teacherCourseAnalytics.charts.activity.title"
+          )}
+          description={t(
+            "teacherCourseAnalytics.charts.activity.description"
+          )}
         >
           {activityTotal > 0 ? (
             <Plot
               data={[
                 {
-                  type: "scatter",
-                  mode: "lines+markers",
-                  x: activity.map(
-                    (item) => item.date
-                  ),
-                  y: activity.map(
-                    (item) => item.executions
-                  ),
+                  type:
+                    "scatter",
+                  mode:
+                    "lines+markers",
+                  x:
+                    activity.map(
+                      (item) =>
+                        item.date
+                    ),
+                  y:
+                    activity.map(
+                      (item) =>
+                        item.executions
+                    ),
                   line: {
-                    color: COLORS.emerald,
+                    color:
+                      COLORS.emerald,
                     width: 3,
-                    shape: "linear",
+                    shape:
+                      "linear",
                   },
                   marker: {
-                    color: COLORS.emerald,
+                    color:
+                      COLORS.emerald,
                     size: 6,
                   },
-                  fill: "tozeroy",
+                  fill:
+                    "tozeroy",
                   fillcolor:
                     "rgba(16, 185, 129, 0.12)",
                   hovertemplate:
-                    "%{x}: %{y} ejecuciones<extra></extra>",
+                    t(
+                      "teacherCourseAnalytics.charts.activity.hover"
+                    ),
                 },
               ]}
               layout={{
@@ -629,27 +769,36 @@ export default function TeacherCourseAnalytics({
                   gridcolor:
                     chartTheme.grid,
                   tickfont: {
-                    color: chartTheme.text,
+                    color:
+                      chartTheme.text,
                   },
-                  tickformat: "%d %b",
+                  tickformat:
+                    "%d %b",
                   nticks: 8,
                 },
                 yaxis: {
                   fixedrange: true,
-                  rangemode: "tozero",
-                  tickmode: "linear",
+                  rangemode:
+                    "tozero",
+                  tickmode:
+                    "linear",
                   dtick: 1,
                   gridcolor:
                     chartTheme.grid,
                   zerolinecolor:
                     chartTheme.grid,
                   tickfont: {
-                    color: chartTheme.text,
+                    color:
+                      chartTheme.text,
                   },
                   title: {
-                    text: "Ejecuciones",
+                    text:
+                      t(
+                        "teacherCourseAnalytics.axes.executions"
+                      ),
                     font: {
-                      color: chartTheme.text,
+                      color:
+                        chartTheme.text,
                     },
                   },
                 },
@@ -664,18 +813,30 @@ export default function TeacherCourseAnalytics({
             />
           ) : (
             <EmptyChart>
-              Aún no hay ejecuciones para mostrar en la línea temporal.
+              {t(
+                "teacherCourseAnalytics.charts.activity.empty"
+              )}
             </EmptyChart>
           )}
 
           {activity.length > 0 && (
             <p className="teacher-chart-period">
               {formatChartDate(
-                analytics.activity?.startDate
+                analytics.activity
+                  ?.startDate,
+                locale,
+                t(
+                  "teacherCourseAnalytics.common.unavailable"
+                )
               )}
               {" — "}
               {formatChartDate(
-                analytics.activity?.endDate
+                analytics.activity
+                  ?.endDate,
+                locale,
+                t(
+                  "teacherCourseAnalytics.common.unavailable"
+                )
               )}
             </p>
           )}

@@ -9,6 +9,10 @@ import "./styles/theme-dark.css";
 import "./styles/globals.css";
 
 import App from "./App";
+import {
+  I18nProvider,
+  initializeDocumentLanguage,
+} from "./i18n";
 import reportWebVitals from "./reportWebVitals";
 
 
@@ -70,12 +74,15 @@ const initializeTheme = () => {
 
 
 initializeTheme();
+initializeDocumentLanguage();
 
 
 ReactDOM.render(
   <React.StrictMode>
 
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
 
   </React.StrictMode>,
 
