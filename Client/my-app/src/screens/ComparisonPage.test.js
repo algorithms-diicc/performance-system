@@ -253,7 +253,39 @@ describe("ComparisonPage", () => {
     );
   });
 
-  test("COMPATIBLE renders its neutral status and one comparative chart", async () => {
+  test("exposes the six-stage comparison information architecture", async () => {
+    await renderResolved();
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Secciones de la comparación",
+    });
+
+    [
+      ["Implementaciones", "#comparison-implementations"],
+      ["Resumen", "#comparison-summary"],
+      ["Interpretación", "#comparison-interpretation"],
+      ["Asistencia IA", "#comparison-ai"],
+      ["Métricas", "#comparison-metrics"],
+      ["Auditoría", "#comparison-audit"],
+    ].forEach(([name, href]) => {
+      expect(
+        within(navigation).getByRole("link", { name })
+      ).toHaveAttribute("href", href);
+    });
+
+    [
+      "comparison-implementations",
+      "comparison-summary",
+      "comparison-interpretation",
+      "comparison-ai",
+      "comparison-metrics",
+      "comparison-audit",
+    ].forEach((id) => {
+      expect(document.getElementById(id)).not.toBeNull();
+    });
+  });
+
+  test("COMPATIBLE renders its neutral status, summary and one comparative chart", async () => {
     await renderResolved();
 
     expect(screen.getByText("Compatible", { selector: "strong" })).toBeInTheDocument();
@@ -262,7 +294,77 @@ describe("ComparisonPage", () => {
         "Las ejecuciones cumplen el contrato de compatibilidad para las mediciones comunes mostradas."
       )
     ).toBeInTheDocument();
-    expect(screen.getAllByTestId("comparison-plot")).toHaveLength(1);
+    const metricExplorer =
+      screen
+        .getByRole("tablist", {
+          name:
+            "Categorías de métricas comparativas",
+        })
+        .closest(
+          ".comparison-page__metric-explorer"
+        );
+    expect(metricExplorer).not.toBeNull();
+    expect(
+      within(metricExplorer).getAllByTestId(
+        "comparison-plot"
+      )
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByTestId(
+        "comparison-plot"
+      )
+    ).toHaveLength(3);
+    expect(
+      screen.getByRole("heading", {
+        name: "Resumen comparativo",
+      })
+    ).toBeInTheDocument();
+    const summaryCoverage =
+      screen
+        .getByText(
+          "métricas objetivo comparables"
+        )
+        .closest(
+          ".comparison-page__summary-coverage"
+        );
+    expect(summaryCoverage).not.toBeNull();
+    expect(summaryCoverage).toHaveTextContent(
+      "2/5"
+    );
+    expect(
+      screen.getByRole("img", {
+        name:
+          "Tendencia comparativa de Tiempo de ejecución",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name:
+          "Tendencia comparativa de Instrucciones por ciclo (IPC)",
+      })
+    ).toBeInTheDocument();
+    const summarySection =
+      screen
+        .getByRole("heading", {
+          name: "Resumen comparativo",
+        })
+        .closest("section");
+    expect(summarySection).not.toBeNull();
+    expect(
+      within(summarySection).getByText(
+        "Energía del paquete CPU"
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(summarySection).getAllByText(
+        "No comparable"
+      ).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole("button", {
+        name: "Mostrar detalle",
+      })
+    ).toHaveAttribute("aria-expanded", "false");
   });
 
   test("renders deterministic guidance for the selected metric and excluded energy", async () => {
@@ -315,17 +417,69 @@ describe("ComparisonPage", () => {
         status: "LIMITED",
         warnings: [
           {
+            code: "PARTIAL_INPUT_OVERLAP",
+            dimension: "inputSizes",
             message: "Las ejecuciones sólo comparten parte de los InputSize.",
           },
         ],
       },
     });
 
-    expect(screen.getByText("Comparación limitada")).toBeInTheDocument();
+    expect(screen.getByText("Comparación con alcance limitado")).toBeInTheDocument();
     expect(
-      screen.getByText("Las ejecuciones sólo comparten parte de los InputSize.")
+      screen.getByText("Las ejecuciones sólo comparten una parte del dominio de InputSize medido.")
     ).toBeInTheDocument();
-    expect(screen.getByTestId("comparison-plot")).toBeInTheDocument();
+    expect(
+      screen.getAllByTestId(
+        "comparison-plot"
+      ).length
+    ).toBeGreaterThan(0);
+  });
+
+  test("metric-only LIMITED is presented as valid partial coverage and keeps audit collapsed", async () => {
+    await renderResolved({
+      ...compatiblePayload,
+      compatibility: {
+        ...compatiblePayload.compatibility,
+        status: "LIMITED",
+        dimensions: {
+          ...compatiblePayload.compatibility.dimensions,
+          metrics: {
+            status: "LIMITED",
+            verified: true,
+          },
+        },
+        warnings: [
+          {
+            code:
+              "TARGET_METRIC_UNAVAILABLE",
+            dimension: "metrics",
+            metric: "EnergyPkg",
+            message:
+              "La métrica objetivo no es comparable en todas las ejecuciones.",
+          },
+        ],
+      },
+    });
+
+    expect(
+      screen.getByText(
+        "Comparación válida · cobertura parcial"
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Las condiciones experimentales comparables se mantienen; una o más métricas objetivo no están disponibles de forma común."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Mostrar detalle",
+      })
+    ).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
   });
 
   test("LIMITED explains partial overlap, one shared size and visible dispersion", async () => {
@@ -397,16 +551,28 @@ describe("ComparisonPage", () => {
       compatibility: {
         ...compatiblePayload.compatibility,
         status: "INCOMPATIBLE",
-        blockers: [{ message: "El hardware observado no coincide." }],
+        blockers: [
+          {
+            code: "HARDWARE_MISMATCH",
+            dimension: "hardware",
+            message: "El hardware observado no coincide.",
+          },
+        ],
       },
     });
 
     expect(screen.getByText("Bloqueo de compatibilidad")).toBeInTheDocument();
-    expect(screen.getByText("El hardware observado no coincide.")).toBeInTheDocument();
+    expect(screen.getByText("Las ejecuciones fueron medidas en hardware observado diferente.")).toBeInTheDocument();
   });
 
-  test("renders the eight compatibility dimensions with defensive labels", async () => {
+  test("renders the compatibility audit dimensions with defensive labels", async () => {
     await renderResolved();
+    const toggle = screen.getByRole("button", {
+      name: "Mostrar detalle",
+    });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(toggle);
+
     const region = screen.getByRole("heading", {
       name: "Compatibilidad por dimensión",
     }).closest("section");
@@ -418,6 +584,7 @@ describe("ComparisonPage", () => {
       "Perfil",
       "Protocolo",
       "Flags del compilador",
+      "Procedencia",
       "Tamaños de entrada",
       "Métricas",
     ].forEach((label) => {
@@ -443,7 +610,15 @@ describe("ComparisonPage", () => {
     await waitFor(() =>
       expect(lastPlotProps().data[0].y).toEqual([1, 2])
     );
-    expect(screen.getByRole("heading", { name: "Instrucciones por ciclo (IPC)" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", {
+        name:
+          "Instrucciones por ciclo (IPC)",
+      }).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByLabelText("Métrica")
+    ).toHaveValue("IPC");
   });
 
   test("an excluded target metric is not selectable", async () => {
@@ -457,15 +632,20 @@ describe("ComparisonPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("renders excluded metrics in a secondary explanatory block", async () => {
+  test("renders excluded metrics in the comparability audit", async () => {
     await renderResolved();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Mostrar detalle",
+      })
+    );
 
     const section = screen.getByRole("heading", {
       name: "Métricas no comparables",
     }).closest("section");
     expect(within(section).getByText("Energía del paquete CPU")).toBeInTheDocument();
     expect(
-      within(section).getByText("EnergyPkg no está disponible de forma común.")
+      within(section).getByText("No está disponible de forma común en todas las ejecuciones.")
     ).toBeInTheDocument();
   });
 
@@ -665,13 +845,122 @@ describe("ComparisonPage", () => {
     expect(props.layout.autosize).toBe(true);
   });
 
-  test("renders only one active Plot when multiple metrics are common", async () => {
+  test("renders category small-multiple plots while preserving the detailed inspector", async () => {
     await renderResolved();
-    fireEvent.change(screen.getByLabelText("Métrica"), {
-      target: { value: "IPC" },
-    });
 
-    expect(screen.getAllByTestId("comparison-plot")).toHaveLength(1);
+    expect(
+      screen.getByRole("tab", {
+        name: /Principales/,
+      })
+    ).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    const metricExplorer =
+      screen
+        .getByRole("tablist", {
+          name:
+            "Categorías de métricas comparativas",
+        })
+        .closest(
+          ".comparison-page__metric-explorer"
+        );
+    expect(metricExplorer).not.toBeNull();
+
+    expect(
+      within(metricExplorer).getByRole(
+        "img",
+        {
+          name:
+            "Gráfico comparativo de Tiempo de ejecución",
+        }
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(metricExplorer).getByRole(
+        "img",
+        {
+          name:
+            "Gráfico comparativo de Instrucciones por ciclo (IPC)",
+        }
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(metricExplorer).getAllByTestId(
+        "comparison-plot"
+      )
+    ).toHaveLength(2);
+
+    expect(
+      screen.getAllByTestId(
+        "comparison-plot"
+      )
+    ).toHaveLength(3);
+    expect(
+      screen.getByLabelText("Métrica")
+    ).toHaveValue("DurationTime");
+  });
+
+  test("changes metric category without refetching the comparison", async () => {
+    await renderResolved();
+    const requestCount =
+      axios.post.mock.calls.length;
+
+    fireEvent.click(
+      screen.getByRole("tab", {
+        name: /CPU/,
+      })
+    );
+
+    expect(
+      screen.getByRole("tab", {
+        name: /CPU/,
+      })
+    ).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+
+    const metricExplorer =
+      screen
+        .getByRole("tablist", {
+          name:
+            "Categorías de métricas comparativas",
+        })
+        .closest(
+          ".comparison-page__metric-explorer"
+        );
+    expect(metricExplorer).not.toBeNull();
+
+    expect(
+      within(metricExplorer).queryByRole(
+        "img",
+        {
+          name:
+            "Gráfico comparativo de Tiempo de ejecución",
+        }
+      )
+    ).not.toBeInTheDocument();
+    expect(
+      within(metricExplorer).getByRole(
+        "img",
+        {
+          name:
+            "Gráfico comparativo de Instrucciones por ciclo (IPC)",
+        }
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText("Métrica")
+    ).toHaveValue("DurationTime");
+
+    expect(
+      axios.post
+    ).toHaveBeenCalledTimes(
+      requestCount
+    );
   });
 
   test("compatible response without common metrics renders a controlled state", async () => {
@@ -980,4 +1269,144 @@ describe("ComparisonPage", () => {
       screen.queryByRole("button", { name: /^Quitar / })
     ).not.toBeInTheDocument();
   });
+
+  test("applies a common logarithmic x scale without refetching", async () => {
+    await renderResolved();
+    const requestCount = axios.post.mock.calls.length;
+
+    fireEvent.click(
+      screen.getByLabelText("Logarítmica")
+    );
+
+    await waitFor(() => {
+      const recentPlots = mockPlotProps.mock.calls
+        .slice(-3)
+        .map(([props]) => props);
+      expect(recentPlots).toHaveLength(3);
+      expect(
+        recentPlots.every(
+          (props) => props.layout.xaxis.type === "log"
+        )
+      ).toBe(true);
+    });
+
+    expect(
+      screen.getByText("Filtros activos: 1")
+    ).toBeInTheDocument();
+    expect(axios.post).toHaveBeenCalledTimes(requestCount);
+  });
+
+  test("keeps Q1-Q3 for median and standard deviation for mean", async () => {
+    await renderResolved();
+
+    expect(
+      screen.getByText(
+        /Con mediana, las barras representan Q1–Q3/
+      )
+    ).toBeInTheDocument();
+    expect(
+      lastPlotProps().data[0].error_y.symmetric
+    ).toBe(false);
+
+    fireEvent.click(
+      screen.getByLabelText("Media")
+    );
+
+    await waitFor(() =>
+      expect(
+        lastPlotProps().data[0].error_y.symmetric
+      ).toBe(true)
+    );
+    expect(
+      screen.getByText(
+        /Con media, las barras representan desviación estándar/
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("comparative AI posts ordered executions, language and force", async () => {
+    await renderResolved();
+
+    const aiPayload = {
+      provider: "mock",
+      simulated: true,
+      model: "local-comparative-mock-v1",
+      cached: false,
+      source: {
+        student_code_sent: false,
+        raw_csv_sent: false,
+        browser_metrics_trusted: false,
+        canonical_server_comparison: true,
+      },
+      content: {
+        summary: "Síntesis comparativa canónica.",
+        patterns: [],
+        tradeoffs: [],
+        focus: [],
+        limitations: [],
+      },
+    };
+
+    axios.post.mockResolvedValueOnce({
+      data: aiPayload,
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Generar análisis comparativo",
+      })
+    );
+
+    await screen.findByText(
+      "Síntesis comparativa canónica."
+    );
+
+    expect(axios.post).toHaveBeenLastCalledWith(
+      expect.stringMatching(
+        /api\/comparisons\/ai-explanation$/
+      ),
+      {
+        executions: [
+          "execution-a",
+          "execution-b",
+        ],
+        language: "es",
+        force: false,
+      },
+      { withCredentials: true }
+    );
+
+    axios.post.mockResolvedValueOnce({
+      data: {
+        ...aiPayload,
+        cached: true,
+      },
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Actualizar análisis",
+      })
+    );
+
+    await screen.findByText(
+      "Reutilizada desde caché"
+    );
+
+    expect(axios.post).toHaveBeenLastCalledWith(
+      expect.stringMatching(
+        /api\/comparisons\/ai-explanation$/
+      ),
+      {
+        executions: [
+          "execution-a",
+          "execution-b",
+        ],
+        language: "es",
+        force: true,
+      },
+      { withCredentials: true }
+    );
+  });
+
 });

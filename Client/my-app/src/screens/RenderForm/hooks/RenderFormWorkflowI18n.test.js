@@ -8,6 +8,7 @@ import {
 
 import { I18nProvider } from "../../../i18n";
 import StatusPanel from "../components/StatusPanel";
+import TestTypeAndParamsCard from "../components/TestTypeAndParamsCard";
 import useExecutionPolling from "./useExecutionPolling";
 import useZipAnalysis from "./useZipAnalysis";
 
@@ -41,9 +42,71 @@ function renderStatus(props = {}) {
         isSubmitDisabled={false}
         onGoToResults={noop}
         onReset={noop}
+        onPrepareNewAnalysis={noop}
         onPrepareRetry={noop}
         onRetryPolling={noop}
         {...props}
+      />
+    </I18nProvider>
+  );
+}
+
+function ParamsHarness() {
+  return (
+    <I18nProvider initialLanguage="en">
+      <TestTypeAndParamsCard
+        tasks={[
+          {
+            id: "size",
+            title: "Parameterized size",
+            description: "Parameterized benchmark",
+          },
+        ]}
+        selectedTaskType="size"
+        onTaskChange={noop}
+        inputSize={6000}
+        samples={30}
+        onInputSizeChange={noop}
+        onInputSizeSliderChange={noop}
+        onSamplesChange={noop}
+        onSamplesSliderChange={noop}
+        paramErrors={{ inputSize: "", samples: "" }}
+        inputSizePresets={{
+          size: [1000, 2500, 5000],
+        }}
+        samplesPresets={[10, 20, 30]}
+        numericalInputOptions={[]}
+        dataType=""
+        onDataTypeChange={noop}
+        taskDisplayNames={{
+          size: "Parameterized size",
+        }}
+        taskSubtitles={{
+          size: "Integer argument benchmark",
+        }}
+        taskDescriptions={{
+          size: "Uses an integer problem size.",
+        }}
+        taskIcons={{ size: "📏" }}
+        taskBadges={{ size: "Integer argument" }}
+        inputSizeHelp={{
+          size: "Maximum integer argument.",
+        }}
+        paramLimits={{
+          size: {
+            inputSize: {
+              min: 100,
+              max: 100000,
+              step: 100,
+            },
+            samples: {
+              min: 1,
+              max: 100,
+              step: 1,
+            },
+          },
+        }}
+        executionProfile="equilibrado"
       />
     </I18nProvider>
   );
@@ -141,6 +204,40 @@ describe("RenderForm workflow i18n", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("running mode exposes a localized non-cancelling next-analysis action", () => {
+    const onPrepareNewAnalysis = jest.fn();
+
+    renderStatus({
+      fileList: ["exec-a"],
+      isSubmitting: true,
+      executionFiles: [
+        {
+          codename: "exec-a",
+          resultsReady: false,
+        },
+      ],
+      onPrepareNewAnalysis,
+    });
+
+    expect(
+      screen.getByRole("button", {
+        name: "Prepare another analysis",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(/does not cancel this execution/i)
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Prepare another analysis",
+      })
+    );
+
+    expect(onPrepareNewAnalysis).toHaveBeenCalledTimes(1);
+  });
+
   test("keeps raw technical log messages unchanged", () => {
     renderStatus({
       fileList: ["exec-a"],
@@ -174,6 +271,26 @@ describe("RenderForm workflow i18n", () => {
     expect(
       screen.getByText(
         "compilando código del estudiante"
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("distinguishes recommended input values from the allowed hard range", () => {
+    render(<ParamsHarness />);
+
+    expect(
+      screen.getByText("Recommended values")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /Allowed range: 100–100000/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /exceeds the largest recommended value \(5000\)/i
       )
     ).toBeInTheDocument();
   });

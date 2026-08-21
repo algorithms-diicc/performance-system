@@ -3,16 +3,32 @@ import json
 import os
 import re
 from datetime import datetime, timezone
-from urllib.error import HTTPError, URLError
-from urllib.request import Request, urlopen
+from .ai_transports import (
+    AITransportConfigurationError,
+    AITransportError,
+    AITransportSelection,
+    DEFAULT_OPENAI_URL,
+    DEFAULT_TIMEOUT_SECONDS,
+    resolve_ai_transport,
+)
+from .individual_ai_mock import individual_mock_transport
+from .ai_runtime import (
+    AIInvalidLanguageError,
+    AIProviderError,
+    build_ai_context_hash,
+    normalize_ai_language,
+    parse_openai_structured_output,
+    read_valid_ai_cache,
+    write_ai_cache,
+)
 
 
 AI_SCHEMA_VERSION = "1.0"
-PROMPT_VERSION = "ui03c4-v1"
+PROMPT_VERSION = "iter11c2-individual-v1"
 DEFAULT_MODEL = "gpt-5.6-luna"
-OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses"
+DEFAULT_TRANSPORT = "mock"
 CACHE_FILENAME = "AIExplanation.json"
-REQUEST_TIMEOUT_SECONDS = 30
+SUPPORTED_LANGUAGES = {"es", "en"}
 
 PRIMARY_METRICS = [
     "DurationTime",
@@ -48,12 +64,12 @@ class AINotConfiguredError(AIExplanationError):
     """El servidor no tiene credenciales/configuración para invocar IA."""
 
 
-class AIProviderError(AIExplanationError):
-    """El proveedor remoto devolvió un error o una respuesta no utilizable."""
 
 
 class AIOutputRejectedError(AIExplanationError):
     """La salida no superó las validaciones de consistencia locales."""
+
+
 
 
 def generate_ai_explanation(
@@ -64,35 +80,93 @@ def generate_ai_explanation(
     transport=None,
     api_key=None,
     model=None,
+    language="es",
+    transport_mode=None,
+    transport_name=None,
+    transport_simulated=None,
 ):
-    """
-    Genera una explicación complementaria mediante IA.
+    resolved_language = normalize_ai_language(language)
 
-    La IA recibe únicamente contexto estructurado derivado de:
-      metrics -> analysis -> pedagogy
+    configured_mode = (
+        transport_mode
+        or os.environ.get("PERFORMANCE_AI_TRANSPORT")
+        or DEFAULT_TRANSPORT
+    )
 
-    No recibe el código C/C++ enviado por el estudiante ni el CSV bruto.
-    """
+    context = build_ai_context(
+        results_payload,
+        language=resolved_language,
+    )
+
+    if transport is not None:
+        selection = AITransportSelection(
+            name=transport_name or "injected",
+            simulated=(
+                True
+                if transport_simulated is None
+                else bool(transport_simulated)
+            ),
+            requires_api_key=False,
+            default_model=(
+                model
+                or os.environ.get("PERFORMANCE_AI_MODEL")
+                or DEFAULT_MODEL
+            ),
+            send=transport,
+        )
+    else:
+        try:
+            selection = resolve_ai_transport(
+                configured_mode,
+                mock_send=(
+                    lambda request_payload, api_key:
+                    individual_mock_transport(
+                        request_payload=request_payload,
+                        api_key=api_key,
+                        context=context,
+                        language=resolved_language,
+                    )
+                ),
+                openai_model=(
+                    model
+                    or os.environ.get("PERFORMANCE_AI_MODEL")
+                    or DEFAULT_MODEL
+                ),
+                openai_url=DEFAULT_OPENAI_URL,
+                timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
+            )
+        except AITransportConfigurationError as exc:
+            raise AINotConfiguredError(str(exc)) from exc
+
     resolved_model = (
         model
-        or os.environ.get("PERFORMANCE_AI_MODEL")
-        or DEFAULT_MODEL
+        or (
+            os.environ.get("PERFORMANCE_AI_MODEL")
+            if selection.name == "openai"
+            else None
+        )
+        or selection.default_model
     )
+
     resolved_api_key = (
         api_key
         if api_key is not None
         else os.environ.get("OPENAI_API_KEY")
     )
 
-    if transport is None and not resolved_api_key:
+    if selection.requires_api_key and not resolved_api_key:
         raise AINotConfiguredError(
             "OPENAI_API_KEY no está configurada en el servidor."
         )
 
-    context = build_ai_context(results_payload)
-    context_hash = _context_hash(
+    context_hash = build_ai_context_hash(
         context=context,
+        prompt_version=PROMPT_VERSION,
+        schema_version=AI_SCHEMA_VERSION,
         model=resolved_model,
+        provider=selection.name,
+        transport_mode=selection.name,
+        language=resolved_language,
     )
 
     cache_path = _cache_path(
@@ -101,10 +175,15 @@ def generate_ai_explanation(
     )
 
     if not force:
-        cached = _read_valid_cache(
+        cached = read_valid_ai_cache(
             cache_path=cache_path,
             context_hash=context_hash,
+            schema_version=AI_SCHEMA_VERSION,
+            prompt_version=PROMPT_VERSION,
             model=resolved_model,
+            provider=selection.name,
+            transport_mode=selection.name,
+            language=resolved_language,
         )
         if cached:
             cached["cached"] = True
@@ -113,18 +192,16 @@ def generate_ai_explanation(
     request_payload = build_openai_request(
         context=context,
         model=resolved_model,
+        language=resolved_language,
     )
 
-    if transport is None:
-        provider_response = _openai_http_transport(
-            request_payload=request_payload,
-            api_key=resolved_api_key,
-        )
-    else:
-        provider_response = transport(
+    try:
+        provider_response = selection.send(
             request_payload,
             resolved_api_key,
         )
+    except AITransportError as exc:
+        raise AIProviderError(str(exc)) from exc
 
     parsed = parse_openai_structured_output(
         provider_response
@@ -137,8 +214,11 @@ def generate_ai_explanation(
 
     result = {
         "schema_version": AI_SCHEMA_VERSION,
-        "generated_by_ai": True,
-        "provider": "openai",
+        "generated_by_ai": not selection.simulated,
+        "simulated": selection.simulated,
+        "provider": selection.name,
+        "transport_mode": selection.name,
+        "language": resolved_language,
         "model": resolved_model,
         "prompt_version": PROMPT_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -166,12 +246,15 @@ def generate_ai_explanation(
         "context_hash": context_hash,
     }
 
-    _write_cache(cache_path, result)
+    write_ai_cache(cache_path, result)
 
     return result
 
 
-def build_ai_context(results_payload):
+
+def build_ai_context(results_payload, language="es"):
+    resolved_language = normalize_ai_language(language)
+
     execution = results_payload.get("execution") or {}
     pedagogy = results_payload.get("pedagogy") or {}
     analysis = results_payload.get("analysis") or {}
@@ -198,8 +281,10 @@ def build_ai_context(results_payload):
             "messages": [
                 {
                     "kind": message.get("kind"),
-                    "text": message.get("text"),
-                    "evidence": message.get("evidence"),
+                    "message_code": message.get("message_code"),
+                    "priority": message.get("priority"),
+                    "source": message.get("source"),
+                    "evidence": message.get("evidence") or {},
                 }
                 for message in (
                     (pedagogy_metric or {}).get("messages") or []
@@ -215,6 +300,9 @@ def build_ai_context(results_payload):
             ),
             "analysis_version": analysis.get("version"),
             "pedagogy_version": pedagogy.get("version"),
+            "presentation_contract": (
+                pedagogy.get("generation") or {}
+            ).get("presentation_contract"),
         },
         "execution": {
             "benchmark": execution.get("benchmark"),
@@ -222,7 +310,7 @@ def build_ai_context(results_payload):
             "samples": execution.get("samples"),
             "sources_count": len(execution.get("sources") or []),
         },
-        "deterministic_summary": (
+        "deterministic_summary": _language_neutral_summary(
             pedagogy.get("summary") or {}
         ),
         "metrics": selected,
@@ -234,12 +322,36 @@ def build_ai_context(results_payload):
             "no_raw_csv": True,
             "no_asymptotic_complexity_claims": True,
             "no_unreferenced_numbers": True,
-            "language": "es-CL",
+            "language": resolved_language,
         },
     }
 
 
-def build_openai_request(context, model):
+def _language_neutral_summary(summary):
+    highlights = []
+
+    for message in summary.get("highlights") or []:
+        highlights.append(
+            {
+                "metric": message.get("metric"),
+                "kind": message.get("kind"),
+                "message_code": message.get("message_code"),
+                "source": message.get("source"),
+                "evidence": message.get("evidence") or {},
+            }
+        )
+
+    return {
+        "primary_metrics_available": list(
+            summary.get("primary_metrics_available") or []
+        ),
+        "primary_metrics_unavailable": list(
+            summary.get("primary_metrics_unavailable") or []
+        ),
+        "highlights": highlights,
+    }
+
+def build_openai_request(context, model, language=None):
     output_schema = {
         "type": "object",
         "properties": {
@@ -302,24 +414,52 @@ def build_openai_request(context, model):
         "additionalProperties": False,
     }
 
-    system_text = (
-        "Eres una capa pedagógica complementaria de Performance System. "
-        "Explica resultados experimentales de algoritmos C/C++ en español "
-        "claro y técnico. La fuente de verdad son exclusivamente los hechos "
-        "determinísticos incluidos por el servidor. No recalcules métricas. "
-        "No inventes números. No clasifiques el algoritmo como bueno, malo, "
-        "eficiente o ineficiente sin una línea base explícita. No afirmes "
-        "complejidad asintótica O(...) a partir de mediciones empíricas. "
-        "Si sólo existe un tamaño de entrada, indica que no puede inferirse "
-        "una tendencia. Diferencia ausencia de medición de un valor cero. "
-        "No menciones datos que no estén presentes en el contexto."
+    resolved_language = normalize_ai_language(
+        language
+        or (context.get("constraints") or {}).get("language")
+        or "es"
     )
 
+    if resolved_language == "en":
+        system_text = (
+            "You are the complementary pedagogical assistant layer of "
+            "Performance System. Explain experimental C/C++ algorithm "
+            "results in clear technical English. The only source of truth "
+            "is the deterministic structured evidence supplied by the "
+            "server. Do not recompute metrics. Do not invent numbers. Do "
+            "not classify an algorithm as good, bad, efficient or "
+            "inefficient without an explicit reference baseline. Do not "
+            "claim asymptotic O(...) complexity from empirical measurements. "
+            "If only one input size exists, preserve that experimental "
+            "limitation. Distinguish a missing measurement from zero."
+        )
+        user_prefix = (
+            "Generate a complementary pedagogical explanation for this "
+            "single execution. Prioritize useful evidence-backed "
+            "observations and preserve experimental limitations."
+        )
+    else:
+        system_text = (
+            "Eres la capa de asistente pedagógico complementario de "
+            "Performance System. Explica resultados experimentales de "
+            "algoritmos C/C++ en español técnico y claro. La única fuente "
+            "de verdad es la evidencia determinística estructurada enviada "
+            "por el servidor. No recalcules métricas. No inventes números. "
+            "No clasifiques un algoritmo como bueno, malo, eficiente o "
+            "ineficiente sin una línea base explícita. No afirmes "
+            "complejidad asintótica O(...) desde mediciones empíricas. "
+            "Si existe un único tamaño de entrada, conserva esa limitación "
+            "experimental. Diferencia una medición ausente de un valor cero."
+        )
+        user_prefix = (
+            "Genera una explicación pedagógica complementaria para esta "
+            "ejecución individual. Prioriza observaciones útiles respaldadas "
+            "por evidencia y conserva las limitaciones experimentales."
+        )
+
     user_text = (
-        "Genera una explicación pedagógica complementaria para esta "
-        "ejecución. Prioriza 2 a 4 observaciones útiles, conserva las "
-        "limitaciones experimentales y evita repetir mecánicamente todos "
-        "los KPIs.\n\nCONTEXTO ESTRUCTURADO:\n"
+        user_prefix
+        + "\n\nSTRUCTURED CONTEXT:\n"
         + json.dumps(
             context,
             ensure_ascii=False,
@@ -356,47 +496,6 @@ def build_openai_request(context, model):
     }
 
 
-def parse_openai_structured_output(provider_response):
-    if not isinstance(provider_response, dict):
-        raise AIProviderError(
-            "La respuesta del proveedor no es un objeto JSON."
-        )
-
-    if provider_response.get("status") == "incomplete":
-        raise AIProviderError(
-            "La respuesta de IA quedó incompleta."
-        )
-
-    output_items = provider_response.get("output") or []
-
-    for item in output_items:
-        if item.get("type") != "message":
-            continue
-
-        for content in item.get("content") or []:
-            if content.get("type") == "refusal":
-                raise AIProviderError(
-                    "El proveedor rechazó generar la explicación."
-                )
-
-            if content.get("type") == "output_text":
-                text = content.get("text")
-
-                if not text:
-                    continue
-
-                try:
-                    parsed = json.loads(text)
-                except ValueError as exc:
-                    raise AIProviderError(
-                        "La salida estructurada no contiene JSON válido."
-                    ) from exc
-
-                return parsed
-
-    raise AIProviderError(
-        "No se encontró contenido textual estructurado en la respuesta."
-    )
 
 
 def validate_ai_output(output, context):
@@ -538,65 +637,6 @@ def _normalize_number_token(token):
     return "{:.12g}".format(value)
 
 
-def _openai_http_transport(request_payload, api_key):
-    body = json.dumps(
-        request_payload,
-        ensure_ascii=False,
-    ).encode("utf-8")
-
-    request = Request(
-        OPENAI_RESPONSES_URL,
-        data=body,
-        method="POST",
-        headers={
-            "Authorization": "Bearer {}".format(api_key),
-            "Content-Type": "application/json",
-        },
-    )
-
-    try:
-        with urlopen(
-            request,
-            timeout=REQUEST_TIMEOUT_SECONDS,
-        ) as response:
-            return json.loads(
-                response.read().decode("utf-8")
-            )
-    except HTTPError as exc:
-        try:
-            detail = exc.read().decode("utf-8")
-        except Exception:
-            detail = str(exc)
-
-        raise AIProviderError(
-            "OpenAI API respondió HTTP {}: {}".format(
-                exc.code,
-                detail[:500],
-            )
-        ) from exc
-    except URLError as exc:
-        raise AIProviderError(
-            "No fue posible conectar con OpenAI API."
-        ) from exc
-    except ValueError as exc:
-        raise AIProviderError(
-            "OpenAI API devolvió JSON inválido."
-        ) from exc
-
-
-def _context_hash(context, model):
-    canonical = json.dumps(
-        {
-            "prompt_version": PROMPT_VERSION,
-            "model": model,
-            "context": context,
-        },
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-
-    return hashlib.sha256(canonical).hexdigest()
 
 
 def _cache_path(static_dir, codename):
@@ -605,42 +645,3 @@ def _cache_path(static_dir, codename):
         codename,
         CACHE_FILENAME,
     )
-
-
-def _read_valid_cache(cache_path, context_hash, model):
-    if not os.path.isfile(cache_path):
-        return None
-
-    try:
-        with open(cache_path, "r", encoding="utf-8") as handle:
-            cached = json.load(handle)
-    except (OSError, ValueError):
-        return None
-
-    if cached.get("context_hash") != context_hash:
-        return None
-
-    if cached.get("model") != model:
-        return None
-
-    if cached.get("prompt_version") != PROMPT_VERSION:
-        return None
-
-    return cached
-
-
-def _write_cache(cache_path, payload):
-    directory = os.path.dirname(cache_path)
-
-    try:
-        os.makedirs(directory, exist_ok=True)
-        with open(cache_path, "w", encoding="utf-8") as handle:
-            json.dump(
-                payload,
-                handle,
-                ensure_ascii=False,
-                indent=2,
-            )
-    except OSError:
-        # La IA sigue siendo utilizable aunque el cache no pueda persistirse.
-        pass

@@ -217,7 +217,7 @@ describe("RenderImage reproducibility integration", () => {
       await screen.findByRole("link", { name: /Ver experimento/i })
     ).toHaveAttribute("href", "/submissions/42");
     expect(
-      await screen.findByRole("heading", { name: "Reproducibilidad" })
+      await screen.findByRole("heading", { name: "Reproducibilidad y trazabilidad experimental" })
     ).toBeInTheDocument();
 
     await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(6));
@@ -272,7 +272,7 @@ describe("RenderImage reproducibility integration", () => {
       screen.getByText("Análisis personal")
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole("heading", { name: "Reproducibilidad" })
+      await screen.findByRole("heading", { name: "Reproducibilidad y trazabilidad experimental" })
     ).toBeInTheDocument();
   });
 
@@ -453,6 +453,12 @@ describe("RenderImage reproducibility integration", () => {
 
   test("reproducibility data is pedagogical and source viewer is independent", async () => {
     renderPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Mostrar detalles",
+      })
+    );
 
     expect((await screen.findAllByText("std_sort.cpp")).length).toBeGreaterThan(0);
     expect(screen.getByText("balanced")).toBeInTheDocument();

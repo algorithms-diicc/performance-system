@@ -78,6 +78,10 @@ _NOT_COUNTED_MARKERS = {
     "<not-counted>",
     "<not counted>",
 }
+_PERMISSION_DENIED_MARKERS = {
+    "<permission-denied>",
+    "<permission denied>",
+}
 
 
 def _classify_availability_series(series):
@@ -86,6 +90,7 @@ def _classify_availability_series(series):
         "numeric": 0,
         "unsupported": 0,
         "not_counted": 0,
+        "permission_denied": 0,
         "missing": 0,
     }
 
@@ -94,16 +99,18 @@ def _classify_availability_series(series):
             counts["missing"] += 1
             continue
 
-        text = str(value).strip()
-        normalized = text.lower()
+        value_text = str(value).strip()
+        normalized = value_text.lower()
 
-        if not text or normalized in {"nan", "none", "null"}:
+        if not value_text or normalized in {"nan", "none", "null"}:
             counts["missing"] += 1
         elif normalized in _UNSUPPORTED_MARKERS:
             counts["unsupported"] += 1
         elif normalized in _NOT_COUNTED_MARKERS:
             counts["not_counted"] += 1
-        elif pd.notnull(pd.to_numeric(text, errors="coerce")):
+        elif normalized in _PERMISSION_DENIED_MARKERS:
+            counts["permission_denied"] += 1
+        elif pd.notnull(pd.to_numeric(value_text, errors="coerce")):
             counts["numeric"] += 1
         else:
             counts["missing"] += 1
@@ -126,26 +133,25 @@ def _collect_source_availability(df):
 
 
 def _availability_value_state(value):
-    """Clasifica un valor crudo antes de convertir marcadores perf a NaN."""
+    # Clasifica el valor crudo antes de convertir marcadores perf a NaN.
     if pd.isna(value):
         return "missing", None
 
-    text = str(value).strip()
-    normalized = text.lower()
+    value_text = str(value).strip()
+    normalized = value_text.lower()
 
-    if not text or normalized in {"nan", "none", "null"}:
+    if not value_text or normalized in {"nan", "none", "null"}:
         return "missing", None
-
     if normalized in _UNSUPPORTED_MARKERS:
         return "unsupported", None
-
     if normalized in _NOT_COUNTED_MARKERS:
         return "not_counted", None
+    if normalized in _PERMISSION_DENIED_MARKERS:
+        return "permission_denied", None
 
-    number = pd.to_numeric(text, errors="coerce")
+    number = pd.to_numeric(value_text, errors="coerce")
     if pd.isna(number):
         return "missing", None
-
     return "numeric", float(number)
 
 
@@ -154,7 +160,7 @@ def _collect_derived_availability(df):
     Propaga disponibilidad a métricas derivadas fila por fila.
 
     Una derivada sólo es numérica cuando ambos operandos son numéricos y
-    el denominador es > 0. Si un operando está unsupported/not-counted,
+    el denominador es > 0. Si un operando está permission-denied/unsupported/not-counted,
     la derivada conserva esa causa.
     """
     result = {}
@@ -174,6 +180,7 @@ def _collect_derived_availability(df):
                     "numeric": 0,
                     "unsupported": 0,
                     "not_counted": 0,
+                    "permission_denied": 0,
                     "missing": int(len(df)),
                 }
             continue
@@ -183,6 +190,7 @@ def _collect_derived_availability(df):
             "numeric": 0,
             "unsupported": 0,
             "not_counted": 0,
+            "permission_denied": 0,
             "missing": 0,
         }
 
@@ -199,7 +207,9 @@ def _collect_derived_availability(df):
 
             states = {numerator_state, denominator_state}
 
-            if "unsupported" in states:
+            if "permission_denied" in states:
+                counts["permission_denied"] += 1
+            elif "unsupported" in states:
                 counts["unsupported"] += 1
             elif "not_counted" in states:
                 counts["not_counted"] += 1
@@ -226,6 +236,7 @@ def _merge_availability_totals(target, source_metrics):
                 "numeric": 0,
                 "unsupported": 0,
                 "not_counted": 0,
+                "permission_denied": 0,
                 "missing": 0,
             },
         )

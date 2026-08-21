@@ -42,6 +42,10 @@ NOT_COUNTED_MARKERS = {
     "<not-counted>",
     "<not counted>",
 }
+PERMISSION_DENIED_MARKERS = {
+    "<permission-denied>",
+    "<permission denied>",
+}
 
 # Unidad de almacenamiento en el JSON. Las tasas se mantienen como ratio
 # (ej. 0.0354) y React decidirá si las presenta como porcentaje (3.54 %).
@@ -336,6 +340,7 @@ def _build_metric_payload(
     numeric_total = 0
     unsupported_total = 0
     not_counted_total = 0
+    permission_denied_total = 0
     missing_total = 0
     groups_total = 0
     groups_with_data = 0
@@ -369,6 +374,7 @@ def _build_metric_payload(
         numeric_total += availability["numeric"]
         unsupported_total += availability["unsupported"]
         not_counted_total += availability["not_counted"]
+        permission_denied_total += availability["permission_denied"]
         missing_total += availability["missing"]
 
         numeric_series = pd.to_numeric(
@@ -425,6 +431,9 @@ def _build_metric_payload(
         not_counted_total = int(
             provenance.get("not_counted", not_counted_total)
         )
+        permission_denied_total = int(
+            provenance.get("permission_denied", permission_denied_total)
+        )
         missing_total = int(provenance.get("missing", missing_total))
         total_rows = int(provenance.get("rows_total", total_rows))
 
@@ -432,6 +441,7 @@ def _build_metric_payload(
         numeric_total=numeric_total,
         unsupported_total=unsupported_total,
         not_counted_total=not_counted_total,
+        permission_denied_total=permission_denied_total,
         missing_total=missing_total,
         groups_total=groups_total,
         groups_with_data=groups_with_data,
@@ -446,6 +456,7 @@ def _build_metric_payload(
             "numeric": int(numeric_total),
             "unsupported": int(unsupported_total),
             "not_counted": int(not_counted_total),
+            "permission_denied": int(permission_denied_total),
             "missing": int(missing_total),
             "groups_total": int(groups_total),
             "groups_with_data": int(groups_with_data),
@@ -532,26 +543,28 @@ def _classify_raw_values(series):
         "numeric": 0,
         "unsupported": 0,
         "not_counted": 0,
+        "permission_denied": 0,
         "missing": 0,
     }
 
     for value in series.tolist():
-        text = str(value).strip()
-        normalized = text.lower()
+        value_text = str(value).strip()
+        normalized = value_text.lower()
 
-        if not text or normalized in {"nan", "none", "null"}:
+        if not value_text or normalized in {"nan", "none", "null"}:
             result["missing"] += 1
             continue
-
         if normalized in UNSUPPORTED_MARKERS:
             result["unsupported"] += 1
             continue
-
         if normalized in NOT_COUNTED_MARKERS:
             result["not_counted"] += 1
             continue
+        if normalized in PERMISSION_DENIED_MARKERS:
+            result["permission_denied"] += 1
+            continue
 
-        number = pd.to_numeric(text, errors="coerce")
+        number = pd.to_numeric(value_text, errors="coerce")
         if pd.isna(number):
             result["missing"] += 1
         else:
@@ -565,8 +578,8 @@ def _extend_legacy_derived_availability(raw_df, metrics):
     Completa conservadoramente sidecars anteriores a CORE-06B-2.
 
     No inventa causas para casos parciales ambiguos. Sólo propaga una causa
-    cuando una dependencia completa está marcada como unsupported o
-    not_counted.
+    cuando una dependencia completa está marcada como permission_denied,
+    unsupported o not_counted.
     """
     result = dict(metrics or {})
     rows_total = int(len(raw_df))
@@ -602,6 +615,18 @@ def _extend_legacy_derived_availability(raw_df, metrics):
             )
 
         if any(
+            pure_state(counts, "permission_denied")
+            for counts in dependency_counts
+        ):
+            direct.update(
+                {
+                    "unsupported": 0,
+                    "not_counted": 0,
+                    "permission_denied": rows_total,
+                    "missing": 0,
+                }
+            )
+        elif any(
             pure_state(counts, "unsupported")
             for counts in dependency_counts
         ):
@@ -609,6 +634,7 @@ def _extend_legacy_derived_availability(raw_df, metrics):
                 {
                     "unsupported": rows_total,
                     "not_counted": 0,
+                    "permission_denied": 0,
                     "missing": 0,
                 }
             )
@@ -633,37 +659,44 @@ def _derive_metric_status(
     numeric_total,
     unsupported_total,
     not_counted_total,
+    permission_denied_total,
     missing_total,
     groups_total,
     groups_with_data,
 ):
     if numeric_total == 0:
         if (
+            permission_denied_total > 0
+            and unsupported_total == 0
+            and not_counted_total == 0
+            and missing_total == 0
+        ):
+            return "permission_denied"
+        if (
             unsupported_total > 0
+            and permission_denied_total == 0
             and not_counted_total == 0
             and missing_total == 0
         ):
             return "unsupported"
-
         if (
             not_counted_total > 0
+            and permission_denied_total == 0
             and unsupported_total == 0
             and missing_total == 0
         ):
             return "not_counted"
-
         return "no_data"
 
     has_missing_samples = (
-        unsupported_total > 0
+        permission_denied_total > 0
+        or unsupported_total > 0
         or not_counted_total > 0
         or missing_total > 0
     )
     has_missing_groups = groups_with_data < groups_total
-
     if has_missing_samples or has_missing_groups:
         return "partial"
-
     return "available"
 
 
@@ -671,11 +704,8 @@ def _metric_status_reason(status):
     reasons = {
         "available": None,
         "partial": "partial_availability",
-        # CORE-06C-2B: <not-supported> describe el resultado observado
-        # por el backend de medición. No demuestra por sí solo que el
-        # hardware físico carezca de la capacidad (puede intervenir
-        # backend, kernel o acceso/permisos).
-        "unsupported": "measurement_event_unavailable",
+        "permission_denied": "measurement_permission_denied",
+        "unsupported": "hardware_event_unsupported",
         "not_counted": "counter_not_counted",
         "no_data": "no_numeric_samples",
     }

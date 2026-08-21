@@ -140,7 +140,7 @@ const renderEnglish = async ({
   );
 
   await screen.findByRole("heading", {
-    name: "Reproducibility",
+    name: "Reproducibility and experimental traceability",
   });
 
   await waitFor(() =>
@@ -149,6 +149,12 @@ const renderEnglish = async ({
         "Loading reproducible identity…"
       )
     ).not.toBeInTheDocument()
+  );
+
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Show details",
+    })
   );
 };
 
@@ -239,7 +245,7 @@ describe("ReproducibilityPanel i18n", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "Reproducibilidad",
+        name: "Reproducibilidad y trazabilidad experimental",
       })
     ).toBeInTheDocument();
 

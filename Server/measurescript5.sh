@@ -217,20 +217,12 @@ trim() {
 normalize_value() {
     local value
     value=$(trim "$1")
-
     case "$value" in
-        "<not counted>"|"<not-counted>")
-            printf '%s' "<not-counted>"
-            ;;
-        "<not supported>"|"<not-supported>")
-            printf '%s' "<not-supported>"
-            ;;
-        "")
-            printf '%s' "<not-counted>"
-            ;;
-        *)
-            printf '%s' "$value"
-            ;;
+        "<not counted>"|"<not-counted>") printf '%s' "<not-counted>" ;;
+        "<not supported>"|"<not-supported>") printf '%s' "<not-supported>" ;;
+        "<permission denied>"|"<permission-denied>") printf '%s' "<permission-denied>" ;;
+        "") printf '%s' "<not-counted>" ;;
+        *) printf '%s' "$value" ;;
     esac
 }
 
@@ -252,7 +244,9 @@ normalize_event_name() {
 
 declare -A PERF_VALUES
 declare -A EVENT_AVAILABLE
+declare -A EVENT_UNAVAILABLE_VALUE
 declare -A VALUES
+PERF_FAILURE_VALUE=""
 
 CURRENT_SIZE=1
 
@@ -277,12 +271,19 @@ parse_perf_output() {
     done < "$output_file"
 }
 
+perf_error_is_permission_denied() {
+    [ -s "$PERF_ERROR" ] || return 1
+    LC_ALL=C grep -Eiq \
+        'access to performance monitoring and observability operations is limited|no permission to enable|permission denied|operation not permitted' \
+        "$PERF_ERROR"
+}
+
 run_perf_events() {
     local -a events=("$@")
     local event_spec status
 
     PERF_VALUES=()
-
+    PERF_FAILURE_VALUE=""
     [ "${#events[@]}" -gt 0 ] || return 0
 
     event_spec=$(IFS=, ; echo "${events[*]}")
@@ -304,6 +305,9 @@ run_perf_events() {
     parse_perf_output "$PERF_OUTPUT"
 
     if [ "$status" -ne 0 ]; then
+        if perf_error_is_permission_denied; then
+            PERF_FAILURE_VALUE="<permission-denied>"
+        fi
         echo "[WARN] perf devolvió código $status para: $event_spec" >&2
 
         [ ! -s "$PERF_ERROR" ] || cat "$PERF_ERROR" >&2
@@ -318,12 +322,13 @@ SINGLE_VALUE="<not-counted>"
 
 measure_single_event() {
     local event="$1"
-
     SINGLE_VALUE="<not-counted>"
 
     if run_perf_events "$event"; then
         SINGLE_VALUE="${PERF_VALUES[$event]:-<not-counted>}"
         SINGLE_VALUE=$(normalize_value "$SINGLE_VALUE")
+    else
+        SINGLE_VALUE="${PERF_FAILURE_VALUE:-<not-counted>}"
     fi
 }
 
@@ -376,11 +381,11 @@ measure_normalized_cache_pair() {
     NORMALIZED_CACHE_MISSES="<not-counted>"
 
     if [ "$instr_available" -ne 1 ]; then
-        NORMALIZED_INSTRUCTIONS="<not-supported>"
+        NORMALIZED_INSTRUCTIONS="${EVENT_UNAVAILABLE_VALUE[instructions]:-<not-supported>}"
     fi
 
     if [ "$misses_available" -ne 1 ]; then
-        NORMALIZED_CACHE_MISSES="<not-supported>"
+        NORMALIZED_CACHE_MISSES="${EVENT_UNAVAILABLE_VALUE[cache-misses]:-<not-supported>}"
     fi
 
     if [ "$instr_available" -ne 1 ] || [ "$misses_available" -ne 1 ]; then
@@ -390,8 +395,8 @@ measure_normalized_cache_pair() {
     # Misma invocación perf stat -> mismo proceso benchmark.
     # Deliberadamente NO se llama measure_single_event aquí.
     if ! run_perf_events "instructions" "cache-misses"; then
-        NORMALIZED_INSTRUCTIONS="<not-counted>"
-        NORMALIZED_CACHE_MISSES="<not-counted>"
+        NORMALIZED_INSTRUCTIONS="${PERF_FAILURE_VALUE:-<not-counted>}"
+        NORMALIZED_CACHE_MISSES="${PERF_FAILURE_VALUE:-<not-counted>}"
         return 0
     fi
 
@@ -439,6 +444,11 @@ check_event_support() {
 
     if [ "$status" -ne 0 ]; then
         EVENT_AVAILABLE["$event"]=0
+        if perf_error_is_permission_denied; then
+            EVENT_UNAVAILABLE_VALUE["$event"]="<permission-denied>"
+        else
+            EVENT_UNAVAILABLE_VALUE["$event"]="<not-supported>"
+        fi
         return 1
     fi
 
@@ -449,10 +459,12 @@ check_event_support() {
 
     if [ "$value" = "<not-supported>" ]; then
         EVENT_AVAILABLE["$event"]=0
+        EVENT_UNAVAILABLE_VALUE["$event"]="<not-supported>"
         return 1
     fi
 
     EVENT_AVAILABLE["$event"]=1
+    unset \'EVENT_UNAVAILABLE_VALUE[$event]\'
     return 0
 }
 
@@ -539,7 +551,7 @@ for ((i=1; i<=INCREMENTS; i++)); do
             if [ "${EVENT_AVAILABLE[$event]:-0}" -eq 1 ]; then
                 VALUES["$event"]="<not-counted>"
             else
-                VALUES["$event"]="<not-supported>"
+                VALUES["$event"]="${EVENT_UNAVAILABLE_VALUE[$event]:-<not-supported>}"
             fi
         done
 

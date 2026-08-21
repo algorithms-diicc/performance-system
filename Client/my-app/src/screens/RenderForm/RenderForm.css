@@ -1161,6 +1161,39 @@
    PRESET CHIPS
    ============================================================ */
 
+.rf-page .param-range-contract {
+  margin:
+    var(--ps-space-2) 0 0;
+
+  color:
+    var(--ps-text-muted);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  line-height: 1.45;
+}
+
+
+.rf-page .param-suggestions-block {
+  margin-top:
+    var(--ps-space-3);
+}
+
+
+.rf-page .param-suggestions-label {
+  display: block;
+
+  color:
+    var(--ps-text-secondary);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  font-weight: 650;
+}
+
+
 .rf-page .param-suggestions {
   display: flex;
 
@@ -1171,6 +1204,45 @@
 
   margin-top:
     var(--ps-space-3);
+}
+
+
+.rf-page .param-advisory {
+  margin-top:
+    var(--ps-space-3);
+
+  padding:
+    var(--ps-space-3);
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap:
+    var(--ps-space-1);
+
+  color:
+    var(--ps-text-secondary);
+
+  background:
+    var(--ps-warning-soft);
+
+  border:
+    1px solid var(--ps-warning);
+
+  border-radius:
+    var(--ps-radius-sm);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  line-height: 1.5;
+}
+
+
+.rf-page .param-advisory strong {
+  color:
+    var(--ps-warning);
 }
 
 

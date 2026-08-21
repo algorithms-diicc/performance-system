@@ -187,8 +187,27 @@ describe("ComparisonPage i18n", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText("alpha.cpp")
+      screen.getAllByText("alpha.cpp").length
+    ).toBeGreaterThanOrEqual(1);
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Comparative summary",
+      })
     ).toBeInTheDocument();
+
+    const summaryCoverage =
+      screen
+        .getByText(
+          "target metrics comparable"
+        )
+        .closest(
+          ".comparison-page__summary-coverage"
+        );
+    expect(summaryCoverage).not.toBeNull();
+    expect(summaryCoverage).toHaveTextContent(
+      "1/5"
+    );
 
     expect(
       screen.getAllByText("SIZE")
@@ -198,6 +217,12 @@ describe("ComparisonPage i18n", () => {
       screen.getByText(
         "The executions satisfy the compatibility contract for the common measurements shown."
       )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("tab", {
+        name: /Key metrics/,
+      })
     ).toBeInTheDocument();
 
     expect(
@@ -270,7 +295,7 @@ describe("ComparisonPage i18n", () => {
     expect(axios.post).not.toHaveBeenCalled();
   });
 
-  test("keeps backend scientific issue details literal in English", async () => {
+  test("localizes backend scientific issue codes in English", async () => {
     renderEnglishPage({
       payload: {
         ...compatiblePayload,
@@ -290,15 +315,20 @@ describe("ComparisonPage i18n", () => {
 
     expect(
       await screen.findByText(
-        "Limited comparison"
+        "Comparison with limited scope"
       )
     ).toBeInTheDocument();
 
     expect(
       screen.getByText(
-        "Detalle científico persistido por el backend."
+        "The executions share only part of the measured InputSize domain."
       )
     ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Detalle científico persistido por el backend."
+      )
+    ).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Observations")

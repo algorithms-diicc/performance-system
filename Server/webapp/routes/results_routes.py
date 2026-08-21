@@ -22,6 +22,7 @@ from ..utils.api_errors import ForbiddenError, NotFoundError
 from ..utils.auth_decorators import get_user_role_name, login_required
 from ..services.ai_explanation_service import (
     AIExplanationError,
+    AIInvalidLanguageError,
     AINotConfiguredError,
     AIOutputRejectedError,
     AIProviderError,
@@ -228,6 +229,7 @@ def create_ai_explanation(codename):
 
     body = request.get_json(silent=True) or {}
     force = bool(body.get("force", False))
+    language = body.get("language", "es")
 
     try:
         results_payload = build_execution_results(
@@ -243,6 +245,13 @@ def create_ai_explanation(codename):
             codename=codename,
             results_payload=results_payload,
             force=force,
+            language=language,
+        )
+    except AIInvalidLanguageError:
+        return _error_response(
+            status=400,
+            code="INVALID_AI_LANGUAGE",
+            message="El idioma solicitado para la explicación no está soportado.",
         )
     except ResultsNotFoundError:
         return _error_response(

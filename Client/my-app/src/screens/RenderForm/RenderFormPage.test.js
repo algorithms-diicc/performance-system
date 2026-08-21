@@ -52,6 +52,7 @@ jest.mock("./components/TestTypeAndParamsCard", () => {
     inputSize,
     samples,
     dataType,
+    onSamplesChange,
   }) {
     return ReactModule.createElement(
       ReactModule.Fragment,
@@ -80,6 +81,50 @@ jest.mock("./components/TestTypeAndParamsCard", () => {
         String(samples ?? "")
       ),
       ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onSamplesChange({
+              target: { value: "10" },
+            }),
+        },
+        "Muestras 10"
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onSamplesChange({
+              target: { value: "30" },
+            }),
+        },
+        "Muestras 30"
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onSamplesChange({
+              target: { value: "50" },
+            }),
+        },
+        "Muestras 50"
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onSamplesChange({
+              target: { value: "40" },
+            }),
+        },
+        "Muestras 40"
+      ),
+      ReactModule.createElement(
         "span",
         { "data-testid": "data-type" },
         dataType || ""
@@ -93,6 +138,9 @@ jest.mock("./components/StatusPanel", () => {
   return function MockStatusPanel({
     isSubmitDisabled,
     onReset,
+    fileList,
+    isSubmitting,
+    onPrepareNewAnalysis,
   }) {
     return ReactModule.createElement(
       ReactModule.Fragment,
@@ -106,7 +154,19 @@ jest.mock("./components/StatusPanel", () => {
         "button",
         { type: "button", onClick: onReset },
         "Limpiar configuración"
-      )
+      ),
+      isSubmitting &&
+      Array.isArray(fileList) &&
+      fileList.length > 0
+        ? ReactModule.createElement(
+            "button",
+            {
+              type: "button",
+              onClick: onPrepareNewAnalysis,
+            },
+            "Preparar otro análisis"
+          )
+        : null
     );
   };
 });
@@ -483,6 +543,113 @@ describe("RenderFormPage 6A onboarding", () => {
       screen.getByRole("button", { name: "Limpiar configuración" })
     );
     expect(note).toHaveValue("");
+  });
+
+  test("manual canonical sample counts keep the canonical measurement profile", async () => {
+    await renderPage();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Muestras 10" })
+    );
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("rapido");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Muestras 30" })
+    );
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("equilibrado");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Muestras 50" })
+    );
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("exhaustivo");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Muestras 40" })
+    );
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("personalizado");
+  });
+
+  test("an accepted submission clears the saved draft", async () => {
+    await renderPage();
+    await selectZipFromInput("cola.zip");
+    selectBenchmark();
+
+    fireEvent.change(screen.getByLabelText(/Nota personal/), {
+      target: { value: "Borrador que ya fue enviado" },
+    });
+
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(DRAFT_KEY)
+      ).not.toBeNull();
+    });
+
+    axios.mockResolvedValueOnce({
+      data: {
+        submissionId: 143,
+        executions: [
+          {
+            publicId: "execution-143",
+            codename: "queue143LCS",
+          },
+        ],
+      },
+    });
+
+    await submitThroughOverview();
+
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(DRAFT_KEY)
+      ).toBeNull();
+    });
+  });
+
+  test("a running execution can be detached without sending a cancellation request", async () => {
+    await renderPage();
+    await selectZipFromInput("primero.zip");
+    selectBenchmark();
+
+    axios.mockResolvedValueOnce({
+      data: {
+        submissionId: 144,
+        executions: [
+          {
+            publicId: "execution-144",
+            codename: "queue144LCS",
+          },
+        ],
+      },
+    });
+
+    await submitThroughOverview();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Preparar otro análisis",
+      })
+    );
+
+    // POST /sendcode fue la única solicitud mutante: liberar la vista
+    // no cancela ni altera la ejecución persistida.
+    expect(axios).toHaveBeenCalledTimes(1);
+
+    expect(
+      screen.getByTestId("selected-task-type")
+    ).toHaveTextContent("");
+    expect(
+      screen.getByRole("button", {
+        name: "Revisar y ejecutar",
+      })
+    ).toBeDisabled();
   });
 
   test("FormData sends trimmed title and non-empty note atomically", async () => {

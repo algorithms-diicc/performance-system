@@ -55,12 +55,14 @@ def main():
         default="http://localhost:5000",
     )
     parser.add_argument(
-        "--expect-configured",
-        action="store_true",
-        help=(
-            "Exige una llamada real exitosa al proveedor. "
-            "Usar sólo cuando OPENAI_API_KEY está configurada."
-        ),
+        "--language",
+        choices=("es", "en"),
+        default="es",
+    )
+    parser.add_argument(
+        "--expect-provider",
+        choices=("mock", "openai"),
+        default="mock",
     )
     args = parser.parse_args()
 
@@ -71,40 +73,16 @@ def main():
 
     status, payload = post_json(
         url,
-        {"force": False},
+        {
+            "force": False,
+            "language": args.language,
+        },
     )
 
     print("PERFORMANCE SYSTEM — UI-03C-4 VALIDATION")
     print("Execution:", args.codename)
     print("API:", url)
     print("")
-
-    if status == 503:
-        code = (
-            payload.get("error", {})
-            .get("code")
-        )
-
-        checks = [
-            check(
-                "Endpoint returns AI_NOT_CONFIGURED",
-                code == "AI_NOT_CONFIGURED",
-                "Recibido: {!r}".format(code),
-            )
-        ]
-
-        print("")
-        print("RESULTADO")
-        print("=========")
-
-        if args.expect_configured:
-            print("0/1 checks passed")
-            print("RESULT: FAIL")
-            return 1
-
-        print("{}/1 checks passed".format(sum(checks)))
-        print("RESULT: PASS (integration ready; API key pending)")
-        return 0
 
     checks = []
     checks.append(check("HTTP 200", status == 200))
@@ -116,8 +94,26 @@ def main():
     )
     checks.append(
         check(
-            "generated_by_ai = true",
-            payload.get("generated_by_ai") is True,
+            "provider matches expected",
+            payload.get("provider") == args.expect_provider,
+        )
+    )
+    checks.append(
+        check(
+            "language matches requested",
+            payload.get("language") == args.language,
+        )
+    )
+    checks.append(
+        check(
+            "simulation flag is coherent",
+            payload.get("simulated") is (args.expect_provider == "mock"),
+        )
+    )
+    checks.append(
+        check(
+            "generated_by_ai flag is coherent",
+            payload.get("generated_by_ai") is (args.expect_provider == "openai"),
         )
     )
     checks.append(

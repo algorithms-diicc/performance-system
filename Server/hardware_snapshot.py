@@ -108,6 +108,18 @@ def _probe_perf_event(perf_bin, event):
     )
     normalized = output.lower()
 
+    permission_signatures = (
+        "access to performance monitoring and observability operations is limited",
+        "no permission to enable",
+        "permission denied",
+        "operation not permitted",
+    )
+    if any(signature in normalized for signature in permission_signatures):
+        return {
+            "probe_state": "permission_denied",
+            "measurement_available": False,
+        }
+
     if "<not supported>" in normalized or "<not-supported>" in normalized:
         return {
             "probe_state": "not_supported",

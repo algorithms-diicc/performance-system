@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   MemoryRouter,
@@ -53,7 +54,72 @@ const resultsPayload = {
     submission_id: 42,
   },
   processing: {},
-  metrics: {},
+  metrics: {
+    DurationTime: {
+      status: "available",
+      points: [
+        {
+          input_size: 1000,
+          median: 12.5,
+          mean: 12.7,
+          q1: 12.0,
+          q3: 13.0,
+          stddev: 0.4,
+          valid_samples: 10,
+          total_samples: 10,
+        },
+      ],
+    },
+    IPC: {
+      status: "available",
+      points: [
+        {
+          input_size: 1000,
+          median: 1.8,
+          mean: 1.82,
+          q1: 1.7,
+          q3: 1.9,
+          stddev: 0.08,
+          valid_samples: 10,
+          total_samples: 10,
+        },
+      ],
+    },
+    CacheMissRate: {
+      status: "available",
+      points: [
+        {
+          input_size: 1000,
+          median: 2.5,
+          mean: 2.6,
+          q1: 2.3,
+          q3: 2.8,
+          stddev: 0.2,
+          valid_samples: 10,
+          total_samples: 10,
+        },
+      ],
+    },
+    BranchMissRate: {
+      status: "available",
+      points: [
+        {
+          input_size: 1000,
+          median: 1.1,
+          mean: 1.15,
+          q1: 1.0,
+          q3: 1.2,
+          stddev: 0.05,
+          valid_samples: 10,
+          total_samples: 10,
+        },
+      ],
+    },
+    Instructions: {
+      status: "unsupported",
+      points: [],
+    },
+  },
   analysis: {},
   pedagogy: {
     summary: {
@@ -201,15 +267,35 @@ describe("RenderImage shell i18n", () => {
       })
     ).toBeInTheDocument();
 
+    const kpiSection = screen
+      .getByRole("heading", {
+        name: "Main indicators",
+      })
+      .closest("section");
+
     expect(
-      screen.getByText("Main indicators")
+      within(kpiSection).getByText("Time")
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Time")
+      within(kpiSection).getByText("IPC")
     ).toBeInTheDocument();
     expect(
-      screen.getAllByText("Unavailable").length
-    ).toBeGreaterThan(0);
+      within(kpiSection).getByText("Cache miss")
+    ).toBeInTheDocument();
+    expect(
+      within(kpiSection).getByText("Branch miss")
+    ).toBeInTheDocument();
+    expect(
+      within(kpiSection).queryByText("Instructions")
+    ).not.toBeInTheDocument();
+    expect(
+      within(kpiSection).getByRole("status")
+    ).toHaveTextContent(
+      "4 of 5 main indicators available."
+    );
+    expect(
+      within(kpiSection).queryByText("Unavailable")
+    ).not.toBeInTheDocument();
 
     fireEvent.click(
       screen.getByRole("button", {
@@ -254,6 +340,11 @@ describe("RenderImage shell i18n", () => {
         name: "Filtros del análisis",
       })
     ).toBeInTheDocument();
+    expect(
+      within(kpiSection).getByRole("status")
+    ).toHaveTextContent(
+      "4 de 5 indicadores principales disponibles."
+    );
 
     expect(axios.get).toHaveBeenCalledTimes(4);
   });

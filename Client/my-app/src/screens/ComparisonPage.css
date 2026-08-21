@@ -793,3 +793,1473 @@
     height: 400px;
   }
 }
+
+/* 11D — deterministic comparative dashboard */
+.comparison-page__section-description {
+  max-width: 52rem;
+  margin: var(--ps-space-2) 0 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-sm);
+  line-height: var(--ps-line-height-normal);
+}
+
+.comparison-page__summary-status {
+  margin: 0 0 var(--ps-space-4);
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-xs);
+  font-weight: 700;
+}
+
+.comparison-page__summary-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--ps-space-3);
+}
+
+.comparison-page__summary-card {
+  min-width: 0;
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__summary-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding-bottom: var(--ps-space-3);
+  border-bottom: 1px solid var(--ps-divider);
+}
+
+.comparison-page__summary-card-header > strong {
+  min-width: 0;
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-sm);
+}
+
+.comparison-page__summary-card-header > span {
+  flex: 0 0 auto;
+  color: var(--ps-text-muted);
+  font-size: 0.64rem;
+}
+
+.comparison-page__summary-series {
+  display: grid;
+  gap: var(--ps-space-2);
+  margin-top: var(--ps-space-3);
+}
+
+.comparison-page__summary-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+}
+
+.comparison-page__summary-row > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+}
+
+.comparison-page__summary-row > strong {
+  flex: 0 0 auto;
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-page__audit-toggle svg {
+  transition: transform 160ms ease;
+}
+
+.comparison-page__audit-toggle svg.is-expanded {
+  transform: rotate(180deg);
+}
+
+.comparison-page__audit-body > .comparison-page__section {
+  margin-top: var(--ps-space-4);
+  box-shadow: none;
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__audit-body > .comparison-page__section:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 760px) {
+  .comparison-page__summary-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* 11D2-A — comparative information architecture */
+.comparison-page__section-nav {
+  position: sticky;
+  top: calc(var(--ps-navbar-height) + 0.75rem);
+  z-index: 18;
+  margin: var(--ps-space-4) 0 var(--ps-space-5);
+  padding: var(--ps-space-2);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  background: var(--ps-surface);
+  box-shadow: var(--ps-shadow-sm);
+}
+
+.comparison-page__section-nav-list {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-1);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.comparison-page__section-nav-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ps-space-2);
+  flex: 0 0 auto;
+  min-height: 2.25rem;
+  padding: 0 var(--ps-space-3);
+  border-radius: var(--ps-radius-md);
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  font-weight: 750;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 140ms ease,
+    color 140ms ease;
+}
+
+.comparison-page__section-nav-link:hover,
+.comparison-page__section-nav-link:focus-visible {
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text);
+}
+
+.comparison-page__major-section {
+  scroll-margin-top:
+    calc(var(--ps-navbar-height) + 5.25rem);
+}
+
+@media (max-width: 760px) {
+  .comparison-page__section-nav {
+    top: calc(var(--ps-navbar-height) + 0.35rem);
+  }
+
+  .comparison-page__section-nav-link {
+    padding: 0 var(--ps-space-2);
+  }
+}
+
+/* 11D2-B — scientific status + visual comparative summary */
+.comparison-page__status--info {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--ps-primary) 38%,
+      var(--ps-border)
+    );
+  background:
+    color-mix(
+      in srgb,
+      var(--ps-primary-soft) 64%,
+      var(--ps-surface)
+    );
+}
+
+.comparison-page__status--info svg {
+  color: var(--ps-primary);
+}
+
+.comparison-page__summary-heading {
+  align-items: flex-start;
+}
+
+.comparison-page__summary-coverage {
+  flex: 0 0 auto;
+  min-width: 112px;
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  padding:
+    var(--ps-space-2)
+    var(--ps-space-3);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__summary-coverage strong {
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-lg);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-page__summary-coverage span {
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.comparison-page__summary-grid {
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(190px, 1fr)
+    );
+  align-items: stretch;
+}
+
+.comparison-page__summary-card {
+  min-height: 252px;
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--ps-radius-lg);
+  box-shadow: var(--ps-shadow-sm);
+  transition:
+    transform var(--ps-transition-fast),
+    border-color var(--ps-transition-fast),
+    box-shadow var(--ps-transition-fast);
+}
+
+.comparison-page__summary-card:hover {
+  transform: translateY(-1px);
+  border-color: var(--ps-border-strong);
+  box-shadow: var(--ps-shadow-md);
+}
+
+.comparison-page__summary-card-header {
+  min-height: 43px;
+}
+
+.comparison-page__summary-input,
+.comparison-page__summary-availability {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 0 var(--ps-space-2);
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.comparison-page__summary-availability--unavailable {
+  border: 1px solid var(--ps-border);
+}
+
+.comparison-page__summary-sparkline {
+  height: 82px;
+  margin:
+    var(--ps-space-3)
+    0
+    var(--ps-space-2);
+  overflow: hidden;
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-sm);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(
+        in srgb,
+        var(--ps-surface-subtle) 84%,
+        transparent
+      ),
+      var(--ps-surface)
+    );
+}
+
+.comparison-page__summary-sparkline svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.comparison-page__summary-gridline {
+  stroke: var(--ps-divider);
+  stroke-width: 1;
+}
+
+.comparison-page__summary-line {
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.comparison-page__summary-point {
+  stroke-width: 1.5;
+}
+
+.comparison-page__summary-line--0,
+.comparison-page__summary-point--0 {
+  stroke: var(--ps-primary);
+  fill: var(--ps-primary);
+}
+
+.comparison-page__summary-line--1,
+.comparison-page__summary-point--1 {
+  stroke: var(--ps-text-secondary);
+  fill: var(--ps-text-secondary);
+}
+
+.comparison-page__summary-line--2,
+.comparison-page__summary-point--2 {
+  stroke: var(--ps-primary);
+  fill: var(--ps-primary);
+  stroke-dasharray: 3 3;
+}
+
+.comparison-page__summary-line--3,
+.comparison-page__summary-point--3 {
+  stroke: var(--ps-text-muted);
+  fill: var(--ps-text-muted);
+  stroke-dasharray: 7 3 2 3;
+}
+
+.comparison-page__summary-series {
+  margin-top: 0;
+}
+
+.comparison-page__summary-series-label {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+}
+
+.comparison-page__summary-series-label > span:last-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.comparison-page__summary-swatch {
+  width: 15px;
+  height: 2px;
+  flex: 0 0 auto;
+  border-radius: 999px;
+}
+
+.comparison-page__summary-swatch--0 {
+  background: var(--ps-primary);
+}
+
+.comparison-page__summary-swatch--1 {
+  background: var(--ps-text-secondary);
+}
+
+.comparison-page__summary-swatch--2 {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--ps-primary) 0 3px,
+      transparent 3px 5px
+    );
+}
+
+.comparison-page__summary-swatch--3 {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      var(--ps-text-muted) 0 5px,
+      transparent 5px 7px
+    );
+}
+
+.comparison-page__summary-card-foot {
+  margin-top: auto;
+  padding-top: var(--ps-space-3);
+  color: var(--ps-text-muted);
+  border-top: 1px solid var(--ps-divider);
+  font-size: 0.62rem;
+}
+
+.comparison-page__summary-card--unavailable {
+  opacity: 0.78;
+}
+
+.comparison-page__summary-unavailable {
+  min-height: 128px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: var(--ps-space-2);
+  padding: var(--ps-space-4);
+  color: var(--ps-text-muted);
+  text-align: center;
+}
+
+.comparison-page__summary-unavailable p {
+  margin: 0;
+  max-width: 15rem;
+  font-size: var(--ps-font-size-xs);
+  line-height: var(--ps-line-height-normal);
+}
+
+.comparison-page__summary-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ps-space-2);
+  margin-top: var(--ps-space-4);
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-xs);
+  line-height: var(--ps-line-height-normal);
+}
+
+.comparison-page__summary-note svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+@media (max-width: 760px) {
+  .comparison-page__summary-heading {
+    flex-direction: column;
+  }
+
+  .comparison-page__summary-coverage {
+    width: 100%;
+    justify-items: start;
+  }
+
+  .comparison-page__summary-coverage span {
+    text-align: left;
+  }
+
+  .comparison-page__summary-card {
+    min-height: auto;
+  }
+}
+
+/* 11D2-B FINAL POLISH */
+.comparison-page__summary-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-4);
+}
+
+.comparison-page__summary-heading > div:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.comparison-page__summary-coverage {
+  width: auto;
+  max-width: 180px;
+  min-width: 138px;
+  flex: 0 0 auto;
+}
+
+.comparison-page__summary-grid {
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+}
+
+.comparison-page__summary-line {
+  fill: none !important;
+}
+
+@media (max-width: 1080px) {
+  .comparison-page__summary-grid {
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0, 1fr)
+      );
+  }
+}
+
+@media (max-width: 760px) {
+  .comparison-page__summary-heading {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .comparison-page__summary-coverage {
+    width: auto;
+    max-width: none;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .comparison-page__summary-grid {
+    grid-template-columns:
+      minmax(0, 1fr);
+  }
+}
+
+/* 11D2-C1 — category explorer + multi-metric comparison */
+.comparison-page__metric-explorer {
+  display: grid;
+  gap: var(--ps-space-4);
+  margin-bottom: var(--ps-space-5);
+}
+
+.comparison-page__metric-tabs {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-1);
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+}
+
+.comparison-page__metric-tab {
+  min-height: 36px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  flex: 0 0 auto;
+  padding: 0 var(--ps-space-3);
+  border: 1px solid transparent;
+  border-radius: var(--ps-radius-md);
+  background: transparent;
+  color: var(--ps-text-secondary);
+  font: inherit;
+  font-size: var(--ps-font-size-xs);
+  font-weight: 740;
+  cursor: pointer;
+}
+
+.comparison-page__metric-tab:hover,
+.comparison-page__metric-tab:focus-visible {
+  color: var(--ps-text);
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__metric-tab--active {
+  color: var(--ps-primary);
+  border-color:
+    color-mix(in srgb, var(--ps-primary) 34%, var(--ps-border));
+  background: var(--ps-primary-soft);
+}
+
+.comparison-page__metric-tab-count {
+  min-width: 20px;
+  min-height: 20px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-page__metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ps-space-4);
+}
+
+.comparison-page__metric-card {
+  min-width: 0;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  background: var(--ps-surface-subtle);
+  box-shadow: var(--ps-shadow-sm);
+}
+
+.comparison-page__metric-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding-bottom: var(--ps-space-3);
+  border-bottom: 1px solid var(--ps-divider);
+}
+
+.comparison-page__metric-card-header h3 {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-md);
+}
+
+.comparison-page__metric-card-eyebrow {
+  color: var(--ps-primary);
+  font-size: 0.61rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.comparison-page__metric-unit {
+  flex: 0 0 auto;
+  padding: 3px var(--ps-space-2);
+  border: 1px solid var(--ps-border);
+  border-radius: 999px;
+  color: var(--ps-text-muted);
+  background: var(--ps-surface);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.comparison-page__metric-plot {
+  height: 300px;
+  min-height: 300px;
+  margin-top: var(--ps-space-3);
+}
+
+.comparison-page__metric-plot-element {
+  width: 100%;
+  height: 100%;
+}
+
+.comparison-page__metric-empty {
+  min-height: 260px;
+  display: grid;
+  place-items: center;
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-sm);
+  text-align: center;
+}
+
+.comparison-page__detail-divider {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-3);
+  margin: var(--ps-space-5) 0 var(--ps-space-4);
+  color: var(--ps-text-muted);
+  font-size: 0.66rem;
+  font-weight: 760;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.comparison-page__detail-divider::before,
+.comparison-page__detail-divider::after {
+  content: "";
+  height: 1px;
+  flex: 1 1 auto;
+  background: var(--ps-divider);
+}
+
+@media (max-width: 980px) {
+  .comparison-page__metric-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 620px) {
+  .comparison-page__metric-card {
+    min-height: 340px;
+    padding: var(--ps-space-3);
+  }
+
+  .comparison-page__metric-plot {
+    height: 270px;
+    min-height: 270px;
+  }
+}
+/* 11D2-C2 — common filters + log scale + advanced inspector */
+.comparison-page__filters-panel {
+  display: grid;
+  gap: var(--ps-space-4);
+  margin-bottom: var(--ps-space-4);
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  background: var(--ps-surface-subtle);
+}
+.comparison-page__filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--ps-space-4);
+}
+.comparison-page__filters-header h3 {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text);
+}
+.comparison-page__filters-header p {
+  max-width: 720px;
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-sm);
+  line-height: 1.5;
+}
+.comparison-page__filters-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  flex: 0 0 auto;
+}
+.comparison-page__filters-count {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--ps-space-2);
+  border: 1px solid var(--ps-border);
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-text-muted);
+  font-size: 0.68rem;
+  font-weight: 720;
+}
+.comparison-page__filters-reset,
+.comparison-page__range-reset {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ps-space-2);
+  padding: 0 var(--ps-space-3);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface);
+  color: var(--ps-text-secondary);
+  font: inherit;
+  font-size: 0.72rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+.comparison-page__filters-reset:disabled,
+.comparison-page__range-reset:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+}
+.comparison-page__filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ps-space-3);
+}
+.comparison-page__filter-group {
+  min-width: 0;
+  margin: 0;
+  padding: var(--ps-space-3);
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface);
+}
+.comparison-page__filter-group legend {
+  padding: 0 var(--ps-space-1);
+  color: var(--ps-text);
+  font-size: 0.72rem;
+  font-weight: 760;
+}
+.comparison-page__filter-group small {
+  display: block;
+  margin-top: var(--ps-space-2);
+  color: var(--ps-text-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+.comparison-page__segmented-control {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(86px, 1fr));
+  padding: 3px;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+}
+.comparison-page__segment {
+  position: relative;
+  min-height: 32px;
+  display: grid;
+  place-items: center;
+  padding: 0 var(--ps-space-3);
+  border-radius: calc(var(--ps-radius-md) - 3px);
+  color: var(--ps-text-secondary);
+  font-size: 0.72rem;
+  font-weight: 720;
+  cursor: pointer;
+}
+.comparison-page__segment input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+.comparison-page__segment--active {
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+}
+.comparison-page__segment:has(input:focus-visible) {
+  outline: 2px solid var(--ps-primary);
+  outline-offset: 2px;
+}
+.comparison-page__segment:has(input:disabled) {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.comparison-page__filter-check {
+  min-height: 34px;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  color: var(--ps-text-secondary);
+  font-size: 0.76rem;
+  font-weight: 690;
+}
+.comparison-page__filter-check input {
+  accent-color: var(--ps-primary);
+}
+.comparison-page__range-controls {
+  display: grid;
+  grid-template-columns: auto minmax(116px, 1fr) minmax(116px, 1fr) auto;
+  align-items: end;
+  gap: var(--ps-space-2);
+}
+.comparison-page__range-controls > svg {
+  align-self: center;
+  color: var(--ps-primary);
+}
+.comparison-page__range-controls label {
+  min-width: 0;
+  display: grid;
+  gap: var(--ps-space-1);
+}
+.comparison-page__range-controls label > span {
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-weight: 720;
+}
+.comparison-page__range-controls select {
+  width: 100%;
+  min-height: 34px;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text);
+  padding: 0 var(--ps-space-2);
+  font: inherit;
+}
+.comparison-page__detail-panel {
+  margin-top: var(--ps-space-5);
+  border-top: 1px solid var(--ps-divider);
+}
+.comparison-page__detail-summary {
+  min-height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding: var(--ps-space-3) 0;
+  color: var(--ps-text-secondary);
+  cursor: pointer;
+  list-style: none;
+}
+.comparison-page__detail-summary::-webkit-details-marker {
+  display: none;
+}
+.comparison-page__detail-summary > span {
+  color: var(--ps-text);
+  font-size: 0.72rem;
+  font-weight: 780;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.comparison-page__detail-summary small {
+  color: var(--ps-text-muted);
+  font-size: 0.68rem;
+}
+.comparison-page__detail-panel[open] .comparison-page__detail-summary {
+  margin-bottom: var(--ps-space-3);
+}
+.comparison-page__inspector-controls {
+  max-width: 420px;
+  margin-bottom: var(--ps-space-4);
+}
+.comparison-page__inspector-controls .comparison-page__control {
+  width: 100%;
+}
+@media (max-width: 900px) {
+  .comparison-page__filter-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .comparison-page__filters-header {
+    flex-direction: column;
+  }
+  .comparison-page__filters-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+@media (max-width: 620px) {
+  .comparison-page__filters-panel {
+    padding: var(--ps-space-3);
+  }
+  .comparison-page__range-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .comparison-page__range-controls > svg {
+    display: none;
+  }
+  .comparison-page__segmented-control {
+    width: 100%;
+  }
+  .comparison-page__detail-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+/* 11D2-D2 — deterministic comparative pedagogy presentation */
+.comparison-page__pedagogy {
+  background: var(--ps-surface);
+}
+.comparison-page__pedagogy-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-4);
+}
+.comparison-page__pedagogy-method {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  padding: 0.34rem 0.58rem;
+  border: 1px solid color-mix(in srgb, var(--ps-success) 22%, var(--ps-border));
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ps-success) 8%, var(--ps-surface));
+  color: var(--ps-success);
+  font-size: 0.64rem;
+  font-weight: 720;
+}
+.comparison-page__pedagogy-scope {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--ps-space-3);
+  margin-bottom: var(--ps-space-4);
+  padding: var(--ps-space-3);
+  border: 1px solid color-mix(in srgb, var(--ps-warning) 28%, var(--ps-border));
+  border-radius: var(--ps-radius-md);
+  background: color-mix(in srgb, var(--ps-warning) 7%, var(--ps-surface));
+}
+.comparison-page__pedagogy-scope > svg {
+  margin-top: 2px;
+  color: var(--ps-warning);
+}
+.comparison-page__pedagogy-scope strong {
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-sm);
+}
+.comparison-page__pedagogy-scope p {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.5;
+}
+.comparison-page__pedagogy-scope small {
+  display: block;
+  margin-top: var(--ps-space-2);
+  color: var(--ps-text-muted);
+  font-size: 0.65rem;
+}
+.comparison-page__pedagogy-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ps-space-4);
+}
+.comparison-page__pedagogy-card {
+  min-width: 0;
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  background: var(--ps-surface-subtle);
+  box-shadow: var(--ps-shadow-sm);
+}
+.comparison-page__pedagogy-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding-bottom: var(--ps-space-3);
+  border-bottom: 1px solid var(--ps-divider);
+}
+.comparison-page__pedagogy-card-header h3 {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-md);
+}
+.comparison-page__pedagogy-card-eyebrow {
+  color: var(--ps-primary);
+  font-size: 0.61rem;
+  font-weight: 760;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.comparison-page__pedagogy-unit {
+  flex: 0 0 auto;
+  padding: 3px var(--ps-space-2);
+  border: 1px solid var(--ps-border);
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+.comparison-page__pedagogy-block {
+  margin-top: var(--ps-space-3);
+  padding-top: var(--ps-space-3);
+  border-top: 1px solid var(--ps-divider);
+}
+.comparison-page__pedagogy-card-header + .comparison-page__pedagogy-block {
+  border-top: 0;
+  padding-top: 0;
+}
+.comparison-page__pedagogy-block > strong,
+.comparison-page__pedagogy-details section > strong {
+  display: block;
+  margin-bottom: var(--ps-space-2);
+  color: var(--ps-text);
+  font-size: 0.69rem;
+  font-weight: 760;
+}
+.comparison-page__pedagogy-block > p,
+.comparison-page__pedagogy-details p {
+  margin: 0;
+  color: var(--ps-text-secondary);
+  font-size: 0.72rem;
+  line-height: 1.55;
+}
+.comparison-page__pedagogy-observation-title {
+  margin-bottom: var(--ps-space-2) !important;
+  color: var(--ps-text-muted) !important;
+  font-size: 0.65rem !important;
+  font-weight: 700;
+}
+.comparison-page__pedagogy-values {
+  display: grid;
+  gap: var(--ps-space-2);
+}
+.comparison-page__pedagogy-value-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding: 0.42rem 0.55rem;
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-sm);
+  background: var(--ps-surface);
+}
+.comparison-page__pedagogy-value-row span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ps-text-secondary);
+  font-size: 0.68rem;
+}
+.comparison-page__pedagogy-value-row strong {
+  flex: 0 0 auto;
+  color: var(--ps-text);
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+}
+.comparison-page__pedagogy-disclosure {
+  margin-top: var(--ps-space-3);
+  padding-top: var(--ps-space-3);
+  border-top: 1px solid var(--ps-divider);
+}
+.comparison-page__pedagogy-disclosure > button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ps-text);
+  text-align: left;
+  cursor: pointer;
+}
+.comparison-page__pedagogy-disclosure > button > span:first-child {
+  min-width: 0;
+  display: grid;
+  gap: var(--ps-space-1);
+}
+.comparison-page__pedagogy-disclosure > button strong {
+  font-size: 0.69rem;
+}
+.comparison-page__pedagogy-disclosure > button small {
+  color: var(--ps-text-muted);
+  font-size: 0.6rem;
+}
+.comparison-page__pedagogy-disclosure-action {
+  flex: 0 0 auto;
+  display: inline-flex !important;
+  align-items: center;
+  gap: var(--ps-space-1) !important;
+  color: var(--ps-primary);
+  font-size: 0.61rem;
+  font-weight: 720;
+}
+.comparison-page__pedagogy-disclosure-action svg {
+  transition: transform 160ms ease;
+}
+.comparison-page__pedagogy-disclosure-action svg.is-expanded {
+  transform: rotate(180deg);
+}
+.comparison-page__pedagogy-details {
+  display: grid;
+  gap: var(--ps-space-3);
+  margin-top: var(--ps-space-3);
+}
+.comparison-page__pedagogy-details section {
+  padding: var(--ps-space-3);
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-sm);
+  background: var(--ps-surface);
+}
+.comparison-page__pedagogy-detail-list {
+  display: grid;
+  gap: var(--ps-space-2);
+}
+.comparison-page__pedagogy-detail-list p + p {
+  padding-top: var(--ps-space-2);
+  border-top: 1px solid var(--ps-divider);
+}
+.comparison-page__pedagogy-details b {
+  color: var(--ps-text);
+  font-weight: 720;
+}
+.comparison-page__pedagogy-principle {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ps-space-2);
+  margin-top: var(--ps-space-4);
+  padding-top: var(--ps-space-3);
+  border-top: 1px solid var(--ps-divider);
+  color: var(--ps-text-muted);
+  font-size: 0.65rem;
+  line-height: 1.5;
+}
+.comparison-page__pedagogy-principle svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+@media (max-width: 980px) {
+  .comparison-page__pedagogy-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .comparison-page__pedagogy-heading {
+    flex-direction: column;
+  }
+  .comparison-page__pedagogy-method {
+    align-self: flex-start;
+  }
+  .comparison-page__pedagogy-card {
+    padding: var(--ps-space-3);
+  }
+  .comparison-page__pedagogy-value-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--ps-space-1);
+  }
+}
+
+/* 11D2-E — consolidated audit + responsive/a11y polish */
+.comparison-page__audit-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-4);
+}
+
+.comparison-page__audit-header-main {
+  min-width: 0;
+}
+
+.comparison-page__audit-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ps-space-2);
+  margin-top: var(--ps-space-3);
+}
+
+.comparison-page__audit-summary-chip {
+  display: inline-grid;
+  grid-template-columns: auto auto;
+  align-items: baseline;
+  gap: 0.35rem;
+  min-height: 29px;
+  padding: 0.28rem 0.52rem;
+  border: 1px solid var(--ps-border);
+  border-radius: 999px;
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__audit-summary-chip strong {
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-page__audit-summary-chip span {
+  color: var(--ps-text-muted);
+  font-size: 0.62rem;
+  font-weight: 700;
+}
+
+.comparison-page__audit-summary-chip--danger {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--ps-danger) 36%,
+      var(--ps-border)
+    );
+}
+
+.comparison-page__audit-summary-chip--warning {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--ps-warning) 38%,
+      var(--ps-border)
+    );
+}
+
+.comparison-page__audit-summary-chip--info {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--ps-primary) 34%,
+      var(--ps-border)
+    );
+}
+
+.comparison-page__audit-body {
+  display: grid;
+  gap: var(--ps-space-4);
+  margin-top: var(--ps-space-4);
+}
+
+.comparison-page__audit-body[hidden] {
+  display: none;
+}
+
+.comparison-page__audit-group {
+  min-width: 0;
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  background: var(--ps-surface-subtle);
+}
+
+.comparison-page__audit-group-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  margin-bottom: var(--ps-space-3);
+}
+
+.comparison-page__audit-group-heading h3 {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-md);
+}
+
+.comparison-page__audit-group-count {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  padding: 0 var(--ps-space-2);
+  border: 1px solid var(--ps-border);
+  border-radius: 999px;
+  background: var(--ps-surface);
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+
+.comparison-page__audit-issues {
+  display: grid;
+  gap: var(--ps-space-3);
+}
+
+.comparison-page__audit-issues--coverage {
+  margin-bottom: var(--ps-space-3);
+}
+
+.comparison-page__audit-issue {
+  min-width: 0;
+  padding: var(--ps-space-3);
+  border: 1px solid var(--ps-border);
+  border-left-width: 3px;
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface);
+}
+
+.comparison-page__audit-issue--danger {
+  border-left-color: var(--ps-danger);
+}
+
+.comparison-page__audit-issue--warning {
+  border-left-color: var(--ps-warning);
+}
+
+.comparison-page__audit-issue-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+}
+
+.comparison-page__audit-issue-heading > span {
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-xs);
+  font-weight: 760;
+}
+
+.comparison-page__audit-issue code,
+.comparison-page__audit-excluded-list code {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 0.18rem 0.35rem;
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-sm);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text-muted);
+  font-size: 0.58rem;
+}
+
+.comparison-page__audit-issue-meta {
+  margin: var(--ps-space-2) 0 0 !important;
+  color: var(--ps-text-muted) !important;
+  font-size: 0.64rem !important;
+  font-weight: 700;
+}
+
+.comparison-page__audit-issue > p:last-child {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.5;
+}
+
+.comparison-page__audit-excluded-list {
+  display: grid;
+  gap: var(--ps-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.comparison-page__audit-excluded-list li {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  padding: var(--ps-space-3);
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface);
+}
+
+.comparison-page__audit-excluded-list li > div {
+  min-width: 0;
+}
+
+.comparison-page__audit-excluded-list strong {
+  color: var(--ps-text);
+  font-size: var(--ps-font-size-xs);
+}
+
+.comparison-page__audit-excluded-list p {
+  margin: var(--ps-space-1) 0 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.5;
+}
+
+.comparison-page__audit-clean {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ps-space-2);
+  padding: var(--ps-space-3);
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text-muted);
+}
+
+.comparison-page__audit-clean svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+
+.comparison-page__audit-clean p {
+  margin: 0;
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.5;
+}
+
+.comparison-page button:focus-visible,
+.comparison-page a:focus-visible,
+.comparison-page select:focus-visible,
+.comparison-page input:focus-visible,
+.comparison-page summary:focus-visible {
+  outline: 2px solid var(--ps-primary);
+  outline-offset: 2px;
+}
+
+@media (max-width: 700px) {
+  .comparison-page__audit-header {
+    flex-direction: column;
+  }
+
+  .comparison-page__audit-toggle {
+    align-self: flex-start;
+  }
+}
+
+@media (max-width: 520px) {
+  .comparison-page__audit-toggle {
+    width: 100%;
+  }
+
+  .comparison-page__audit-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .comparison-page__audit-summary-chip {
+    grid-template-columns: auto minmax(0, 1fr);
+    border-radius: var(--ps-radius-md);
+  }
+
+  .comparison-page__audit-group {
+    padding: var(--ps-space-3);
+  }
+
+  .comparison-page__audit-issue-heading,
+  .comparison-page__audit-excluded-list li {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comparison-page__audit-toggle svg,
+  .comparison-page__pedagogy-disclosure-action svg,
+  .comparison-page__summary-card {
+    transition: none;
+  }
+}

@@ -60,6 +60,15 @@ class PedagogyServiceTests(unittest.TestCase):
         self.assertIn("limitation", kinds)
         self.assertIn("outliers", kinds)
         self.assertFalse(pedagogy["generation"]["uses_ai"])
+        self.assertEqual(pedagogy["version"], "1.1")
+        self.assertEqual(
+            pedagogy["generation"]["presentation_contract"],
+            "language-neutral-evidence-v1",
+        )
+
+        for message in messages:
+            self.assertIn("message_code", message)
+            self.assertIsInstance(message["evidence"], dict)
 
     def test_trend_message_reports_exact_relative_change(self):
         points = []
@@ -94,6 +103,10 @@ class PedagogyServiceTests(unittest.TestCase):
         self.assertEqual(
             trend["evidence"]["pairwise"]["increasing"],
             2,
+        )
+        self.assertEqual(
+            trend["message_code"],
+            "trend",
         )
 
     def test_scaling_message_contains_explicit_limitation(self):
@@ -162,6 +175,62 @@ class PedagogyServiceTests(unittest.TestCase):
         self.assertIn(
             "no se interpreta como un valor cero",
             item["messages"][0]["text"],
+        )
+        self.assertEqual(
+            item["messages"][0]["message_code"],
+            "availability_not_counted",
+        )
+
+    def test_permission_denied_metric_is_explicit_and_not_unsupported(self):
+        analysis = {
+            "metrics": {
+                "EnergyPkg": {
+                    "status": "unavailable",
+                    "metric_status": "permission_denied",
+                    "coverage": {
+                        "rows_total": 30,
+                        "numeric_rows": 0,
+                    },
+                }
+            }
+        }
+        metrics = {
+            "EnergyPkg": {
+                "status": "permission_denied",
+                "reason": "measurement_permission_denied",
+                "unit": "J",
+                "availability": {
+                    "rows_total": 30,
+                    "numeric": 0,
+                    "unsupported": 0,
+                    "not_counted": 0,
+                    "permission_denied": 30,
+                    "missing": 0,
+                    "groups_total": 1,
+                    "groups_with_data": 0,
+                },
+                "points": [],
+            }
+        }
+
+        pedagogy = build_pedagogical_interpretation(
+            analysis,
+            metrics,
+        )
+        item = pedagogy["metrics"]["EnergyPkg"]
+        self.assertEqual(item["status"], "unavailable")
+
+        message = item["messages"][0]
+        self.assertEqual(
+            message["message_code"],
+            "availability_permission_denied",
+        )
+        lowered = message["text"].lower()
+        self.assertIn("permis", lowered)
+        self.assertNotIn("no está soportado", lowered)
+        self.assertIn(
+            "no se interpreta como un valor cero",
+            lowered,
         )
 
     def test_summary_prioritizes_primary_metrics(self):

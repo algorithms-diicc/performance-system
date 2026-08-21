@@ -107,6 +107,18 @@ function TestTypeAndParamsCard({
             const isSelected = selectedTaskType === task.id;
             const limitsInput = getLimits(task.id, "inputSize");
             const limitsSamples = getLimits(task.id, "samples");
+            const recommendedInputValues =
+              inputSizePresets[task.id] || [];
+            const recommendedInputMax =
+              recommendedInputValues.length > 0
+                ? Math.max(...recommendedInputValues)
+                : null;
+            const numericInputSize = Number(inputSize);
+            const exceedsRecommendedInput =
+              inputSize !== "" &&
+              Number.isFinite(numericInputSize) &&
+              recommendedInputMax !== null &&
+              numericInputSize > recommendedInputMax;
 
             return (
               <div
@@ -197,6 +209,18 @@ function TestTypeAndParamsCard({
                         </p>
 
                         {limitsInput && (
+                          <p className="param-range-contract">
+                            {t(
+                              "renderForm.benchmark.allowedRange",
+                              {
+                                min: limitsInput.min,
+                                max: limitsInput.max,
+                              }
+                            )}
+                          </p>
+                        )}
+
+                        {limitsInput && (
                           <div className="param-range-wrapper">
                             <input
                               type="range"
@@ -219,22 +243,54 @@ function TestTypeAndParamsCard({
                           </div>
                         )}
 
-                        <div className="param-suggestions">
-                          {(inputSizePresets[task.id] || []).map((preset) => (
-                            <button
-                              key={preset}
-                              type="button"
-                              className="param-chip"
-                              onClick={() =>
-                                onInputSizeSliderChange({
-                                  target: { value: preset },
-                                })
-                              }
-                            >
-                              {preset}
-                            </button>
-                          ))}
-                        </div>
+                        {recommendedInputValues.length > 0 && (
+                          <div className="param-suggestions-block">
+                            <span className="param-suggestions-label">
+                              {t(
+                                "renderForm.benchmark.recommendedValues"
+                              )}
+                            </span>
+
+                            <div className="param-suggestions">
+                              {recommendedInputValues.map((preset) => (
+                                <button
+                                  key={preset}
+                                  type="button"
+                                  className="param-chip"
+                                  onClick={() =>
+                                    onInputSizeSliderChange({
+                                      target: { value: preset },
+                                    })
+                                  }
+                                >
+                                  {preset}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {exceedsRecommendedInput && (
+                          <div
+                            className="param-advisory"
+                            role="status"
+                          >
+                            <strong>
+                              {t(
+                                "renderForm.benchmark.advancedInputTitle"
+                              )}
+                            </strong>
+                            <span>
+                              {t(
+                                "renderForm.benchmark.advancedInputWarning",
+                                {
+                                  recommendedMax:
+                                    recommendedInputMax,
+                                }
+                              )}
+                            </span>
+                          </div>
+                        )}
 
                         {paramErrors.inputSize && (
                           <p className="param-error">

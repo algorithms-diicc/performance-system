@@ -134,7 +134,11 @@ const arrangeRequests = ({
 };
 
 const renderPanel = async (options = {}) => {
-  const { onContextChange, ...requestOptions } = options || {};
+  const {
+    onContextChange,
+    expand = true,
+    ...requestOptions
+  } = options || {};
   arrangeRequests(requestOptions);
   render(
     <ReproducibilityPanel
@@ -142,12 +146,22 @@ const renderPanel = async (options = {}) => {
       onContextChange={onContextChange}
     />
   );
-  await screen.findByRole("heading", { name: "Reproducibilidad" });
+  await screen.findByRole("heading", {
+    name: "Reproducibilidad y trazabilidad experimental",
+  });
   await waitFor(() =>
     expect(
       screen.queryByText("Cargando identidad reproducible…")
     ).not.toBeInTheDocument()
   );
+
+  if (expand) {
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Mostrar detalles",
+      })
+    );
+  }
 };
 
 describe("ReproducibilityPanel", () => {
@@ -158,6 +172,51 @@ describe("ReproducibilityPanel", () => {
       configurable: true,
       value: { writeText: jest.fn().mockResolvedValue(undefined) },
     });
+  });
+
+  test("starts collapsed without delaying requests, context, or refetching on expand", async () => {
+    const onContextChange = jest.fn();
+
+    await renderPanel({
+      onContextChange,
+      expand: false,
+    });
+
+    const toggle = screen.getByRole("button", {
+      name: "Mostrar detalles",
+    });
+
+    expect(toggle).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
+    expect(
+      screen.queryByRole("heading", {
+        name: "Configuración",
+      })
+    ).not.toBeInTheDocument();
+
+    expect(axios.get).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(onContextChange).toHaveBeenLastCalledWith({
+        submissionId: 42,
+        sourceFilename: "std_sort.cpp",
+      })
+    );
+
+    fireEvent.click(toggle);
+
+    expect(
+      screen.getByRole("button", {
+        name: "Ocultar detalles",
+      })
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByRole("heading", {
+        name: "Configuración",
+      })
+    ).toBeInTheDocument();
+    expect(axios.get).toHaveBeenCalledTimes(2);
   });
 
   test("loads manifest and trace independently by codename", async () => {

@@ -78,6 +78,7 @@ export const COMPARISON_DIMENSIONS = Object.freeze([
   ["profile", "Perfil"],
   ["protocol", "Protocolo"],
   ["compilerFlags", "Flags del compilador"],
+  ["sourceProvenance", "Procedencia"],
   ["inputSizes", "Tamaños de entrada"],
   ["metrics", "Métricas"],
 ]);
@@ -115,6 +116,174 @@ const uniqueNumericDomain = (values) =>
         .filter((value) => value !== null)
     )
   ).sort((left, right) => left - right);
+
+export const buildComparisonSummaryCards = (
+  metrics,
+  compatibility = null
+) => {
+  const metricMap =
+    metrics && typeof metrics === "object"
+      ? metrics
+      : {};
+  const excluded = new Map(
+    (
+      Array.isArray(
+        compatibility?.excludedMetrics
+      )
+        ? compatibility.excludedMetrics
+        : []
+    )
+      .map((item) => [
+        String(item?.metric || "").trim(),
+        {
+          reasonCode:
+            String(
+              item?.reasonCode || ""
+            ).trim() || null,
+        },
+      ])
+      .filter(([metric]) => metric)
+  );
+
+  return TARGET_METRICS.map((metric) => {
+    const unavailable = () => ({
+      metric,
+      available: false,
+      unit: "",
+      inputSize: null,
+      domain: [],
+      series: [],
+      reasonCode:
+        excluded.get(metric)?.reasonCode ||
+        null,
+    });
+    const metricData = metricMap[metric];
+
+    if (!metricData || typeof metricData !== "object") {
+      return unavailable();
+    }
+
+    const domain = uniqueNumericDomain(
+      metricData.commonInputSizes
+    );
+    const sourceSeries = Array.isArray(
+      metricData.series
+    )
+      ? metricData.series
+      : [];
+
+    if (!domain.length || !sourceSeries.length) {
+      return unavailable();
+    }
+
+    const series = sourceSeries.map((item) => {
+      const points = domain.map((inputSize) => {
+        const point = (
+          Array.isArray(item?.points)
+            ? item.points
+            : []
+        ).find(
+          (candidate) =>
+            finiteNumber(
+              candidate?.inputSize
+            ) === inputSize
+        );
+        const value =
+          finiteNumber(point?.median);
+
+        return value === null
+          ? null
+          : {
+              inputSize,
+              value,
+            };
+      });
+
+      if (points.some((point) => point === null)) {
+        return null;
+      }
+
+      return {
+        publicId: item?.publicId ?? null,
+        codename: cleanCodename(
+          item?.codename
+        ),
+        sourceFilename:
+          String(
+            item?.sourceFilename || ""
+          ).trim() || null,
+        value:
+          points[points.length - 1].value,
+        points,
+      };
+    });
+
+    if (
+      series.length === 0 ||
+      series.some((item) => item === null)
+    ) {
+      return unavailable();
+    }
+
+    return {
+      metric,
+      available: true,
+      unit:
+        String(metricData?.unit || "").trim(),
+      inputSize: domain[domain.length - 1],
+      domain,
+      series,
+      reasonCode: null,
+    };
+  });
+};
+
+
+export const comparisonStatusVariant = (
+  compatibility
+) => {
+  const contract =
+    compatibility &&
+    typeof compatibility === "object"
+      ? compatibility
+      : {};
+  const status =
+    String(contract.status || "")
+      .trim()
+      .toUpperCase();
+
+  if (status !== "LIMITED") {
+    return status;
+  }
+
+  const blockers = Array.isArray(
+    contract.blockers
+  )
+    ? contract.blockers
+    : [];
+  const warnings = Array.isArray(
+    contract.warnings
+  )
+    ? contract.warnings
+    : [];
+
+  const metricCoverageOnly =
+    blockers.length === 0 &&
+    warnings.length > 0 &&
+    warnings.every(
+      (issue) =>
+        String(
+          issue?.dimension || ""
+        )
+          .trim()
+          .toLowerCase() === "metrics"
+    );
+
+  return metricCoverageOnly
+    ? "LIMITED_METRIC_COVERAGE"
+    : "LIMITED";
+};
+
 
 export const parseExecutionQuery = (
   value,
@@ -543,6 +712,56 @@ export const buildComparisonInterpretation = ({
   }
 
   return messages;
+};
+
+
+export const COMPARISON_METRIC_CATEGORIES = Object.freeze([
+  { id: "primary", metrics: TARGET_METRICS },
+  {
+    id: "performance",
+    metrics: [
+      "DurationTime", "TaskClock", "CpuClock", "Instructions",
+      "IPC", "BranchMissRate", "CacheMissRate",
+    ],
+  },
+  {
+    id: "cache",
+    metrics: [
+      "CacheMissRate", "CacheMissesPerMI", "CacheMisses",
+      "L1DcacheLoads", "L1DcacheLoadMisses", "L1DcacheStores",
+      "LLCLoads", "LLCLoadMisses", "LLCStores", "LLCStoreMisses",
+    ],
+  },
+  {
+    id: "cpu",
+    metrics: [
+      "Instructions", "IPC", "BranchMissRate", "BranchMissesPerMI",
+      "BranchMisses", "TaskClock", "CpuClock",
+    ],
+  },
+  { id: "system", metrics: ["PageFaults", "MajorFaults"] },
+  { id: "energy", metrics: ["EnergyPkg", "EnergyCores", "EnergyRAM"] },
+]);
+
+export const buildComparisonMetricCategories = (orderedMetrics) => {
+  const ordered = (Array.isArray(orderedMetrics) ? orderedMetrics : [])
+    .filter((metric, index, values) =>
+      typeof metric === "string" && metric && values.indexOf(metric) === index
+    );
+  const available = new Set(ordered);
+  const categorized = new Set();
+
+  const categories = COMPARISON_METRIC_CATEGORIES.map((category) => {
+    const metrics = category.metrics.filter((metric) => available.has(metric));
+    if (category.id !== "primary") {
+      metrics.forEach((metric) => categorized.add(metric));
+    }
+    return { id: category.id, metrics };
+  });
+
+  const other = ordered.filter((metric) => !categorized.has(metric));
+  if (other.length) categories.push({ id: "other", metrics: other });
+  return categories;
 };
 
 export const orderCommonMetrics = (commonMetrics, metrics) => {

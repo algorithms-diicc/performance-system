@@ -12,6 +12,7 @@ import {
   FileCheck2,
   LoaderCircle,
   Play,
+  Plus,
   RotateCcw,
   Settings2,
   SlidersHorizontal,
@@ -43,6 +44,7 @@ function StatusPanel({
   isSubmitDisabled,
   onGoToResults,
   onReset,
+  onPrepareNewAnalysis,
   onPrepareRetry,
   onRetryPolling,
 }) {
@@ -123,6 +125,7 @@ function StatusPanel({
           onToggleTechnical={() =>
             setShowTechnicalDetails((prev) => !prev)
           }
+          onPrepareNewAnalysis={onPrepareNewAnalysis}
         />
       )}
 
@@ -290,6 +293,7 @@ function RunningPanel({
   messages,
   showTechnicalDetails,
   onToggleTechnical,
+  onPrepareNewAnalysis,
   t,
 }) {
   return (
@@ -327,8 +331,23 @@ function RunningPanel({
         t={t}
       />
 
+      <div className="rf-status-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onPrepareNewAnalysis}
+        >
+          <Plus size={15} />
+          {t("renderForm.workflow.running.prepareAnother")}
+        </button>
+      </div>
+
       <p className="rf-status-hint rf-status-hint-running">
         {t("renderForm.workflow.running.hint")}
+      </p>
+
+      <p className="rf-status-hint">
+        {t("renderForm.workflow.running.prepareAnotherHint")}
       </p>
     </>
   );

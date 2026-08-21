@@ -130,6 +130,20 @@ const EXECUTION_PROFILE_SAMPLES = {
   exhaustivo: 50,
 };
 
+const inferExecutionProfileFromSamples = (value) => {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric)) {
+    return "personalizado";
+  }
+
+  const match = Object.entries(
+    EXECUTION_PROFILE_SAMPLES
+  ).find(([, profileSamples]) => profileSamples === numeric);
+
+  return match?.[0] || "personalizado";
+};
+
 /**
  * Nombres pedagógicos. Los IDs internos se conservan porque forman parte
  * del contrato existente con el backend.
@@ -883,7 +897,9 @@ function RenderFormPage({ currentUser }) {
     const value = raw === "" ? "" : Number(raw);
 
     setSamples(value);
-    setExecutionProfile("personalizado");
+    setExecutionProfile(
+      inferExecutionProfileFromSamples(value)
+    );
     validateParam("samples", raw);
   };
 
@@ -891,7 +907,9 @@ function RenderFormPage({ currentUser }) {
     const value = Number(e.target.value);
 
     setSamples(value);
-    setExecutionProfile("personalizado");
+    setExecutionProfile(
+      inferExecutionProfileFromSamples(value)
+    );
     validateParam("samples", value);
   };
 
@@ -1141,6 +1159,19 @@ function RenderFormPage({ currentUser }) {
           queuedFiles.length > 0 &&
           queuedFiles[0]?.length > 0
         ) {
+          try {
+            if (typeof window !== "undefined") {
+              window.localStorage.removeItem(
+                RENDER_FORM_DRAFT_KEY
+              );
+            }
+          } catch (error) {
+            console.warn(
+              "No se pudo limpiar el borrador tras registrar la ejecución:",
+              error
+            );
+          }
+
           setExecutionSnapshot((previous) => ({
             ...(previous || {}),
             submissionId: response.data?.submissionId ?? null,
@@ -1215,6 +1246,17 @@ function RenderFormPage({ currentUser }) {
     }
     setExecutionSnapshot(null);
     setIsSubmitting(false);
+  };
+
+  /**
+   * Libera la pantalla para preparar otro experimento.
+   *
+   * No cancela ni modifica las Executions ya persistidas. El trabajo
+   * anterior continúa QUEUED/RUNNING/PROCESSING y permanece accesible
+   * desde Historial.
+   */
+  const handlePrepareNewAnalysis = () => {
+    handleResetForm();
   };
 
   const handleGoToResults = () => {
@@ -1618,6 +1660,7 @@ function RenderFormPage({ currentUser }) {
             isSubmitDisabled={isSubmitDisabled}
             onGoToResults={handleGoToResults}
             onReset={handleResetForm}
+            onPrepareNewAnalysis={handlePrepareNewAnalysis}
             onPrepareRetry={handlePrepareRetry}
             onRetryPolling={retryPolling}
           />

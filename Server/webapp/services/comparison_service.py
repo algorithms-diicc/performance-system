@@ -4,6 +4,8 @@ import math
 from pathlib import PurePosixPath
 import re
 
+from .comparison_pedagogy_service import build_comparison_pedagogy
+
 
 SCHEMA_VERSION = "1.0"
 TARGET_METRICS = (
@@ -113,7 +115,7 @@ def build_comparison(execution_contexts, results_payloads):
     else:
         status = "COMPATIBLE"
 
-    return {
+    payload = {
         "schemaVersion": SCHEMA_VERSION,
         "compatibility": {
             "status": status,
@@ -132,6 +134,8 @@ def build_comparison(execution_contexts, results_payloads):
             else metric_result["metrics"]
         ),
     }
+    payload["pedagogy"] = build_comparison_pedagogy(payload)
+    return payload
 
 
 def _validated_sequence(value, name):

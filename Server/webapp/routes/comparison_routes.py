@@ -11,6 +11,15 @@ from ..services.comparison_candidates_service import (
     build_historical_candidate,
     build_unavailable_candidate,
 )
+from ..services.ai_runtime import AIInvalidLanguageError
+from ..services.comparison_ai_service import (
+    ComparisonAIError,
+    ComparisonAINotConfiguredError,
+    ComparisonAIOutputRejectedError,
+    ComparisonAIProviderError,
+    ComparisonAIUnavailableError,
+    generate_comparison_ai_explanation,
+)
 from ..services.comparison_service import (
     ComparisonResultsInvalid,
     build_comparison,
@@ -64,20 +73,17 @@ def _comparison_error(status_code, code, message):
     )
 
 
-def _validated_codenames(*, maximum, count_message):
-    body = request.get_json(silent=True)
-    if not isinstance(body, dict) or set(body) != {"executions"}:
-        _comparison_error(
-            400,
-            "INVALID_COMPARISON_REQUEST",
-            "La solicitud debe contener únicamente el campo executions.",
-        )
-
-    values = body.get("executions")
+def _validated_execution_values(
+    values,
+    *,
+    maximum,
+    count_message,
+    error_code="INVALID_COMPARISON_REQUEST",
+):
     if not isinstance(values, list) or not 2 <= len(values) <= maximum:
         _comparison_error(
             400,
-            "INVALID_COMPARISON_REQUEST",
+            error_code,
             count_message,
         )
 
@@ -86,9 +92,10 @@ def _validated_codenames(*, maximum, count_message):
         if not isinstance(value, str):
             _comparison_error(
                 400,
-                "INVALID_COMPARISON_REQUEST",
+                error_code,
                 "Cada execution debe identificarse mediante un codename válido.",
             )
+
         codename = value.strip()
         if (
             not codename
@@ -98,18 +105,83 @@ def _validated_codenames(*, maximum, count_message):
         ):
             _comparison_error(
                 400,
-                "INVALID_COMPARISON_REQUEST",
+                error_code,
                 "Cada execution debe identificarse mediante un codename válido.",
             )
+
         codenames.append(codename)
 
     if len(set(codenames)) != len(codenames):
         _comparison_error(
             400,
-            "INVALID_COMPARISON_REQUEST",
+            error_code,
             "No se permiten codenames duplicados.",
         )
+
     return codenames
+
+
+def _validated_codenames(*, maximum, count_message):
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"executions"}:
+        _comparison_error(
+            400,
+            "INVALID_COMPARISON_REQUEST",
+            "La solicitud debe contener únicamente el campo executions.",
+        )
+
+    return _validated_execution_values(
+        body.get("executions"),
+        maximum=maximum,
+        count_message=count_message,
+    )
+
+
+def _validated_ai_request():
+    body = request.get_json(silent=True)
+    allowed = {"executions", "language", "force"}
+
+    if (
+        not isinstance(body, dict)
+        or "executions" not in body
+        or not set(body).issubset(allowed)
+    ):
+        _comparison_error(
+            400,
+            "INVALID_COMPARISON_AI_REQUEST",
+            (
+                "La solicitud de IA comparativa sólo admite executions, "
+                "language y force."
+            ),
+        )
+
+    language = body.get("language", "es")
+    force = body.get("force", False)
+
+    if not isinstance(language, str):
+        _comparison_error(
+            400,
+            "INVALID_COMPARISON_AI_REQUEST",
+            "language debe ser un string.",
+        )
+
+    if not isinstance(force, bool):
+        _comparison_error(
+            400,
+            "INVALID_COMPARISON_AI_REQUEST",
+            "force debe ser booleano.",
+        )
+
+    codenames = _validated_execution_values(
+        body.get("executions"),
+        maximum=4,
+        count_message=(
+            "La comparación requiere entre dos y cuatro ejecuciones."
+        ),
+        error_code="INVALID_COMPARISON_AI_REQUEST",
+    )
+
+    return codenames, language, force
 
 
 def _validated_execution_codenames():
@@ -278,6 +350,84 @@ def create_comparison():
             422,
             "COMPARISON_RESULTS_INVALID",
             "Los resultados estructurados no cumplen el contrato esperado.",
+        )
+
+    return jsonify(payload), 200
+
+
+@comparisons_bp.route(
+    "/comparisons/ai-explanation",
+    methods=["POST"],
+)
+@login_required
+def create_comparison_ai_explanation():
+    codenames, language, force = _validated_ai_request()
+
+    # Gate all-or-nothing: no se carga evidencia antes de autorizar
+    # la selección completa.
+    _authorize_all(codenames)
+
+    execution_contexts, results_payloads = _load_selected_comparison_inputs(
+        codenames
+    )
+
+    try:
+        comparison_payload = build_comparison(
+            execution_contexts,
+            results_payloads,
+        )
+    except ComparisonResultsInvalid:
+        _comparison_error(
+            422,
+            "COMPARISON_RESULTS_INVALID",
+            "Los resultados estructurados no cumplen el contrato esperado.",
+        )
+
+    try:
+        payload = generate_comparison_ai_explanation(
+            static_dir=STATIC_DIR,
+            comparison_payload=comparison_payload,
+            force=force,
+            language=language,
+        )
+    except AIInvalidLanguageError:
+        _comparison_error(
+            400,
+            "INVALID_AI_LANGUAGE",
+            "El idioma solicitado para la explicación no está soportado.",
+        )
+    except ComparisonAIUnavailableError:
+        _comparison_error(
+            422,
+            "COMPARISON_AI_UNAVAILABLE",
+            (
+                "La comparación no posee una base experimental válida "
+                "suficiente para generar una síntesis asistida."
+            ),
+        )
+    except ComparisonAINotConfiguredError:
+        _comparison_error(
+            503,
+            "AI_NOT_CONFIGURED",
+            "La explicación con IA no está configurada.",
+        )
+    except ComparisonAIOutputRejectedError:
+        _comparison_error(
+            502,
+            "AI_OUTPUT_REJECTED",
+            "La explicación generada no superó las validaciones.",
+        )
+    except ComparisonAIProviderError:
+        _comparison_error(
+            502,
+            "AI_PROVIDER_ERROR",
+            "El proveedor de IA no está disponible temporalmente.",
+        )
+    except ComparisonAIError:
+        _comparison_error(
+            500,
+            "COMPARISON_AI_ERROR",
+            "No fue posible generar la explicación comparativa con IA.",
         )
 
     return jsonify(payload), 200

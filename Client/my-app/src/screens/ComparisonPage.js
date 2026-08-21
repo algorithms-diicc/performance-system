@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import axios from "axios";
 import {
   Link,
@@ -11,11 +11,10 @@ import {
   ArrowLeft,
   BarChart3,
   CheckCircle2,
+  ChevronDown,
   History,
   Info,
   Plus,
-  RotateCcw,
-  SlidersHorizontal,
   X,
   XCircle,
 } from "lucide-react";
@@ -28,16 +27,24 @@ import {
 import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
 import { useI18n } from "../i18n";
+import ComparisonSectionNav from "./components/ComparisonSectionNav";
+import ComparisonSummaryCard from "./components/ComparisonSummaryCard";
+import ComparisonMetricCard from "./components/ComparisonMetricCard";
+import ComparisonFiltersPanel from "./components/ComparisonFiltersPanel";
+import ComparisonPedagogyPanel from "./components/ComparisonPedagogyPanel";
+import ComparisonAIAnalysisPanel from "./components/ComparisonAIAnalysisPanel";
+import ComparisonAuditPanel from "./components/ComparisonAuditPanel";
 import {
   appendHistoricalExecution,
   buildComparisonInterpretation,
   buildComparisonPath,
+  buildComparisonSummaryCards,
+  buildComparisonMetricCategories,
   buildComparisonTraces,
   buildUniqueSeriesLabels,
   canAddHistoricalCandidate,
-  COMPARISON_DIMENSIONS,
-  comparisonDimensionLabel,
-  comparisonDimensionPresentation,
+  TARGET_METRICS,
+  comparisonStatusVariant,
   defaultComparisonMetric,
   filterHistoricalCandidates,
   formatHistoricalCandidateDate,
@@ -59,6 +66,14 @@ const STATUS_PRESENTATION = Object.freeze({
     tone: "success",
     labelKey: "comparisonPage.status.compatible.label",
     textKey: "comparisonPage.status.compatible.text",
+  },
+  LIMITED_METRIC_COVERAGE: {
+    icon: CheckCircle2,
+    tone: "info",
+    labelKey:
+      "comparisonPage.status.limitedCoverage.label",
+    textKey:
+      "comparisonPage.status.limitedCoverage.text",
   },
   LIMITED: {
     icon: AlertTriangle,
@@ -356,8 +371,10 @@ const ComparisonPage = ({ currentUser }) => {
     error: null,
   });
   const [selectedMetric, setSelectedMetric] = useState("");
+  const [activeMetricCategory, setActiveMetricCategory] = useState("primary");
   const [aggregation, setAggregation] = useState("median");
   const [showDispersion, setShowDispersion] = useState(true);
+  const [xScale, setXScale] = useState("linear");
   const [range, setRange] = useState({ minimum: null, maximum: null });
   const [historyOpen, setHistoryOpen] = useState(false);
   const [candidateRequestVersion, setCandidateRequestVersion] = useState(0);
@@ -367,8 +384,21 @@ const ComparisonPage = ({ currentUser }) => {
     error: null,
   });
   const [showIncompatible, setShowIncompatible] = useState(false);
+  const [auditOpen, setAuditOpen] = useState(false);
+  const [aiState, setAiState] = useState({
+    kind: "idle",
+    data: null,
+    errorKey: "",
+  });
+  const aiRequestSerial = useRef(0);
   const plotTheme = usePlotTheme();
   const fallbackPath = roleFallbackPath(currentUser);
+  const aiLanguage =
+    String(locale || "es")
+      .toLowerCase()
+      .startsWith("en")
+      ? "en"
+      : "es";
 
   useEffect(() => {
     const requestQuery = parseExecutionQuery(new URLSearchParams(queryKey));
@@ -412,6 +442,15 @@ const ComparisonPage = ({ currentUser }) => {
     setCandidateState({ kind: "idle", data: null, error: null });
     setShowIncompatible(false);
   }, [queryKey]);
+
+  useEffect(() => {
+    aiRequestSerial.current += 1;
+    setAiState({
+      kind: "idle",
+      data: null,
+      errorKey: "",
+    });
+  }, [queryKey, aiLanguage, requestVersion]);
 
   useEffect(() => {
     if (!historyOpen) return undefined;
@@ -466,6 +505,30 @@ const ComparisonPage = ({ currentUser }) => {
     () => orderCommonMetrics(compatibility.commonMetrics, metrics),
     [compatibility.commonMetrics, metrics]
   );
+  const metricCategories = useMemo(
+    () => buildComparisonMetricCategories(orderedMetrics),
+    [orderedMetrics]
+  );
+  const activeCategory =
+    metricCategories.find(
+      (category) => category.id === activeMetricCategory
+    ) ||
+    metricCategories[0] ||
+    null;
+  const visibleCategoryMetrics =
+    activeCategory?.metrics || [];
+
+  useEffect(() => {
+    if (
+      metricCategories.length > 0 &&
+      !metricCategories.some(
+        (category) => category.id === activeMetricCategory
+      )
+    ) {
+      setActiveMetricCategory(metricCategories[0].id);
+    }
+  }, [metricCategories, activeMetricCategory]);
+
   const fallbackMetric = defaultComparisonMetric(
     compatibility.commonMetrics,
     metrics
@@ -475,10 +538,44 @@ const ComparisonPage = ({ currentUser }) => {
     : fallbackMetric;
   const metricData = metrics[activeMetric] || null;
   const normalizedRange = normalizeInputRange(
-    metricData?.commonInputSizes,
+    compatibility.commonInputSizes,
     range.minimum,
     range.maximum
   );
+  const canUseLogScale =
+    normalizedRange.domain.length > 0 &&
+    normalizedRange.domain.every(
+      (value) => value > 0
+    );
+  const rangeIsActive =
+    normalizedRange.domain.length > 0 &&
+    (
+      normalizedRange.minimum !== normalizedRange.domain[0] ||
+      normalizedRange.maximum !==
+        normalizedRange.domain[normalizedRange.domain.length - 1]
+    );
+  const activeFilterCount = [
+    aggregation !== "median",
+    showDispersion !== true,
+    xScale !== "linear",
+    rangeIsActive,
+  ].filter(Boolean).length;
+
+  useEffect(() => {
+    if (xScale === "log" && !canUseLogScale) {
+      setXScale("linear");
+    }
+  }, [xScale, canUseLogScale]);
+
+  const resetComparisonFilters = () => {
+    setAggregation("median");
+    setShowDispersion(true);
+    setXScale("linear");
+    setRange({
+      minimum: null,
+      maximum: null,
+    });
+  };
   const traces = buildComparisonTraces({
     metricData,
     aggregation,
@@ -493,9 +590,38 @@ const ComparisonPage = ({ currentUser }) => {
   const status = String(
     compatibility.status || ""
   ).toUpperCase();
+  const statusVariant =
+    comparisonStatusVariant(
+      compatibility
+    );
   const statusPresentation =
-    comparisonStatusPresentation(status, t);
+    comparisonStatusPresentation(
+      statusVariant,
+      t
+    );
   const StatusIcon = statusPresentation.icon;
+
+  useEffect(() => {
+    if (
+      ["COMPATIBLE", "LIMITED", "INCOMPATIBLE"].includes(
+        status
+      )
+    ) {
+      setAuditOpen(
+        status === "INCOMPATIBLE" ||
+          (
+            status === "LIMITED" &&
+            statusVariant !==
+              "LIMITED_METRIC_COVERAGE"
+          )
+      );
+    }
+  }, [
+    status,
+    statusVariant,
+    queryKey,
+  ]);
+
   const canRenderCharts = [
     "COMPATIBLE",
     "LIMITED",
@@ -510,15 +636,26 @@ const ComparisonPage = ({ currentUser }) => {
     currentUser,
     t
   );
+  const structuredPedagogy =
+    data?.pedagogy?.generation
+      ?.presentation_contract ===
+      "language-neutral-comparison-evidence-v1" &&
+    data?.pedagogy?.metrics &&
+    typeof data.pedagogy.metrics === "object" &&
+    Object.keys(data.pedagogy.metrics).length > 0
+      ? data.pedagogy
+      : null;
   const interpretationMessages =
-    buildComparisonInterpretation({
-      compatibility,
-      selectedMetric: activeMetric,
-      metricData,
-      aggregation,
-      showDispersion,
-      t,
-    });
+    structuredPedagogy
+      ? []
+      : buildComparisonInterpretation({
+          compatibility,
+          selectedMetric: activeMetric,
+          metricData,
+          aggregation,
+          showDispersion,
+          t,
+        });
   const canBrowseHistorical =
     ["COMPATIBLE", "LIMITED"].includes(status) &&
     query.executions.length >= 2 &&
@@ -536,6 +673,103 @@ const ComparisonPage = ({ currentUser }) => {
         String(item?.status || "").toUpperCase()
       )
   );
+  const summaryCards =
+    buildComparisonSummaryCards(
+      metrics,
+      compatibility
+    );
+  const summaryAvailableCount =
+    summaryCards.filter(
+      (card) => card.available
+    ).length;
+
+  const aiAvailable =
+    canRenderCharts &&
+    orderedMetrics.length > 0;
+
+  const aiUnavailableKind =
+    status === "INCOMPATIBLE"
+      ? "incompatible"
+      : aiAvailable
+        ? ""
+        : "noEvidence";
+
+  const handleGenerateComparisonAI = async () => {
+    if (!aiAvailable) return;
+
+    const previous = aiState.data;
+    const serial = aiRequestSerial.current + 1;
+    aiRequestSerial.current = serial;
+
+    setAiState({
+      kind: "loading",
+      data: previous,
+      errorKey: "",
+    });
+
+    try {
+      const response = await axios.post(
+        `${serverURL}api/comparisons/ai-explanation`,
+        {
+          executions: query.executions,
+          language: aiLanguage,
+          force: Boolean(previous),
+        },
+        { withCredentials: true }
+      );
+
+      if (aiRequestSerial.current !== serial) {
+        return;
+      }
+
+      setAiState({
+        kind: "success",
+        data: response.data || {},
+        errorKey: "",
+      });
+    } catch (error) {
+      if (aiRequestSerial.current !== serial) {
+        return;
+      }
+
+      const code = error?.response?.data?.error?.code;
+      const statusCode = error?.response?.status;
+
+      const byCode = {
+        AI_NOT_CONFIGURED:
+          "comparisonPage.ai.errors.notConfigured",
+        AI_OUTPUT_REJECTED:
+          "comparisonPage.ai.errors.outputRejected",
+        AI_PROVIDER_ERROR:
+          "comparisonPage.ai.errors.provider",
+        INVALID_AI_LANGUAGE:
+          "comparisonPage.ai.errors.invalidLanguage",
+        COMPARISON_AI_UNAVAILABLE:
+          "comparisonPage.ai.errors.unavailable",
+      };
+
+      let errorKey =
+        byCode[code] ||
+        "comparisonPage.ai.errors.generic";
+
+      if (!error?.response) {
+        errorKey =
+          "comparisonPage.ai.errors.network";
+      } else if (statusCode === 401) {
+        errorKey =
+          "comparisonPage.ai.errors.unauthorized";
+      } else if (statusCode === 403) {
+        errorKey =
+          "comparisonPage.ai.errors.forbidden";
+      }
+
+      setAiState({
+        kind: "error",
+        data: previous,
+        errorKey,
+      });
+    }
+  };
 
   if (!query.valid) {
     return (
@@ -664,8 +898,11 @@ const ComparisonPage = ({ currentUser }) => {
           </div>
         </section>
 
+        <ComparisonSectionNav />
+
         <section
-          className="comparison-page__section"
+          id="comparison-implementations"
+          className="comparison-page__section comparison-page__major-section"
           aria-labelledby="comparison-implementations-title"
         >
           <div className="comparison-page__section-heading comparison-page__section-heading--actions">
@@ -1073,207 +1310,127 @@ const ComparisonPage = ({ currentUser }) => {
           </section>
         )}
 
-        <section
-          className="comparison-page__section"
-          aria-labelledby="comparison-dimensions-title"
-        >
-          <div className="comparison-page__section-heading">
-            <span className="comparison-page__eyebrow">
-              {t(
-                "comparisonPage.dimensions.eyebrow"
-              )}
-            </span>
-            <h2 id="comparison-dimensions-title">
-              {t(
-                "comparisonPage.dimensions.title"
-              )}
-            </h2>
-          </div>
-          <dl className="comparison-page__dimension-grid">
-            {COMPARISON_DIMENSIONS.map(
-              ([key]) => {
-                const presentation =
-                  comparisonDimensionPresentation(
-                    compatibility
-                      .dimensions?.[key]
-                      ?.status,
-                    t
-                  );
-                return (
-                  <div
-                    className="comparison-page__dimension"
-                    key={key}
-                  >
-                    <dt>
-                      {comparisonDimensionLabel(
-                        key,
-                        t
-                      )}
-                    </dt>
-                    <dd
-                      className={`comparison-page__dimension-value comparison-page__dimension-value--${presentation.tone}`}
-                    >
-                      {presentation.label}
-                    </dd>
-                  </div>
-                );
-              }
-            )}
-          </dl>
-        </section>
-
-        {(Array.isArray(compatibility.blockers) &&
-          compatibility.blockers.length > 0) ||
-        (Array.isArray(compatibility.warnings) &&
-          compatibility.warnings.length > 0) ? (
+        {canRenderCharts && (
           <section
-            className="comparison-page__section"
-            aria-labelledby="comparison-observations-title"
+            id="comparison-summary"
+            className="comparison-page__section comparison-page__summary comparison-page__major-section"
+            aria-labelledby="comparison-summary-title"
           >
-            <div className="comparison-page__section-heading">
-              <span className="comparison-page__eyebrow">
-                {t(
-                  "comparisonPage.observations.eyebrow"
-                )}
-              </span>
-              <h2 id="comparison-observations-title">
-                {t(
-                  "comparisonPage.observations.title"
-                )}
-              </h2>
-            </div>
-            <div className="comparison-page__issues">
-              {Array.isArray(
-                compatibility.blockers
-              ) &&
-                compatibility.blockers.map(
-                  (issue, index) => (
-                    <div
-                      className="comparison-page__issue comparison-page__issue--danger"
-                      key={`blocker-${index}`}
-                    >
-                      <strong>
-                        {t(
-                          "comparisonPage.observations.blocker"
-                        )}
-                      </strong>
-                      <p>
-                        {issue?.message ||
-                          t(
-                            "comparisonPage.observations.blockerFallback"
-                          )}
-                      </p>
-                    </div>
-                  )
-                )}
-              {Array.isArray(
-                compatibility.warnings
-              ) &&
-                compatibility.warnings.map(
-                  (issue, index) => (
-                    <div
-                      className="comparison-page__issue comparison-page__issue--warning"
-                      key={`warning-${index}`}
-                    >
-                      <strong>
-                        {t(
-                          "comparisonPage.observations.limitation"
-                        )}
-                      </strong>
-                      <p>
-                        {issue?.message ||
-                          t(
-                            "comparisonPage.observations.warningFallback"
-                          )}
-                      </p>
-                    </div>
-                  )
-                )}
-            </div>
-          </section>
-        ) : null}
-
-        {Array.isArray(compatibility.excludedMetrics) &&
-          compatibility.excludedMetrics.length > 0 && (
-            <section
-              className="comparison-page__section comparison-page__excluded"
-              aria-labelledby="comparison-excluded-title"
-            >
-              <div className="comparison-page__section-heading">
+            <div className="comparison-page__section-heading comparison-page__summary-heading">
+              <div>
                 <span className="comparison-page__eyebrow">
                   {t(
-                    "comparisonPage.excluded.eyebrow"
+                    "comparisonPage.summary.eyebrow"
                   )}
                 </span>
-                <h2 id="comparison-excluded-title">
+                <h2 id="comparison-summary-title">
                   {t(
-                    "comparisonPage.excluded.title"
+                    "comparisonPage.summary.title"
                   )}
                 </h2>
+                <p className="comparison-page__section-description">
+                  {t(
+                    "comparisonPage.summary.description"
+                  )}
+                </p>
+              </div>
+
+              <div
+                className="comparison-page__summary-coverage"
+                role="status"
+              >
+                <strong>
+                  {summaryAvailableCount}/
+                  {TARGET_METRICS.length}
+                </strong>
+                <span>
+                  {t(
+                    "comparisonPage.summary.coverageLabel"
+                  )}
+                </span>
+              </div>
+            </div>
+
+            <div className="comparison-page__summary-grid">
+              {summaryCards.map((card) => (
+                <ComparisonSummaryCard
+                  key={card.metric}
+                  card={card}
+                />
+              ))}
+            </div>
+
+            <div className="comparison-page__summary-note">
+              <Info
+                size={15}
+                aria-hidden="true"
+              />
+              <span>
+                {t(
+                  "comparisonPage.summary.noRanking"
+                )}
+              </span>
+            </div>
+          </section>
+        )}
+
+        {structuredPedagogy ? (
+          <ComparisonPedagogyPanel
+            pedagogy={structuredPedagogy}
+          />
+        ) : (
+          interpretationMessages.length > 0 && (
+            <section
+              id="comparison-interpretation"
+              className="comparison-page__section comparison-page__guidance comparison-page__major-section"
+              aria-labelledby="comparison-guidance-title"
+            >
+              <div className="comparison-page__section-heading comparison-page__guidance-heading">
+                <div>
+                  <span className="comparison-page__eyebrow">
+                    {t(
+                      "comparisonPage.guidance.eyebrow"
+                    )}
+                  </span>
+                  <h2 id="comparison-guidance-title">
+                    {t(
+                      "comparisonPage.guidance.title"
+                    )}
+                  </h2>
+                </div>
+                <Info
+                  size={23}
+                  strokeWidth={1.9}
+                  aria-hidden="true"
+                />
               </div>
               <ul>
-                {compatibility.excludedMetrics.map(
-                  (item, index) => (
-                    <li
-                      key={`${
-                        item?.metric ||
-                        "metric"
-                      }-${index}`}
-                    >
-                      <strong>
-                        {humanMetricLabel(
-                          item?.metric,
-                          t
-                        )}
-                      </strong>
-                      <span>
-                        {item?.message ||
-                          t(
-                            "comparisonPage.excluded.fallback"
-                          )}
-                      </span>
-                    </li>
+                {interpretationMessages.map(
+                  (message) => (
+                    <li key={message}>{message}</li>
                   )
                 )}
               </ul>
             </section>
-          )}
-
-        {interpretationMessages.length > 0 && (
-          <section
-            className="comparison-page__section comparison-page__guidance"
-            aria-labelledby="comparison-guidance-title"
-          >
-            <div className="comparison-page__section-heading comparison-page__guidance-heading">
-              <div>
-                <span className="comparison-page__eyebrow">
-                  {t(
-                    "comparisonPage.guidance.eyebrow"
-                  )}
-                </span>
-                <h2 id="comparison-guidance-title">
-                  {t(
-                    "comparisonPage.guidance.title"
-                  )}
-                </h2>
-              </div>
-              <Info
-                size={23}
-                strokeWidth={1.9}
-                aria-hidden="true"
-              />
-            </div>
-            <ul>
-              {interpretationMessages.map((message) => (
-                <li key={message}>{message}</li>
-              ))}
-            </ul>
-          </section>
+          )
         )}
+
+        <ComparisonAIAnalysisPanel
+          explanation={aiState.data}
+          loading={aiState.kind === "loading"}
+          errorKey={aiState.errorKey}
+          available={aiAvailable}
+          unavailableKind={aiUnavailableKind}
+          onGenerate={handleGenerateComparisonAI}
+          metricLabel={(metric) =>
+            humanMetricLabel(metric, t)
+          }
+        />
 
         {canRenderCharts && (
           <section
-            className="comparison-page__section comparison-page__chart-section"
+            id="comparison-metrics"
+            className="comparison-page__section comparison-page__chart-section comparison-page__major-section"
             aria-labelledby="comparison-chart-title"
           >
             <div className="comparison-page__section-heading comparison-page__chart-heading">
@@ -1308,177 +1465,118 @@ const ComparisonPage = ({ currentUser }) => {
               />
             ) : (
               <>
-                <div className="comparison-page__controls">
+
+                <ComparisonFiltersPanel
+                  aggregation={aggregation}
+                  onAggregationChange={setAggregation}
+                  showDispersion={showDispersion}
+                  onDispersionChange={setShowDispersion}
+                  xScale={xScale}
+                  onXScaleChange={setXScale}
+                  canUseLogScale={canUseLogScale}
+                  inputRange={normalizedRange}
+                  onRangeChange={setRange}
+                  onReset={resetComparisonFilters}
+                  activeFilterCount={activeFilterCount}
+                />
+
+                <div className="comparison-page__metric-explorer">
+                  <div
+                    className="comparison-page__metric-tabs"
+                    role="tablist"
+                    aria-label={t("comparisonPage.explorer.categoriesAria")}
+                  >
+                    {metricCategories.map((category) => (
+                      <button
+                        key={category.id}
+                        type="button"
+                        role="tab"
+                        aria-selected={
+                          activeMetricCategory === category.id
+                        }
+                        className={`comparison-page__metric-tab ${
+                          activeMetricCategory === category.id
+                            ? "comparison-page__metric-tab--active"
+                            : ""
+                        }`}
+                        onClick={() =>
+                          setActiveMetricCategory(category.id)
+                        }
+                      >
+                        <span>
+                          {t(
+                            `comparisonPage.explorer.categories.${category.id}`
+                          )}
+                        </span>
+                        <span
+                          className="comparison-page__metric-tab-count"
+                          aria-hidden="true"
+                        >
+                          {category.metrics.length}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {visibleCategoryMetrics.length > 0 ? (
+                    <div className="comparison-page__metric-grid">
+                      {visibleCategoryMetrics.map((metric) => (
+                        <ComparisonMetricCard
+                          key={metric}
+                          metric={metric}
+                          metricData={metrics[metric]}
+                          aggregation={aggregation}
+                          showDispersion={showDispersion}
+                          minimum={normalizedRange.minimum}
+                          maximum={normalizedRange.maximum}
+                          xScale={xScale}
+                          plotTheme={plotTheme}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <InlineState
+                      type="unavailable"
+                      title={t("comparisonPage.explorer.empty.title")}
+                      description={t(
+                        "comparisonPage.explorer.empty.description"
+                      )}
+                      compact
+                    />
+                  )}
+                </div>
+
+                <details className="comparison-page__detail-panel">
+                  <summary className="comparison-page__detail-summary">
+                    <span>
+                      {t("comparisonPage.explorer.detailInspector")}
+                    </span>
+                    <small>
+                      {t("comparisonPage.explorer.detailInspectorHint")}
+                    </small>
+                  </summary>
+
+                <div className="comparison-page__inspector-controls">
                   <label className="comparison-page__control">
                     <span>
-                      {t(
-                        "comparisonPage.chart.metric"
-                      )}
+                      {t("comparisonPage.chart.metric")}
                     </span>
                     <select
                       value={activeMetric}
-                      onChange={(event) => {
-                        setSelectedMetric(
-                          event.target.value
-                        );
-                        setRange({
-                          minimum: null,
-                          maximum: null,
-                        });
-                      }}
-                    >
-                      {orderedMetrics.map(
-                        (metric) => (
-                          <option
-                            value={metric}
-                            key={metric}
-                          >
-                            {humanMetricLabel(
-                              metric,
-                              t
-                            )}
-                          </option>
-                        )
-                      )}
-                    </select>
-                  </label>
-
-                  <fieldset className="comparison-page__aggregation">
-                    <legend>
-                      {t(
-                        "comparisonPage.chart.aggregation"
-                      )}
-                    </legend>
-                    <label>
-                      <input
-                        type="radio"
-                        name="comparison-aggregation"
-                        value="median"
-                        checked={
-                          aggregation ===
-                          "median"
-                        }
-                        onChange={() =>
-                          setAggregation(
-                            "median"
-                          )
-                        }
-                      />
-                      {t(
-                        "comparisonModel.aggregation.median"
-                      )}
-                    </label>
-                    <label>
-                      <input
-                        type="radio"
-                        name="comparison-aggregation"
-                        value="mean"
-                        checked={
-                          aggregation ===
-                          "mean"
-                        }
-                        onChange={() =>
-                          setAggregation(
-                            "mean"
-                          )
-                        }
-                      />
-                      {t(
-                        "comparisonModel.aggregation.mean"
-                      )}
-                    </label>
-                  </fieldset>
-
-                  <label className="comparison-page__check-control">
-                    <input
-                      type="checkbox"
-                      checked={showDispersion}
                       onChange={(event) =>
-                        setShowDispersion(
-                          event.target.checked
-                        )
+                        setSelectedMetric(event.target.value)
                       }
-                    />
-                    {t(
-                      "comparisonPage.chart.showDispersion"
-                    )}
+                    >
+                      {orderedMetrics.map((metric) => (
+                        <option value={metric} key={metric}>
+                          {humanMetricLabel(metric, t)}
+                        </option>
+                      ))}
+                    </select>
                   </label>
                 </div>
 
-                <div
-                  className="comparison-page__range"
-                  role="group"
-                  aria-label={t(
-                    "comparisonPage.chart.rangeAria"
-                  )}
-                >
-                  <SlidersHorizontal
-                    size={18}
-                    strokeWidth={1.9}
-                    aria-hidden="true"
-                  />
-                  <label>
-                    <span>
-                      {t(
-                        "comparisonPage.chart.minimumInputSize"
-                      )}
-                    </span>
-                    <select
-                      value={normalizedRange.minimum ?? ""}
-                      disabled={normalizedRange.domain.length <= 1}
-                      onChange={(event) => {
-                        const minimum = Number(event.target.value);
-                        setRange((current) => ({
-                          ...current,
-                          minimum,
-                        }));
-                      }}
-                    >
-                      {normalizedRange.domain.map((inputSize) => (
-                        <option value={inputSize} key={`min-${inputSize}`}>
-                          {inputSize}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label>
-                    <span>
-                      {t(
-                        "comparisonPage.chart.maximumInputSize"
-                      )}
-                    </span>
-                    <select
-                      value={normalizedRange.maximum ?? ""}
-                      disabled={normalizedRange.domain.length <= 1}
-                      onChange={(event) => {
-                        const maximum = Number(event.target.value);
-                        setRange((current) => ({
-                          ...current,
-                          maximum,
-                        }));
-                      }}
-                    >
-                      {normalizedRange.domain.map((inputSize) => (
-                        <option value={inputSize} key={`max-${inputSize}`}>
-                          {inputSize}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <button
-                    type="button"
-                    className="comparison-page__button comparison-page__button--secondary"
-                    onClick={() => setRange({ minimum: null, maximum: null })}
-                  >
-                    <RotateCcw
-                      size={15}
-                      aria-hidden="true"
-                    />
-                    {t(
-                      "comparisonPage.chart.resetRange"
-                    )}
-                  </button>
-                </div>
+
 
                 <div className="comparison-page__chart-context">
                   <h3>
@@ -1560,6 +1658,7 @@ const ComparisonPage = ({ currentUser }) => {
                         },
                         margin: { l: 72, r: 24, t: 24, b: 80 },
                         xaxis: {
+                          type: xScale === "log" ? "log" : "linear",
                           title: { text: "InputSize" },
                           automargin: true,
                           gridcolor: plotTheme.divider,
@@ -1611,10 +1710,19 @@ const ComparisonPage = ({ currentUser }) => {
                     />
                   </div>
                 )}
+                </details>
               </>
             )}
-          </section>
+</section>
         )}
+        <ComparisonAuditPanel
+          compatibility={compatibility}
+          open={auditOpen}
+          onToggle={() =>
+            setAuditOpen((value) => !value)
+          }
+        />
+
       </div>
     </main>
   );

@@ -383,7 +383,14 @@ const en = {
       repetitionsPerPoint: "Repetitions per measurement point",
       decreaseRepetitions: "Decrease repetitions",
       increaseRepetitions: "Increase repetitions",
-      currentProfile: "The current profile is {{profile}}. If you change this value manually, the profile switches to Custom.",
+      currentProfile:
+        "The current profile is {{profile}}. Values 10, 30, and 50 map to Quick, Balanced, and Exhaustive; other values are recorded as Custom.",
+      allowedRange:
+        "Allowed range: {{min}}–{{max}}. This is an acceptance limit, not a guarantee of execution time.",
+      recommendedValues: "Recommended values",
+      advancedInputTitle: "Advanced input size",
+      advancedInputWarning:
+        "This exceeds the largest recommended value ({{recommendedMax}}). The experiment may take a long time or reach the timeout depending on the implementation and selected profile.",
       dataDistribution: "Data distribution",
       dataDistributionHelp:
         "Defines how the numeric dataset received by the algorithm is organized.",
@@ -526,8 +533,11 @@ const en = {
         description:
           "The experiment is progressing through the measurement stages.",
         chip: "In progress",
+        prepareAnother: "Prepare another analysis",
         hint:
           "You can keep this view open while the benchmark runs. If you reload the page, Performance System will attempt to recover the execution.",
+        prepareAnotherHint:
+          "Preparing another analysis does not cancel this execution: it will remain queued or running and you can follow it from History.",
       },
       completed: {
         kicker: "Completed",
@@ -984,6 +994,7 @@ const en = {
       profile: "Profile",
       protocol: "Protocol",
       compilerFlags: "Compiler flags",
+      sourceProvenance: "Provenance",
       inputSizes: "Input sizes",
       metrics: "Metrics",
     },
@@ -1009,6 +1020,100 @@ const en = {
   },
 
   comparisonPage: {
+    sectionNavigation: {
+      aria: "Comparison sections",
+      implementations: "Implementations",
+      summary: "Summary",
+      interpretation: "Interpretation",
+      ai: "AI assistance",
+      metrics: "Metrics",
+      audit: "Audit",
+    },
+    ai: {
+      eyebrow: "Pedagogical complement",
+      title: "AI-assisted comparative analysis",
+      intro:
+        "Complements the deterministic reading with a structured synthesis of the canonical comparative evidence.",
+      privacy:
+        "The assistant does not receive student source code, raw CSV data, or browser-supplied metrics as scientific evidence.",
+      loading:
+        "Generating a synthesis from the canonical comparison...",
+      actions: {
+        generate: "Generate comparative analysis",
+        update: "Update analysis",
+        loading: "Generating...",
+      },
+      status: {
+        simulated:
+          "Simulated response · development mode",
+        generated: "AI-generated response",
+        cached: "Reused from cache",
+        fresh: "Generated for this comparison",
+      },
+      unavailable: {
+        incompatible: {
+          title:
+            "AI unavailable for this comparison",
+          description:
+            "The comparison is incompatible, so there is no valid experimental basis for a comparative synthesis.",
+        },
+        noEvidence: {
+          title: "Insufficient common evidence",
+          description:
+            "There are not enough commonly comparable metrics to generate an assisted synthesis.",
+        },
+      },
+      sections: {
+        summary: "Summary",
+        patterns: "Observed patterns",
+        tradeoffs: "Observed trade-offs",
+        focus: "What to analyze",
+        limitations: "Limitations",
+      },
+      empty: {
+        summary: "No additional summary was reported.",
+        patterns: "No additional patterns were reported.",
+        tradeoffs:
+          "No observed trade-offs were identified with sufficient evidence.",
+        focus: "No additional analysis targets were reported.",
+        limitations: "No additional limitations were reported.",
+      },
+      providers: {
+        mock: "Local deterministic mock",
+        openai: "OpenAI",
+        server: "Server",
+      },
+      meta: {
+        provider: "Provider: {{provider}}",
+        model: "Model: {{model}}",
+        codeNotSent: "Source code sent: no",
+        csvNotSent: "Raw CSV sent: no",
+        browserMetricsNotTrusted:
+          "Browser metrics used as evidence: no",
+        canonicalComparison:
+          "Comparison canonically rebuilt on the server",
+      },
+      errors: {
+        notConfigured:
+          "The AI provider is not configured on the server.",
+        outputRejected:
+          "The generated response did not pass the scientific validations.",
+        provider:
+          "The AI provider is temporarily unavailable.",
+        invalidLanguage:
+          "The requested language is not supported.",
+        unavailable:
+          "This comparison does not have enough experimental basis for AI.",
+        unauthorized:
+          "Your session no longer allows this analysis.",
+        forbidden:
+          "You do not have permission to analyze one or more of these executions.",
+        network:
+          "We could not connect to the server.",
+        generic:
+          "The AI-assisted comparative analysis could not be generated.",
+      },
+    },
     actions: {
       back: "Back",
       retry: "Retry",
@@ -1026,10 +1131,15 @@ const en = {
         text:
           "The executions satisfy the compatibility contract for the common measurements shown.",
       },
-      limited: {
-        label: "Limited comparison",
+      limitedCoverage: {
+        label: "Valid comparison · partial coverage",
         text:
-          "The comparison is valid only for the common dimensions and measurements indicated.",
+          "Comparable experimental conditions are preserved; one or more target metrics are not commonly available.",
+      },
+      limited: {
+        label: "Comparison with limited scope",
+        text:
+          "There are experimental warnings beyond metric coverage; interpret only the common domain and conditions indicated.",
       },
       incompatible: {
         label: "Incompatible comparison",
@@ -1144,6 +1254,108 @@ const en = {
       truncated:
         "Recent executions available within the search limit are shown.",
     },
+    summary: {
+      eyebrow: "Comparative view",
+      title: "Comparative summary",
+      description:
+        "Mini trends show already-reported medians over each target metric's common domain. Values correspond to the largest available common InputSize.",
+      availability:
+        "{{available}} of {{total}} target metrics comparable",
+      coverageLabel: "target metrics comparable",
+      inputSize: "InputSize {{inputSize}}",
+      reportedMedian: "Reported median",
+      trendAria: "Comparative trend for {{metric}}",
+      unavailableBadge: "Not comparable",
+      unavailableDescription:
+        "There is no valid common series for all selected implementations.",
+      noRanking:
+        "The summary presents evidence by metric. It does not compute a winner or a global score.",
+      empty: {
+        title: "No comparable target metrics",
+        description:
+          "There are no target metrics with a verifiable common median to summarize.",
+      },
+    },
+    audit: {
+      eyebrow: "Experimental validity",
+      title: "Comparability audit",
+      description:
+        "Review benchmark, hardware, backend, profile, protocol, flags, provenance, input domain, and metric coverage.",
+      show: "Show details",
+      hide: "Hide details",
+    },
+    auditDetails: {
+      summaryAria:
+        "Comparability audit summary",
+      summary: {
+        dimensions: "Dimensions",
+        blockers: "Blockers",
+        warnings: "Warnings",
+        excluded: "Excluded metrics",
+      },
+      noAdditionalFindings:
+        "No blockers, additional warnings, or excluded metrics were reported.",
+      unknownIssue:
+        "A comparability observation was reported ({{code}}).",
+      unknownExclusion:
+        "The metric was excluded from the common comparison ({{code}}).",
+      issueMessages: {
+        BENCHMARK_UNVERIFIED:
+          "The benchmark could not be verified for every execution.",
+        BENCHMARK_MISMATCH:
+          "The executions use different benchmarks.",
+        HARDWARE_UNVERIFIED:
+          "The observed hardware could not be verified for every execution.",
+        HARDWARE_MISMATCH:
+          "The executions were measured on different observed hardware.",
+        MEASUREMENT_BACKEND_UNVERIFIED:
+          "The measurement backend could not be verified.",
+        MEASUREMENT_BACKEND_MISMATCH:
+          "The executions use different measurement backends.",
+        MEASUREMENT_BACKEND_VERSION_UNVERIFIED:
+          "The backend version could not be verified for every execution.",
+        MEASUREMENT_BACKEND_VERSION_DIFFERS:
+          "The observed measurement-backend versions differ.",
+        PROFILE_UNVERIFIED:
+          "The execution profile could not be verified.",
+        PROFILE_MISMATCH:
+          "The executions use different profiles.",
+        PROTOCOL_UNVERIFIED:
+          "The complete measurement protocol could not be verified.",
+        PROTOCOL_MISMATCH:
+          "The executions use different measurement protocols.",
+        COMPILER_FLAGS_UNVERIFIED:
+          "The compiler flags could not be verified.",
+        COMPILER_FLAGS_MISMATCH:
+          "The executions use different compiler flags.",
+        AMBIGUOUS_RESULT_PROVENANCE:
+          "One execution contains results associated with multiple sources.",
+        DURATION_UNAVAILABLE:
+          "Execution time is not available in comparable form.",
+        NO_COMMON_INPUT_SIZE:
+          "The executions share no measured InputSize.",
+        PARTIAL_INPUT_OVERLAP:
+          "The executions share only part of the measured InputSize domain.",
+        SINGLE_COMMON_INPUT_SIZE:
+          "The comparison has only one common InputSize.",
+        TARGET_METRIC_UNAVAILABLE:
+          "The target metric is not comparably available for every execution.",
+        METRIC_UNIT_MISMATCH:
+          "The reported unit for the target metric differs across executions.",
+        METRIC_PARTIAL_COVERAGE:
+          "The metric covers only part of the common InputSize domain.",
+      },
+      excludedReasons: {
+        TARGET_METRIC_UNAVAILABLE:
+          "It is not commonly available for every execution.",
+        METRIC_UNIT_MISMATCH:
+          "It was excluded because the reported unit differs across executions.",
+        DURATION_UNAVAILABLE:
+          "It cannot be built as a common metric because execution time is not comparably available.",
+        NO_COMMON_INPUT_SIZE:
+          "It cannot be built over a commonly measured InputSize.",
+      },
+    },
     dimensions: {
       eyebrow: "Scientific contract",
       title: "Compatibility by dimension",
@@ -1162,9 +1374,104 @@ const en = {
       fallback:
         "It is not commonly available.",
     },
+    pedagogy: {
+      eyebrow: "Deterministic interpretation",
+      title: "Comparative reading of the evidence",
+      description:
+        "Summarizes what was observed in comparable target metrics using already-reported aggregates.",
+      deterministic: "Deterministic rules",
+      metric: "Metric",
+      whatItRepresents: "What it represents",
+      whatWasObserved: "What occurred in this comparison",
+      observedAt: "Reported medians at InputSize {{inputSize}}",
+      details: "Evidence and context",
+      detailsHint: "{{count}} sections",
+      show: "Show detail",
+      hide: "Hide detail",
+      trend: "Observed trend",
+      variability: "Variability",
+      limitations: "Limitations",
+      noTrend:
+        "There is only one common InputSize for this metric; a scaling trend is not described.",
+      trendLine:
+        "Between InputSize {{firstInput}} and {{lastInput}}, the median {{direction}} from {{firstValue}} to {{lastValue}}.",
+      directions: {
+        increased: "increased",
+        decreased: "decreased",
+        unchanged: "remained unchanged",
+        unavailable: "could not be described",
+      },
+      variabilityLine:
+        "At InputSize {{inputSize}}: Q1–Q3 {{q1}}–{{q3}} · σ {{stddev}}.",
+      variabilityUnavailable:
+        "No comparable numeric dispersion was reported for this point.",
+      partialMetricCoverage:
+        "This metric covers {{metricCount}} of {{scopeCount}} common InputSize values.",
+      metricWarnings:
+        "The audit records {{count}} metric-specific warning for this metric.",
+      scopeTitle: "Scope of this reading",
+      scopeText:
+        "The comparison contains warnings or excluded target metrics. This interpretation uses only the comparable domain and evidence; technical detail remains in the audit.",
+      excludedMetrics:
+        "Target metrics not comparable: {{metrics}}.",
+      principle:
+        "This reading describes observed evidence. It assigns no global winner, establishes no causality, and does not classify asymptotic complexity.",
+      implementation: "Implementation {{index}}",
+    },
     guidance: {
       eyebrow: "Cautious reading",
       title: "How to interpret this comparison",
+    },
+    explorer: {
+      categoriesAria: "Comparative metric categories",
+      categories: {
+        primary: "Key metrics",
+        performance: "Performance",
+        cache: "Cache",
+        cpu: "CPU",
+        system: "System",
+        energy: "Energy",
+        other: "Other",
+      },
+      metricEyebrow: "Metric comparison",
+      plotAria: "Comparative chart for {{metric}}",
+      noPoints: "There are no visible points in the current range.",
+      detailInspector: "Detailed metric inspector",
+      detailInspectorHint: "One metric at a time · advanced view",
+      empty: {
+        title: "No metrics in this category",
+        description:
+          "No common metrics are available for the selected implementations in this category.",
+      },
+    },
+    filters: {
+      eyebrow: "Visualization",
+      title: "Comparison filters",
+      description:
+        "They apply to every chart in this section and do not modify the reported measurements.",
+      activeCount: "Active filters: {{count}}",
+      reset: "Reset filters",
+      aggregation: "Aggregation",
+      median: "Median",
+      mean: "Mean",
+      aggregationHelp:
+        "Selects an already reported central statistic; samples are not recomputed.",
+      dispersion: "Dispersion",
+      showDispersion: "Show dispersion",
+      dispersionMedianHelp:
+        "With median, error bars represent Q1–Q3 when those values are available.",
+      dispersionMeanHelp:
+        "With mean, error bars represent standard deviation when available.",
+      horizontalScale: "Horizontal scale",
+      linear: "Linear",
+      logarithmic: "Logarithmic",
+      horizontalScaleHelp:
+        "Only the X-axis representation changes; measured values are not transformed.",
+      logUnavailable:
+        "Logarithmic scale requires strictly positive InputSize values.",
+      inputRange: "InputSize range",
+      rangeHelp:
+        "Limits visible points within the common domain; it does not interpolate or extrapolate.",
     },
     chart: {
       eyebrow: "Common measurements",
@@ -1241,9 +1548,13 @@ const en = {
     },
     header: {
       eyebrow: "Experimental identity",
-      title: "Reproducibility",
+      title: "Reproducibility and experimental traceability",
       description:
-        "Provenance, configuration, and verifiable artifacts for this execution.",
+        "Code, hardware, configuration, and verifiable artifacts.",
+    },
+    disclosure: {
+      expand: "Show details",
+      collapse: "Hide details",
     },
     loading: "Loading reproducible identity…",
     partial: {
@@ -1307,6 +1618,13 @@ const en = {
   },
 
   renderImage: {
+    sectionNavigation: {
+      aria: "Result sections",
+      summary: "Summary",
+      interpretation: "Interpretation",
+      metrics: "Metrics",
+      reproducibility: "Reproducibility",
+    },
     executionFallback: "Execution {{codename}}",
     common: {
       back: "Back",
@@ -1430,6 +1748,8 @@ const en = {
       title: "Main indicators",
       description:
         "{{aggregation}} value at the largest visible input size{{range}}.",
+      availabilitySummary:
+        "{{available}} of {{total}} main indicators available.",
     },
     kpis: {
       DurationTime: {
@@ -1513,16 +1833,142 @@ const en = {
       deterministic: "Based on reproducible rules",
       disclaimer:
         "These conclusions describe only the measurements from this execution. By themselves, they do not classify an algorithm as good, bad, efficient, or inefficient.",
+      whatItRepresents: "What it represents",
       metricHeading: "What happened in this execution",
+      evidenceDisclosure: {
+        count: "{{count}} evidence items available",
+        show: "Show",
+        hide: "Hide",
+      },
+      meaningFallback:
+        "Experimental metric observed during this execution.",
       kinds: {
         snapshot: "Observed value",
-        trend: "Trend",
+        trend: "Observed trend",
         observedScaling: "Observed scaling",
         outliers: "Variability",
         coverage: "Coverage",
         limitation: "Scope",
         availability: "Availability",
         analysis: "Analysis",
+      },
+      messages: {
+        snapshot: {
+          base:
+            "{{metric}}: at the largest measured input size ({{inputSize}}), the median was {{median}}.",
+          iqr: "The Q1–Q3 interval ranged from {{q1}} to {{q3}}.",
+          mean: "As a complementary reference, the mean was {{mean}}.",
+          stddev: "The standard deviation was {{stddev}}.",
+          cv: "The classical coefficient of variation was {{cv}}.",
+        },
+        trend: {
+          base:
+            "Between input sizes {{firstInput}} and {{lastInput}}, {{metric}} changed from {{firstValue}} to {{lastValue}}.",
+          increase: "A relative increase of {{change}} was observed.",
+          decrease: "A relative decrease of {{change}} was observed.",
+          noChange: "No relative change was observed.",
+          pairwise:
+            "Across {{comparisons}} consecutive intervals: {{increasing}} increases, {{decreasing}} decreases, and {{unchanged}} with no appreciable change.",
+        },
+        observedScaling:
+          "On the observed log-log scale over medians, {{metric}} had an empirical exponent of {{exponent}} with R²={{rSquared}}. This describes only the measured points and is not an asymptotic-complexity classification.",
+        outliers: {
+          detected:
+            "The 1.5× IQR criterion flagged {{detected}} of {{evaluated}} evaluated samples ({{rate}}) as potentially atypical. The observations were retained in the aggregates.",
+          groups:
+            "The diagnostic was applied to {{diagnostic}} of {{total}} input points.",
+          insufficient:
+            "The IQR criterion was not applied as a diagnostic because the available points did not meet the minimum sample requirement. No samples were removed.",
+        },
+        singleInputLimitation:
+          "This execution contains a single input size for this metric, so a trend with respect to input size cannot be described.",
+        partialCoverage:
+          "{{numeric}} of {{total}} measurement rows contain a numeric value for this metric.",
+        availability: {
+          permissionDenied:
+            "This metric was not measured because the measurement process did not have sufficient permission to access the requested performance event. A missing measurement is not interpreted as zero.",
+          unsupported:
+            "This metric was not measured because the hardware event is not supported by the observed environment. A missing measurement is not interpreted as zero.",
+          notCounted:
+            "The event was recognized, but no valid count was obtained during this execution. A missing measurement is not interpreted as zero.",
+          noNumeric:
+            "No valid numeric observations were obtained for this metric. A missing measurement is not interpreted as zero.",
+        },
+        fallback:
+          "The structured evidence for this observation cannot be presented by the current interface version.",
+      },
+    },
+    ai: {
+      eyebrow: "Pedagogical complement",
+      title: "AI-assisted analysis",
+      intro:
+        "This module complements the deterministic interpretation with a structured reading of the available evidence.",
+      privacy:
+        "The assistant does not receive student source code or raw CSV data.",
+      actions: {
+        generate: "Generate AI analysis",
+        update: "Update analysis",
+        loading: "Generating...",
+      },
+      status: {
+        simulated:
+          "Simulated response · development mode",
+        generated:
+          "AI-generated response",
+        cached:
+          "Reused from cache",
+        fresh:
+          "Generated for this execution",
+      },
+      sections: {
+        summary: "Summary",
+        patterns: "Observed patterns",
+        observe: "What to inspect next",
+        limitations: "Limitations",
+      },
+      emptyPatterns:
+        "The assistant did not report additional patterns for this execution.",
+      emptyLimitations:
+        "No additional limitations were reported by the assistant.",
+      providers: {
+        mock: "Local mock",
+        openai: "OpenAI",
+        server: "Configured by server",
+      },
+      meta: {
+        provider: "Provider: {{provider}}",
+        model: "Model: {{model}}",
+        codeNotSent: "Source code sent: no",
+        csvNotSent: "Raw CSV sent: no",
+      },
+      metrics: {
+        DurationTime: "Execution time",
+        IPC: "IPC",
+        CacheMissRate: "Cache miss rate",
+        BranchMissRate: "Branch miss rate",
+        Instructions: "Instructions",
+        L1DcacheLoadMisses: "L1D load misses",
+      },
+      evidenceKinds: {
+        snapshot: "Observed value",
+        trend: "Observed trend",
+        observedScaling: "Observed scaling",
+        outliers: "Variability",
+        coverage: "Coverage",
+        limitation: "Limitation",
+        availability: "Availability",
+      },
+      errors: {
+        notConfigured:
+          "Real AI is not configured on the server. The deterministic interpretation remains available.",
+        outputRejected:
+          "The response was discarded because it did not pass the consistency checks.",
+        provider:
+          "The AI provider is temporarily unavailable.",
+        invalidLanguage:
+          "The requested language is not supported for assisted analysis.",
+        generic:
+          "The assisted analysis could not be generated at this time.",
       },
     },
     availability: {
@@ -1535,6 +1981,11 @@ const en = {
       metricUnavailableDescription:
         "There is no structured data or legacy visualization for this metric.",
       statuses: {
+        permissionDenied: {
+          label: "Permission denied",
+          description:
+            "The measurement process did not have sufficient permission to access the requested performance event.",
+        },
         unsupported: {
           label: "Unavailable",
           description:
@@ -1557,6 +2008,10 @@ const en = {
         },
       },
       summary: {
+        permissionDenied:
+          "{{total}}/{{total}} samples could not access this event because the measurement process lacked sufficient permission.",
+        permissionDeniedRows:
+          "{{count}}/{{total}} samples could not access the event because of insufficient permission.",
         eventNotExposed:
           "{{total}}/{{total}} samples did not have this event available in the measurement backend.",
         notSupported:
@@ -1581,6 +2036,8 @@ const en = {
     },
     hardware: {
       requestedEvent: "the requested event",
+      permissionDenied:
+        "The event {{event}} could not be measured because the measurement process does not have sufficient permission to access it.",
       eventNotExposed:
         "The perf backend in this environment does not expose {{event}}.",
       notSupported:

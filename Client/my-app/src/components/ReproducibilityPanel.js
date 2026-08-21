@@ -3,6 +3,7 @@ import axios from "axios";
 import {
   Archive,
   CheckCircle2,
+  ChevronDown,
   Clipboard,
   ClipboardCopy,
   Code2,
@@ -338,6 +339,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
   const [trace, setTrace] = useState(null);
   const [traceLoading, setTraceLoading] = useState(true);
   const [traceError, setTraceError] = useState(null);
+  const [expanded, setExpanded] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [copyFeedbackKey, setCopyFeedbackKey] = useState("");
   const [downloadState, setDownloadState] = useState({
@@ -361,6 +363,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
     setTrace(null);
     setTraceLoading(true);
     setTraceError(null);
+    setExpanded(false);
     setViewerOpen(false);
     setCopyFeedbackKey("");
     setDownloadState({
@@ -554,7 +557,12 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
 
   return (
     <section
-      className="reproducibility-panel"
+      className={[
+        "reproducibility-panel",
+        expanded
+          ? "reproducibility-panel--expanded"
+          : "reproducibility-panel--collapsed",
+      ].join(" ")}
       aria-labelledby="reproducibility-title"
     >
       <header className="reproducibility-panel__header">
@@ -569,9 +577,33 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
             {t("reproducibilityPanel.header.description")}
           </p>
         </div>
-        <Fingerprint size={24} aria-hidden="true" />
+
+        <div className="reproducibility-panel__header-actions">
+          <Fingerprint size={22} aria-hidden="true" />
+          <button
+            type="button"
+            className="reproducibility-panel__toggle"
+            aria-expanded={expanded}
+            aria-controls="reproducibility-content"
+            onClick={() => setExpanded((current) => !current)}
+          >
+            <ChevronDown size={16} aria-hidden="true" />
+            <span>
+              {t(
+                expanded
+                  ? "reproducibilityPanel.disclosure.collapse"
+                  : "reproducibilityPanel.disclosure.expand"
+              )}
+            </span>
+          </button>
+        </div>
       </header>
 
+      <div
+        id="reproducibility-content"
+        className="reproducibility-panel__body"
+        hidden={!expanded}
+      >
       {(manifestLoading || traceLoading) && (
         <div className="reproducibility-panel__loading" role="status">
           <Loader2 aria-hidden="true" />
@@ -903,6 +935,8 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
           )}
         </>
       )}
+
+      </div>
 
       <SourceViewerModal
         open={viewerOpen}

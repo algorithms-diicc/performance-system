@@ -1,6 +1,8 @@
 import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
 import ReproducibilityPanel from "../components/ReproducibilityPanel";
+import IndividualAIAnalysisPanel from "./components/IndividualAIAnalysisPanel";
+import ResultsSectionNav from "./components/ResultsSectionNav";
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 // src/screens/RenderImage.js
 import React, {
@@ -30,7 +32,6 @@ import {
   MemoryStick,
   RotateCcw,
   SlidersHorizontal,
-  Sparkles,
   Timer,
 } from "lucide-react";
 
@@ -834,6 +835,18 @@ function RenderImage({ currentUser }) {
   const pedagogyData =
     resultsData?.pedagogy || null;
 
+  const aiLanguage =
+    String(locale || "es")
+      .toLowerCase()
+      .startsWith("en")
+      ? "en"
+      : "es";
+
+  useEffect(() => {
+    setAiExplanation(null);
+    setAiError("");
+  }, [aiLanguage, codename]);
+
   const handleResetFilters = () => {
     setAggregation("median");
     setShowDispersion(true);
@@ -873,14 +886,19 @@ function RenderImage({ currentUser }) {
   };
 
   const handleGenerateAI = async () => {
+    if (aiLoading) return;
+
     setAiLoading(true);
     setAiError("");
 
     try {
       const response = await axios.post(
-        `${serverURL}api/executions/${codename}/ai-explanation`,
+        `${serverURL}api/executions/${encodeURIComponent(
+          codename
+        )}/ai-explanation`,
         {
-          force: false,
+          force: Boolean(aiExplanation),
+          language: aiLanguage,
         },
         {
           withCredentials: true,
@@ -899,21 +917,21 @@ function RenderImage({ currentUser }) {
       const code =
         error?.response?.data?.error?.code;
 
-      if (code === "AI_NOT_CONFIGURED") {
-        setAiError(
-          "La IA aún no está configurada en el servidor. La interpretación basada en reglas sigue disponible."
-        );
-      } else if (
-        code === "AI_OUTPUT_REJECTED"
-      ) {
-        setAiError(
-          "La respuesta de IA fue descartada porque no superó las validaciones de consistencia."
-        );
-      } else {
-        setAiError(
-          "No fue posible generar la explicación con IA en este momento."
-        );
-      }
+      const errorKeys = {
+        AI_NOT_CONFIGURED:
+          "renderImageScientific.ai.errors.notConfigured",
+        AI_OUTPUT_REJECTED:
+          "renderImageScientific.ai.errors.outputRejected",
+        AI_PROVIDER_ERROR:
+          "renderImageScientific.ai.errors.provider",
+        INVALID_AI_LANGUAGE:
+          "renderImageScientific.ai.errors.invalidLanguage",
+      };
+
+      setAiError(
+        errorKeys[code] ||
+          "renderImageScientific.ai.errors.generic"
+      );
     } finally {
       setAiLoading(false);
     }
@@ -1144,26 +1162,40 @@ function RenderImage({ currentUser }) {
           />
         </header>
 
-        <KpiOverview
-          items={kpiItems}
-          aggregation={aggregation}
-          effectiveRange={effectiveRange}
-        />
+        <ResultsSectionNav />
 
-        <ReproducibilityPanel
-          codename={codename}
-          onContextChange={handleReproducibilityContextChange}
-        />
+        <section
+          id="results-summary"
+          className="results-major-section results-summary-section"
+          aria-label={t("renderImage.sectionNavigation.summary")}
+        >
+          <KpiOverview
+            items={kpiItems}
+            aggregation={aggregation}
+            effectiveRange={effectiveRange}
+          />
+        </section>
 
-        <PedagogicalOverview
-          pedagogy={pedagogyData}
-          aiExplanation={aiExplanation}
-          aiLoading={aiLoading}
-          aiError={aiError}
-          onGenerateAI={handleGenerateAI}
-        />
+        <section
+          id="results-interpretation"
+          className="results-major-section results-interpretation-section"
+          aria-label={t("renderImage.sectionNavigation.interpretation")}
+        >
+          <PedagogicalOverview
+            pedagogy={pedagogyData}
+            aiExplanation={aiExplanation}
+            aiLoading={aiLoading}
+            aiError={aiError}
+            onGenerateAI={handleGenerateAI}
+          />
+        </section>
 
-        <section className="results-dashboard-toolbar">
+        <section
+          id="results-metrics"
+          className="results-major-section results-metrics-section"
+          aria-label={t("renderImage.sectionNavigation.metrics")}
+        >
+          <section className="results-dashboard-toolbar">
           <div
             className="results-tabs"
             role="tablist"
@@ -1405,6 +1437,18 @@ function RenderImage({ currentUser }) {
             </div>
           </section>
         )}
+        </section>
+
+        <section
+          id="results-reproducibility"
+          className="results-major-section results-reproducibility-section"
+          aria-label={t("renderImage.sectionNavigation.reproducibility")}
+        >
+          <ReproducibilityPanel
+            codename={codename}
+            onContextChange={handleReproducibilityContextChange}
+          />
+        </section>
 
         <footer className="results-footer-note">
           <Info size={15} />
@@ -1426,11 +1470,11 @@ function PedagogicalOverview({
   aiError,
   onGenerateAI,
 }) {
-  const { t } = useI18n();
-  const highlights =
-    pedagogy?.summary?.highlights || [];
+  const { locale, t } = useI18n();
+  const overviewItems =
+    buildPedagogyOverviewItems(pedagogy);
 
-  if (highlights.length === 0) {
+  if (overviewItems.length === 0) {
     return null;
   }
 
@@ -1470,34 +1514,41 @@ function PedagogicalOverview({
       </div>
 
       <div className="results-pedagogy-grid">
-        {highlights
-          .slice(0, 3)
-          .map((message, index) => (
-            <article
-              key={`${message.metric}-${message.kind}-${index}`}
-              className="results-pedagogy-highlight"
-            >
-              <div className="results-pedagogy-highlight-top">
-                <span>
-                  {getPedagogyMetricLabel(
-                    message.metric,
-                    t
-                  )}
-                </span>
+        {overviewItems.map((item) => (
+          <article
+            key={item.metric}
+            className="results-pedagogy-highlight"
+          >
+            <div className="results-pedagogy-highlight-top">
+              <span>
+                {getPedagogyMetricLabel(
+                  item.metric,
+                  t
+                )}
+              </span>
+            </div>
 
-                <span className="results-pedagogy-kind">
-                  {getPedagogyKindLabel(
-                    message.kind,
-                    t
-                  )}
-                </span>
-              </div>
-
+            <div className="results-pedagogy-highlight-section">
+              <strong>
+                {t(
+                  "renderImageScientific.pedagogy.whatItRepresents"
+                )}
+              </strong>
               <p>
-                {message.text}
+                {getPedagogyMetricMeaning(
+                  item.metric,
+                  t
+                )}
               </p>
-            </article>
-          ))}
+            </div>
+
+            <PedagogyEvidenceDisclosure
+              item={item}
+              t={t}
+              locale={locale}
+            />
+          </article>
+        ))}
       </div>
 
       <div className="results-pedagogy-note">
@@ -1510,10 +1561,10 @@ function PedagogicalOverview({
         </span>
       </div>
 
-      <AIExplanationPanel
+      <IndividualAIAnalysisPanel
         explanation={aiExplanation}
         loading={aiLoading}
-        error={aiError}
+        errorKey={aiError}
         onGenerate={onGenerateAI}
       />
     </section>
@@ -1521,164 +1572,98 @@ function PedagogicalOverview({
 }
 
 
-function AIExplanationPanel({
-  explanation,
-  loading,
-  error,
-  onGenerate,
+function PedagogyEvidenceDisclosure({
+  item,
+  t,
+  locale,
 }) {
-  const content =
-    explanation?.content || null;
+  const [expanded, setExpanded] =
+    useState(false);
+
+  const panelId =
+    `pedagogy-evidence-${String(
+      item.metric
+    ).replace(/[^A-Za-z0-9_-]/g, "-")}`;
 
   return (
-    <div className="results-ai-panel">
-      <div className="results-ai-header">
-        <div className="results-ai-title">
-          <div className="results-ai-icon">
-            <Sparkles size={17} />
-          </div>
+    <div className="results-pedagogy-highlight-section results-pedagogy-disclosure">
+      <button
+        type="button"
+        className="results-pedagogy-disclosure-button"
+        aria-expanded={expanded}
+        aria-controls={panelId}
+        onClick={() =>
+          setExpanded(
+            (current) => !current
+          )
+        }
+      >
+        <span className="results-pedagogy-disclosure-copy">
+          <strong>
+            {t(
+              "renderImageScientific.pedagogy.metricHeading"
+            )}
+          </strong>
+          <small>
+            {t(
+              "renderImageScientific.pedagogy.evidenceDisclosure.count",
+              { count: item.messages.length }
+            )}
+          </small>
+        </span>
 
-          <div>
-            <span>
-              Explicación complementaria
-            </span>
+        <span className="results-pedagogy-disclosure-action">
+          {t(
+            expanded
+              ? "renderImageScientific.pedagogy.evidenceDisclosure.hide"
+              : "renderImageScientific.pedagogy.evidenceDisclosure.show"
+          )}
+          <ChevronDown
+            size={15}
+            className={expanded ? "is-expanded" : ""}
+            aria-hidden="true"
+          />
+        </span>
+      </button>
 
-            <strong>
-              Asistente con IA
-            </strong>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          className="results-ai-button"
-          onClick={onGenerate}
-          disabled={loading}
+      {!expanded && (
+        <div
+          className="results-pedagogy-evidence-chips"
+          aria-hidden="true"
         >
-          <Sparkles size={15} />
+          {item.messages.slice(0, 4).map(
+            (message, index) => (
+              <span
+                key={`${message.message_code || message.kind}-${index}`}
+              >
+                {getPedagogyKindLabel(message.kind, t)}
+              </span>
+            )
+          )}
+        </div>
+      )}
 
-          {loading
-            ? "Generando..."
-            : content
-            ? "Actualizar explicación"
-            : "Generar explicación con IA"}
-        </button>
+      <div
+        id={panelId}
+        className="results-pedagogy-observations"
+        hidden={!expanded}
+      >
+        {item.messages.map(
+          (message, index) => (
+            <div
+              key={`${message.message_code || message.kind}-${index}`}
+              className="results-pedagogy-observation"
+            >
+              <span className="results-pedagogy-kind">
+                {getPedagogyKindLabel(message.kind, t)}
+              </span>
+              <p>
+                {formatPedagogyMessage(message, t, locale)}
+              </p>
+            </div>
+          )
+        )}
       </div>
-
-      {!content && !error && (
-        <p className="results-ai-intro">
-          La IA recibe únicamente el análisis
-          estructurado y las conclusiones
-          reproducibles del sistema. No recibe el
-          código fuente ni el CSV bruto.
-        </p>
-      )}
-
-      {error && (
-        <div className="results-ai-error">
-          <Info size={15} />
-          <span>{error}</span>
-        </div>
-      )}
-
-      {content && (
-        <div className="results-ai-content">
-          <div className="results-ai-summary">
-            <span className="results-ai-badge">
-              <Sparkles size={13} />
-              IA · evidencia verificada
-            </span>
-
-            <p>
-              {content.summary}
-            </p>
-          </div>
-
-          {Array.isArray(
-            content.observations
-          ) &&
-            content.observations.length >
-              0 && (
-              <div className="results-ai-observations">
-                {content.observations.map(
-                  (observation, index) => (
-                    <article
-                      key={`${observation.metric}-${observation.evidence_kind}-${index}`}
-                    >
-                      <div>
-                        <strong>
-                          {getPedagogyMetricLabel(
-                            observation.metric
-                          )}
-                        </strong>
-
-                        <span>
-                          {getPedagogyKindLabel(
-                            observation.evidence_kind
-                          )}
-                        </span>
-                      </div>
-
-                      <p>
-                        {observation.text}
-                      </p>
-                    </article>
-                  )
-                )}
-              </div>
-            )}
-
-          {Array.isArray(
-            content.limitations
-          ) &&
-            content.limitations.length >
-              0 && (
-              <div className="results-ai-limitations">
-                <strong>
-                  Límites de esta lectura
-                </strong>
-
-                <ul>
-                  {content.limitations.map(
-                    (limitation, index) => (
-                      <li key={index}>
-                        {limitation}
-                      </li>
-                    )
-                  )}
-                </ul>
-              </div>
-            )}
-
-          <div className="results-ai-takeaway">
-            <strong>
-              Para llevarte de esta ejecución
-            </strong>
-
-            <p>
-              {content.student_takeaway}
-            </p>
-          </div>
-
-          <div className="results-ai-meta">
-            <span>
-              Modelo:{" "}
-              {explanation.model ||
-                "configurado por servidor"}
-            </span>
-
-            <span>
-              {explanation.cached
-                ? "Resultado reutilizado desde caché"
-                : "Generado para esta ejecución"}
-            </span>
-
-            <span>
-              Código fuente enviado: no
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -1968,6 +1953,17 @@ function KpiOverview({
       t
     );
 
+  const availableItems =
+    items.filter(
+      (item) => item.available
+    );
+  const availableCount =
+    availableItems.length;
+  const totalCount =
+    items.length;
+  const hasUnavailable =
+    availableCount < totalCount;
+
   return (
     <section
       className="results-kpi-section"
@@ -1984,27 +1980,46 @@ function KpiOverview({
           </h2>
         </div>
 
-        <p>
-          {t(
-            "renderImage.kpiOverview.description",
-            {
-              aggregation: aggregationLabel,
-              range: rangeLabel
-                ? ` · ${rangeLabel}`
-                : "",
-            }
+        <div className="results-kpi-heading-meta">
+          <p>
+            {t(
+              "renderImage.kpiOverview.description",
+              {
+                aggregation: aggregationLabel,
+                range: rangeLabel
+                  ? ` · ${rangeLabel}`
+                  : "",
+              }
+            )}
+          </p>
+
+          {hasUnavailable && (
+            <div
+              className="results-kpi-availability"
+              role="status"
+            >
+              {t(
+                "renderImage.kpiOverview.availabilitySummary",
+                {
+                  available: availableCount,
+                  total: totalCount,
+                }
+              )}
+            </div>
           )}
-        </p>
+        </div>
       </div>
 
-      <div className="results-kpi-grid">
-        {items.map((item) => (
-          <KpiCard
-            key={item.metric}
-            item={item}
-          />
-        ))}
-      </div>
+      {availableItems.length > 0 && (
+        <div className="results-kpi-grid">
+          {availableItems.map((item) => (
+            <KpiCard
+              key={item.metric}
+              item={item}
+            />
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -2898,6 +2913,15 @@ function buildHardwareAvailabilityExplanation(
   const state =
     context.probe_state;
 
+  if (state === "permission_denied") {
+    return localizedText(
+      t,
+      "renderImageScientific.hardware.permissionDenied",
+      `El evento ${event} no pudo medirse porque el proceso de medición no tiene permisos suficientes para accederlo.`,
+      { event }
+    );
+  }
+
   if (state === "event_not_exposed") {
     return localizedText(
       t,
@@ -3015,6 +3039,19 @@ function getMetricAvailabilityPresentation(
   t = null
 ) {
   const map = {
+    permission_denied: {
+      label: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.permissionDenied.label",
+        "Permiso insuficiente"
+      ),
+      tone: "permission-denied",
+      description: localizedText(
+        t,
+        "renderImageScientific.availability.statuses.permissionDenied.description",
+        "El proceso de medición no tuvo permisos suficientes para acceder al evento de rendimiento solicitado."
+      ),
+    },
     unsupported: {
       label: localizedText(
         t,
@@ -3100,6 +3137,15 @@ function buildMetricAvailabilitySummary(
     metricData?.hardware_context
       ?.probe_state;
 
+  if (probeState === "permission_denied") {
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.permissionDenied",
+      `${total}/${total} muestras no pudieron acceder al evento por permisos insuficientes del proceso de medición.`,
+      { total }
+    );
+  }
+
   if (probeState === "event_not_exposed") {
     return localizedText(
       t,
@@ -3142,6 +3188,20 @@ function buildMetricAvailabilitySummary(
       "renderImageScientific.availability.summary.noNumericSample",
       `${total}/${total} muestras quedaron sin una observación numérica válida para este evento.`,
       { total }
+    );
+  }
+
+  if (
+    metricData?.status === "permission_denied"
+  ) {
+    return localizedText(
+      t,
+      "renderImageScientific.availability.summary.permissionDeniedRows",
+      `${availability.permission_denied || 0}/${total} muestras no pudieron acceder al evento por permisos insuficientes.`,
+      {
+        count: availability.permission_denied || 0,
+        total,
+      }
     );
   }
 
@@ -4403,6 +4463,461 @@ function buildSingleSourceSummary(
 }
 
 
+function buildPedagogyOverviewItems(
+  pedagogy
+) {
+  const summary =
+    pedagogy?.summary || {};
+  const metrics =
+    pedagogy?.metrics || {};
+  const highlights =
+    summary.highlights || [];
+
+  const declared =
+    Array.isArray(
+      summary.primary_metrics_available
+    )
+      ? summary.primary_metrics_available
+      : [];
+
+  const fallback =
+    highlights
+      .map((message) => message?.metric)
+      .filter(Boolean);
+
+  const metricNames =
+    Array.from(
+      new Set([
+        ...declared,
+        ...fallback,
+      ])
+    ).slice(0, 3);
+
+  return metricNames
+    .map((metric) => {
+      const metricMessages =
+        Array.isArray(
+          metrics?.[metric]?.messages
+        )
+          ? metrics[metric].messages
+          : [];
+
+      const fallbackMessages =
+        highlights.filter(
+          (message) =>
+            message?.metric === metric
+        );
+
+      return {
+        metric,
+        messages:
+          selectPedagogyMessages(
+            metricMessages.length > 0
+              ? metricMessages
+              : fallbackMessages
+          ),
+      };
+    })
+    .filter(
+      (item) =>
+        item.messages.length > 0
+    );
+}
+
+
+function selectPedagogyMessages(
+  messages
+) {
+  const preferredKinds = [
+    "snapshot",
+    "trend",
+    "outliers",
+    "coverage",
+    "limitation",
+    "availability",
+    "observed_scaling",
+  ];
+
+  const selected = [];
+
+  preferredKinds.forEach((kind) => {
+    const message =
+      messages.find(
+        (candidate) =>
+          candidate?.kind === kind
+      );
+
+    if (message) {
+      selected.push(message);
+    }
+  });
+
+  return selected.slice(0, 5);
+}
+
+
+function getPedagogyMetricMeaning(
+  metric,
+  t = null
+) {
+  const presentation =
+    getMetricPresentation(
+      metric,
+      t
+    );
+
+  const description =
+    presentation?.description || "";
+
+  if (!description) {
+    return localizedText(
+      t,
+      "renderImageScientific.pedagogy.meaningFallback",
+      "Métrica experimental observada durante la ejecución."
+    );
+  }
+
+  return String(description)
+    .split("\n")
+    .map((part) => part.trim())
+    .filter(Boolean)[0];
+}
+
+
+function formatPedagogyMessage(
+  message,
+  t = null,
+  locale = "es-CL"
+) {
+  if (!message) {
+    return "";
+  }
+
+  const evidence =
+    message.evidence || {};
+  const code =
+    message.message_code ||
+    message.kind;
+  const metric =
+    message.metric;
+  const metricLabel =
+    getPedagogyMetricLabel(
+      metric,
+      t
+    );
+
+  const metricValue = (value) =>
+    formatKpiValue(
+      metric,
+      value,
+      locale
+    );
+
+  const number = (
+    value,
+    maximumFractionDigits = 3
+  ) => {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric)) {
+      return "—";
+    }
+
+    return new Intl.NumberFormat(
+      locale,
+      {
+        maximumFractionDigits,
+      }
+    ).format(numeric);
+  };
+
+  const percent = (value) => {
+    const numeric = Number(value);
+
+    if (!Number.isFinite(numeric)) {
+      return "—";
+    }
+
+    return new Intl.NumberFormat(
+      locale,
+      {
+        maximumFractionDigits: 2,
+      }
+    ).format(numeric * 100) + " %";
+  };
+
+  if (code === "snapshot") {
+    const parts = [
+      t(
+        "renderImageScientific.pedagogy.messages.snapshot.base",
+        {
+          metric: metricLabel,
+          inputSize: number(
+            evidence.input_size,
+            0
+          ),
+          median: metricValue(
+            evidence.median
+          ),
+        }
+      ),
+    ];
+
+    if (
+      evidence.q1 !== null &&
+      evidence.q1 !== undefined &&
+      evidence.q3 !== null &&
+      evidence.q3 !== undefined
+    ) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.snapshot.iqr",
+          {
+            q1: metricValue(evidence.q1),
+            q3: metricValue(evidence.q3),
+          }
+        )
+      );
+    }
+
+    if (
+      evidence.mean !== null &&
+      evidence.mean !== undefined
+    ) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.snapshot.mean",
+          {
+            mean: metricValue(
+              evidence.mean
+            ),
+          }
+        )
+      );
+    }
+
+    if (
+      evidence.stddev !== null &&
+      evidence.stddev !== undefined
+    ) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.snapshot.stddev",
+          {
+            stddev: metricValue(
+              evidence.stddev
+            ),
+          }
+        )
+      );
+    }
+
+    if (
+      evidence.coefficient_of_variation !== null &&
+      evidence.coefficient_of_variation !== undefined
+    ) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.snapshot.cv",
+          {
+            cv: percent(
+              evidence.coefficient_of_variation
+            ),
+          }
+        )
+      );
+    }
+
+    return parts.join(" ");
+  }
+
+  if (code === "trend") {
+    const first =
+      evidence.first || {};
+    const last =
+      evidence.last || {};
+    const parts = [
+      t(
+        "renderImageScientific.pedagogy.messages.trend.base",
+        {
+          metric: metricLabel,
+          firstInput: number(
+            first.input_size,
+            0
+          ),
+          lastInput: number(
+            last.input_size,
+            0
+          ),
+          firstValue: metricValue(
+            first.median
+          ),
+          lastValue: metricValue(
+            last.median
+          ),
+        }
+      ),
+    ];
+
+    const relative =
+      Number(
+        evidence.relative_change
+      );
+
+    if (Number.isFinite(relative)) {
+      const key =
+        relative > 0
+          ? "increase"
+          : relative < 0
+          ? "decrease"
+          : "noChange";
+
+      parts.push(
+        t(
+          `renderImageScientific.pedagogy.messages.trend.${key}`,
+          {
+            change: percent(
+              Math.abs(relative)
+            ),
+          }
+        )
+      );
+    }
+
+    const pairwise =
+      evidence.pairwise || {};
+    const comparisons =
+      Number(
+        pairwise.comparisons
+      );
+
+    if (
+      Number.isFinite(comparisons) &&
+      comparisons > 0
+    ) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.trend.pairwise",
+          {
+            comparisons,
+            increasing:
+              pairwise.increasing || 0,
+            decreasing:
+              pairwise.decreasing || 0,
+            unchanged:
+              pairwise.unchanged || 0,
+          }
+        )
+      );
+    }
+
+    return parts.join(" ");
+  }
+
+  if (code === "observed_scaling") {
+    return t(
+      "renderImageScientific.pedagogy.messages.observedScaling",
+      {
+        metric: metricLabel,
+        exponent: number(
+          evidence.exponent,
+          3
+        ),
+        rSquared: number(
+          evidence.r_squared,
+          3
+        ),
+      }
+    );
+  }
+
+  if (code === "outliers_detected") {
+    const parts = [
+      t(
+        "renderImageScientific.pedagogy.messages.outliers.detected",
+        {
+          detected:
+            evidence.iqr_outliers_detected || 0,
+          evaluated:
+            evidence.samples_evaluated || 0,
+          rate: percent(
+            evidence.iqr_outlier_rate || 0
+          ),
+        }
+      ),
+    ];
+
+    if (Number(evidence.groups_total) > 0) {
+      parts.push(
+        t(
+          "renderImageScientific.pedagogy.messages.outliers.groups",
+          {
+            diagnostic:
+              evidence.iqr_diagnostic_groups || 0,
+            total:
+              evidence.groups_total || 0,
+          }
+        )
+      );
+    }
+
+    return parts.join(" ");
+  }
+
+  if (code === "outliers_insufficient") {
+    return t(
+      "renderImageScientific.pedagogy.messages.outliers.insufficient"
+    );
+  }
+
+  if (code === "single_input_limitation") {
+    return t(
+      "renderImageScientific.pedagogy.messages.singleInputLimitation"
+    );
+  }
+
+  if (code === "partial_coverage") {
+    return t(
+      "renderImageScientific.pedagogy.messages.partialCoverage",
+      {
+        numeric:
+          evidence.numeric_rows || 0,
+        total:
+          evidence.rows_total || 0,
+      }
+    );
+  }
+
+  if (code === "availability_permission_denied") {
+    return t(
+      "renderImageScientific.pedagogy.messages.availability.permissionDenied"
+    );
+  }
+
+  if (code === "availability_unsupported") {
+    return t(
+      "renderImageScientific.pedagogy.messages.availability.unsupported"
+    );
+  }
+
+  if (code === "availability_not_counted") {
+    return t(
+      "renderImageScientific.pedagogy.messages.availability.notCounted"
+    );
+  }
+
+  if (code === "availability_no_numeric") {
+    return t(
+      "renderImageScientific.pedagogy.messages.availability.noNumeric"
+    );
+  }
+
+  return message.text || t(
+    "renderImageScientific.pedagogy.messages.fallback"
+  );
+}
+
+
 function getPedagogyMetricLabel(
   metric,
   t = null
@@ -4436,7 +4951,7 @@ function getPedagogyKindLabel(
     ],
     trend: [
       "renderImageScientific.pedagogy.kinds.trend",
-      "Tendencia",
+      "Tendencia observada",
     ],
     observed_scaling: [
       "renderImageScientific.pedagogy.kinds.observedScaling",

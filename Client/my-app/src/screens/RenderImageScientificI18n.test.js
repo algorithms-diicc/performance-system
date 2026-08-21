@@ -106,10 +106,14 @@ const resultsPayload = {
       uses_ai: false,
     },
     summary: {
+      primary_metrics_available: [
+        "DurationTime",
+      ],
       highlights: [
         {
           metric: "DurationTime",
           kind: "trend",
+          message_code: "trend",
           text:
             "Texto científico del backend preservado literalmente.",
         },
@@ -120,10 +124,60 @@ const resultsPayload = {
         messages: [
           {
             metric: "DurationTime",
-            kind: "trend",
+            kind: "snapshot",
+            message_code: "snapshot",
             priority: "primary",
             text:
               "Texto científico del backend preservado literalmente.",
+            evidence: {
+              input_size: 100,
+              median: 12.5,
+              q1: 12,
+              q3: 14,
+              mean: 13,
+              stddev: 1,
+              coefficient_of_variation: 0.08,
+            },
+          },
+          {
+            metric: "DurationTime",
+            kind: "trend",
+            message_code: "trend",
+            priority: "primary",
+            text:
+              "Texto científico del backend preservado literalmente.",
+            evidence: {
+              first: {
+                input_size: 50,
+                median: 6.25,
+              },
+              last: {
+                input_size: 100,
+                median: 12.5,
+              },
+              relative_change: 1,
+              pairwise: {
+                comparisons: 1,
+                increasing: 1,
+                decreasing: 0,
+                unchanged: 0,
+              },
+            },
+          },
+          {
+            metric: "DurationTime",
+            kind: "outliers",
+            message_code: "outliers_detected",
+            priority: "secondary",
+            text:
+              "Texto científico del backend preservado literalmente.",
+            evidence: {
+              samples_evaluated: 10,
+              iqr_outliers_detected: 1,
+              iqr_outlier_rate: 0.1,
+              iqr_diagnostic_groups: 1,
+              groups_total: 1,
+            },
           },
         ],
       },
@@ -240,13 +294,50 @@ describe("RenderImage scientific i18n", () => {
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Trend")
+      screen.getByText("What it represents")
+    ).toBeInTheDocument();
+    const evidenceDisclosures =
+      screen.getAllByRole("button", {
+        name: /What happened in this execution/i,
+      });
+
+    expect(
+      evidenceDisclosures.length
+    ).toBeGreaterThan(0);
+    expect(
+      evidenceDisclosures[0]
+    ).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(evidenceDisclosures[0]);
+
+    expect(
+      evidenceDisclosures[0]
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(
+      screen.getByText("Observed value")
     ).toBeInTheDocument();
     expect(
-      screen.getAllByText(
+      screen.getByText("Observed trend")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Variability")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /at the largest measured input size \(100\), the median was/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /A relative increase of 100/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(
         "Texto científico del backend preservado literalmente."
-      ).length
-    ).toBeGreaterThan(0);
+      )
+    ).not.toBeInTheDocument();
 
     await waitFor(() =>
       expect(mockLastPlotProps).not.toBeNull()
@@ -302,6 +393,17 @@ describe("RenderImage scientific i18n", () => {
         name: "Tiempo de ejecución",
       })
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Qué representa").length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("Tendencia observada").length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        /en el mayor tamaño de entrada medido \(100\), la mediana fue/i
+      ).length
+    ).toBeGreaterThan(0);
 
     await waitFor(() =>
       expect(
@@ -353,4 +455,103 @@ describe("RenderImage scientific i18n", () => {
       )
     ).toBeInTheDocument();
   });
+
+  test(
+    "requests individual AI analysis in the active language and identifies mock mode",
+    async () => {
+      axios.post.mockResolvedValue({
+        data: {
+          schema_version: "1.0",
+          provider: "mock",
+          simulated: true,
+          generated_by_ai: false,
+          language: "en",
+          model: "local-deterministic-mock-v1",
+          cached: false,
+          content: {
+            summary:
+              "Mock summary from deterministic evidence.",
+            observations: [
+              {
+                metric: "DurationTime",
+                evidence_kind: "snapshot",
+                text:
+                  "Mock observation for execution time.",
+              },
+            ],
+            limitations: [
+              "One experimental limitation.",
+            ],
+            student_takeaway:
+              "Inspect the evidence before drawing conclusions.",
+          },
+        },
+      });
+
+      renderEnglish();
+
+      await screen.findByRole(
+        "heading",
+        {
+          name: "Execution exec70LCS",
+        }
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Generate AI analysis",
+        })
+      );
+
+      await waitFor(() =>
+        expect(
+          axios.post
+        ).toHaveBeenCalledWith(
+          expect.stringContaining(
+            "api/executions/exec70LCS/ai-explanation"
+          ),
+          {
+            force: false,
+            language: "en",
+          },
+          {
+            withCredentials: true,
+          }
+        )
+      );
+
+      expect(
+        await screen.findByText(
+          "Simulated response · development mode"
+        )
+      ).toBeInTheDocument();
+
+      expect(
+        screen.getByText(
+          "Mock summary from deterministic evidence."
+        )
+      ).toBeInTheDocument();
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "switch-es",
+        })
+      );
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Generar análisis con IA",
+        })
+      ).toBeInTheDocument();
+
+      await waitFor(() =>
+        expect(
+          screen.queryByText(
+            "Mock summary from deterministic evidence."
+          )
+        ).not.toBeInTheDocument()
+      );
+    }
+  );
+
 });

@@ -324,6 +324,85 @@
 
 
 /* ============================================================
+   SECTION NAVIGATION
+   ============================================================ */
+
+.results-page .results-section-nav {
+  position: sticky;
+  top: var(--ps-navbar-height);
+  z-index: 12;
+
+  margin-bottom: var(--ps-space-6);
+  padding: var(--ps-space-2);
+
+  background:
+    color-mix(in srgb, var(--ps-bg) 94%, transparent);
+
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  box-shadow: var(--ps-shadow-sm);
+  backdrop-filter: blur(12px);
+}
+
+.results-page .results-section-nav-list {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-1);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.results-page .results-section-nav-list::-webkit-scrollbar {
+  display: none;
+}
+
+.results-page .results-section-nav-link {
+  min-height: 38px;
+  flex: 0 0 auto;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ps-space-2);
+
+  padding: 0.48rem 0.75rem;
+
+  color: var(--ps-text-secondary);
+  background: transparent;
+
+  border: 1px solid transparent;
+  border-radius: var(--ps-radius-sm);
+
+  font-size: var(--ps-font-size-xs);
+  font-weight: 680;
+  text-decoration: none;
+
+  transition:
+    color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast),
+    border-color var(--ps-transition-fast);
+}
+
+.results-page .results-section-nav-link:hover,
+.results-page .results-section-nav-link:focus-visible {
+  color: var(--ps-text);
+  background: var(--ps-surface-subtle);
+  border-color: var(--ps-border);
+  outline: none;
+}
+
+.results-page .results-major-section {
+  scroll-margin-top:
+    calc(var(--ps-navbar-height) + 7rem);
+}
+
+.results-page .results-major-section +
+.results-major-section {
+  margin-top: var(--ps-space-10);
+}
+
+
+/* ============================================================
    TOOLBAR / TABS
    ============================================================ */
 
@@ -331,7 +410,7 @@
   position: sticky;
 
   top:
-    var(--ps-navbar-height);
+    calc(var(--ps-navbar-height) + 3.75rem);
 
   z-index: 10;
 
@@ -1353,9 +1432,23 @@
 }
 
 
-.results-page .results-kpi-heading>p {
+.results-page .results-kpi-heading-meta {
   max-width: 480px;
 
+  display: flex;
+
+  flex-direction: column;
+
+  align-items: flex-end;
+
+  gap:
+    var(--ps-space-2);
+
+  text-align: right;
+}
+
+
+.results-page .results-kpi-heading-meta>p {
   margin: 0;
 
   color:
@@ -1365,8 +1458,37 @@
     var(--ps-font-size-xs);
 
   line-height: 1.5;
+}
 
-  text-align: right;
+
+.results-page .results-kpi-availability {
+  display: inline-flex;
+
+  align-items: center;
+
+  min-height: 30px;
+
+  padding:
+    var(--ps-space-1) var(--ps-space-3);
+
+  color:
+    var(--ps-text-secondary);
+
+  background:
+    var(--ps-warning-soft);
+
+  border:
+    1px solid color-mix(in srgb,
+      var(--ps-warning) 28%,
+      var(--ps-border));
+
+  border-radius:
+    var(--ps-radius-pill);
+
+  font-size:
+    var(--ps-font-size-xs);
+
+  font-weight: 700;
 }
 
 
@@ -1374,8 +1496,8 @@
   display: grid;
 
   grid-template-columns:
-    repeat(5,
-      minmax(0, 1fr));
+    repeat(auto-fit,
+      minmax(180px, 1fr));
 
   gap:
     var(--ps-space-3);
@@ -1623,8 +1745,10 @@
       var(--ps-space-2);
   }
 
-  .results-page .results-kpi-heading>p {
+  .results-page .results-kpi-heading-meta {
     max-width: none;
+
+    align-items: flex-start;
 
     text-align: left;
   }
@@ -2299,6 +2423,12 @@
 }
 
 
+.results-page .results-availability-permission-denied .results-availability-icon {
+  color:
+    var(--ps-warning);
+}
+
+
 .results-page .results-availability-unsupported .results-availability-icon {
   color:
     var(--ps-warning);
@@ -2715,414 +2845,6 @@
 }
 
 
-/* ============================================================
-   UI-03C-4 — EXPLICACIÓN COMPLEMENTARIA CON IA
-   ============================================================ */
-
-.results-page .results-ai-panel {
-  margin-top:
-    var(--ps-space-5);
-
-  padding-top:
-    var(--ps-space-5);
-
-  border-top:
-    1px solid var(--ps-divider);
-}
-
-
-.results-page .results-ai-header {
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  gap:
-    var(--ps-space-4);
-}
-
-
-.results-page .results-ai-title {
-  display: flex;
-
-  align-items: center;
-
-  gap:
-    var(--ps-space-3);
-}
-
-
-.results-page .results-ai-icon {
-  width: 36px;
-
-  height: 36px;
-
-  flex: 0 0 auto;
-
-  display: inline-flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  color:
-    var(--ps-primary);
-
-  background:
-    var(--ps-primary-soft);
-
-  border:
-    1px solid color-mix(in srgb,
-      var(--ps-primary) 22%,
-      var(--ps-border));
-
-  border-radius:
-    var(--ps-radius-md);
-}
-
-
-.results-page .results-ai-title span {
-  display: block;
-
-  color:
-    var(--ps-text-muted);
-
-  font-size:
-    0.61rem;
-
-  font-weight: 680;
-
-  letter-spacing:
-    0.04em;
-
-  text-transform:
-    uppercase;
-}
-
-
-.results-page .results-ai-title strong {
-  display: block;
-
-  margin-top: 2px;
-
-  color:
-    var(--ps-text);
-
-  font-size:
-    0.78rem;
-}
-
-
-.results-page .results-ai-button {
-  min-height: 36px;
-
-  display: inline-flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  gap:
-    var(--ps-space-2);
-
-  padding:
-    0.45rem 0.72rem;
-
-  color:
-    var(--ps-primary);
-
-  background:
-    var(--ps-primary-soft);
-
-  border:
-    1px solid color-mix(in srgb,
-      var(--ps-primary) 28%,
-      var(--ps-border));
-
-  border-radius:
-    var(--ps-radius-sm);
-
-  font-size:
-    0.68rem;
-
-  font-weight: 720;
-
-  cursor: pointer;
-}
-
-
-.results-page .results-ai-button:disabled {
-  opacity: 0.55;
-
-  cursor: wait;
-}
-
-
-.results-page .results-ai-intro {
-  max-width: 760px;
-
-  margin:
-    var(--ps-space-3) 0 0;
-
-  color:
-    var(--ps-text-muted);
-
-  font-size:
-    0.68rem;
-
-  line-height: 1.5;
-}
-
-
-.results-page .results-ai-error {
-  margin-top:
-    var(--ps-space-3);
-
-  padding:
-    var(--ps-space-3);
-
-  display: flex;
-
-  align-items: flex-start;
-
-  gap:
-    var(--ps-space-2);
-
-  color:
-    var(--ps-warning);
-
-  background:
-    color-mix(in srgb,
-      var(--ps-warning) 7%,
-      var(--ps-surface));
-
-  border:
-    1px solid color-mix(in srgb,
-      var(--ps-warning) 20%,
-      var(--ps-border));
-
-  border-radius:
-    var(--ps-radius-sm);
-
-  font-size:
-    0.67rem;
-
-  line-height: 1.45;
-}
-
-
-.results-page .results-ai-content {
-  margin-top:
-    var(--ps-space-4);
-
-  display: grid;
-
-  gap:
-    var(--ps-space-4);
-}
-
-
-.results-page .results-ai-summary {
-  padding:
-    var(--ps-space-4);
-
-  background:
-    color-mix(in srgb,
-      var(--ps-primary) 5%,
-      var(--ps-surface-subtle));
-
-  border:
-    1px solid color-mix(in srgb,
-      var(--ps-primary) 16%,
-      var(--ps-border));
-
-  border-radius:
-    var(--ps-radius-md);
-}
-
-
-.results-page .results-ai-badge {
-  display: inline-flex;
-
-  align-items: center;
-
-  gap:
-    var(--ps-space-1);
-
-  margin-bottom:
-    var(--ps-space-2);
-
-  color:
-    var(--ps-primary);
-
-  font-size:
-    0.61rem;
-
-  font-weight: 720;
-}
-
-
-.results-page .results-ai-summary p,
-.results-page .results-ai-observations p,
-.results-page .results-ai-takeaway p {
-  margin: 0;
-
-  color:
-    var(--ps-text-secondary);
-
-  font-size:
-    0.71rem;
-
-  line-height: 1.58;
-}
-
-
-.results-page .results-ai-observations {
-  display: grid;
-
-  grid-template-columns:
-    repeat(2,
-      minmax(0, 1fr));
-
-  gap:
-    var(--ps-space-3);
-}
-
-
-.results-page .results-ai-observations article {
-  padding:
-    var(--ps-space-4);
-
-  background:
-    var(--ps-surface-subtle);
-
-  border:
-    1px solid var(--ps-border);
-
-  border-radius:
-    var(--ps-radius-md);
-}
-
-
-.results-page .results-ai-observations article>div {
-  margin-bottom:
-    var(--ps-space-2);
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: space-between;
-
-  gap:
-    var(--ps-space-2);
-}
-
-
-.results-page .results-ai-observations strong {
-  color:
-    var(--ps-text);
-
-  font-size:
-    0.68rem;
-}
-
-
-.results-page .results-ai-observations article>div span {
-  color:
-    var(--ps-text-muted);
-
-  font-size:
-    0.59rem;
-}
-
-
-.results-page .results-ai-limitations,
-.results-page .results-ai-takeaway {
-  padding:
-    var(--ps-space-4);
-
-  background:
-    var(--ps-surface-subtle);
-
-  border:
-    1px solid var(--ps-border);
-
-  border-radius:
-    var(--ps-radius-md);
-}
-
-
-.results-page .results-ai-limitations>strong,
-.results-page .results-ai-takeaway>strong {
-  display: block;
-
-  margin-bottom:
-    var(--ps-space-2);
-
-  color:
-    var(--ps-text);
-
-  font-size:
-    0.68rem;
-}
-
-
-.results-page .results-ai-limitations ul {
-  margin: 0;
-
-  padding-left: 1rem;
-
-  color:
-    var(--ps-text-secondary);
-
-  font-size:
-    0.68rem;
-
-  line-height: 1.55;
-}
-
-
-.results-page .results-ai-meta {
-  padding-top:
-    var(--ps-space-3);
-
-  display: flex;
-
-  flex-wrap: wrap;
-
-  gap:
-    var(--ps-space-2) var(--ps-space-4);
-
-  color:
-    var(--ps-text-muted);
-
-  border-top:
-    1px solid var(--ps-divider);
-
-  font-size:
-    0.6rem;
-}
-
-
-@media (max-width: 820px) {
-  .results-page .results-ai-header {
-    align-items: flex-start;
-
-    flex-direction: column;
-  }
-
-  .results-page .results-ai-button {
-    width: 100%;
-  }
-
-  .results-page .results-ai-observations {
-    grid-template-columns:
-      minmax(0, 1fr);
-  }
-}
-
 /* CORE-05G-1 — DOWNLOAD FEEDBACK */
 
 .results-page .results-download-button:disabled {
@@ -3164,4 +2886,126 @@
     );
   background: var(--ps-danger-soft);
   color: var(--ps-danger);
+}
+
+
+/* 11C1 — deterministic pedagogy evidence */
+.results-page .results-pedagogy-highlight-section {
+  margin-top:
+    var(--ps-space-3);
+  padding-top:
+    var(--ps-space-3);
+  border-top:
+    1px solid var(--ps-divider);
+}
+
+.results-page .results-pedagogy-highlight-section > strong {
+  display: block;
+  margin-bottom:
+    var(--ps-space-2);
+  color:
+    var(--ps-text);
+  font-size:
+    0.68rem;
+  font-weight: 760;
+}
+
+.results-page .results-pedagogy-highlight-section > p {
+  margin: 0;
+  color:
+    var(--ps-text-secondary);
+  font-size:
+    0.7rem;
+  line-height: 1.55;
+}
+
+.results-page .results-pedagogy-observations {
+  display: grid;
+  gap:
+    var(--ps-space-3);
+}
+
+.results-page .results-pedagogy-observation {
+  padding:
+    var(--ps-space-3);
+  background:
+    var(--ps-surface-subtle);
+  border:
+    1px solid var(--ps-border);
+  border-radius:
+    var(--ps-radius-sm);
+}
+
+.results-page .results-pedagogy-observation > p {
+  margin:
+    var(--ps-space-2) 0 0;
+  color:
+    var(--ps-text-secondary);
+  font-size:
+    0.7rem;
+  line-height: 1.55;
+}
+
+/* 11C FINAL — deterministic interpretation progressive disclosure */
+.results-page .results-pedagogy-disclosure {
+  padding-top: var(--ps-space-3);
+}
+.results-page .results-pedagogy-disclosure-button {
+  width: 100%;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+  color: var(--ps-text);
+  background: transparent;
+  border: 0;
+  text-align: left;
+  cursor: pointer;
+}
+.results-page .results-pedagogy-disclosure-copy {
+  min-width: 0;
+  display: grid;
+  gap: var(--ps-space-1);
+}
+.results-page .results-pedagogy-disclosure-copy strong {
+  font-size: 0.68rem;
+}
+.results-page .results-pedagogy-disclosure-copy small {
+  color: var(--ps-text-muted);
+  font-size: 0.6rem;
+  font-weight: 500;
+}
+.results-page .results-pedagogy-disclosure-action {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-1);
+  color: var(--ps-primary);
+  font-size: 0.61rem;
+  font-weight: 700;
+}
+.results-page .results-pedagogy-disclosure-action svg {
+  transition: transform 160ms ease;
+}
+.results-page .results-pedagogy-disclosure-action svg.is-expanded {
+  transform: rotate(180deg);
+}
+.results-page .results-pedagogy-evidence-chips {
+  margin-top: var(--ps-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ps-space-2);
+}
+.results-page .results-pedagogy-evidence-chips span {
+  padding: 0.22rem 0.42rem;
+  color: var(--ps-text-muted);
+  background: var(--ps-surface-subtle);
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-sm);
+  font-size: 0.57rem;
+  line-height: 1.2;
+}
+.results-page .results-pedagogy-disclosure .results-pedagogy-observations {
+  margin-top: var(--ps-space-3);
 }

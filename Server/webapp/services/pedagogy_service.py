@@ -1,4 +1,5 @@
-PEDAGOGY_VERSION = "1.0"
+PEDAGOGY_VERSION = "1.1"
+PRESENTATION_CONTRACT = "language-neutral-evidence-v1"
 
 PRIMARY_ORDER = [
     "DurationTime",
@@ -72,6 +73,7 @@ def build_pedagogical_interpretation(analysis, metrics):
             "uses_ai": False,
             "statistics_recomputed": False,
             "source": "analysis",
+            "presentation_contract": PRESENTATION_CONTRACT,
             "principles": [
                 "Only statements supported by structured analysis are emitted.",
                 "No good/bad performance labels are assigned without an explicit reference baseline.",
@@ -380,7 +382,13 @@ def _unavailable_message(metric_name, metric_analysis):
     metric_status = metric_analysis.get("metric_status")
     coverage = metric_analysis.get("coverage") or {}
 
-    if metric_status == "unsupported":
+    if metric_status == "permission_denied":
+        text = (
+            "Esta métrica no fue medida porque el proceso de medición "
+            "no tuvo permisos suficientes para acceder al evento de "
+            "rendimiento solicitado."
+        )
+    elif metric_status == "unsupported":
         text = (
             "Esta métrica no fue medida porque el evento de hardware "
             "no está soportado por el entorno de ejecución utilizado."
@@ -458,14 +466,59 @@ def _build_summary(metric_messages):
 
 
 def _message(kind, priority, text, metric, source, evidence):
+    # `text` se conserva sólo por compatibilidad legacy.
+    # La UI debe presentar `message_code + metric + source + evidence`.
+    evidence = evidence or {}
+
     return {
         "kind": kind,
+        "message_code": _message_code(kind, evidence),
         "priority": priority,
         "text": text,
         "metric": metric,
         "source": source,
         "evidence": evidence,
     }
+
+
+def _message_code(kind, evidence):
+    if kind == "snapshot":
+        return "snapshot"
+
+    if kind == "trend":
+        return "trend"
+
+    if kind == "observed_scaling":
+        return "observed_scaling"
+
+    if kind == "outliers":
+        if (evidence.get("samples_evaluated") or 0) > 0:
+            return "outliers_detected"
+        return "outliers_insufficient"
+
+    if kind == "limitation":
+        if evidence.get("trend_status") == "insufficient_points":
+            return "single_input_limitation"
+        return "limitation"
+
+    if kind == "coverage":
+        return "partial_coverage"
+
+    if kind == "availability":
+        metric_status = evidence.get("metric_status")
+
+        if metric_status == "permission_denied":
+            return "availability_permission_denied"
+
+        if metric_status == "unsupported":
+            return "availability_unsupported"
+
+        if metric_status == "not_counted":
+            return "availability_not_counted"
+
+        return "availability_no_numeric"
+
+    return kind
 
 
 def _direction_text(relative):
