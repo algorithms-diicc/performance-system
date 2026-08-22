@@ -1,4 +1,5 @@
 import InlineState from "../components/InlineState";
+import ConfirmActionModal from "../components/ConfirmActionModal";
 import { requestJson } from "../common/requestErrorModel";
 import React, {
   useCallback,
@@ -182,6 +183,43 @@ function adminDetailErrorMessage(
   }
 
   return t(fallbackKey);
+}
+
+
+function adminRoleChangeErrorMessage(
+  error,
+  t
+) {
+  const code =
+    String(
+      error?.code
+      || error?.payload?.error?.code
+      || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    code
+    === "USER_HAS_ASSIGNED_COURSES"
+  ) {
+    return t(
+      "adminUserDetail.roleChange.assignedCoursesError",
+      {
+        count:
+          Number(
+            error?.payload?.error
+              ?.assignedCourses
+          ) || 0,
+      }
+    );
+  }
+
+  return adminDetailErrorMessage(
+    error,
+    t,
+    "adminUserDetail.errors.changeRole"
+  );
 }
 
 
@@ -805,7 +843,6 @@ function ExecutionsTab({
           "adminUserDetail.executions.errors.load"
         )
       : "";
-
 
   const stateOptions =
     localizedExecutionStateOptions(
@@ -2784,6 +2821,21 @@ const AdminUserDetail = () => {
   ] = useState(0);
 
   const [
+    roleDecision,
+    setRoleDecision,
+  ] = useState(null);
+
+  const [
+    changingRole,
+    setChangingRole,
+  ] = useState(false);
+
+  const [
+    roleError,
+    setRoleError,
+  ] = useState(null);
+
+  const [
     executionId,
     setExecutionId,
   ] = useState(null);
@@ -2927,7 +2979,82 @@ const AdminUserDetail = () => {
       "executions"
     );
     setExecutionId(null);
+    setRoleDecision(null);
+    setRoleError(null);
   }, [id]);
+
+
+  const roleChangeConfig =
+    useMemo(
+      () => {
+        const role =
+          String(
+            profile?.role || ""
+          ).trim();
+
+        if (role === "Student") {
+          return {
+            nextRole: "Teacher",
+            actionKey:
+              "adminUserDetail.actions.promoteTeacher",
+            variant: "normal",
+          };
+        }
+
+        if (role === "Teacher") {
+          return {
+            nextRole: "Student",
+            actionKey:
+              "adminUserDetail.actions.changeToStudent",
+            variant: "danger",
+          };
+        }
+
+        return null;
+      },
+      [profile?.role]
+    );
+
+
+  const confirmRoleChange =
+    async () => {
+      if (!roleDecision) {
+        return;
+      }
+
+      try {
+        setChangingRole(true);
+        setRoleError(null);
+
+        await fetchJson(
+          `/api/admin/users/${id}/role`,
+          {
+            method: "PATCH",
+            body:
+              JSON.stringify({
+                role:
+                  roleDecision.nextRole,
+              }),
+          }
+        );
+
+        setProfile(
+          (previous) => ({
+            ...previous,
+            role:
+              roleDecision.nextRole,
+          })
+        );
+        setRoleDecision(null);
+        setReloadToken(
+          (value) => value + 1
+        );
+      } catch (err) {
+        setRoleError(err);
+      } finally {
+        setChangingRole(false);
+      }
+    };
 
 
   const tabs =
@@ -2979,6 +3106,14 @@ const AdminUserDetail = () => {
           error,
           t,
           "adminUserDetail.errors.load"
+        )
+      : "";
+
+  const roleErrorMessage =
+    roleError
+      ? adminRoleChangeErrorMessage(
+          roleError,
+          t
         )
       : "";
 
@@ -3085,6 +3220,44 @@ const AdminUserDetail = () => {
                 />
 
 
+                {roleChangeConfig && (
+                  <section className="admin-user-role-action">
+                    <div>
+                      <h2>
+                        {t(
+                          "adminUserDetail.roleChange.title"
+                        )}
+                      </h2>
+                      <p>
+                        {t(
+                          "adminUserDetail.roleChange.description"
+                        )}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={
+                        roleChangeConfig.variant
+                          === "danger"
+                          ? "btn admin-detail-danger-button"
+                          : "btn admin-detail-primary-button"
+                      }
+                      onClick={() => {
+                        setRoleError(null);
+                        setRoleDecision(
+                          roleChangeConfig
+                        );
+                      }}
+                    >
+                      {t(
+                        roleChangeConfig.actionKey
+                      )}
+                    </button>
+                  </section>
+                )}
+
+
                 <section className="admin-user-detail-content">
 
                   <nav
@@ -3189,6 +3362,65 @@ const AdminUserDetail = () => {
         }
         onClose={
           closeExecutionDetail
+        }
+      />
+
+
+      <ConfirmActionModal
+        open={Boolean(
+          roleDecision
+        )}
+        title={t(
+          "adminUserDetail.roleChange.modalTitle"
+        )}
+        body={
+          <>
+            <p>
+              {t(
+                roleDecision?.nextRole
+                  === "Student"
+                  ? "adminUserDetail.roleChange.demoteDescription"
+                  : "adminUserDetail.roleChange.promoteDescription",
+                {
+                  name:
+                    profile?.fullName,
+                  email:
+                    profile?.email,
+                }
+              )}
+            </p>
+
+            {roleErrorMessage && (
+              <p
+                className="admin-role-modal-error"
+                role="alert"
+              >
+                {roleErrorMessage}
+              </p>
+            )}
+          </>
+        }
+        confirmLabel={
+          roleDecision
+            ? t(
+                roleDecision.actionKey
+              )
+            : ""
+        }
+        cancelLabel={t(
+          "adminUserDetail.actions.cancel"
+        )}
+        onConfirm={
+          confirmRoleChange
+        }
+        onCancel={() => {
+          setRoleDecision(null);
+          setRoleError(null);
+        }}
+        loading={changingRole}
+        variant={
+          roleDecision?.variant
+          || "normal"
         }
       />
 

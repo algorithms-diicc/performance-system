@@ -342,6 +342,43 @@
   font-weight: 700;
 }
 
+.teacher-page .form-control,
+.teacher-page .form-select,
+.teacher-page textarea {
+  color: var(--ps-text);
+  background-color: var(--ps-surface);
+  border-color: var(--ps-border);
+}
+
+.teacher-page .form-control::placeholder,
+.teacher-page textarea::placeholder {
+  color: var(--ps-text-muted);
+  opacity: 1;
+}
+
+.teacher-page .form-control:focus,
+.teacher-page .form-select:focus,
+.teacher-page textarea:focus {
+  color: var(--ps-text);
+  background-color: var(--ps-surface);
+  border-color: var(--ps-primary);
+  box-shadow: 0 0 0 3px var(--ps-focus-ring);
+}
+
+.teacher-page .form-control:disabled,
+.teacher-page .form-select:disabled,
+.teacher-page textarea:disabled {
+  color: var(--ps-text-muted);
+  background-color: var(--ps-surface-subtle);
+  border-color: var(--ps-border);
+  opacity: 0.72;
+}
+
+.teacher-page .form-select option {
+  color: var(--ps-text);
+  background: var(--ps-surface-elevated);
+}
+
 .teacher-form-span-2 {
   grid-column: span 2;
 }
@@ -359,6 +396,12 @@
   color: var(--ps-danger);
   font-size: var(--ps-font-size-sm);
   font-weight: 650;
+}
+
+.teacher-field-feedback {
+  display: block;
+  margin-top: var(--ps-space-2);
+  margin-right: 0;
 }
 
 .teacher-toolbar,
@@ -786,6 +829,86 @@ button.teacher-attention-card:focus-visible {
   font-size: var(--ps-font-size-sm);
 }
 
+.teacher-email-preview,
+.teacher-roster-feedback {
+  margin-top: var(--ps-space-2);
+  padding: var(--ps-space-2) var(--ps-space-3);
+  color: var(--ps-text-secondary);
+  background: var(--ps-surface);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  font-size: var(--ps-font-size-sm);
+}
+
+.teacher-email-preview span {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.teacher-email-preview--error,
+.teacher-roster-feedback--error,
+.teacher-modal-error {
+  color: var(--ps-danger);
+  background: var(--ps-danger-soft);
+  border-color: var(--ps-danger);
+}
+
+.teacher-roster-feedback {
+  margin-bottom: var(--ps-space-3);
+}
+
+.teacher-roster-feedback--success {
+  color: var(--ps-success);
+  background: var(--ps-success-soft);
+  border-color: var(--ps-success);
+}
+
+.teacher-modal-error {
+  padding: var(--ps-space-2) var(--ps-space-3);
+  border: 1px solid var(--ps-danger);
+  border-radius: var(--ps-radius-md);
+  font-size: var(--ps-font-size-sm);
+}
+
+.teacher-clone-form {
+  display: grid;
+  gap: var(--ps-space-3);
+}
+
+.teacher-clone-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ps-space-3);
+}
+
+.teacher-clone-fields label {
+  display: block;
+  margin-bottom: 0.4rem;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-sm);
+  font-weight: 700;
+}
+
+.teacher-clone-checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  color: var(--ps-text);
+  font-weight: 700;
+}
+
+.teacher-clone-checkbox input {
+  accent-color: var(--ps-primary);
+}
+
+.teacher-clone-warning {
+  padding: var(--ps-space-3);
+  color: var(--ps-text-secondary);
+  background: var(--ps-surface-subtle);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+}
+
 .teacher-import-result {
   margin-top: var(--ps-space-3);
   padding: var(--ps-space-3);
@@ -984,7 +1107,8 @@ button.teacher-attention-card:focus-visible {
   .teacher-summary-grid--course,
   .teacher-summary-grid--analytics,
   .teacher-form-grid,
-  .teacher-student-filters {
+  .teacher-student-filters,
+  .teacher-clone-fields {
     grid-template-columns: 1fr;
   }
 

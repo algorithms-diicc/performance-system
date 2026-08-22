@@ -279,7 +279,8 @@ def _validate_teacher_target(cur, teacher_user_id):
     return row
 
 
-def _audit(cur, action, description):
+def _audit(cur, action, description, actor=None):
+    actor = actor or g.current_user
     cur.execute(
         """
         INSERT INTO audit_log (
@@ -291,11 +292,134 @@ def _audit(cur, action, description):
         VALUES (%s, %s, %s, NOW());
         """,
         (
-            g.current_user["id"],
+            actor["id"],
             action,
             description,
         ),
     )
+
+
+def clone_course_in_transaction(
+    cur,
+    source,
+    teacher,
+    academic_year,
+    academic_term,
+    copy_students,
+    actor,
+):
+    """Crea una instancia nueva y, opcionalmente, su nómina activa."""
+    cur.execute(
+        """
+        SELECT id
+        FROM courses
+        WHERE code = %s
+          AND academic_year = %s
+          AND academic_term = %s
+          AND teacher_user_id = %s;
+        """,
+        (
+            source["code"],
+            academic_year,
+            academic_term,
+            source["teacher_user_id"],
+        ),
+    )
+    if cur.fetchone() is not None:
+        raise BadRequestError(
+            "Ya existe este curso para el profesor y período indicados."
+        )
+
+    cur.execute(
+        """
+        INSERT INTO courses (
+            code,
+            name,
+            academic_year,
+            academic_term,
+            teacher_user_id,
+            is_active,
+            created_at,
+            updated_at
+        )
+        VALUES (%s, %s, %s, %s, %s, TRUE, NOW(), NOW())
+        RETURNING *;
+        """,
+        (
+            source["code"],
+            source["name"],
+            academic_year,
+            academic_term,
+            source["teacher_user_id"],
+        ),
+    )
+    cloned = cur.fetchone()
+    cloned["teacher_full_name"] = teacher.get("full_name")
+    cloned["teacher_email"] = teacher.get("email")
+    cloned["active_students"] = 0
+    cloned["total_students"] = 0
+    cloned["submissions_count"] = 0
+    cloned["executions_count"] = 0
+    cloned["last_activity_at"] = None
+
+    students_copied = 0
+    if copy_students:
+        cur.execute(
+            """
+            INSERT INTO course_memberships (
+                course_id,
+                user_id,
+                is_active,
+                membership_source,
+                source_access_request_id,
+                added_by_user_id,
+                created_at,
+                updated_at,
+                removed_at
+            )
+            SELECT
+                %s,
+                cm.user_id,
+                TRUE,
+                'BULK_IMPORT',
+                NULL,
+                %s,
+                NOW(),
+                NOW(),
+                NULL
+            FROM course_memberships cm
+            WHERE cm.course_id = %s
+              AND cm.is_active = TRUE
+            RETURNING id;
+            """,
+            (
+                cloned["id"],
+                actor["id"],
+                source["id"],
+            ),
+        )
+        students_copied = len(cur.fetchall())
+        cloned["active_students"] = students_copied
+        cloned["total_students"] = students_copied
+
+    _audit(
+        cur,
+        "clone_course",
+        (
+            "Curso #{source_id} clonado como #{target_id} para "
+            "{year}-{term}; estudiantesCopiados={students}; actor={actor}."
+        ).format(
+            source_id=source["id"],
+            target_id=cloned["id"],
+            year=academic_year,
+            term=academic_term,
+            students=students_copied,
+            actor=actor.get("email"),
+        ),
+        actor=actor,
+    )
+
+    return cloned, students_copied
 
 
 @teacher_courses_bp.route("/student/courses", methods=["GET"])
@@ -622,6 +746,56 @@ def create_course():
         )
 
     return jsonify({"course": _serialize_course(course)}), 201
+
+
+@teacher_courses_bp.route(
+    "/teacher/courses/<int:course_id>/clone",
+    methods=["POST"],
+)
+@login_required
+@teacher_or_admin_required
+@handle_api_errors
+def clone_course(course_id):
+    data = request.get_json(silent=True) or {}
+    academic_year = _as_int(
+        data.get("academicYear", data.get("academic_year")),
+        "academicYear",
+        2000,
+        9999,
+    )
+    academic_term = _as_int(
+        data.get("academicTerm", data.get("academic_term")),
+        "academicTerm",
+        1,
+        2,
+    )
+    copy_students = _parse_bool(
+        data.get("copyStudents", data.get("copy_students", False)),
+        "copyStudents",
+    )
+
+    with db_cursor() as (_conn, cur):
+        source = _load_course(cur, course_id)
+        teacher = _validate_teacher_target(
+            cur,
+            source["teacher_user_id"],
+        )
+        cloned, students_copied = clone_course_in_transaction(
+            cur,
+            source,
+            teacher,
+            academic_year,
+            academic_term,
+            copy_students,
+            g.current_user,
+        )
+
+    return jsonify(
+        {
+            "course": _serialize_course(cloned),
+            "studentsCopied": students_copied,
+        }
+    ), 201
 
 
 @teacher_courses_bp.route(
@@ -1062,7 +1236,12 @@ def update_course(course_id):
                 "teacherUserId",
                 1,
             )
-            _validate_teacher_target(cur, teacher_user_id)
+            if teacher_user_id != current["teacher_user_id"]:
+                _validate_teacher_target(cur, teacher_user_id)
+
+        teacher_changed = (
+            teacher_user_id != current["teacher_user_id"]
+        )
 
         cur.execute(
             """
@@ -1159,17 +1338,32 @@ def update_course(course_id):
         aggregates = cur.fetchone() or {}
         course.update(aggregates)
 
-        _audit(
-            cur,
-            "update_course",
-            (
-                "Curso #{id} actualizado por {actor}; activo={active}."
-            ).format(
-                id=course_id,
-                actor=g.current_user.get("email"),
-                active=bool(is_active),
-            ),
-        )
+        if teacher_changed:
+            _audit(
+                cur,
+                "transfer_course_teacher",
+                (
+                    "Curso #{id} transferido de {old_teacher} a "
+                    "{new_teacher} por {actor}."
+                ).format(
+                    id=course_id,
+                    old_teacher=current.get("teacher_email"),
+                    new_teacher=teacher.get("email"),
+                    actor=g.current_user.get("email"),
+                ),
+            )
+        else:
+            _audit(
+                cur,
+                "update_course",
+                (
+                    "Curso #{id} actualizado por {actor}; activo={active}."
+                ).format(
+                    id=course_id,
+                    actor=g.current_user.get("email"),
+                    active=bool(is_active),
+                ),
+            )
 
     return jsonify({"course": _serialize_course(course)}), 200
 
@@ -1341,7 +1535,7 @@ def export_course_students_csv(course_id):
         [
             "Alumno",
             "Correo",
-            "Envíos",
+            "Experimentos",
             "Ejecuciones",
             "Completadas",
             "Fallidas",

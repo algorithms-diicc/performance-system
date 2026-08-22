@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   MemoryRouter,
@@ -353,7 +354,7 @@ describe(
 
 
     test(
-      "localizes the finish confirmation and preserves the PATCH contract",
+      "uses the localized finish modal and preserves the PATCH contract",
       async () => {
         const confirmSpy =
           jest
@@ -383,10 +384,33 @@ describe(
           )
         );
 
+        const dialog =
+          screen.getByRole(
+            "dialog",
+            {
+              name:
+                "Finish course",
+            }
+          );
+
+        expect(
+          within(dialog).getByText(
+            "Confirm finishing course INF-101 2026-2?"
+          )
+        ).toBeInTheDocument();
+
         expect(
           confirmSpy
-        ).toHaveBeenCalledWith(
-          "Confirm finishing course INF-101 2026-2?"
+        ).not.toHaveBeenCalled();
+
+        fireEvent.click(
+          within(dialog).getByRole(
+            "button",
+            {
+              name:
+                "Finish course",
+            }
+          )
         );
 
         await waitFor(() =>

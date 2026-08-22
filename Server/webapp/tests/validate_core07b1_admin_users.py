@@ -46,6 +46,7 @@ except Exception as exc:
 backend = backend_path.read_text(encoding="utf-8")
 frontend = frontend_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
+frontend_compact = "".join(frontend.split())
 
 check(
     "backend calcula total filtrado",
@@ -66,9 +67,10 @@ check(
 check(
     "frontend consulta filtros/paginación en API",
     "URLSearchParams" in frontend
-    and 'params.set("search"' in frontend
-    and 'params.set("role"' in frontend
-    and 'params.set("status"' in frontend,
+    and 'params.set("search",' in frontend_compact
+    and 'params.set("role",' in frontend_compact
+    and 'params.set("status",' in frontend_compact
+    and "page_size:String(pageSize)" in frontend_compact,
 )
 check(
     "frontend no contiene acciones mock",
@@ -77,27 +79,29 @@ check(
 )
 check(
     "frontend separa envíos y ejecuciones",
-    "envíos" in frontend
-    and "ejecuciones" in frontend
+    "user.submissionsCount" in frontend
+    and "user.executionsCount" in frontend
     and "completedExecutions" in frontend,
 )
 check(
     "frontend muestra inactivos y no bloqueados ficticios",
-    "Inactivos" in frontend
-    and "Bloqueados" not in frontend,
+    '<option value="inactive">' in frontend
+    and "adminUsers.summary.inactive" in frontend
+    and "blocked" not in frontend.casefold(),
 )
 check(
     "frontend formatea fechas ISO",
-    'Intl.DateTimeFormat("es-CL"' in frontend
+    'from "../i18n/formatters"' in frontend
     and "formatDateTime(" in frontend
     and "user.lastExecutionAt" in frontend
     and "user.createdAt" in frontend,
 )
 check(
     "listado usa paginación explícita",
-    "Página {Math.min(page, totalPages)}" in frontend
-    and "goToPreviousPage" in frontend
-    and "goToNextPage" in frontend,
+    '"adminUsers.pagination.page"' in frontend
+    and "setPage" in frontend
+    and "totalPages" in frontend
+    and "PAGE_SIZES" in frontend,
 )
 check(
     "CSS evita colores forzados del antiguo dark-only",

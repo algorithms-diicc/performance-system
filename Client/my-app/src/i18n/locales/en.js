@@ -2264,7 +2264,8 @@ const en = {
       activeStudents: "Active students",
       submissions: "Experiments",
       executions: "Executions",
-      completionRate: "Completion rate",
+      completionRate:
+        "Completed executions rate",
     },
     empty: {
       title: "No data yet",
@@ -2396,6 +2397,8 @@ const en = {
       activeCourses: "Active courses",
       historicalCourses: "Historical courses",
       activeStudents: "Active students",
+      registeredStudents:
+        "Registered students",
     },
     create: {
       title: "New academic instance",
@@ -2407,6 +2410,12 @@ const en = {
       namePlaceholder: "e.g. Data Structures",
       year: "Year",
       semester: "Semester",
+      responsible:
+        "Responsible instructor",
+      selectResponsible:
+        "Select a responsible instructor",
+      loadingResponsibles:
+        "Loading instructors...",
     },
     toolbar: {
       aria: "Course filters",
@@ -2452,6 +2461,10 @@ const en = {
         "Enter an academic year between 2000 and 9999.",
       validationTerm:
         "Select semester 1 or 2.",
+      validationResponsible:
+        "Select an active responsible instructor.",
+      responsibles:
+        "The responsible instructors could not be loaded.",
     },
   },
 
@@ -2515,6 +2528,8 @@ const en = {
       restore: "Restore",
       previous: "Previous",
       next: "Next",
+      cancel: "Cancel",
+      cloneCourse: "Clone course",
     },
     export: {
       title:
@@ -2530,6 +2545,12 @@ const en = {
       name: "Name",
       year: "Year",
       semester: "Semester",
+      responsible:
+        "Responsible instructor",
+      selectResponsible:
+        "Select a responsible instructor",
+      loadingResponsibles:
+        "Loading instructors...",
     },
     students: {
       title: "Students",
@@ -2543,6 +2564,15 @@ const en = {
         "student1@inf.udec.cl\nstudent2@inf.udec.cl\nstudent3@inf.udec.cl",
       help:
         "Paste a list separated by line breaks, spaces, commas, or semicolons. They must correspond to student accounts registered on the platform.",
+      emailsDetected: {
+        one: "{{count}} email detected",
+        other:
+          "{{count}} emails detected",
+      },
+      emailLimit:
+        "The maximum is {{max}}. Reduce the list before continuing.",
+      restoreSuccess:
+        "The student was restored to the course.",
       membership: {
         active: "Active",
         inactive: "Removed",
@@ -2570,8 +2600,8 @@ const en = {
         student: "Student",
         status: "Status",
         submissions: "Experiments",
-        executions: "Exec.",
-        completed: "OK",
+        executions: "Executions",
+        completed: "Completed",
         failed: "Failed",
         lastActivity:
           "Last activity",
@@ -2594,6 +2624,30 @@ const en = {
         "Confirm reactivating course {{code}} {{period}}?",
       removeStudent:
         "Remove {{name}} from the course? Their results will not be deleted.",
+    },
+    modals: {
+      finish: {
+        title: "Finish course",
+      },
+      reactivate: {
+        title: "Reactivate course",
+      },
+      removeStudent: {
+        title: "Remove student",
+        description:
+          "You will remove {{name}} ({{email}}) from the active roster.",
+        preservedHistory:
+          "The user account, experiments, and historical results will not be deleted.",
+      },
+    },
+    clone: {
+      title: "Clone course",
+      description:
+        "Create a new instance of {{code}} from period {{period}}.",
+      copyStudents:
+        "Copy active students",
+      noActivityCopy:
+        "Experiments, executions, and results will not be copied.",
     },
     loading: "Loading course",
     errors: {
@@ -2623,6 +2677,12 @@ const en = {
         "Select semester 1 or 2.",
       validationEmails:
         "Enter one or more valid student email addresses.",
+      validationResponsible:
+        "Select an active responsible instructor.",
+      responsibles:
+        "The responsible instructors could not be loaded.",
+      cloneCourse:
+        "The course could not be cloned.",
     },
   },
 
@@ -3008,6 +3068,11 @@ const en = {
         "View experiment",
       viewResults:
         "View results",
+      cancel: "Cancel",
+      promoteTeacher:
+        "Promote to Teacher",
+      changeToStudent:
+        "Change to Student",
     },
     header: {
       eyebrow:
@@ -3038,6 +3103,8 @@ const en = {
         "The requested user is not available.",
       service:
         "The service is temporarily unavailable. Try again in a few moments.",
+      changeRole:
+        "The user role could not be changed.",
     },
     profile: {
       created: "Created",
@@ -3045,6 +3112,19 @@ const en = {
         "Last session",
       lastActivity:
         "Last execution",
+    },
+    roleChange: {
+      title: "Role management",
+      description:
+        "Change between Student and Teacher with the corresponding academic safeguards.",
+      modalTitle:
+        "Confirm role change",
+      promoteDescription:
+        "You will promote {{name}} ({{email}}) to the Teacher role.",
+      demoteDescription:
+        "You will change {{name}} ({{email}}) to the Student role. The operation will be blocked if any courses remain assigned.",
+      assignedCoursesError:
+        "Assigned courses: {{count}}. Transfer them before changing the role.",
     },
     summary: {
       submissions:
@@ -3419,6 +3499,10 @@ const en = {
         "Course created",
       updateCourse:
         "Course updated",
+      transferCourseTeacher:
+        "Course responsibility transferred",
+      cloneCourse:
+        "Course cloned",
       addCourseStudents:
         "Student batch processed",
       removeCourseStudent:
@@ -3427,6 +3511,8 @@ const en = {
         "Student restored to course",
       rerunSubmission:
         "Experiment rerun requested",
+      changeUserRole:
+        "User role changed",
       unknown:
         "Unknown action",
     },

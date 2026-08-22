@@ -88,6 +88,34 @@ jest.mock("./screens/AdminUserDetail", () => () => (
   </div>
 ));
 
+jest.mock("./screens/TeacherLayout", () => {
+  const {
+    Outlet: MockOutlet,
+  } = jest.requireActual(
+    "react-router-dom"
+  );
+
+  return () => <MockOutlet />;
+});
+
+jest.mock("./screens/TeacherCourses", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-teacher-courses"
+    data-current-user-email={currentUser?.email || ""}
+  >
+    Cursos docentes
+  </div>
+));
+
+jest.mock("./screens/TeacherCourseDetail", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-teacher-course-detail"
+    data-current-user-email={currentUser?.email || ""}
+  >
+    Detalle docente
+  </div>
+));
+
 jest.mock("./components/Loader", () => () => (
   <div data-testid="screen-loader">
     Cargando sesión
@@ -243,6 +271,26 @@ describe("CORE-05H-1 App shell and routing regression", () => {
     expect(global.fetch).toHaveBeenCalledWith("/api/auth/me", {
       credentials: "include",
     });
+  });
+
+  test.each([
+    ["/teacher/courses", "screen-teacher-courses"],
+    ["/teacher/courses/10", "screen-teacher-course-detail"],
+  ])("passes currentUser to teacher supervision at %s", async (path, testId) => {
+    setRoute(path);
+    mockAuthenticatedUser({
+      id: 8,
+      email: "teacher@udec.cl",
+      role_name: "Teacher",
+    });
+
+    render(<App />);
+
+    expect(await screen.findByTestId(testId)).toHaveAttribute(
+      "data-current-user-email",
+      "teacher@udec.cl"
+    );
+    expect(global.fetch).toHaveBeenCalledTimes(1);
   });
 
   test("unauthenticated comparison route is redirected to login", async () => {

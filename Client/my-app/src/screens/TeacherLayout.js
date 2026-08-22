@@ -5,30 +5,42 @@ import {
   Outlet,
 } from "react-router-dom";
 
+import {
+  useI18n,
+} from "../i18n";
+
 import "./TeacherDashboard.css";
 
 
-const TeacherLayout = () => (
-  <div className="teacher-shell">
+const TeacherLayout = () => {
+  const { t } = useI18n();
 
-    <nav
-      className="teacher-shell-nav"
-      aria-label="Secciones de supervisión docente"
-    >
+  return (
+    <div className="teacher-shell">
 
-      <NavLink
-        to="/teacher/courses"
+      <nav
+        className="teacher-shell-nav"
+        aria-label={t(
+          "teacherCourses.header.eyebrow"
+        )}
       >
-        Cursos
-      </NavLink>
 
-    </nav>
+        <NavLink
+          to="/teacher/courses"
+        >
+          {t(
+            "teacherCourses.header.title"
+          )}
+        </NavLink>
+
+      </nav>
 
 
-    <Outlet />
+      <Outlet />
 
-  </div>
-);
+    </div>
+  );
+};
 
 
 export default TeacherLayout;

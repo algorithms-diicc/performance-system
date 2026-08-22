@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import {
   MemoryRouter,
@@ -431,7 +432,7 @@ describe(
 
 
     test(
-      "localizes removal confirmation and preserves DELETE contract",
+      "uses the localized removal modal and preserves DELETE contract",
       async () => {
         const confirmSpy =
           jest
@@ -456,10 +457,36 @@ describe(
           )
         );
 
+        const dialog =
+          screen.getByRole(
+            "dialog",
+            {
+              name:
+                "Remove student",
+            }
+          );
+
+        expect(
+          within(dialog).getByText(
+            "You will remove Ada Lovelace (ada@example.com) from the active roster."
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          within(dialog).getByText(
+            "The user account, experiments, and historical results will not be deleted."
+          )
+        ).toBeInTheDocument();
+
         expect(
           confirmSpy
-        ).toHaveBeenCalledWith(
-          "Remove Ada Lovelace from the course? Their results will not be deleted."
+        ).not.toHaveBeenCalled();
+
+        fireEvent.click(
+          within(dialog).getByRole(
+            "button",
+            { name: "Remove" }
+          )
         );
 
         await waitFor(() =>

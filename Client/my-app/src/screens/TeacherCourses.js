@@ -12,6 +12,10 @@ import InlineState
   from "../components/InlineState";
 
 import {
+  isAdminUser,
+} from "../common/userAccessModel";
+
+import {
   useI18n,
 } from "../i18n";
 
@@ -21,6 +25,11 @@ import {
   teacherApi,
   teacherRequestErrorMessage,
 } from "./teacherApi";
+
+import {
+  loadResponsibleCandidates,
+  responsibleOptionLabel,
+} from "./teacherResponsibleModel";
 
 import "./TeacherDashboard.css";
 
@@ -65,6 +74,7 @@ function EmptyCourseState({
 
 function CourseCard({
   course,
+  activeView,
   onOpen,
 }) {
   const {
@@ -75,9 +85,13 @@ function CourseCard({
   const totalStudents =
     course.totalStudents || 0;
 
+  const activeStudents =
+    course.activeStudents || 0;
+
   const studentCountLabel =
-    course.totalStudents >
-      course.activeStudents
+    activeView
+    && totalStudents
+      > activeStudents
       ? t(
           "teacherCourses.card.historicalStudents",
           {
@@ -94,6 +108,11 @@ function CourseCard({
               totalStudents,
           }
         );
+
+  const visibleStudents =
+    activeView
+      ? activeStudents
+      : totalStudents;
 
   return (
     <article className="teacher-course-card">
@@ -153,7 +172,7 @@ function CourseCard({
             )}
           </span>
           <strong>
-            {course.activeStudents || 0}
+            {visibleStudents}
           </strong>
         </div>
 
@@ -260,6 +279,8 @@ function createCourseErrorMessage(
         "teacherCourses.errors.validationYear",
       academicTerm:
         "teacherCourses.errors.validationTerm",
+      teacherUserId:
+        "teacherCourses.errors.validationResponsible",
     };
 
     if (fieldKeys[field]) {
@@ -284,7 +305,9 @@ function createCourseErrorMessage(
 }
 
 
-export default function TeacherCourses() {
+export default function TeacherCourses({
+  currentUser,
+}) {
   const navigate =
     useNavigate();
 
@@ -292,6 +315,9 @@ export default function TeacherCourses() {
     language,
     t,
   } = useI18n();
+
+  const adminUser =
+    isAdminUser(currentUser);
 
   const [
     activeView,
@@ -339,6 +365,21 @@ export default function TeacherCourses() {
   ] = useState(null);
 
   const [
+    responsibleCandidates,
+    setResponsibleCandidates,
+  ] = useState([]);
+
+  const [
+    loadingResponsible,
+    setLoadingResponsible,
+  ] = useState(false);
+
+  const [
+    responsibleError,
+    setResponsibleError,
+  ] = useState(null);
+
+  const [
     form,
     setForm,
   ] = useState({
@@ -346,7 +387,95 @@ export default function TeacherCourses() {
     name: "",
     academicYear: currentYear,
     academicTerm: 2,
+    teacherUserId: "",
   });
+
+
+  useEffect(() => {
+    if (
+      !adminUser
+      || !showCreate
+    ) {
+      return undefined;
+    }
+
+    const controller =
+      new AbortController();
+
+    (async () => {
+      try {
+        setLoadingResponsible(true);
+        setResponsibleError(null);
+
+        const candidates =
+          await loadResponsibleCandidates(
+            controller.signal
+          );
+
+        setResponsibleCandidates(
+          candidates
+        );
+
+        setForm(
+          (previous) => {
+            const selected =
+              Number(
+                previous.teacherUserId
+              );
+            const selectedExists =
+              candidates.some(
+                (candidate) =>
+                  candidate.id
+                  === selected
+              );
+            const currentId =
+              Number(currentUser?.id);
+            const preferred =
+              candidates.find(
+                (candidate) =>
+                  candidate.id
+                  === currentId
+              )
+              || candidates[0];
+
+            return {
+              ...previous,
+              teacherUserId:
+                selectedExists
+                  ? String(selected)
+                  : preferred
+                    ? String(
+                        preferred.id
+                      )
+                    : "",
+            };
+          }
+        );
+      } catch (err) {
+        if (
+          err.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setResponsibleCandidates([]);
+        setResponsibleError(err);
+      } finally {
+        if (
+          !controller.signal.aborted
+        ) {
+          setLoadingResponsible(false);
+        }
+      }
+    })();
+
+    return () =>
+      controller.abort();
+  }, [
+    adminUser,
+    currentUser?.id,
+    showCreate,
+  ]);
 
 
   useEffect(() => {
@@ -435,10 +564,11 @@ export default function TeacherCourses() {
           items.reduce(
             (total, course) =>
               total +
-              (
-                course.activeStudents
-                || 0
-              ),
+              ((
+                activeView
+                  ? course.activeStudents
+                  : course.totalStudents
+              ) || 0),
             0
           ),
         submissions:
@@ -462,7 +592,10 @@ export default function TeacherCourses() {
             0
           ),
       }),
-      [items]
+      [
+        activeView,
+        items,
+      ]
     );
 
 
@@ -487,26 +620,37 @@ export default function TeacherCourses() {
         setCreating(true);
         setCreateError(null);
 
+        const payload = {
+          code:
+            form.code.trim(),
+          name:
+            form.name.trim(),
+          academicYear:
+            Number(
+              form.academicYear
+            ),
+          academicTerm:
+            Number(
+              form.academicTerm
+            ),
+        };
+
+        if (adminUser) {
+          payload.teacherUserId =
+            Number(
+              form.teacherUserId
+            );
+        }
+
         const data =
           await teacherApi(
             "/api/teacher/courses",
             {
               method: "POST",
               body:
-                JSON.stringify({
-                  code:
-                    form.code.trim(),
-                  name:
-                    form.name.trim(),
-                  academicYear:
-                    Number(
-                      form.academicYear
-                    ),
-                  academicTerm:
-                    Number(
-                      form.academicTerm
-                    ),
-                }),
+                JSON.stringify(
+                  payload
+                ),
             }
           );
 
@@ -521,6 +665,7 @@ export default function TeacherCourses() {
           academicYear:
             currentYear,
           academicTerm: 2,
+          teacherUserId: "",
         });
 
         setReloadToken(
@@ -559,6 +704,18 @@ export default function TeacherCourses() {
       language,
       t
     );
+
+  const responsibleErrorMessage =
+    responsibleError
+      ? teacherRequestErrorMessage(
+          responsibleError,
+          t,
+          {
+            fallbackKey:
+              "teacherCourses.errors.responsibles",
+          }
+        )
+      : "";
 
 
   return (
@@ -630,7 +787,9 @@ export default function TeacherCourses() {
           <article>
             <span>
               {t(
-                "teacherCourses.summary.activeStudents"
+                activeView
+                  ? "teacherCourses.summary.activeStudents"
+                  : "teacherCourses.summary.registeredStudents"
               )}
             </span>
             <strong>
@@ -797,6 +956,68 @@ export default function TeacherCourses() {
                 </select>
               </div>
 
+              {adminUser && (
+                <div className="teacher-form-span-2">
+                  <label
+                    htmlFor="teacher-course-responsible"
+                  >
+                    {t(
+                      "teacherCourses.create.responsible"
+                    )}
+                  </label>
+
+                  <select
+                    id="teacher-course-responsible"
+                    className="form-select"
+                    value={
+                      form.teacherUserId
+                    }
+                    onChange={(event) =>
+                      changeForm(
+                        "teacherUserId",
+                        event.target.value
+                      )
+                    }
+                    disabled={
+                      loadingResponsible
+                    }
+                    required
+                  >
+                    <option value="">
+                      {loadingResponsible
+                        ? t(
+                            "teacherCourses.create.loadingResponsibles"
+                          )
+                        : t(
+                            "teacherCourses.create.selectResponsible"
+                          )}
+                    </option>
+
+                    {responsibleCandidates.map(
+                      (candidate) => (
+                        <option
+                          key={candidate.id}
+                          value={candidate.id}
+                        >
+                          {responsibleOptionLabel(
+                            candidate
+                          )}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  {responsibleErrorMessage && (
+                    <span
+                      className="teacher-inline-error teacher-field-feedback"
+                      role="alert"
+                    >
+                      {responsibleErrorMessage}
+                    </span>
+                  )}
+                </div>
+              )}
+
               <div className="teacher-form-actions">
                 {createError && (
                   <span
@@ -810,7 +1031,16 @@ export default function TeacherCourses() {
                 <button
                   type="submit"
                   className="btn teacher-primary-button"
-                  disabled={creating}
+                  disabled={
+                    creating
+                    || (
+                      adminUser
+                      && (
+                        loadingResponsible
+                        || !form.teacherUserId
+                      )
+                    )
+                  }
                 >
                   {creating
                     ? t(
@@ -958,6 +1188,7 @@ export default function TeacherCourses() {
                   <CourseCard
                     key={course.id}
                     course={course}
+                    activeView={activeView}
                     onOpen={(id) =>
                       navigate(
                         `/teacher/courses/${id}`

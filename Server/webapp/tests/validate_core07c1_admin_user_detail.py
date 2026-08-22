@@ -57,6 +57,7 @@ except Exception as exc:
 backend = backend_path.read_text(encoding="utf-8")
 frontend = js_path.read_text(encoding="utf-8")
 css = css_path.read_text(encoding="utf-8")
+frontend_compact = "".join(frontend.split())
 
 check(
     "endpoint detalle expone benchmark/configuración/hardware",
@@ -83,7 +84,7 @@ check(
 )
 check(
     "ejecuciones usan paginación backend",
-    "page_size: String(PAGE_SIZE)" in frontend
+    "page_size:String(PAGE_SIZE)" in frontend_compact
     and "/executions?" in frontend
     and "setPage" in frontend,
 )
@@ -101,7 +102,7 @@ check(
     "estado administrativo usa vocabulario canónico",
     "Aprobadas" not in frontend
     and "Rechazadas" not in frontend
-    and "executionStateLabel" in frontend,
+    and "localizedExecutionStateLabel" in frontend,
 )
 check(
     "modal muestra configuración persistida",
@@ -129,6 +130,20 @@ check(
     "detalle elimina scroll vertical fijo de tablas",
     "admin-table-wrapper" not in css
     and "overflow-y: scroll" not in css,
+)
+check(
+    "gestión de rol usa contrato explícito y confirmación in-app",
+    "`/api/admin/users/${id}/role`" in frontend
+    and 'role:roleDecision.nextRole' in frontend_compact
+    and "<ConfirmActionModal" in frontend
+    and "window.confirm" not in frontend
+    and "window.alert" not in frontend,
+)
+check(
+    "usuarios Admin no exponen degradación rutinaria",
+    'if(role==="Student")' in frontend_compact
+    and 'if(role==="Teacher")' in frontend_compact
+    and "returnnull;" in frontend_compact,
 )
 
 passed = sum(checks)

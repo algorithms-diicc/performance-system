@@ -6,11 +6,19 @@ import React, {
 
 import {
   Link,
+  useNavigate,
   useParams,
 } from "react-router-dom";
 
+import ConfirmActionModal
+  from "../components/ConfirmActionModal";
+
 import InlineState
   from "../components/InlineState";
+
+import {
+  isAdminUser,
+} from "../common/userAccessModel";
 
 import {
   useI18n,
@@ -28,6 +36,17 @@ import {
   teacherApi,
   teacherRequestErrorMessage,
 } from "./teacherApi";
+
+import {
+  MAX_TEACHER_EMAILS,
+  teacherEmailPreview,
+} from "./teacherEmailPreviewModel";
+
+import {
+  includeCurrentResponsible,
+  loadResponsibleCandidates,
+  responsibleOptionLabel,
+} from "./teacherResponsibleModel";
 
 import "./TeacherDashboard.css";
 
@@ -146,6 +165,8 @@ function courseDetailErrorMessage(
         "teacherCourseDetail.errors.validationYear",
       academicTerm:
         "teacherCourseDetail.errors.validationTerm",
+      teacherUserId:
+        "teacherCourseDetail.errors.validationResponsible",
       emails:
         "teacherCourseDetail.errors.validationEmails",
     };
@@ -167,16 +188,24 @@ function courseDetailErrorMessage(
 }
 
 
-export default function TeacherCourseDetail() {
+export default function TeacherCourseDetail({
+  currentUser,
+}) {
   const {
     courseId,
   } = useParams();
+
+  const navigate =
+    useNavigate();
 
   const {
     language,
     locale,
     t,
   } = useI18n();
+
+  const adminUser =
+    isAdminUser(currentUser);
 
   const [
     course,
@@ -297,6 +326,86 @@ export default function TeacherCourseDetail() {
   ] = useState(false);
 
   const [
+    saveError,
+    setSaveError,
+  ] = useState(null);
+
+  const [
+    responsibleCandidates,
+    setResponsibleCandidates,
+  ] = useState([]);
+
+  const [
+    loadingResponsible,
+    setLoadingResponsible,
+  ] = useState(false);
+
+  const [
+    responsibleError,
+    setResponsibleError,
+  ] = useState(null);
+
+  const [
+    courseDecision,
+    setCourseDecision,
+  ] = useState(null);
+
+  const [
+    changingCourseStatus,
+    setChangingCourseStatus,
+  ] = useState(false);
+
+  const [
+    courseDecisionError,
+    setCourseDecisionError,
+  ] = useState(null);
+
+  const [
+    studentDecision,
+    setStudentDecision,
+  ] = useState(null);
+
+  const [
+    removingStudent,
+    setRemovingStudent,
+  ] = useState(false);
+
+  const [
+    studentDecisionError,
+    setStudentDecisionError,
+  ] = useState(null);
+
+  const [
+    rosterFeedback,
+    setRosterFeedback,
+  ] = useState(null);
+
+  const [
+    cloneOpen,
+    setCloneOpen,
+  ] = useState(false);
+
+  const [
+    cloneForm,
+    setCloneForm,
+  ] = useState({
+    academicYear:
+      new Date().getFullYear() + 1,
+    academicTerm: 1,
+    copyStudents: false,
+  });
+
+  const [
+    cloning,
+    setCloning,
+  ] = useState(false);
+
+  const [
+    cloneError,
+    setCloneError,
+  ] = useState(null);
+
+  const [
     editForm,
     setEditForm,
   ] = useState({
@@ -304,7 +413,31 @@ export default function TeacherCourseDetail() {
     name: "",
     academicYear: "",
     academicTerm: 1,
+    teacherUserId: "",
   });
+
+
+  const emailPreview =
+    useMemo(
+      () =>
+        teacherEmailPreview(
+          emails
+        ),
+      [emails]
+    );
+
+  const responsibleOptions =
+    useMemo(
+      () =>
+        includeCurrentResponsible(
+          responsibleCandidates,
+          course?.teacher
+        ),
+      [
+        course?.teacher,
+        responsibleCandidates,
+      ]
+    );
 
 
   useEffect(() => {
@@ -313,6 +446,53 @@ export default function TeacherCourseDetail() {
     membership,
     search,
     attention,
+  ]);
+
+
+  useEffect(() => {
+    if (
+      !adminUser
+      || !editing
+    ) {
+      return undefined;
+    }
+
+    const controller =
+      new AbortController();
+
+    (async () => {
+      try {
+        setLoadingResponsible(true);
+        setResponsibleError(null);
+
+        setResponsibleCandidates(
+          await loadResponsibleCandidates(
+            controller.signal
+          )
+        );
+      } catch (err) {
+        if (
+          err.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setResponsibleCandidates([]);
+        setResponsibleError(err);
+      } finally {
+        if (
+          !controller.signal.aborted
+        ) {
+          setLoadingResponsible(false);
+        }
+      }
+    })();
+
+    return () =>
+      controller.abort();
+  }, [
+    adminUser,
+    editing,
   ]);
 
 
@@ -350,6 +530,12 @@ export default function TeacherCourseDetail() {
             academicTerm:
               data.course
                 .academicTerm || 1,
+            teacherUserId:
+              data.course.teacher?.id
+                ? String(
+                    data.course.teacher.id
+                  )
+                : "",
           });
         }
       } catch (err) {
@@ -698,55 +884,39 @@ export default function TeacherCourseDetail() {
     };
 
 
-  const toggleCourseActive =
-    async () => {
+  const openCourseStatusDecision =
+    () => {
       if (!course) {
         return;
       }
 
-      const target =
-        !course.isActive;
+      setCourseDecision({
+        target: !course.isActive,
+      });
+      setCourseDecisionError(null);
+    };
 
-      const confirmKey =
-        target
-          ? "teacherCourseDetail.confirm.reactivateCourse"
-          : "teacherCourseDetail.confirm.finishCourse";
 
-      if (
-        !window.confirm(
-          t(
-            confirmKey,
-            {
-              code:
-                course.code,
-              period:
-                coursePeriod(
-                  course
-                ),
-            }
-          )
-        )
-      ) {
+  const confirmCourseStatus =
+    async () => {
+      if (!courseDecision) {
         return;
       }
 
       try {
-        setSavingCourse(true);
+        setChangingCourseStatus(true);
+        setCourseDecisionError(null);
 
         await patchCourse({
-          isActive: target,
+          isActive:
+            courseDecision.target,
         });
+
+        setCourseDecision(null);
       } catch (err) {
-        window.alert(
-          courseDetailErrorMessage(
-            err,
-            language,
-            t,
-            "teacherCourseDetail.errors.updateCourse"
-          )
-        );
+        setCourseDecisionError(err);
       } finally {
-        setSavingCourse(false);
+        setChangingCourseStatus(false);
       }
     };
 
@@ -856,8 +1026,9 @@ export default function TeacherCourseDetail() {
 
       try {
         setSavingCourse(true);
+        setSaveError(null);
 
-        await patchCourse({
+        const payload = {
           code:
             editForm.code.trim(),
           name:
@@ -870,27 +1041,60 @@ export default function TeacherCourseDetail() {
             Number(
               editForm.academicTerm
             ),
-        });
+        };
+
+        const selectedTeacherId =
+          Number(
+            editForm.teacherUserId
+          );
+        const currentTeacherId =
+          Number(course.teacher?.id);
+
+        if (
+          adminUser
+          && Number.isFinite(
+            selectedTeacherId
+          )
+          && selectedTeacherId > 0
+          && selectedTeacherId
+            !== currentTeacherId
+        ) {
+          payload.teacherUserId =
+            selectedTeacherId;
+        }
+
+        await patchCourse(payload);
 
         setEditing(false);
       } catch (err) {
-        window.alert(
-          courseDetailErrorMessage(
-            err,
-            language,
-            t,
-            "teacherCourseDetail.errors.saveCourse"
-          )
-        );
+        setSaveError(err);
       } finally {
         setSavingCourse(false);
       }
     };
 
 
+  const changeEditForm =
+    (field, value) => {
+      setEditForm(
+        (previous) => ({
+          ...previous,
+          [field]: value,
+        })
+      );
+    };
+
+
   const addStudents =
     async (event) => {
       event.preventDefault();
+
+      if (
+        emailPreview.count === 0
+        || emailPreview.overLimit
+      ) {
+        return;
+      }
 
       try {
         setAdding(true);
@@ -903,7 +1107,8 @@ export default function TeacherCourseDetail() {
               method: "POST",
               body:
                 JSON.stringify({
-                  emails,
+                  emails:
+                    emailPreview.emails,
                 }),
             }
           );
@@ -925,25 +1130,19 @@ export default function TeacherCourseDetail() {
     };
 
 
-  const removeStudent =
-    async (student) => {
-      if (
-        !window.confirm(
-          t(
-            "teacherCourseDetail.confirm.removeStudent",
-            {
-              name:
-                student.fullName,
-            }
-          )
-        )
-      ) {
+  const confirmRemoveStudent =
+    async () => {
+      if (!studentDecision) {
         return;
       }
 
       try {
+        setRemovingStudent(true);
+        setStudentDecisionError(null);
+        setRosterFeedback(null);
+
         await teacherApi(
-          `/api/teacher/courses/${courseId}/students/${student.userId}`,
+          `/api/teacher/courses/${courseId}/students/${studentDecision.userId}`,
           {
             method: "DELETE",
           }
@@ -953,15 +1152,12 @@ export default function TeacherCourseDetail() {
           (value) =>
             value + 1
         );
+
+        setStudentDecision(null);
       } catch (err) {
-        window.alert(
-          courseDetailErrorMessage(
-            err,
-            language,
-            t,
-            "teacherCourseDetail.errors.removeStudent"
-          )
-        );
+        setStudentDecisionError(err);
+      } finally {
+        setRemovingStudent(false);
       }
     };
 
@@ -969,6 +1165,8 @@ export default function TeacherCourseDetail() {
   const restoreStudent =
     async (student) => {
       try {
+        setRosterFeedback(null);
+
         await teacherApi(
           `/api/teacher/courses/${courseId}/students/${student.userId}/restore`,
           {
@@ -980,15 +1178,124 @@ export default function TeacherCourseDetail() {
           (value) =>
             value + 1
         );
+
+        setRosterFeedback({
+          kind: "success",
+          messageKey:
+            "teacherCourseDetail.students.restoreSuccess",
+        });
       } catch (err) {
-        window.alert(
-          courseDetailErrorMessage(
-            err,
-            language,
-            t,
-            "teacherCourseDetail.errors.restoreStudent"
-          )
+        setRosterFeedback({
+          kind: "error",
+          error: err,
+        });
+      }
+    };
+
+
+  const openCloneCourse =
+    () => {
+      setCloneForm({
+        academicYear:
+          Math.min(
+            9999,
+            Number(
+              course.academicYear
+            ) + 1
+          ),
+        academicTerm:
+          Number(
+            course.academicTerm
+          ) || 1,
+        copyStudents: false,
+      });
+      setCloneError(null);
+      setCloneOpen(true);
+    };
+
+
+  const changeCloneForm =
+    (field, value) => {
+      setCloneForm(
+        (previous) => ({
+          ...previous,
+          [field]: value,
+        })
+      );
+    };
+
+
+  const cloneCourse =
+    async () => {
+      const academicYear =
+        Number(
+          cloneForm.academicYear
         );
+      const academicTerm =
+        Number(
+          cloneForm.academicTerm
+        );
+
+      if (
+        !Number.isInteger(
+          academicYear
+        )
+        || academicYear < 2000
+        || academicYear > 9999
+      ) {
+        setCloneError({
+          localKey:
+            "teacherCourseDetail.errors.validationYear",
+        });
+        return;
+      }
+
+      if (
+        ![1, 2].includes(
+          academicTerm
+        )
+      ) {
+        setCloneError({
+          localKey:
+            "teacherCourseDetail.errors.validationTerm",
+        });
+        return;
+      }
+
+      try {
+        setCloning(true);
+        setCloneError(null);
+
+        const data =
+          await teacherApi(
+            `/api/teacher/courses/${courseId}/clone`,
+            {
+              method: "POST",
+              body:
+                JSON.stringify({
+                  academicYear,
+                  academicTerm,
+                  copyStudents:
+                    Boolean(
+                      cloneForm.copyStudents
+                    ),
+                }),
+            }
+          );
+
+        const clonedId =
+          data?.course?.id;
+
+        if (clonedId) {
+          setCloneOpen(false);
+          navigate(
+            `/teacher/courses/${clonedId}`
+          );
+        }
+      } catch (err) {
+        setCloneError(err);
+      } finally {
+        setCloning(false);
       }
     };
 
@@ -1030,6 +1337,72 @@ export default function TeacherCourseDetail() {
           "teacherCourseDetail.errors.addStudents"
         )
       : "";
+
+  const saveErrorMessage =
+    saveError
+      ? courseDetailErrorMessage(
+          saveError,
+          language,
+          t,
+          "teacherCourseDetail.errors.saveCourse"
+        )
+      : "";
+
+  const responsibleErrorMessage =
+    responsibleError
+      ? teacherRequestErrorMessage(
+          responsibleError,
+          t,
+          {
+            fallbackKey:
+              "teacherCourseDetail.errors.responsibles",
+          }
+        )
+      : "";
+
+  const courseDecisionErrorMessage =
+    courseDecisionError
+      ? courseDetailErrorMessage(
+          courseDecisionError,
+          language,
+          t,
+          "teacherCourseDetail.errors.updateCourse"
+        )
+      : "";
+
+  const studentDecisionErrorMessage =
+    studentDecisionError
+      ? courseDetailErrorMessage(
+          studentDecisionError,
+          language,
+          t,
+          "teacherCourseDetail.errors.removeStudent"
+        )
+      : "";
+
+  const rosterFeedbackMessage =
+    rosterFeedback?.kind === "success"
+      ? t(rosterFeedback.messageKey)
+      : rosterFeedback?.kind === "error"
+        ? courseDetailErrorMessage(
+            rosterFeedback.error,
+            language,
+            t,
+            "teacherCourseDetail.errors.restoreStudent"
+          )
+        : "";
+
+  const cloneErrorMessage =
+    cloneError?.localKey
+      ? t(cloneError.localKey)
+      : cloneError
+        ? courseDetailErrorMessage(
+            cloneError,
+            language,
+            t,
+            "teacherCourseDetail.errors.cloneCourse"
+          )
+        : "";
 
 
   if (
@@ -1164,12 +1537,22 @@ export default function TeacherCourseDetail() {
             <button
               type="button"
               className="btn teacher-secondary-button"
-              onClick={() =>
+              onClick={openCloneCourse}
+            >
+              {t(
+                "teacherCourseDetail.actions.cloneCourse"
+              )}
+            </button>
+
+            <button
+              type="button"
+              className="btn teacher-secondary-button"
+              onClick={() => {
+                setSaveError(null);
                 setEditing(
-                  (value) =>
-                    !value
-                )
-              }
+                  (value) => !value
+                );
+              }}
             >
               {editing
                 ? t("teacherCourseDetail.actions.closeEdit")
@@ -1184,10 +1567,11 @@ export default function TeacherCourseDetail() {
                   : "btn teacher-primary-button"
               }
               disabled={
-                savingCourse
+                changingCourseStatus
+                || savingCourse
               }
               onClick={
-                toggleCourseActive
+                openCourseStatusDecision
               }
             >
               {course.isActive
@@ -1276,12 +1660,9 @@ export default function TeacherCourseDetail() {
                     editForm.code
                   }
                   onChange={(event) =>
-                    setEditForm(
-                      (previous) => ({
-                        ...previous,
-                        code:
-                          event.target.value,
-                      })
+                    changeEditForm(
+                      "code",
+                      event.target.value
                     )
                   }
                   required
@@ -1299,12 +1680,9 @@ export default function TeacherCourseDetail() {
                     editForm.name
                   }
                   onChange={(event) =>
-                    setEditForm(
-                      (previous) => ({
-                        ...previous,
-                        name:
-                          event.target.value,
-                      })
+                    changeEditForm(
+                      "name",
+                      event.target.value
                     )
                   }
                   required
@@ -1325,12 +1703,9 @@ export default function TeacherCourseDetail() {
                     editForm.academicYear
                   }
                   onChange={(event) =>
-                    setEditForm(
-                      (previous) => ({
-                        ...previous,
-                        academicYear:
-                          event.target.value,
-                      })
+                    changeEditForm(
+                      "academicYear",
+                      event.target.value
                     )
                   }
                   required
@@ -1348,12 +1723,9 @@ export default function TeacherCourseDetail() {
                     editForm.academicTerm
                   }
                   onChange={(event) =>
-                    setEditForm(
-                      (previous) => ({
-                        ...previous,
-                        academicTerm:
-                          event.target.value,
-                      })
+                    changeEditForm(
+                      "academicTerm",
+                      event.target.value
                     )
                   }
                 >
@@ -1367,13 +1739,89 @@ export default function TeacherCourseDetail() {
               </div>
 
 
+              {adminUser && (
+                <div className="teacher-form-span-2">
+                  <label
+                    htmlFor="teacher-course-edit-responsible"
+                  >
+                    {t(
+                      "teacherCourseDetail.edit.responsible"
+                    )}
+                  </label>
+
+                  <select
+                    id="teacher-course-edit-responsible"
+                    className="form-select"
+                    value={
+                      editForm.teacherUserId
+                    }
+                    onChange={(event) =>
+                      changeEditForm(
+                        "teacherUserId",
+                        event.target.value
+                      )
+                    }
+                    disabled={
+                      loadingResponsible
+                    }
+                    required
+                  >
+                    <option value="">
+                      {loadingResponsible
+                        ? t(
+                            "teacherCourseDetail.edit.loadingResponsibles"
+                          )
+                        : t(
+                            "teacherCourseDetail.edit.selectResponsible"
+                          )}
+                    </option>
+
+                    {responsibleOptions.map(
+                      (candidate) => (
+                        <option
+                          key={candidate.id}
+                          value={candidate.id}
+                        >
+                          {responsibleOptionLabel(
+                            candidate
+                          )}
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  {responsibleErrorMessage && (
+                    <span
+                      className="teacher-inline-error teacher-field-feedback"
+                      role="alert"
+                    >
+                      {responsibleErrorMessage}
+                    </span>
+                  )}
+                </div>
+              )}
+
+
               <div className="teacher-form-actions">
+
+                {saveErrorMessage && (
+                  <span
+                    className="teacher-inline-error"
+                    role="alert"
+                  >
+                    {saveErrorMessage}
+                  </span>
+                )}
 
                 <button
                   type="submit"
                   className="btn teacher-primary-button"
                   disabled={
                     savingCourse
+                    || (
+                      adminUser
+                      && !editForm.teacherUserId
+                    )
                   }
                 >
                   {savingCourse
@@ -1466,6 +1914,42 @@ export default function TeacherCourseDetail() {
 
               <div className="teacher-add-help">
                 {t("teacherCourseDetail.students.help")}
+              </div>
+
+              <div
+                className={
+                  emailPreview.overLimit
+                    ? "teacher-email-preview teacher-email-preview--error"
+                    : "teacher-email-preview"
+                }
+                role={
+                  emailPreview.overLimit
+                    ? "alert"
+                    : "status"
+                }
+              >
+                {t(
+                  countKey(
+                    emailPreview.count,
+                    "teacherCourseDetail.students.emailsDetected"
+                  ),
+                  {
+                    count:
+                      emailPreview.count,
+                  }
+                )}
+
+                {emailPreview.overLimit && (
+                  <span>
+                    {t(
+                      "teacherCourseDetail.students.emailLimit",
+                      {
+                        max:
+                          MAX_TEACHER_EMAILS,
+                      }
+                    )}
+                  </span>
+                )}
               </div>
 
 
@@ -1569,7 +2053,8 @@ export default function TeacherCourseDetail() {
                   className="btn teacher-primary-button"
                   disabled={
                     adding ||
-                    !emails.trim()
+                    emailPreview.count === 0 ||
+                    emailPreview.overLimit
                   }
                 >
                   {adding
@@ -1581,6 +2066,22 @@ export default function TeacherCourseDetail() {
 
             </form>
 
+          )}
+
+
+          {rosterFeedbackMessage && (
+            <div
+              className={
+                `teacher-roster-feedback teacher-roster-feedback--${rosterFeedback.kind}`
+              }
+              role={
+                rosterFeedback.kind === "error"
+                  ? "alert"
+                  : "status"
+              }
+            >
+              {rosterFeedbackMessage}
+            </div>
           )}
 
 
@@ -1902,11 +2403,14 @@ export default function TeacherCourseDetail() {
                                 <button
                                   type="button"
                                   className="btn btn-sm teacher-row-button"
-                                  onClick={() =>
-                                    removeStudent(
+                                  onClick={() => {
+                                    setStudentDecision(
                                       student
-                                    )
-                                  }
+                                    );
+                                    setStudentDecisionError(
+                                      null
+                                    );
+                                  }}
                                 >
                                   {t("teacherCourseDetail.actions.remove")}
                                 </button>
@@ -2026,6 +2530,262 @@ export default function TeacherCourseDetail() {
         </section>
 
       </div>
+
+
+      <ConfirmActionModal
+        open={Boolean(
+          courseDecision
+        )}
+        title={
+          courseDecision?.target
+            ? t(
+                "teacherCourseDetail.modals.reactivate.title"
+              )
+            : t(
+                "teacherCourseDetail.modals.finish.title"
+              )
+        }
+        body={
+          <>
+            <p>
+              {t(
+                courseDecision?.target
+                  ? "teacherCourseDetail.confirm.reactivateCourse"
+                  : "teacherCourseDetail.confirm.finishCourse",
+                {
+                  code: course.code,
+                  period:
+                    coursePeriod(
+                      course
+                    ),
+                }
+              )}
+            </p>
+
+            {courseDecisionErrorMessage && (
+              <p
+                className="teacher-modal-error"
+                role="alert"
+              >
+                {courseDecisionErrorMessage}
+              </p>
+            )}
+          </>
+        }
+        confirmLabel={
+          courseDecision?.target
+            ? t(
+                "teacherCourseDetail.actions.reactivateCourse"
+              )
+            : t(
+                "teacherCourseDetail.actions.finishCourse"
+              )
+        }
+        cancelLabel={t(
+          "teacherCourseDetail.actions.cancel"
+        )}
+        onConfirm={
+          confirmCourseStatus
+        }
+        onCancel={() => {
+          setCourseDecision(null);
+          setCourseDecisionError(null);
+        }}
+        loading={
+          changingCourseStatus
+        }
+        variant={
+          courseDecision?.target
+            ? "normal"
+            : "danger"
+        }
+      />
+
+
+      <ConfirmActionModal
+        open={Boolean(
+          studentDecision
+        )}
+        title={t(
+          "teacherCourseDetail.modals.removeStudent.title"
+        )}
+        body={
+          <>
+            <p>
+              {t(
+                "teacherCourseDetail.modals.removeStudent.description",
+                {
+                  name:
+                    studentDecision?.fullName,
+                  email:
+                    studentDecision?.email,
+                }
+              )}
+            </p>
+            <p>
+              {t(
+                "teacherCourseDetail.modals.removeStudent.preservedHistory"
+              )}
+            </p>
+
+            {studentDecisionErrorMessage && (
+              <p
+                className="teacher-modal-error"
+                role="alert"
+              >
+                {studentDecisionErrorMessage}
+              </p>
+            )}
+          </>
+        }
+        confirmLabel={t(
+          "teacherCourseDetail.actions.remove"
+        )}
+        cancelLabel={t(
+          "teacherCourseDetail.actions.cancel"
+        )}
+        onConfirm={
+          confirmRemoveStudent
+        }
+        onCancel={() => {
+          setStudentDecision(null);
+          setStudentDecisionError(null);
+        }}
+        loading={removingStudent}
+        variant="danger"
+      />
+
+
+      <ConfirmActionModal
+        open={cloneOpen}
+        title={t(
+          "teacherCourseDetail.clone.title"
+        )}
+        body={
+          <div className="teacher-clone-form">
+            <p>
+              {t(
+                "teacherCourseDetail.clone.description",
+                {
+                  code: course.code,
+                  period:
+                    coursePeriod(
+                      course
+                    ),
+                }
+              )}
+            </p>
+
+            <div className="teacher-clone-fields">
+              <div>
+                <label
+                  htmlFor="teacher-clone-year"
+                >
+                  {t(
+                    "teacherCourseDetail.edit.year"
+                  )}
+                </label>
+                <input
+                  id="teacher-clone-year"
+                  className="form-control"
+                  type="number"
+                  min="2000"
+                  max="9999"
+                  value={
+                    cloneForm.academicYear
+                  }
+                  onChange={(event) =>
+                    changeCloneForm(
+                      "academicYear",
+                      event.target.value
+                    )
+                  }
+                  disabled={cloning}
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="teacher-clone-term"
+                >
+                  {t(
+                    "teacherCourseDetail.edit.semester"
+                  )}
+                </label>
+                <select
+                  id="teacher-clone-term"
+                  className="form-select"
+                  value={
+                    cloneForm.academicTerm
+                  }
+                  onChange={(event) =>
+                    changeCloneForm(
+                      "academicTerm",
+                      event.target.value
+                    )
+                  }
+                  disabled={cloning}
+                >
+                  <option value="1">
+                    1
+                  </option>
+                  <option value="2">
+                    2
+                  </option>
+                </select>
+              </div>
+            </div>
+
+            <label className="teacher-clone-checkbox">
+              <input
+                type="checkbox"
+                checked={
+                  cloneForm.copyStudents
+                }
+                onChange={(event) =>
+                  changeCloneForm(
+                    "copyStudents",
+                    event.target.checked
+                  )
+                }
+                disabled={cloning}
+              />
+              <span>
+                {t(
+                  "teacherCourseDetail.clone.copyStudents"
+                )}
+              </span>
+            </label>
+
+            <p className="teacher-clone-warning">
+              {t(
+                "teacherCourseDetail.clone.noActivityCopy"
+              )}
+            </p>
+
+            {cloneErrorMessage && (
+              <p
+                className="teacher-modal-error"
+                role="alert"
+              >
+                {cloneErrorMessage}
+              </p>
+            )}
+          </div>
+        }
+        confirmLabel={t(
+          "teacherCourseDetail.actions.cloneCourse"
+        )}
+        cancelLabel={t(
+          "teacherCourseDetail.actions.cancel"
+        )}
+        onConfirm={cloneCourse}
+        onCancel={() => {
+          setCloneOpen(false);
+          setCloneError(null);
+        }}
+        loading={cloning}
+      />
 
     </main>
   );

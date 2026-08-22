@@ -188,6 +188,55 @@
   font-size: 1.15rem;
 }
 
+.admin-user-role-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-subtle);
+}
+
+.admin-user-role-action h2 {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 0.95rem;
+  font-weight: 730;
+}
+
+.admin-user-role-action p {
+  margin: 0.18rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.admin-detail-danger-button {
+  border: 1px solid var(--ps-danger);
+  border-radius: 0.6rem;
+  background: var(--ps-danger);
+  color: var(--ps-text-inverse);
+  font-weight: 650;
+}
+
+.admin-detail-danger-button:hover:not(:disabled) {
+  border-color: var(--ps-danger);
+  background: var(--ps-danger-soft);
+  color: var(--ps-danger);
+}
+
+.admin-role-modal-error {
+  padding: var(--ps-space-2) var(--ps-space-3);
+  border: 1px solid var(--ps-danger);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-danger-soft);
+  color: var(--ps-danger);
+  font-size: var(--ps-font-size-sm);
+}
+
 .admin-user-detail-content {
   overflow: hidden;
   border: 1px solid var(--color-border-soft);
@@ -722,6 +771,7 @@
 
 @media (max-width: 767.98px) {
   .admin-user-overview-heading,
+  .admin-user-role-action,
   .admin-detail-section-header,
   .admin-audit-item-heading {
     align-items: flex-start;

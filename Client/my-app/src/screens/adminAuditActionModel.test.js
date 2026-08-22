@@ -8,6 +8,12 @@ import {
 const translations = {
   "adminAuditLog.actionLabels.approveAccessRequest":
     "Access request approved",
+  "adminAuditLog.actionLabels.transferCourseTeacher":
+    "Course responsibility transferred",
+  "adminAuditLog.actionLabels.cloneCourse":
+    "Course cloned",
+  "adminAuditLog.actionLabels.changeUserRole":
+    "User role changed",
   "adminAuditLog.actionLabels.unknown":
     "Unknown action",
   "adminAuditLog.fallbacks.action":
@@ -35,10 +41,13 @@ describe(
           "reject_access_request",
           "create_course",
           "update_course",
+          "transfer_course_teacher",
+          "clone_course",
           "add_course_students",
           "remove_course_student",
           "restore_course_student",
           "rerun_submission",
+          "change_user_role",
         ]);
 
         expect(
@@ -66,6 +75,26 @@ describe(
         ).toBe(
           "Access request approved"
         );
+        expect(
+          adminAuditActionLabel(
+            "transfer_course_teacher",
+            t
+          )
+        ).toBe(
+          "Course responsibility transferred"
+        );
+        expect(
+          adminAuditActionLabel(
+            "clone_course",
+            t
+          )
+        ).toBe("Course cloned");
+        expect(
+          adminAuditActionLabel(
+            "change_user_role",
+            t
+          )
+        ).toBe("User role changed");
         expect(
           adminAuditActionLabel(
             "legacy_custom_action",

@@ -2267,7 +2267,8 @@ const es = {
       activeStudents: "Estudiantes activos",
       submissions: "Experimentos",
       executions: "Ejecuciones",
-      completionRate: "Tasa de finalización",
+      completionRate:
+        "Tasa de ejecuciones completadas",
     },
     empty: {
       title: "Sin datos todavía",
@@ -2399,6 +2400,8 @@ const es = {
       activeCourses: "Cursos activos",
       historicalCourses: "Cursos históricos",
       activeStudents: "Estudiantes activos",
+      registeredStudents:
+        "Estudiantes registrados",
     },
     create: {
       title: "Nueva instancia académica",
@@ -2410,6 +2413,12 @@ const es = {
       namePlaceholder: "Ej. Estructuras de Datos",
       year: "Año",
       semester: "Semestre",
+      responsible:
+        "Profesor responsable",
+      selectResponsible:
+        "Selecciona un responsable",
+      loadingResponsibles:
+        "Cargando responsables...",
     },
     toolbar: {
       aria: "Filtros de cursos",
@@ -2455,6 +2464,10 @@ const es = {
         "Ingresa un año académico entre 2000 y 9999.",
       validationTerm:
         "Selecciona el semestre 1 o 2.",
+      validationResponsible:
+        "Selecciona un profesor responsable activo.",
+      responsibles:
+        "No fue posible cargar los profesores responsables.",
     },
   },
 
@@ -2517,6 +2530,8 @@ const es = {
       restore: "Restaurar",
       previous: "Anterior",
       next: "Siguiente",
+      cancel: "Cancelar",
+      cloneCourse: "Clonar curso",
     },
     export: {
       title:
@@ -2532,6 +2547,12 @@ const es = {
       name: "Nombre",
       year: "Año",
       semester: "Semestre",
+      responsible:
+        "Profesor responsable",
+      selectResponsible:
+        "Selecciona un responsable",
+      loadingResponsibles:
+        "Cargando responsables...",
     },
     students: {
       title: "Estudiantes",
@@ -2545,6 +2566,15 @@ const es = {
         "alumno1@inf.udec.cl\nalumno2@inf.udec.cl\nalumno3@inf.udec.cl",
       help:
         "Puedes pegar una lista separada por saltos de línea, espacios, comas o punto y coma. Deben corresponder a cuentas de estudiantes registradas en la plataforma.",
+      emailsDetected: {
+        one: "{{count}} correo detectado",
+        other:
+          "{{count}} correos detectados",
+      },
+      emailLimit:
+        "El máximo es {{max}}. Reduce la lista antes de continuar.",
+      restoreSuccess:
+        "El estudiante fue restaurado en el curso.",
       membership: {
         active: "Activos",
         inactive: "Retirados",
@@ -2572,8 +2602,8 @@ const es = {
         student: "Estudiante",
         status: "Estado",
         submissions: "Experimentos",
-        executions: "Ejec.",
-        completed: "OK",
+        executions: "Ejecuciones",
+        completed: "Completadas",
         failed: "Fallidas",
         lastActivity:
           "Última actividad",
@@ -2596,6 +2626,30 @@ const es = {
         "¿Confirmas reactivar el curso {{code}} {{period}}?",
       removeStudent:
         "¿Retirar a {{name}} del curso? Sus resultados no serán eliminados.",
+    },
+    modals: {
+      finish: {
+        title: "Finalizar curso",
+      },
+      reactivate: {
+        title: "Reactivar curso",
+      },
+      removeStudent: {
+        title: "Retirar estudiante",
+        description:
+          "Retirarás a {{name}} ({{email}}) de la nómina activa.",
+        preservedHistory:
+          "La cuenta del usuario, sus experimentos y sus resultados históricos no se eliminarán.",
+      },
+    },
+    clone: {
+      title: "Clonar curso",
+      description:
+        "Crea una nueva instancia de {{code}} a partir del período {{period}}.",
+      copyStudents:
+        "Copiar estudiantes activos",
+      noActivityCopy:
+        "Los experimentos, ejecuciones y resultados no se copiarán.",
     },
     loading: "Cargando curso",
     errors: {
@@ -2625,6 +2679,12 @@ const es = {
         "Selecciona el semestre 1 o 2.",
       validationEmails:
         "Ingresa uno o más correos de estudiantes válidos.",
+      validationResponsible:
+        "Selecciona un profesor responsable activo.",
+      responsibles:
+        "No fue posible cargar los profesores responsables.",
+      cloneCourse:
+        "No fue posible clonar el curso.",
     },
   },
 
@@ -3011,6 +3071,11 @@ const es = {
         "Ver experimento",
       viewResults:
         "Ver resultados",
+      cancel: "Cancelar",
+      promoteTeacher:
+        "Promover a profesor",
+      changeToStudent:
+        "Cambiar a estudiante",
     },
     header: {
       eyebrow:
@@ -3041,6 +3106,8 @@ const es = {
         "El usuario solicitado no está disponible.",
       service:
         "El servicio no está disponible temporalmente. Inténtalo nuevamente en unos momentos.",
+      changeRole:
+        "No fue posible cambiar el rol del usuario.",
     },
     profile: {
       created: "Creado",
@@ -3048,6 +3115,19 @@ const es = {
         "Última sesión",
       lastActivity:
         "Última ejecución",
+    },
+    roleChange: {
+      title: "Gestión de rol",
+      description:
+        "Cambia entre los roles Estudiante y Profesor con las validaciones académicas correspondientes.",
+      modalTitle:
+        "Confirmar cambio de rol",
+      promoteDescription:
+        "Promoverás a {{name}} ({{email}}) al rol Profesor.",
+      demoteDescription:
+        "Cambiarás a {{name}} ({{email}}) al rol Estudiante. La operación se bloqueará si conserva cursos asignados.",
+      assignedCoursesError:
+        "Cursos asignados: {{count}}. Transfiérelos antes de cambiar el rol.",
     },
     summary: {
       submissions: "Experimentos",
@@ -3418,6 +3498,10 @@ const es = {
         "Curso creado",
       updateCourse:
         "Curso actualizado",
+      transferCourseTeacher:
+        "Responsable de curso transferido",
+      cloneCourse:
+        "Curso clonado",
       addCourseStudents:
         "Carga de estudiantes procesada",
       removeCourseStudent:
@@ -3426,6 +3510,8 @@ const es = {
         "Estudiante restaurado en el curso",
       rerunSubmission:
         "Reejecución de experimento solicitada",
+      changeUserRole:
+        "Rol de usuario modificado",
       unknown:
         "Acción desconocida",
     },

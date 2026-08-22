@@ -1,11 +1,19 @@
 # server/webapp/routes/admin_users_routes.py
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, g, request, jsonify
 from psycopg2.extras import RealDictCursor
 
 from ...db_connection import get_connection  # conexión a PostgreSQL
 from ..utils.auth_decorators import login_required, admin_required
-from ..utils.api_errors import handle_api_errors, NotFoundError, BadRequestError
+from ..utils.api_errors import (
+    APIError,
+    BadRequestError,
+    ForbiddenError,
+    NotFoundError,
+    ValidationError,
+    handle_api_errors,
+)
+from ..utils.db_utils import db_cursor
 from ..services.execution_history_service import (
     execution_status_filter_sql,
     map_execution_state_label,
@@ -46,6 +54,169 @@ def parse_admin_user_status_filter(value):
     raise BadRequestError(
         "Valor inválido para 'status'."
     )
+
+
+def parse_admin_role_target(value):
+    """Normaliza los únicos roles gestionables desde esta superficie."""
+    normalized = str(value or "").strip().casefold()
+    allowed = {
+        "student": "Student",
+        "teacher": "Teacher",
+    }
+
+    if normalized not in allowed:
+        raise ValidationError(
+            "El rol debe ser Student o Teacher.",
+            extra={
+                "field": "role",
+                "allowedRoles": ["Student", "Teacher"],
+            },
+        )
+
+    return allowed[normalized]
+
+
+def change_user_role_in_transaction(
+    cur,
+    user_id,
+    requested_role,
+    actor,
+):
+    """Aplica y audita una transición Student/Teacher dentro de un cursor."""
+    target_role = parse_admin_role_target(requested_role)
+
+    cur.execute(
+        """
+        SELECT
+          u.id,
+          u.full_name,
+          u.email,
+          r.name AS role_name
+        FROM users u
+        JOIN roles r
+          ON r.id = u.role_id
+        WHERE u.id = %s
+        FOR UPDATE;
+        """,
+        (user_id,),
+    )
+    target = cur.fetchone()
+
+    if target is None:
+        raise NotFoundError(
+            f"Usuario con id {user_id} no existe."
+        )
+
+    current_role = str(target.get("role_name") or "").strip()
+
+    if current_role == "Admin":
+        raise ForbiddenError(
+            "El rol Admin está protegido y no puede modificarse desde esta operación."
+        )
+
+    if current_role not in {"Student", "Teacher"}:
+        raise ValidationError(
+            "El rol actual del usuario no admite esta transición.",
+            extra={"field": "role"},
+        )
+
+    if current_role == target_role:
+        return {
+            "id": target["id"],
+            "fullName": target.get("full_name"),
+            "email": target.get("email"),
+            "previousRole": current_role,
+            "role": target_role,
+            "changed": False,
+        }
+
+    assigned_courses = 0
+    if current_role == "Teacher" and target_role == "Student":
+        cur.execute(
+            """
+            SELECT COUNT(*) AS assigned_courses
+            FROM courses
+            WHERE teacher_user_id = %s;
+            """,
+            (user_id,),
+        )
+        assigned_courses = int(
+            (cur.fetchone() or {}).get("assigned_courses") or 0
+        )
+
+        if assigned_courses > 0:
+            raise APIError(
+                (
+                    "El profesor conserva {} curso(s) asignado(s). "
+                    "Transfiéralos antes de cambiar su rol."
+                ).format(assigned_courses),
+                status_code=409,
+                code="USER_HAS_ASSIGNED_COURSES",
+                extra={
+                    "field": "role",
+                    "assignedCourses": assigned_courses,
+                },
+            )
+
+    cur.execute(
+        """
+        SELECT id
+        FROM roles
+        WHERE name = %s;
+        """,
+        (target_role,),
+    )
+    role_row = cur.fetchone()
+
+    if role_row is None:
+        raise ValidationError(
+            "El rol solicitado no está configurado en el sistema.",
+            extra={"field": "role"},
+        )
+
+    cur.execute(
+        """
+        UPDATE users
+        SET role_id = %s
+        WHERE id = %s;
+        """,
+        (role_row["id"], user_id),
+    )
+
+    cur.execute(
+        """
+        INSERT INTO audit_log (
+          user_id,
+          action,
+          description,
+          created_at
+        )
+        VALUES (%s, %s, %s, NOW());
+        """,
+        (
+            actor["id"],
+            "change_user_role",
+            (
+                "Rol de usuario #{target_id} ({target_email}) cambiado "
+                "de {old_role} a {new_role} por {actor_email}."
+            ).format(
+                target_id=target["id"],
+                target_email=target.get("email"),
+                old_role=current_role,
+                new_role=target_role,
+                actor_email=actor.get("email"),
+            ),
+        ),
+    )
+
+    return {
+        "id": target["id"],
+        "fullName": target.get("full_name"),
+        "email": target.get("email"),
+        "previousRole": current_role,
+        "role": target_role,
+        "changed": True,
+    }
 
 
 def serialize_admin_user_list_item(row):
@@ -634,6 +805,28 @@ def get_admin_user_detail(user_id: int):
 
     finally:
         conn.close()
+
+
+# ==========================
+# PATCH /api/admin/users/<user_id>/role
+# ==========================
+
+@admin_users_bp.route("/users/<int:user_id>/role", methods=["PATCH"])
+@handle_api_errors
+@login_required
+@admin_required
+def change_admin_user_role(user_id: int):
+    data = request.get_json(silent=True) or {}
+
+    with db_cursor() as (_conn, cur):
+        result = change_user_role_in_transaction(
+            cur,
+            user_id,
+            data.get("role"),
+            g.current_user,
+        )
+
+    return jsonify({"user": result}), 200
 
 
 # ==========================

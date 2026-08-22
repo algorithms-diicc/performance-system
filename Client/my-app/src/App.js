@@ -434,11 +434,19 @@ const AppInner = () => {
           />
           <Route
             path="courses"
-            element={<TeacherCourses />}
+            element={
+              <TeacherCourses
+                currentUser={currentUser}
+              />
+            }
           />
           <Route
             path="courses/:courseId"
-            element={<TeacherCourseDetail />}
+            element={
+              <TeacherCourseDetail
+                currentUser={currentUser}
+              />
+            }
           />
           <Route
             path="courses/:courseId/students/:userId"

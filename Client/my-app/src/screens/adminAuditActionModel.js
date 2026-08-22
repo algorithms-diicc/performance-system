@@ -20,6 +20,16 @@ export const ADMIN_AUDIT_ACTIONS = Object.freeze([
       "adminAuditLog.actionLabels.updateCourse",
   },
   {
+    code: "transfer_course_teacher",
+    labelKey:
+      "adminAuditLog.actionLabels.transferCourseTeacher",
+  },
+  {
+    code: "clone_course",
+    labelKey:
+      "adminAuditLog.actionLabels.cloneCourse",
+  },
+  {
     code: "add_course_students",
     labelKey:
       "adminAuditLog.actionLabels.addCourseStudents",
@@ -38,6 +48,11 @@ export const ADMIN_AUDIT_ACTIONS = Object.freeze([
     code: "rerun_submission",
     labelKey:
       "adminAuditLog.actionLabels.rerunSubmission",
+  },
+  {
+    code: "change_user_role",
+    labelKey:
+      "adminAuditLog.actionLabels.changeUserRole",
   },
 ]);
 

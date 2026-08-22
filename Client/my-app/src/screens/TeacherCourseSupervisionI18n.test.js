@@ -211,6 +211,14 @@ describe(
             "Aggregate monitoring"
           )
         ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Completed executions rate"
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText("83.3")
+        ).toBeInTheDocument();
 
         await waitFor(() =>
           expect(
@@ -267,6 +275,11 @@ describe(
               name:
                 "Analítica del curso",
             }
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Tasa de ejecuciones completadas"
           )
         ).toBeInTheDocument();
 
