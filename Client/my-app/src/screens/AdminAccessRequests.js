@@ -1,4 +1,5 @@
 import InlineState from "../components/InlineState";
+import ConfirmActionModal from "../components/ConfirmActionModal";
 import {
   localizedRequestError,
   requestJson,
@@ -17,8 +18,8 @@ import {
 } from "../i18n/formatters";
 
 import {
-  adminRoleLabel,
-} from "./adminExecutionStateModel";
+  useAdminPendingRequests,
+} from "./adminPendingRequestsContext";
 
 
 const PAGE_SIZE = 20;
@@ -114,6 +115,10 @@ export default function AdminAccessRequests() {
     t,
   } = useI18n();
 
+  const {
+    setPendingCount,
+  } = useAdminPendingRequests();
+
   const [
     status,
     setStatus,
@@ -164,6 +169,26 @@ export default function AdminAccessRequests() {
     reload,
     setReload,
   ] = useState(0);
+
+  const [
+    decision,
+    setDecision,
+  ] = useState(null);
+
+  const [
+    rejectionReason,
+    setRejectionReason,
+  ] = useState("");
+
+  const [
+    resolving,
+    setResolving,
+  ] = useState(false);
+
+  const [
+    resolveError,
+    setResolveError,
+  ] = useState(null);
 
 
   useEffect(
@@ -224,13 +249,32 @@ export default function AdminAccessRequests() {
                 : []
             );
 
-            setSummary(
+            const nextSummary =
               data.summary
               || {
                 pending: 0,
                 approved: 0,
                 rejected: 0,
-              }
+              };
+
+            setSummary(
+              nextSummary
+            );
+
+            const numericPending =
+              Number(
+                nextSummary.pending
+              );
+
+            setPendingCount(
+              Number.isFinite(
+                numericPending
+              )
+                && numericPending > 0
+                ? Math.floor(
+                    numericPending
+                  )
+                : 0
             );
 
             setTotal(
@@ -271,6 +315,7 @@ export default function AdminAccessRequests() {
     search,
     page,
     reload,
+    setPendingCount,
   ]);
 
 
@@ -288,56 +333,72 @@ export default function AdminAccessRequests() {
       : "";
 
 
-  const resolve =
-    async (
+  const resolveErrorMessage =
+    resolveError
+      ? localizedRequestError(
+          resolveError,
+          t,
+          {
+            language,
+            fallbackKey:
+              "adminAccessRequests.errors.resolve",
+          }
+        )
+      : "";
+
+
+  const openDecision =
+    (
       item,
       mode
     ) => {
-      const confirmMessage =
-        mode === "approve"
-          ? t(
-              "adminAccessRequests.confirm.approve",
-              {
-                id:
-                  item.id,
-              }
-            )
-          : t(
-              "adminAccessRequests.confirm.reject",
-              {
-                id:
-                  item.id,
-              }
-            );
+      setDecision({
+        item,
+        mode,
+      });
+      setRejectionReason("");
+      setResolveError(null);
+    };
 
+
+  const closeDecision =
+    () => {
+      if (resolving) {
+        return;
+      }
+
+      setDecision(null);
+      setRejectionReason("");
+      setResolveError(null);
+    };
+
+
+  const resolveDecision =
+    async () => {
       if (
-        !window.confirm(
-          confirmMessage
-        )
+        !decision
+        || resolving
       ) {
         return;
       }
 
-      let body = {};
+      const {
+        item,
+        mode,
+      } = decision;
 
-      if (
+      const body =
         mode === "reject"
-      ) {
-        const reason =
-          window.prompt(
-            t(
-              "adminAccessRequests.prompt.rejectReason"
-            ),
-            ""
-          )
-          || "";
-
-        body = {
-          reason,
-        };
-      }
+          ? {
+              reason:
+                rejectionReason.trim(),
+            }
+          : {};
 
       try {
+        setResolving(true);
+        setResolveError(null);
+
         await api(
           `/api/admin/access-requests/${item.id}/${mode}`,
           {
@@ -349,22 +410,16 @@ export default function AdminAccessRequests() {
           }
         );
 
+        setDecision(null);
+        setRejectionReason("");
         setReload(
           (value) =>
             value + 1
         );
       } catch (err) {
-        window.alert(
-          localizedRequestError(
-            err,
-            t,
-            {
-              language,
-              fallbackKey:
-                "adminAccessRequests.errors.resolve",
-            }
-          )
-        );
+        setResolveError(err);
+      } finally {
+        setResolving(false);
       }
     };
 
@@ -669,12 +724,12 @@ export default function AdminAccessRequests() {
                           </th>
                           <th>
                             {t(
-                              "adminAccessRequests.table.role"
+                              "adminAccessRequests.table.course"
                             )}
                           </th>
                           <th>
                             {t(
-                              "adminAccessRequests.table.course"
+                              "adminAccessRequests.table.comment"
                             )}
                           </th>
                           <th>
@@ -725,22 +780,6 @@ export default function AdminAccessRequests() {
 
 
                               <td>
-                                {adminRoleLabel(
-                                  item.user
-                                    ?.roleName,
-                                  t
-                                )}
-
-                                {item.message
-                                  && (
-                                    <small>
-                                      {item.message}
-                                    </small>
-                                  )}
-                              </td>
-
-
-                              <td>
                                 <strong>
                                   {item.courseCode
                                     || t(
@@ -753,6 +792,14 @@ export default function AdminAccessRequests() {
                                       "adminAccessRequests.fallbacks.unavailable"
                                     )}
                                 </small>
+                              </td>
+
+
+                              <td className="admin-ops-comment">
+                                {item.message
+                                  || t(
+                                    "adminAccessRequests.fallbacks.unavailable"
+                                  )}
                               </td>
 
 
@@ -788,7 +835,7 @@ export default function AdminAccessRequests() {
                                           type="button"
                                           className="btn btn-sm admin-ops-approve"
                                           onClick={() =>
-                                            resolve(
+                                            openDecision(
                                               item,
                                               "approve"
                                             )
@@ -803,7 +850,7 @@ export default function AdminAccessRequests() {
                                           type="button"
                                           className="btn btn-sm admin-ops-reject"
                                           onClick={() =>
-                                            resolve(
+                                            openDecision(
                                               item,
                                               "reject"
                                             )
@@ -936,6 +983,162 @@ export default function AdminAccessRequests() {
         </div>
 
       </div>
+
+      <ConfirmActionModal
+        open={Boolean(decision)}
+        variant={
+          decision?.mode
+            === "reject"
+            ? "danger"
+            : "normal"
+        }
+        title={t(
+          decision?.mode
+            === "reject"
+            ? "adminAccessRequests.modal.rejectTitle"
+            : "adminAccessRequests.modal.approveTitle",
+          {
+            id:
+              decision?.item
+                ?.id,
+          }
+        )}
+        confirmLabel={t(
+          decision?.mode
+            === "reject"
+            ? "adminAccessRequests.actions.reject"
+            : "adminAccessRequests.actions.approve"
+        )}
+        cancelLabel={t(
+          "adminAccessRequests.actions.cancel"
+        )}
+        loading={resolving}
+        onCancel={closeDecision}
+        onConfirm={resolveDecision}
+        body={(
+          <div className="admin-access-decision">
+            <p>
+              {t(
+                decision?.mode
+                  === "reject"
+                  ? "adminAccessRequests.modal.rejectDescription"
+                  : "adminAccessRequests.modal.approveDescription"
+              )}
+            </p>
+
+            <dl className="admin-access-decision__context">
+              <div>
+                <dt>
+                  {t(
+                    "adminAccessRequests.modal.user"
+                  )}
+                </dt>
+                <dd>
+                  <strong>
+                    {decision?.item
+                      ?.user
+                      ?.fullName
+                      || t(
+                        "adminAccessRequests.fallbacks.unavailable"
+                      )}
+                  </strong>
+                  <small>
+                    {decision?.item
+                      ?.user
+                      ?.email
+                      || t(
+                        "adminAccessRequests.fallbacks.unavailable"
+                      )}
+                  </small>
+                </dd>
+              </div>
+
+              <div>
+                <dt>
+                  {t(
+                    "adminAccessRequests.modal.course"
+                  )}
+                </dt>
+                <dd>
+                  {decision?.item
+                    ?.courseCode
+                    || t(
+                      "adminAccessRequests.fallbacks.unavailable"
+                    )}
+                </dd>
+              </div>
+
+              <div>
+                <dt>
+                  {t(
+                    "adminAccessRequests.modal.professor"
+                  )}
+                </dt>
+                <dd>
+                  {decision?.item
+                    ?.professorEmail
+                    || t(
+                      "adminAccessRequests.fallbacks.unavailable"
+                    )}
+                </dd>
+              </div>
+
+              <div>
+                <dt>
+                  {t(
+                    "adminAccessRequests.table.comment"
+                  )}
+                </dt>
+                <dd>
+                  {decision?.item
+                    ?.message
+                    || t(
+                      "adminAccessRequests.fallbacks.unavailable"
+                    )}
+                </dd>
+              </div>
+            </dl>
+
+            {decision?.mode
+              === "reject"
+              && (
+                <div className="admin-access-decision__reason">
+                  <label htmlFor="admin-access-rejection-reason">
+                    {t(
+                      "adminAccessRequests.modal.rejectReason"
+                    )}
+                  </label>
+                  <textarea
+                    id="admin-access-rejection-reason"
+                    className="form-control"
+                    rows="3"
+                    value={rejectionReason}
+                    disabled={resolving}
+                    onChange={
+                      (event) =>
+                        setRejectionReason(
+                          event.target.value
+                        )
+                    }
+                    placeholder={t(
+                      "adminAccessRequests.modal.rejectReasonPlaceholder"
+                    )}
+                  />
+                </div>
+              )}
+
+            {resolveError
+              && (
+                <div
+                  className="admin-access-decision__error"
+                  role="alert"
+                >
+                  {resolveErrorMessage}
+                </div>
+              )}
+          </div>
+        )}
+      />
 
     </div>
   );

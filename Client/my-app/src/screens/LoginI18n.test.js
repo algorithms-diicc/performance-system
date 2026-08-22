@@ -51,6 +51,21 @@ describe("Login i18n", () => {
         name: /^Idioma$/i,
       })
     ).toBeInTheDocument();
+
+    expect(
+      document.querySelector(
+        ".login-meta-text"
+      )
+    ).toHaveTextContent(
+      "Cuando tu cuenta sea aprobada"
+    );
+    expect(
+      document.querySelector(
+        ".login-meta-text"
+      )
+    ).not.toHaveTextContent(
+      /correo de confirmación/i
+    );
   });
 
   test("renders the login shell in English and can switch back to Spanish", () => {
@@ -67,6 +82,21 @@ describe("Login i18n", () => {
         name: /Continue with Google/i,
       })
     ).toBeInTheDocument();
+
+    expect(
+      document.querySelector(
+        ".login-meta-text"
+      )
+    ).toHaveTextContent(
+      "Once your account is approved"
+    );
+    expect(
+      document.querySelector(
+        ".login-meta-text"
+      )
+    ).not.toHaveTextContent(
+      /confirmation email/i
+    );
 
     fireEvent.click(
       screen.getByRole("button", {

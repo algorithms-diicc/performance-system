@@ -104,7 +104,7 @@ const es = {
       error:
         "Ocurrió un error al enviar la solicitud. Intenta nuevamente.",
       metaLead:
-        "Al enviar esta solicitud, un administrador revisará tu caso. Si es aprobada, recibirás un correo de confirmación y podrás ingresar usando",
+        "Al enviar esta solicitud, un administrador revisará tu caso. Cuando tu cuenta sea aprobada, podrás ingresar usando",
       metaSuffix: "con el mismo correo",
     },
     footer: {
@@ -2979,6 +2979,12 @@ const es = {
     users: "Usuarios",
     accessRequests: "Solicitudes",
     auditLog: "Auditoría",
+    pending: {
+      one:
+        "{{count}} solicitud de acceso pendiente",
+      other:
+        "{{count}} solicitudes de acceso pendientes",
+    },
   },
 
   adminUserDetail: {
@@ -3041,7 +3047,7 @@ const es = {
       lastLogin:
         "Última sesión",
       lastActivity:
-        "Última actividad",
+        "Última ejecución",
     },
     summary: {
       submissions: "Experimentos",
@@ -3321,10 +3327,9 @@ const es = {
     },
     table: {
       user: "Usuario",
-      role:
-        "Rol solicitado",
       course:
         "Curso / profesor",
+      comment: "Comentario",
       status: "Estado",
       date: "Fecha",
       action: "Acción",
@@ -3349,18 +3354,27 @@ const es = {
       retry: "Reintentar",
       approve: "Aprobar",
       reject: "Rechazar",
+      cancel: "Cancelar",
       previous: "Anterior",
       next: "Siguiente",
     },
-    confirm: {
-      approve:
-        "¿Aprobar la solicitud de acceso #{{id}}?",
-      reject:
-        "¿Rechazar la solicitud de acceso #{{id}}?",
-    },
-    prompt: {
+    modal: {
+      approveTitle:
+        "Aprobar solicitud de acceso #{{id}}",
+      rejectTitle:
+        "Rechazar solicitud de acceso #{{id}}",
+      approveDescription:
+        "Confirma la aprobación de esta solicitud de acceso institucional.",
+      rejectDescription:
+        "Confirma el rechazo de esta solicitud de acceso institucional.",
+      user: "Usuario",
+      course: "Curso",
+      professor:
+        "Profesor responsable",
       rejectReason:
-        "Motivo de rechazo (opcional):",
+        "Motivo de rechazo (opcional)",
+      rejectReasonPlaceholder:
+        "Agrega contexto para esta decisión",
     },
     resolution: {
       resolved: "Resuelta",
@@ -3389,12 +3403,31 @@ const es = {
         "Registro persistido de acciones administrativas.",
     },
     filters: {
-      action:
-        "Acción exacta",
-      actionPlaceholder:
-        "Ej. approve_access_request",
+      action: "Acción",
+      allActions:
+        "Todas las acciones",
       from: "Desde",
       to: "Hasta",
+    },
+    actionLabels: {
+      approveAccessRequest:
+        "Solicitud de acceso aprobada",
+      rejectAccessRequest:
+        "Solicitud de acceso rechazada",
+      createCourse:
+        "Curso creado",
+      updateCourse:
+        "Curso actualizado",
+      addCourseStudents:
+        "Carga de estudiantes procesada",
+      removeCourseStudent:
+        "Estudiante retirado del curso",
+      restoreCourseStudent:
+        "Estudiante restaurado en el curso",
+      rerunSubmission:
+        "Reejecución de experimento solicitada",
+      unknown:
+        "Acción desconocida",
     },
     loading: {
       title:

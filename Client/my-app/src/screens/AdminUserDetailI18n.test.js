@@ -209,6 +209,20 @@ describe(
 
         expect(
           screen.getByText(
+            "Last execution",
+            {
+              selector: "dt",
+            }
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Last activity"
+          )
+        ).not.toBeInTheDocument();
+
+        expect(
+          screen.getByText(
             "Student",
             {
               selector:
@@ -274,6 +288,15 @@ describe(
             {
               name:
                 "Detalle de usuario",
+            }
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Última ejecución",
+            {
+              selector: "dt",
             }
           )
         ).toBeInTheDocument();

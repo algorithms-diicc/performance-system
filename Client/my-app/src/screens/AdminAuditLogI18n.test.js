@@ -64,11 +64,24 @@ const auditItem = {
 };
 
 
+const unknownAuditItem = {
+  ...auditItem,
+  id: 102,
+  action:
+    "legacy_custom_action",
+  description:
+    "Descripción histórica sin transformar.",
+};
+
+
 const payload = {
-  items: [auditItem],
+  items: [
+    auditItem,
+    unknownAuditItem,
+  ],
   page: 1,
   pageSize: 25,
-  total: 1,
+  total: 2,
 };
 
 
@@ -107,13 +120,39 @@ describe(
 
 
     test(
-      "localizes chrome while preserving persisted audit content without refetch",
+      "humanizes known actions, preserves technical codes, and falls back safely",
       async () => {
         renderEnglish();
 
         expect(
           await screen.findByText(
-            "approve_access_request"
+            "approve_access_request",
+            {
+              selector: "code",
+            }
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Access request approved",
+            {
+              selector:
+                ".admin-audit-action strong",
+            }
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Unknown action"
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "legacy_custom_action",
+            {
+              selector: "code",
+            }
           )
         ).toBeInTheDocument();
 
@@ -159,13 +198,31 @@ describe(
 
         expect(
           screen.getByText(
-            "approve_access_request"
+            "Solicitud de acceso aprobada",
+            {
+              selector:
+                ".admin-audit-action strong",
+            }
           )
         ).toBeInTheDocument();
 
         expect(
           screen.getByText(
-            "Solicitud de acceso #10 APROBADA para el usuario ada@example.com."
+            "approve_access_request",
+            {
+              selector: "code",
+            }
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Acción desconocida"
+          )
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText(
+            "Descripción histórica sin transformar."
           )
         ).toBeInTheDocument();
 
@@ -182,12 +239,15 @@ describe(
         renderEnglish();
 
         await screen.findByText(
-          "approve_access_request"
+          "approve_access_request",
+          {
+            selector: "code",
+          }
         );
 
         fireEvent.change(
           screen.getByLabelText(
-            "Exact action"
+            "Action"
           ),
           {
             target: {

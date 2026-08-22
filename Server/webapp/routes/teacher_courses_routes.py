@@ -20,6 +20,9 @@ from ..utils.auth_decorators import (
     login_required,
     teacher_or_admin_required,
 )
+from ..utils.audit_descriptions import (
+    student_batch_audit_description,
+)
 from ..utils.db_utils import db_cursor
 from ..services.execution_history_service import (
     execution_status_filter_sql,
@@ -1572,17 +1575,13 @@ def add_course_students(course_id):
         _audit(
             cur,
             "add_course_students",
-            (
-                "Curso #{course_id}: {added} agregados, "
-                "{reactivated} reactivados, {already} ya activos, "
-                "{rejected} rechazados por {actor}."
-            ).format(
+            student_batch_audit_description(
                 course_id=course_id,
-                added=len(added),
-                reactivated=len(reactivated),
-                already=len(already_active),
-                rejected=len(rejected),
                 actor=g.current_user.get("email"),
+                added_count=len(added),
+                reactivated_count=len(reactivated),
+                already_active_count=len(already_active),
+                rejected_count=len(rejected),
             ),
         )
 

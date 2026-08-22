@@ -15,6 +15,10 @@ import {
 import {
   formatDateTime,
 } from "../i18n/formatters";
+import {
+  adminAuditActionLabel,
+  adminAuditActionOptions,
+} from "./adminAuditActionModel";
 
 
 const PAGE_SIZE = 25;
@@ -303,9 +307,9 @@ export default function AdminAuditLog() {
                 )}
               </label>
 
-              <input
+              <select
                 id="admin-audit-action"
-                className="form-control"
+                className="form-select"
                 value={
                   action
                 }
@@ -315,10 +319,29 @@ export default function AdminAuditLog() {
                       event.target.value
                     )
                 }
-                placeholder={t(
-                  "adminAuditLog.filters.actionPlaceholder"
+              >
+                <option value="">
+                  {t(
+                    "adminAuditLog.filters.allActions"
+                  )}
+                </option>
+                {adminAuditActionOptions(
+                  t
+                ).map(
+                  (option) => (
+                    <option
+                      key={
+                        option.value
+                      }
+                      value={
+                        option.value
+                      }
+                    >
+                      {option.label}
+                    </option>
+                  )
                 )}
-              />
+              </select>
             </div>
 
 
@@ -474,12 +497,20 @@ export default function AdminAuditLog() {
                         >
 
                           <div>
-                            <strong>
-                              {item.action
-                                || t(
-                                  "adminAuditLog.fallbacks.action"
+                            <span className="admin-audit-action">
+                              <strong>
+                                {adminAuditActionLabel(
+                                  item.action,
+                                  t
                                 )}
-                            </strong>
+                              </strong>
+                              <code>
+                                {item.action
+                                  || t(
+                                    "adminAuditLog.fallbacks.unavailable"
+                                  )}
+                              </code>
+                            </span>
 
                             <time>
                               {formatDateTime(

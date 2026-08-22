@@ -1,0 +1,92 @@
+export const ADMIN_AUDIT_ACTIONS = Object.freeze([
+  {
+    code: "approve_access_request",
+    labelKey:
+      "adminAuditLog.actionLabels.approveAccessRequest",
+  },
+  {
+    code: "reject_access_request",
+    labelKey:
+      "adminAuditLog.actionLabels.rejectAccessRequest",
+  },
+  {
+    code: "create_course",
+    labelKey:
+      "adminAuditLog.actionLabels.createCourse",
+  },
+  {
+    code: "update_course",
+    labelKey:
+      "adminAuditLog.actionLabels.updateCourse",
+  },
+  {
+    code: "add_course_students",
+    labelKey:
+      "adminAuditLog.actionLabels.addCourseStudents",
+  },
+  {
+    code: "remove_course_student",
+    labelKey:
+      "adminAuditLog.actionLabels.removeCourseStudent",
+  },
+  {
+    code: "restore_course_student",
+    labelKey:
+      "adminAuditLog.actionLabels.restoreCourseStudent",
+  },
+  {
+    code: "rerun_submission",
+    labelKey:
+      "adminAuditLog.actionLabels.rerunSubmission",
+  },
+]);
+
+
+const ACTION_BY_CODE = new Map(
+  ADMIN_AUDIT_ACTIONS.map(
+    (action) => [
+      action.code,
+      action,
+    ]
+  )
+);
+
+
+export function adminAuditActionLabel(
+  code,
+  t
+) {
+  const normalized =
+    String(code || "").trim();
+
+  if (!normalized) {
+    return t(
+      "adminAuditLog.fallbacks.action"
+    );
+  }
+
+  const action =
+    ACTION_BY_CODE.get(
+      normalized
+    );
+
+  return action
+    ? t(action.labelKey)
+    : t(
+        "adminAuditLog.actionLabels.unknown"
+      );
+}
+
+
+export function adminAuditActionOptions(
+  t
+) {
+  return ADMIN_AUDIT_ACTIONS.map(
+    (action) => ({
+      value: action.code,
+      label: t(
+        action.labelKey
+      ),
+    })
+  );
+}

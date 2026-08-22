@@ -104,8 +104,9 @@ const en = {
       error:
         "An error occurred while submitting the request. Try again.",
       metaLead:
-        "When you submit this request, an administrator will review your case. If approved, you will receive a confirmation email and can sign in using",
-      metaSuffix: "with the same",
+        "When you submit this request, an administrator will review your case. Once your account is approved, you can sign in using",
+      metaSuffix:
+        "with the same email",
     },
     footer: {
       lead:
@@ -2976,6 +2977,12 @@ const en = {
     users: "Users",
     accessRequests: "Access requests",
     auditLog: "Audit log",
+    pending: {
+      one:
+        "{{count}} pending access request",
+      other:
+        "{{count}} pending access requests",
+    },
   },
 
   adminUserDetail: {
@@ -3037,7 +3044,7 @@ const en = {
       lastLogin:
         "Last session",
       lastActivity:
-        "Last activity",
+        "Last execution",
     },
     summary: {
       submissions:
@@ -3318,10 +3325,9 @@ const en = {
     },
     table: {
       user: "User",
-      role:
-        "Requested role",
       course:
         "Course / professor",
+      comment: "Comment",
       status: "Status",
       date: "Date",
       action: "Action",
@@ -3346,18 +3352,27 @@ const en = {
       retry: "Retry",
       approve: "Approve",
       reject: "Reject",
+      cancel: "Cancel",
       previous: "Previous",
       next: "Next",
     },
-    confirm: {
-      approve:
-        "Approve access request #{{id}}?",
-      reject:
-        "Reject access request #{{id}}?",
-    },
-    prompt: {
+    modal: {
+      approveTitle:
+        "Approve access request #{{id}}",
+      rejectTitle:
+        "Reject access request #{{id}}",
+      approveDescription:
+        "Confirm approval of this institutional access request.",
+      rejectDescription:
+        "Confirm rejection of this institutional access request.",
+      user: "User",
+      course: "Course",
+      professor:
+        "Responsible professor",
       rejectReason:
-        "Rejection reason (optional):",
+        "Rejection reason (optional)",
+      rejectReasonPlaceholder:
+        "Add context for this decision",
     },
     resolution: {
       resolved: "Resolved",
@@ -3389,12 +3404,31 @@ const en = {
         "Persistent record of administrative actions.",
     },
     filters: {
-      action:
-        "Exact action",
-      actionPlaceholder:
-        "E.g. approve_access_request",
+      action: "Action",
+      allActions:
+        "All actions",
       from: "From",
       to: "To",
+    },
+    actionLabels: {
+      approveAccessRequest:
+        "Access request approved",
+      rejectAccessRequest:
+        "Access request rejected",
+      createCourse:
+        "Course created",
+      updateCourse:
+        "Course updated",
+      addCourseStudents:
+        "Student batch processed",
+      removeCourseStudent:
+        "Student removed from course",
+      restoreCourseStudent:
+        "Student restored to course",
+      rerunSubmission:
+        "Experiment rerun requested",
+      unknown:
+        "Unknown action",
     },
     loading: {
       title:

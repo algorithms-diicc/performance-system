@@ -1,9 +1,12 @@
-import React from "react";
+import React, {
+  useState,
+} from "react";
 import {
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 import {
@@ -17,6 +20,9 @@ import {
 
 import AdminAccessRequests
   from "./AdminAccessRequests";
+import {
+  AdminPendingRequestsContext,
+} from "./adminPendingRequestsContext";
 
 
 jest.mock(
@@ -85,13 +91,54 @@ const listPayload = {
 };
 
 
+const resolvedListPayload = {
+  items: [],
+  summary: {
+    pending: 0,
+    approved: 3,
+    rejected: 3,
+  },
+  page: 1,
+  pageSize: 20,
+  total: 0,
+};
+
+
+const PendingCountHarness = ({
+  children,
+}) => {
+  const [
+    pendingCount,
+    setPendingCount,
+  ] = useState(0);
+
+  return (
+    <AdminPendingRequestsContext.Provider
+      value={{
+        pendingCount,
+        setPendingCount,
+        refreshPendingCount:
+          async () => {},
+      }}
+    >
+      <output aria-label="pending-count">
+        {pendingCount}
+      </output>
+      {children}
+    </AdminPendingRequestsContext.Provider>
+  );
+};
+
+
 const renderEnglish = () =>
   render(
     <I18nProvider
       initialLanguage="en"
     >
       <LanguageControl />
-      <AdminAccessRequests />
+      <PendingCountHarness>
+        <AdminAccessRequests />
+      </PendingCountHarness>
     </I18nProvider>
   );
 
@@ -107,8 +154,38 @@ const listCalls = () =>
     .length;
 
 
+const arrangeResolvedListAfter = (
+  actionPath
+) => {
+  let listRequest = 0;
+
+  requestJson.mockImplementation(
+    (url) => {
+      if (
+        String(url).includes(
+          "/api/admin/access-requests?"
+        )
+      ) {
+        listRequest += 1;
+        return Promise.resolve(
+          listRequest === 1
+            ? listPayload
+            : resolvedListPayload
+        );
+      }
+
+      if (url === actionPath) {
+        return Promise.resolve({});
+      }
+
+      return Promise.resolve({});
+    }
+  );
+};
+
+
 describe(
-  "AdminAccessRequests i18n",
+  "AdminAccessRequests i18n and decisions",
   () => {
     beforeEach(() => {
       jest.clearAllMocks();
@@ -118,17 +195,9 @@ describe(
       );
 
       window.confirm =
-        jest.fn()
-          .mockReturnValue(
-            true
-          );
-
+        jest.fn();
       window.prompt =
-        jest.fn()
-          .mockReturnValue(
-            ""
-          );
-
+        jest.fn();
       window.alert =
         jest.fn();
     });
@@ -142,7 +211,7 @@ describe(
 
 
     test(
-      "localizes technical status and role without refetching on language change",
+      "shows comment as its own column and removes the redundant requested role",
       async () => {
         renderEnglish();
 
@@ -153,20 +222,34 @@ describe(
         ).toBeInTheDocument();
 
         expect(
-          screen.getByRole(
-            "heading",
+          screen.getByText(
+            "Comment",
             {
-              name:
-                "Access requests",
+              selector: "th",
             }
           )
         ).toBeInTheDocument();
 
         expect(
           screen.getByText(
-            "Teacher"
+            "Necesito acceso para el curso.",
+            {
+              selector:
+                ".admin-ops-comment",
+            }
           )
         ).toBeInTheDocument();
+
+        expect(
+          screen.queryByText(
+            "Requested role"
+          )
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByText(
+            "Teacher"
+          )
+        ).not.toBeInTheDocument();
 
         expect(
           screen.getByText(
@@ -177,16 +260,7 @@ describe(
             }
           )
         ).toBeInTheDocument();
-
-        expect(
-          screen.getByText(
-            "Necesito acceso para el curso."
-          )
-        ).toBeInTheDocument();
-
-        expect(
-          listCalls()
-        ).toBe(1);
+        expect(listCalls()).toBe(1);
 
         fireEvent.click(
           screen.getByRole(
@@ -199,21 +273,13 @@ describe(
         );
 
         expect(
-          screen.getByRole(
-            "heading",
+          screen.getByText(
+            "Comentario",
             {
-              name:
-                "Solicitudes de acceso",
+              selector: "th",
             }
           )
         ).toBeInTheDocument();
-
-        expect(
-          screen.getByText(
-            "Docente"
-          )
-        ).toBeInTheDocument();
-
         expect(
           screen.getByText(
             "Pendiente",
@@ -223,22 +289,22 @@ describe(
             }
           )
         ).toBeInTheDocument();
-
         expect(
           screen.getByText(
-            "Necesito acceso para el curso."
+            "Necesito acceso para el curso.",
+            {
+              selector:
+                ".admin-ops-comment",
+            }
           )
         ).toBeInTheDocument();
-
-        expect(
-          listCalls()
-        ).toBe(1);
+        expect(listCalls()).toBe(1);
       }
     );
 
 
     test(
-      "preserves technical filters and localizes approve confirmation",
+      "preserves canonical status filter values",
       async () => {
         renderEnglish();
 
@@ -269,45 +335,65 @@ describe(
               )
           ).toBe(true)
         );
+      }
+    );
 
-        fireEvent.change(
-          screen.getByLabelText(
-            "Status"
-          ),
-          {
-            target: {
-              value:
-                "PENDING",
-            },
-          }
+
+    test(
+      "approves through the shared modal and refreshes the list and pending count",
+      async () => {
+        arrangeResolvedListAfter(
+          "/api/admin/access-requests/10/approve"
         );
+        renderEnglish();
 
-        await screen.findByRole(
-          "button",
-          {
-            name:
-              "Approve",
-          }
+        await screen.findByText(
+          "ada@example.com"
         );
-
-        requestJson.mockResolvedValue(
-          {}
+        await waitFor(() =>
+          expect(
+            screen.getByLabelText(
+              "pending-count"
+            )
+          ).toHaveTextContent("1")
         );
 
         fireEvent.click(
           screen.getByRole(
             "button",
             {
-              name:
-                "Approve",
+              name: "Approve",
             }
           )
         );
 
+        const dialog =
+          screen.getByRole(
+            "dialog",
+            {
+              name:
+                "Approve access request #10",
+            }
+          );
+
         expect(
-          window.confirm
-        ).toHaveBeenCalledWith(
-          "Approve access request #10?"
+          within(dialog).getByText(
+            "Ada Lovelace"
+          )
+        ).toBeInTheDocument();
+        expect(
+          within(dialog).getByText(
+            "prof@inf.udec.cl"
+          )
+        ).toBeInTheDocument();
+
+        fireEvent.click(
+          within(dialog).getByRole(
+            "button",
+            {
+              name: "Approve",
+            }
+          )
         );
 
         await waitFor(() =>
@@ -315,14 +401,208 @@ describe(
             requestJson.mock.calls
               .some(
                 ([url, options]) =>
-                  String(url)
-                    ===
-                    "/api/admin/access-requests/10/approve"
-                  &&
-                  options?.method
+                  url
+                    === "/api/admin/access-requests/10/approve"
+                  && options?.method
                     === "POST"
               )
           ).toBe(true)
+        );
+        await waitFor(() =>
+          expect(
+            screen.queryByRole(
+              "dialog"
+            )
+          ).not.toBeInTheDocument()
+        );
+        await waitFor(() =>
+          expect(
+            screen.getByLabelText(
+              "pending-count"
+            )
+          ).toHaveTextContent("0")
+        );
+        expect(listCalls()).toBe(2);
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(window.prompt).not.toHaveBeenCalled();
+        expect(window.alert).not.toHaveBeenCalled();
+      }
+    );
+
+
+    test(
+      "rejects through a danger modal and posts the optional reason",
+      async () => {
+        arrangeResolvedListAfter(
+          "/api/admin/access-requests/10/reject"
+        );
+        renderEnglish();
+
+        await screen.findByText(
+          "ada@example.com"
+        );
+
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name: "Reject",
+            }
+          )
+        );
+
+        const dialog =
+          screen.getByRole(
+            "dialog",
+            {
+              name:
+                "Reject access request #10",
+            }
+          );
+
+        expect(dialog).toHaveClass(
+          "confirm-action-modal--danger"
+        );
+
+        fireEvent.change(
+          within(dialog).getByLabelText(
+            "Rejection reason (optional)"
+          ),
+          {
+            target: {
+              value:
+                "Course is not active",
+            },
+          }
+        );
+
+        fireEvent.click(
+          within(dialog).getByRole(
+            "button",
+            {
+              name: "Reject",
+            }
+          )
+        );
+
+        await waitFor(() => {
+          const actionCall =
+            requestJson.mock.calls.find(
+              ([url]) =>
+                url
+                  === "/api/admin/access-requests/10/reject"
+            );
+
+          expect(actionCall).toBeDefined();
+          expect(
+            JSON.parse(
+              actionCall[1].body
+            )
+          ).toEqual({
+            reason:
+              "Course is not active",
+          });
+        });
+
+        await waitFor(() =>
+          expect(
+            screen.getByLabelText(
+              "pending-count"
+            )
+          ).toHaveTextContent("0")
+        );
+        expect(window.confirm).not.toHaveBeenCalled();
+        expect(window.prompt).not.toHaveBeenCalled();
+        expect(window.alert).not.toHaveBeenCalled();
+      }
+    );
+
+
+    test(
+      "keeps resolve errors inline and reactively localizes them",
+      async () => {
+        requestJson.mockImplementation(
+          (url) => {
+            if (
+              String(url).includes(
+                "/api/admin/access-requests?"
+              )
+            ) {
+              return Promise.resolve(
+                listPayload
+              );
+            }
+
+            return Promise.reject({
+              status: 500,
+              code:
+                "INTERNAL_ERROR",
+              payload: {
+                error: {
+                  message:
+                    "Error interno del servidor.",
+                },
+              },
+            });
+          }
+        );
+        renderEnglish();
+
+        await screen.findByText(
+          "ada@example.com"
+        );
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name: "Approve",
+            }
+          )
+        );
+
+        const dialog =
+          screen.getByRole(
+            "dialog"
+          );
+        fireEvent.click(
+          within(dialog).getByRole(
+            "button",
+            {
+              name: "Approve",
+            }
+          )
+        );
+
+        expect(
+          await within(dialog).findByRole(
+            "alert"
+          )
+        ).toHaveTextContent(
+          "The service is temporarily unavailable. Try again in a few moments."
+        );
+        expect(
+          screen.getByRole(
+            "dialog"
+          )
+        ).toBeInTheDocument();
+        expect(window.alert).not.toHaveBeenCalled();
+
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "switch-es",
+            }
+          )
+        );
+
+        expect(
+          screen.getByRole(
+            "alert"
+          )
+        ).toHaveTextContent(
+          "El servicio no está disponible temporalmente. Inténtalo nuevamente en unos momentos."
         );
       }
     );
@@ -350,10 +630,7 @@ describe(
             "The service is temporarily unavailable. Try again in a few moments."
           )
         ).toBeInTheDocument();
-
-        expect(
-          listCalls()
-        ).toBe(1);
+        expect(listCalls()).toBe(1);
 
         fireEvent.click(
           screen.getByRole(
@@ -370,10 +647,7 @@ describe(
             "El servicio no está disponible temporalmente. Inténtalo nuevamente en unos momentos."
           )
         ).toBeInTheDocument();
-
-        expect(
-          listCalls()
-        ).toBe(1);
+        expect(listCalls()).toBe(1);
       }
     );
   }
