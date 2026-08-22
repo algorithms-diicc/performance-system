@@ -18,7 +18,9 @@ def make_zip(entries):
     output = BytesIO()
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         for name, content in entries:
-            archive.writestr(name, content)
+            info = zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            archive.writestr(info, content)
     return output.getvalue()
 
 
@@ -177,6 +179,9 @@ class ReproducibilityServiceTests(unittest.TestCase):
                 "singleEventFallback": True,
             },
         )
+        self.assertNotIn("language", source)
+        self.assertNotIn("metadataProvenance", source)
+        self.assertNotIn("compiler", configuration)
 
         environment = manifest["environmentObserved"]
         self.assertEqual(
@@ -238,9 +243,84 @@ class ReproducibilityServiceTests(unittest.TestCase):
         first = self._snapshot().manifest_bytes
         second = self._snapshot().manifest_bytes
         self.assertEqual(first, second)
+        self.assertEqual(
+            hashlib.sha256(first).hexdigest(),
+            "5c4abdd5514002a225f9c069c2be20ece75efbfafdffabe579adc5dac584e49b",
+        )
         self.assertTrue(first.endswith(b"\n"))
         self.assertEqual(json.loads(first.decode("utf-8")), self._snapshot().manifest)
         self.assertNotIn(b"generatedAt", first)
+
+    def test_v2_cpp_manifest_adds_metadata_without_schema_bump(self):
+        execution_config = {
+            **self.row["execution_config"],
+            "source_contract_version": 2,
+            "source_language": "C++",
+            "compiler": "g++",
+            "compiler_flags": "-O3",
+        }
+        snapshot = self._snapshot(
+            dict(self.row, execution_config=execution_config)
+        )
+
+        self.assertEqual(snapshot.manifest["schemaVersion"], "1.0")
+        self.assertEqual(snapshot.manifest["source"]["language"], "C++")
+        self.assertEqual(
+            snapshot.manifest["source"]["metadataProvenance"],
+            "explicit",
+        )
+        self.assertEqual(
+            snapshot.manifest["configuration"]["compiler"],
+            "g++",
+        )
+        self.assertEqual(
+            snapshot.manifest["configuration"]["compilerFlags"],
+            "-O3",
+        )
+        self.assertEqual(
+            snapshot.manifest_bytes,
+            self._snapshot(
+                dict(self.row, execution_config=execution_config)
+            ).manifest_bytes,
+        )
+
+    def test_v2_c_manifest_and_bundle_preserve_c_extension(self):
+        source_bytes = b"int main(void) { return 0; }\n"
+        archive_bytes = make_zip([("nested/source.c", source_bytes)])
+        (self.uploads_root / "internal-uuid.zip").write_bytes(
+            archive_bytes
+        )
+        execution_config = {
+            **self.row["execution_config"],
+            "source_contract_version": 2,
+            "source_language": "C",
+            "compiler": "gcc",
+            "compiler_flags": "-O3",
+            "original_filename": "nested/source.c",
+        }
+        row = dict(
+            self.row,
+            execution_config=execution_config,
+            source_filename="nested/source.c",
+            archive_sha256=hashlib.sha256(archive_bytes).hexdigest(),
+        )
+
+        snapshot = self._snapshot(row)
+        bundle = build_bundle_bytes(snapshot)
+
+        self.assertEqual(snapshot.manifest["schemaVersion"], "1.0")
+        self.assertEqual(snapshot.manifest["source"]["language"], "C")
+        self.assertEqual(
+            snapshot.manifest["source"]["metadataProvenance"],
+            "explicit",
+        )
+        self.assertEqual(
+            snapshot.manifest["configuration"]["compiler"],
+            "gcc",
+        )
+        with zipfile.ZipFile(BytesIO(bundle), "r") as archive:
+            self.assertIn("source/source.c", archive.namelist())
+            self.assertEqual(archive.read("source/source.c"), source_bytes)
 
     def test_missing_source_degrades_manifest_without_hiding_execution(self):
         row = dict(self.row, source_filename="missing.cpp")

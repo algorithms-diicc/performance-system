@@ -13,6 +13,12 @@ import zipfile
 
 from werkzeug.utils import secure_filename
 
+from ...source_contract import (
+    SourceContractError,
+    is_supported_source_filename,
+    mime_type_for_filename,
+    resolve_source_metadata,
+)
 from .upload_service import DEFAULT_MAX_ARCHIVE_BYTES, DEFAULT_MAX_CPP_BYTES
 
 
@@ -311,7 +317,7 @@ def _normalize_source_reference(raw_filename):
         or WINDOWS_DRIVE_RE.match(normalized)
         or not path.parts
         or not path.name
-        or path.suffix.casefold() != ".cpp"
+        or not is_supported_source_filename(normalized)
     ):
         raise _InvalidSourceReference()
 
@@ -329,7 +335,7 @@ def load_source_artifact(
     *,
     max_cpp_bytes=DEFAULT_MAX_CPP_BYTES,
 ):
-    """Extrae exactamente un miembro .cpp desde el snapshot ya verificado."""
+    """Extrae exactamente un miembro C/C++ desde el snapshot verificado."""
     archive_bytes = require_verified_archive(snapshot)
     try:
         source_filename = _normalize_source_reference(raw_filename)
@@ -443,13 +449,24 @@ def serialize_source_artifact(artifact):
 def source_download_name(artifact):
     visible_name = PurePosixPath(artifact.filename).name
     safe_name = secure_filename(visible_name)
-    if not safe_name or not safe_name.casefold().endswith(".cpp"):
+    if not safe_name or not is_supported_source_filename(safe_name):
         raise SourceProvenanceError(
             "SOURCE_INVALID_REFERENCE",
             "La fuente histórica no posee un nombre de descarga válido.",
             422,
         )
     return safe_name
+
+
+def source_mime_type(artifact):
+    try:
+        return mime_type_for_filename(artifact.filename)
+    except SourceContractError:
+        raise SourceProvenanceError(
+            "SOURCE_INVALID_REFERENCE",
+            "La fuente histórica no posee un MIME válido.",
+            422,
+        )
 
 
 def archive_download_name(archive_row):
@@ -495,6 +512,85 @@ def _execution_identity(row):
     return str(row.get("execution_id"))
 
 
+def _contract_config_from_row(row):
+    row = row or {}
+    persisted = row.get("execution_config")
+    if not isinstance(persisted, dict):
+        persisted = {}
+
+    config = {
+        "original_filename": (
+            row.get("source_filename")
+            or persisted.get("original_filename")
+        )
+    }
+    version = row.get("source_contract_version")
+    version_is_explicit = (
+        version is not None
+        or "source_contract_version" in persisted
+    )
+    if version_is_explicit:
+        config["source_contract_version"] = (
+            version
+            if version is not None
+            else persisted.get("source_contract_version")
+        )
+        for key in (
+            "source_language",
+            "compiler",
+            "compiler_flags",
+        ):
+            config[key] = (
+                row.get(key)
+                if row.get(key) is not None
+                else persisted.get(key)
+            )
+    else:
+        legacy_flags = (
+            row.get("compiler_flags")
+            if row.get("compiler_flags") is not None
+            else persisted.get("compiler_flags")
+        )
+        if legacy_flags is not None:
+            config["compiler_flags"] = legacy_flags
+    return config
+
+
+def resolve_source_metadata_for_row(row):
+    """Resuelve metadata persistida sin exponer ni modificar el JSONB."""
+    try:
+        return resolve_source_metadata(_contract_config_from_row(row))
+    except SourceContractError:
+        raise SourceProvenanceError(
+            "SOURCE_METADATA_INVALID",
+            "La metadata de la fuente histórica no es válida.",
+            422,
+        )
+
+
+def _optional_source_metadata(row):
+    try:
+        return resolve_source_metadata_for_row(row)
+    except SourceProvenanceError:
+        return None
+
+
+def _public_metadata(metadata):
+    if metadata is None:
+        return {
+            "language": None,
+            "compiler": None,
+            "compilerFlags": None,
+            "metadataProvenance": None,
+        }
+    return {
+        "language": metadata.source_language,
+        "compiler": metadata.compiler,
+        "compilerFlags": metadata.compiler_flags,
+        "metadataProvenance": metadata.metadata_provenance,
+    }
+
+
 def build_trace_payload(
     execution_row,
     sibling_rows,
@@ -524,11 +620,17 @@ def build_trace_payload(
                 "execution_state",
                 "source_filename",
                 "source_index",
+                "source_contract_version",
+                "source_language",
+                "compiler",
+                "compiler_flags",
+                "execution_config",
             )
         }
 
     normalized_rows = []
     for sibling in deduplicated.values():
+        metadata = _optional_source_metadata(sibling)
         normalized_rows.append(
             {
                 "_executionId": sibling.get("execution_id"),
@@ -540,6 +642,7 @@ def build_trace_payload(
                 "executionPublicId": sibling.get("public_id"),
                 "codename": sibling.get("codename"),
                 "state": sibling.get("execution_state"),
+                "_metadata": metadata,
             }
         )
 
@@ -563,8 +666,9 @@ def build_trace_payload(
 
     for item in normalized_rows:
         filename = item["filename"]
+        metadata = item["_metadata"]
         artifact = None
-        if archive.available and filename:
+        if archive.available and filename and metadata is not None:
             if filename not in source_cache:
                 try:
                     source_cache[filename] = load_source_artifact(
@@ -588,18 +692,21 @@ def build_trace_payload(
                 "state": item["state"],
                 "isCurrent": is_current,
                 "available": artifact is not None,
+                **_public_metadata(metadata),
             }
         )
 
     current_filename = _public_source_filename(
         execution_row.get("source_filename")
     )
+    current_metadata = _optional_source_metadata(execution_row)
     current_source = {
         "filename": current_filename,
         "sourceIndex": _source_index(execution_row.get("source_index")),
         "available": current_artifact is not None,
         "sha256": current_artifact.sha256 if current_artifact else None,
         "sizeBytes": current_artifact.size_bytes if current_artifact else None,
+        **_public_metadata(current_metadata),
     }
 
     return {

@@ -225,6 +225,11 @@ class TraceRoutesTests(unittest.TestCase):
         self.assertEqual(source.get_json()["source"]["content"].encode("utf-8"), self.raw_source)
         self.assertEqual(source_download.status_code, 200)
         self.assertEqual(source_download.data, self.raw_source)
+        self.assertTrue(
+            source_download.headers["Content-Type"].startswith(
+                "text/x-c++src"
+            )
+        )
         self.assertIn(
             "filename=source.cpp",
             source_download.headers["Content-Disposition"],
@@ -240,6 +245,79 @@ class TraceRoutesTests(unittest.TestCase):
         self.assertNotIn(
             "internal-uuid",
             archive_download.headers["Content-Disposition"],
+        )
+
+    def test_v2_c_source_download_uses_c_mime_and_filename(self):
+        raw_source = b"int main(void) { return 0; }\n"
+        archive_bytes = make_zip([("nested/source.c", raw_source)])
+        (self.uploads_root / "internal-uuid.zip").write_bytes(
+            archive_bytes
+        )
+        provenance = {
+            **self.provenance_row,
+            "source_filename": "nested/source.c",
+            "source_index": "0",
+            "source_contract_version": "2",
+            "source_language": "C",
+            "compiler": "gcc",
+            "compiler_flags": "-O3",
+            "execution_config": {
+                "source_contract_version": 2,
+                "source_language": "C",
+                "compiler": "gcc",
+                "compiler_flags": "-O3",
+                "original_filename": "nested/source.c",
+            },
+            "archive_sha256": hashlib.sha256(archive_bytes).hexdigest(),
+        }
+        siblings = [
+            {
+                key: provenance.get(key)
+                for key in (
+                    "execution_id",
+                    "public_id",
+                    "codename",
+                    "execution_state",
+                    "source_filename",
+                    "source_index",
+                    "source_contract_version",
+                    "source_language",
+                    "compiler",
+                    "compiler_flags",
+                )
+            }
+        ]
+
+        trace = self._request(
+            OWNER,
+            "/api/executions/exec70LCS/trace",
+            provenance=provenance,
+            siblings=siblings,
+        )
+        download = self._request(
+            OWNER,
+            "/api/executions/exec70LCS/source/download",
+            provenance=provenance,
+            siblings=siblings,
+        )
+
+        self.assertEqual(trace.status_code, 200)
+        self.assertEqual(
+            trace.get_json()["execution"]["source"]["language"],
+            "C",
+        )
+        self.assertEqual(
+            trace.get_json()["execution"]["source"]["metadataProvenance"],
+            "explicit",
+        )
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download.data, raw_source)
+        self.assertTrue(
+            download.headers["Content-Type"].startswith("text/x-csrc")
+        )
+        self.assertIn(
+            "filename=source.c",
+            download.headers["Content-Disposition"],
         )
 
     def test_assigned_teacher_can_use_source_endpoints_but_not_archive(self):

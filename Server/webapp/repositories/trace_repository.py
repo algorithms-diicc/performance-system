@@ -22,6 +22,14 @@ def get_execution_provenance_by_codename(codename, conn=None):
                     e.execution_config ->> 'original_filename'
                         AS source_filename,
                     e.execution_config ->> 'source_index' AS source_index,
+                    e.execution_config AS execution_config,
+                    e.execution_config ->> 'source_contract_version'
+                        AS source_contract_version,
+                    e.execution_config ->> 'source_language'
+                        AS source_language,
+                    e.execution_config ->> 'compiler' AS compiler,
+                    e.execution_config ->> 'compiler_flags'
+                        AS compiler_flags,
                     s.id AS submission_id,
                     s.title AS submission_title,
                     s.file_path AS archive_file_path,
@@ -58,7 +66,15 @@ def list_submission_sources(submission_id, conn=None):
                     e.execution_state,
                     e.execution_config ->> 'original_filename'
                         AS source_filename,
-                    e.execution_config ->> 'source_index' AS source_index
+                    e.execution_config ->> 'source_index' AS source_index,
+                    e.execution_config AS execution_config,
+                    e.execution_config ->> 'source_contract_version'
+                        AS source_contract_version,
+                    e.execution_config ->> 'source_language'
+                        AS source_language,
+                    e.execution_config ->> 'compiler' AS compiler,
+                    e.execution_config ->> 'compiler_flags'
+                        AS compiler_flags
                 FROM executions e
                 WHERE e.submission_id = %s
                 ORDER BY e.id ASC;

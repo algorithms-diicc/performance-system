@@ -10,6 +10,10 @@ import stat
 from typing import Optional
 import zipfile
 
+from ...source_contract import (
+    SOURCE_CONTRACT_VERSION,
+    is_supported_source_filename,
+)
 from .result_artifact_service import (
     ResultArtifact,
     inspect_result_artifact,
@@ -19,6 +23,7 @@ from .source_provenance_service import (
     SourceProvenanceError,
     inspect_archive,
     load_source_artifact,
+    resolve_source_metadata_for_row,
     source_download_name,
 )
 
@@ -85,7 +90,7 @@ def _public_source_filename(value):
         or ".." in path.parts
         or WINDOWS_DRIVE_RE.match(normalized)
         or not path.name
-        or path.suffix.casefold() != ".cpp"
+        or not is_supported_source_filename(normalized)
     ):
         return None
     return normalized
@@ -164,6 +169,11 @@ def build_reproducibility_snapshot(
     """Construye manifest y conserva los bytes ya verificados para exportar."""
     row = execution_row or {}
     execution_config = _mapping(row.get("execution_config"))
+    source_metadata = None
+    try:
+        source_metadata = resolve_source_metadata_for_row(row)
+    except SourceProvenanceError:
+        pass
 
     archive = inspect_archive(
         row,
@@ -171,7 +181,7 @@ def build_reproducibility_snapshot(
         uploads_root=uploads_root,
     )
     source_artifact = None
-    if archive.available:
+    if archive.available and source_metadata is not None:
         try:
             source_artifact = load_source_artifact(
                 archive,
@@ -195,6 +205,41 @@ def build_reproducibility_snapshot(
     persisted_source_filename = _public_source_filename(
         row.get("source_filename")
     )
+    source_manifest = {
+        "filename": persisted_source_filename,
+        "sourceIndex": _source_index(row.get("source_index")),
+        "available": source_artifact is not None,
+        "sha256": source_artifact.sha256 if source_artifact else None,
+        "sizeBytes": (
+            source_artifact.size_bytes if source_artifact else None
+        ),
+        "hashProvenance": (
+            "verified_archive_member" if source_artifact else None
+        ),
+    }
+    configuration_manifest = {
+        "inputSize": row.get("input_size"),
+        "samples": row.get("samples"),
+        "compilerFlags": _scalar(
+            execution_config.get("compiler_flags")
+        ),
+        "measurement": _measurement_configuration(execution_config),
+    }
+    if (
+        source_metadata is not None
+        and source_metadata.source_contract_version
+        == SOURCE_CONTRACT_VERSION
+    ):
+        source_manifest.update(
+            {
+                "language": source_metadata.source_language,
+                "metadataProvenance": (
+                    source_metadata.metadata_provenance
+                ),
+            }
+        )
+        configuration_manifest["compiler"] = source_metadata.compiler
+
     manifest = {
         "schemaVersion": MANIFEST_SCHEMA_VERSION,
         "submission": {
@@ -219,26 +264,8 @@ def build_reproducibility_snapshot(
             "startedAt": _timestamp(row.get("started_at")),
             "finishedAt": _timestamp(row.get("finished_at")),
         },
-        "source": {
-            "filename": persisted_source_filename,
-            "sourceIndex": _source_index(row.get("source_index")),
-            "available": source_artifact is not None,
-            "sha256": source_artifact.sha256 if source_artifact else None,
-            "sizeBytes": (
-                source_artifact.size_bytes if source_artifact else None
-            ),
-            "hashProvenance": (
-                "verified_archive_member" if source_artifact else None
-            ),
-        },
-        "configuration": {
-            "inputSize": row.get("input_size"),
-            "samples": row.get("samples"),
-            "compilerFlags": _scalar(
-                execution_config.get("compiler_flags")
-            ),
-            "measurement": _measurement_configuration(execution_config),
-        },
+        "source": source_manifest,
+        "configuration": configuration_manifest,
         "environmentObserved": _observed_environment(
             row.get("hardware_snapshot")
         ),

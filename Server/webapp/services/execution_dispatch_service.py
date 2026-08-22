@@ -12,6 +12,12 @@ import hashlib
 import re
 import zipfile
 
+from ...source_contract import (
+    SourceContractError,
+    enumerate_source_members,
+    resolve_source_metadata,
+)
+
 
 CODENAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
@@ -100,6 +106,15 @@ def load_execution_source(
             "execution_config no tiene un formato válido."
         )
 
+    try:
+        source_metadata = resolve_source_metadata(config)
+    except SourceContractError as exc:
+        raise ExecutionDispatchError(
+            "execution_config no cumple el contrato de fuente: {}".format(
+                exc
+            )
+        )
+
     expected_name = str(
         config.get("original_filename") or ""
     ).replace("\\", "/").strip()
@@ -138,20 +153,26 @@ def load_execution_source(
 
     try:
         with zipfile.ZipFile(str(archive_path), "r") as archive:
-            cpp_members = []
-            for info in archive.infolist():
+            infos = archive.infolist()
+            normalized_names = {}
+            for info in infos:
                 normalized = _safe_member_name(info.filename)
-                if info.is_dir():
-                    continue
-                if normalized.lower().endswith(".cpp"):
-                    cpp_members.append((normalized, info))
+                normalized_names[id(info)] = normalized
 
-            if source_index >= len(cpp_members):
+            source_members = [
+                (normalized_names[id(info)], info)
+                for info in enumerate_source_members(
+                    infos,
+                    source_metadata.source_contract_version,
+                )
+            ]
+
+            if source_index >= len(source_members):
                 raise ExecutionDispatchError(
                     "source_index no existe en el ZIP persistido."
                 )
 
-            normalized_name, info = cpp_members[source_index]
+            normalized_name, info = source_members[source_index]
             if normalized_name != expected_name:
                 raise ExecutionDispatchError(
                     "El source persistido no coincide con execution_config."
@@ -180,6 +201,15 @@ def load_execution_source(
         "original_filename": expected_name,
         "content": content,
         "archive_path": str(archive_path),
+        "source_contract_version": (
+            source_metadata.source_contract_version
+        ),
+        "source_language": source_metadata.source_language,
+        "compiler": source_metadata.compiler,
+        "compiler_flags": source_metadata.compiler_flags,
+        "technical_extension": source_metadata.technical_extension,
+        "mime_type": source_metadata.mime_type,
+        "metadata_provenance": source_metadata.metadata_provenance,
     }
 
 
@@ -205,7 +235,9 @@ def materialize_execution_source(
 
     target_root = Path(test_dir).resolve()
     target_root.mkdir(parents=True, exist_ok=True)
-    target = (target_root / (codename + ".cpp")).resolve()
+    target = (
+        target_root / (codename + source["technical_extension"])
+    ).resolve()
     if target.parent != target_root:
         raise ExecutionDispatchError(
             "Ruta técnica de source fuera de Server/test."

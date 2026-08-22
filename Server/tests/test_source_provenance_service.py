@@ -14,8 +14,10 @@ from Server.webapp.services.source_provenance_service import (
     build_trace_payload,
     inspect_archive,
     load_source_artifact,
+    resolve_source_metadata_for_row,
     serialize_source_artifact,
     source_download_name,
+    source_mime_type,
 )
 
 
@@ -114,6 +116,42 @@ class SourceProvenanceServiceTests(unittest.TestCase):
         self.assertTrue(payload["source"]["content"].startswith("\ufeff"))
         self.assertIn("\r\n", payload["source"]["content"])
         self.assertEqual(source_download_name(artifact), "source.cpp")
+
+    def test_v2_c_source_has_safe_hash_download_name_and_mime(self):
+        raw_source = b"int main(void) { return 0; }\n"
+        data = zip_bytes([("nested/source.c", raw_source)])
+        row = self._row(
+            data,
+            source_filename="nested/source.c",
+            source_contract_version="2",
+            source_language="C",
+            compiler="gcc",
+            compiler_flags="-O3",
+            execution_config={
+                "source_contract_version": 2,
+                "source_language": "C",
+                "compiler": "gcc",
+                "compiler_flags": "-O3",
+                "original_filename": "nested/source.c",
+            },
+        )
+
+        metadata = resolve_source_metadata_for_row(row)
+        artifact = load_source_artifact(
+            self._inspect(row),
+            row["source_filename"],
+        )
+
+        self.assertEqual(metadata.source_language, "C")
+        self.assertEqual(metadata.compiler, "gcc")
+        self.assertEqual(metadata.metadata_provenance, "explicit")
+        self.assertEqual(artifact.content_bytes, raw_source)
+        self.assertEqual(
+            artifact.sha256,
+            hashlib.sha256(raw_source).hexdigest(),
+        )
+        self.assertEqual(source_download_name(artifact), "source.c")
+        self.assertEqual(source_mime_type(artifact), "text/x-csrc")
 
     def test_archive_states_degrade_without_exposing_internal_paths(self):
         valid_data = zip_bytes([("source.cpp", b"ok")])
@@ -222,7 +260,7 @@ class SourceProvenanceServiceTests(unittest.TestCase):
             "/source.cpp",
             "C:/source.cpp",
             "source.cpp\x00.txt",
-            "source.c",
+            "source.cc",
             None,
         )
         for unsafe_name in unsafe_names:
@@ -388,6 +426,22 @@ class SourceProvenanceServiceTests(unittest.TestCase):
         )
         self.assertTrue(payload["sources"][1]["isCurrent"])
         self.assertTrue(payload["execution"]["source"]["available"])
+        self.assertEqual(
+            payload["execution"]["source"]["language"],
+            "C++",
+        )
+        self.assertEqual(
+            payload["execution"]["source"]["compiler"],
+            "g++",
+        )
+        self.assertEqual(
+            payload["execution"]["source"]["compilerFlags"],
+            "-O3",
+        )
+        self.assertEqual(
+            payload["execution"]["source"]["metadataProvenance"],
+            "inferred_legacy_cpp",
+        )
         self.assertFalse(payload["permissions"]["canDownloadArchive"])
 
         serialized = json.dumps(payload)
@@ -407,6 +461,64 @@ class SourceProvenanceServiceTests(unittest.TestCase):
             "Private Owner",
         ):
             self.assertNotIn(forbidden, serialized)
+
+    def test_trace_exposes_explicit_v2_metadata_for_c_and_cpp(self):
+        data = zip_bytes(
+            [("first.cpp", b"cpp"), ("second.c", b"c")]
+        )
+        row = self._row(
+            data,
+            execution_id=20,
+            source_filename="second.c",
+            source_index="1",
+            source_contract_version="2",
+            source_language="C",
+            compiler="gcc",
+            compiler_flags="-O3",
+        )
+        siblings = [
+            {
+                "execution_id": 10,
+                "public_id": "public-10",
+                "codename": "firstLCS",
+                "execution_state": "COMPLETED",
+                "source_filename": "first.cpp",
+                "source_index": "0",
+                "source_contract_version": "2",
+                "source_language": "C++",
+                "compiler": "g++",
+                "compiler_flags": "-O3",
+            },
+            {
+                **row,
+                "public_id": "public-20",
+                "codename": "secondLCS",
+            },
+        ]
+
+        payload = build_trace_payload(
+            row,
+            siblings,
+            can_download_archive=True,
+            server_root=self.server_root,
+            uploads_root=self.uploads_root,
+        )
+
+        self.assertEqual(
+            [item["language"] for item in payload["sources"]],
+            ["C++", "C"],
+        )
+        self.assertEqual(
+            [item["compiler"] for item in payload["sources"]],
+            ["g++", "gcc"],
+        )
+        self.assertTrue(
+            all(
+                item["metadataProvenance"] == "explicit"
+                for item in payload["sources"]
+            )
+        )
+        self.assertEqual(payload["execution"]["source"]["language"], "C")
 
     def test_archive_download_name_uses_original_or_historical_fallback(self):
         self.assertEqual(

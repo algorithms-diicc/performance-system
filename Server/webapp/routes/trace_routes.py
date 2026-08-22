@@ -18,8 +18,10 @@ from ..services.source_provenance_service import (
     inspect_archive,
     load_source_artifact,
     require_verified_archive,
+    resolve_source_metadata_for_row,
     serialize_source_artifact,
     source_download_name,
+    source_mime_type,
 )
 from ..services.submission_access_service import (
     SubmissionAccessForbidden,
@@ -93,6 +95,7 @@ def _raise_api_error(error):
 def _verified_source(provenance_row):
     archive = inspect_archive(provenance_row)
     try:
+        resolve_source_metadata_for_row(provenance_row)
         return load_source_artifact(
             archive,
             provenance_row.get("source_filename"),
@@ -154,7 +157,7 @@ def download_execution_source(codename):
 
     response = send_file(
         BytesIO(artifact.content_bytes),
-        mimetype="text/x-c++src",
+        mimetype=source_mime_type(artifact),
         as_attachment=True,
         download_name=download_name,
         conditional=False,

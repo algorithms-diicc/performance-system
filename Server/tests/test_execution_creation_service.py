@@ -1,5 +1,9 @@
+import hashlib
+from pathlib import Path
+import tempfile
 import unittest
 from unittest.mock import patch
+import zipfile
 
 from Server.webapp.services.execution_creation_service import (
     InvalidExecutionRequest,
@@ -178,6 +182,7 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         self.assertEqual(len(erepo.calls), 2)
         self.assertEqual(len(bundle["executions"]), 2)
         self.assertEqual(bundle["submission"]["status"], "QUEUED")
+        self.assertEqual(bundle["submission"]["language"], "C++")
         self.assertIsNone(srepo.calls[0]["original_filename"])
         self.assertIsNone(srepo.calls[0]["note"])
 
@@ -291,6 +296,9 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         )
 
         config = erepo.calls[0]["execution_config"]
+        self.assertEqual(config["source_contract_version"], 2)
+        self.assertEqual(config["source_language"], "C++")
+        self.assertEqual(config["compiler"], "g++")
         self.assertEqual(config["original_filename"], "src/main.cpp")
         self.assertEqual(config["archive_sha256"], self.SHA)
         self.assertEqual(config["compiler_flags"], "-O3")
@@ -304,3 +312,121 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         self.assertTrue(measurement["single_event_fallback"])
 
         self.assertEqual(erepo.calls[0]["execution_profile"], "BALANCED")
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_source_spec_metadata_cannot_override_cpp_contract(
+        self,
+        _resolve_course,
+    ):
+        erepo = FakeExecutionRepository()
+
+        create_submission_bundle(
+            user_id=5,
+            title="LCS upload",
+            archive_path="/srv/uploads/a.zip",
+            archive_sha256=self.SHA,
+            benchmark="LCS",
+            input_size=500,
+            samples=30,
+            source_specs=[
+                {
+                    "original_filename": "src/main.cpp",
+                    "source_contract_version": 999,
+                    "source_language": "C",
+                    "compiler": "attacker-controlled",
+                    "compiler_flags": "-O0; touch /tmp/unsafe",
+                }
+            ],
+            submission_repo=FakeSubmissionRepository(),
+            execution_repo=erepo,
+            conn=object(),
+        )
+
+        config = erepo.calls[0]["execution_config"]
+        self.assertEqual(config["source_contract_version"], 2)
+        self.assertEqual(config["source_language"], "C++")
+        self.assertEqual(config["compiler"], "g++")
+        self.assertEqual(config["compiler_flags"], "-O3")
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_cpp_v2_index_uses_combined_archive_order_without_creating_c(
+        self,
+        _resolve_course,
+    ):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            archive_path = Path(temp_dir) / "mixed.zip"
+            with zipfile.ZipFile(str(archive_path), "w") as archive:
+                archive.writestr("helper.c", "int helper(void){return 1;}")
+                archive.writestr("target.cpp", "int main(){return 0;}")
+                archive.writestr("other.cpp", "int other(){return 2;}")
+            archive_sha256 = hashlib.sha256(
+                archive_path.read_bytes()
+            ).hexdigest()
+            erepo = FakeExecutionRepository()
+
+            create_submission_bundle(
+                user_id=5,
+                title="Mixed archive with C ignored publicly",
+                archive_path=str(archive_path),
+                archive_sha256=archive_sha256,
+                benchmark="LCS",
+                input_size=500,
+                samples=30,
+                source_specs=[
+                    {"original_filename": "target.cpp"},
+                    {"original_filename": "other.cpp"},
+                ],
+                submission_repo=FakeSubmissionRepository(),
+                execution_repo=erepo,
+                conn=object(),
+            )
+
+        self.assertEqual(len(erepo.calls), 2)
+        self.assertEqual(
+            [
+                call["execution_config"]["source_index"]
+                for call in erepo.calls
+            ],
+            [1, 2],
+        )
+        self.assertTrue(
+            all(
+                call["execution_config"]["source_language"] == "C++"
+                for call in erepo.calls
+            )
+        )
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_caller_cannot_override_submission_language_or_flags(
+        self,
+        _resolve_course,
+    ):
+        common = {
+            "user_id": 5,
+            "title": "LCS upload",
+            "archive_path": "/srv/uploads/a.zip",
+            "archive_sha256": self.SHA,
+            "benchmark": "LCS",
+            "input_size": 500,
+            "samples": 30,
+            "source_specs": [{"original_filename": "src/main.cpp"}],
+            "submission_repo": FakeSubmissionRepository(),
+            "execution_repo": FakeExecutionRepository(),
+            "conn": object(),
+        }
+        for override in (
+            {"language": "C"},
+            {"compiler_flags": "-O0"},
+        ):
+            with self.subTest(override=override):
+                with self.assertRaises(InvalidExecutionRequest):
+                    create_submission_bundle(**common, **override)

@@ -100,6 +100,15 @@ class UploadServiceTests(unittest.TestCase):
                 self.tmp.name,
             )
 
+    def test_c_only_zip_remains_rejected_by_public_upload_in_8b(self):
+        with self.assertRaises(UploadValidationError):
+            store_and_inspect_zip(
+                make_storage(
+                    [("main.c", b"int main(void){return 0;}")]
+                ),
+                self.tmp.name,
+            )
+
     def test_path_traversal_is_rejected(self):
         with self.assertRaises(UploadValidationError):
             store_and_inspect_zip(

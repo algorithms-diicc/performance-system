@@ -11,12 +11,22 @@ Responsabilidad:
 Este servicio todavía NO toca `queuelist`, Master ni Slave.
 """
 
+import hashlib
+from pathlib import Path, PurePosixPath
 import re
 import uuid
-from pathlib import PurePosixPath
+import zipfile
 
 from psycopg2.extras import RealDictCursor
 
+from ...source_contract import (
+    CANONICAL_COMPILER_FLAGS,
+    LANGUAGE_CPP,
+    SOURCE_CONTRACT_VERSION,
+    SourceContractError,
+    enumerate_source_members,
+    infer_v2_source_metadata,
+)
 from ..repositories import execution_repository
 from ..repositories import submission_repository
 from .upload_service import (
@@ -307,7 +317,13 @@ def validate_source_specs(source_specs):
                 "source_specs[{}].original_filename is unsafe.".format(index)
             )
 
-        if not original_filename.lower().endswith(".cpp"):
+        try:
+            source_metadata = infer_v2_source_metadata(original_filename)
+        except SourceContractError:
+            raise InvalidExecutionRequest(
+                "{} is not a .cpp source.".format(original_filename)
+            )
+        if source_metadata.source_language != LANGUAGE_CPP:
             raise InvalidExecutionRequest(
                 "{} is not a .cpp source.".format(original_filename)
             )
@@ -321,12 +337,96 @@ def validate_source_specs(source_specs):
             )
         seen_names.add(key)
 
-        normalized.append({
-            "original_filename": original_filename,
-            "source_index": index,
-        })
+        normalized.append(
+            {
+                "original_filename": original_filename,
+                "source_index": index,
+                **source_metadata.execution_config_fields(),
+            }
+        )
 
     return normalized
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        while True:
+            chunk = handle.read(1024 * 1024)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _resolve_v2_source_indices(
+    source_specs,
+    archive_path,
+    archive_sha256,
+):
+    """Alinea índices v2 con el orden combinado real del ZIP persistido."""
+    filesystem_path = Path(archive_path)
+    if not filesystem_path.is_absolute():
+        server_root = Path(__file__).resolve().parents[2]
+        filesystem_path = server_root / filesystem_path
+
+    # Mantiene los llamadores unitarios/legacy que usan repositorios fake sin
+    # artefacto físico. El camino público siempre llega desde un ZIP ya guardado.
+    if not filesystem_path.is_file():
+        return source_specs
+
+    if _sha256_file(filesystem_path) != archive_sha256:
+        raise InvalidExecutionRequest(
+            "The persisted archive does not match archive_sha256."
+        )
+
+    try:
+        with zipfile.ZipFile(str(filesystem_path), "r") as archive:
+            supported_members = enumerate_source_members(
+                archive.infolist(),
+                SOURCE_CONTRACT_VERSION,
+            )
+    except (
+        OSError,
+        RuntimeError,
+        ValueError,
+        zipfile.BadZipFile,
+        zipfile.LargeZipFile,
+    ):
+        raise InvalidExecutionRequest(
+            "The persisted archive is not a valid ZIP."
+        )
+
+    index_by_name = {}
+    seen_names = set()
+    for index, info in enumerate(supported_members):
+        normalized_name = str(info.filename or "").replace("\\", "/")
+        key = normalized_name.casefold()
+        if key in seen_names:
+            raise InvalidExecutionRequest(
+                "Duplicated C/C++ source name: {}.".format(
+                    normalized_name
+                )
+            )
+        seen_names.add(key)
+        index_by_name[normalized_name] = index
+
+    resolved = []
+    for spec in source_specs:
+        filename = spec["original_filename"]
+        if filename not in index_by_name:
+            raise InvalidExecutionRequest(
+                "{} does not exist in the persisted archive.".format(
+                    filename
+                )
+            )
+        resolved.append(
+            {
+                **spec,
+                "source_index": index_by_name[filename],
+            }
+        )
+    return resolved
 
 
 def create_submission_bundle(
@@ -387,6 +487,19 @@ def create_submission_bundle(
     samples = _positive_int(samples, "samples")
     validate_execution_limits(benchmark, input_size, samples)
     source_specs = validate_source_specs(source_specs)
+    if str(language or "").strip() != LANGUAGE_CPP:
+        raise InvalidExecutionRequest(
+            "8B only accepts the canonical C++ submission language."
+        )
+    if str(compiler_flags or "").strip() != CANONICAL_COMPILER_FLAGS:
+        raise InvalidExecutionRequest(
+            "8B only accepts the canonical -O3 compiler flags."
+        )
+    source_specs = _resolve_v2_source_indices(
+        source_specs,
+        archive_path,
+        archive_sha256,
+    )
     execution_profile = infer_execution_profile(samples)
     original_filename = normalize_submission_original_filename(
         original_filename
@@ -406,7 +519,7 @@ def create_submission_bundle(
         submission = submission_repo.create_submission(
             user_id=user_id,
             title=clean_title,
-            language=language,
+            language=LANGUAGE_CPP,
             file_path=archive_path,
             original_filename=original_filename,
             code_hash=archive_sha256,
@@ -422,7 +535,12 @@ def create_submission_bundle(
             codename = make_codename(benchmark)
 
             execution_config = {
-                "compiler_flags": compiler_flags,
+                "source_contract_version": spec[
+                    "source_contract_version"
+                ],
+                "source_language": spec["source_language"],
+                "compiler": spec["compiler"],
+                "compiler_flags": spec["compiler_flags"],
                 "original_filename": spec["original_filename"],
                 "source_index": spec["source_index"],
                 "archive_sha256": archive_sha256,
