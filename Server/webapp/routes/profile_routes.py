@@ -30,6 +30,30 @@ def map_user_status_label(is_active: bool) -> str:
     return "Activo" if is_active else "Inactivo"
 
 
+def last_execution_duration_ms(execution_row):
+    """Duración real de la misma fila elegida como latest Execution."""
+    row = execution_row or {}
+    persisted_duration = row.get("duration_ms")
+
+    if persisted_duration is not None:
+        try:
+            return float(persisted_duration)
+        except (TypeError, ValueError):
+            return None
+
+    started_at = row.get("started_at")
+    finished_at = row.get("finished_at")
+    if started_at is None or finished_at is None:
+        return None
+
+    try:
+        return float(
+            (finished_at - started_at).total_seconds() * 1000.0
+        )
+    except (AttributeError, TypeError, ValueError):
+        return None
+
+
 # ==========================
 # GET /api/profile  (perfil consolidado propio)
 # ==========================
@@ -147,6 +171,7 @@ def get_my_profile():
                     "timeoutExecutions": 0,
                     "errorExecutions": 0,
                     "avgDurationMs": None,
+                    "lastExecutionDurationMs": None,
                     "lastExecutionAt": None,
                     "lastExecutionState": None,
                     "lastExecutionStatus": "Sin ejecuciones",
@@ -165,6 +190,9 @@ def get_my_profile():
                   e.public_id::text AS public_id,
                   e.codename,
                   e.submission_id,
+                  e.duration_ms,
+                  e.started_at,
+                  e.finished_at,
                   COALESCE(
                     e.finished_at,
                     e.processing_at,
@@ -225,6 +253,8 @@ def get_my_profile():
                         else None
                     ),
                     "lastExecutionState": last_state,
+                    "lastExecutionDurationMs":
+                        last_execution_duration_ms(last_exec),
                     "lastExecutionStatus":
                         map_execution_state_label(last_state),
                     "lastExecutionPublicId":
@@ -240,6 +270,7 @@ def get_my_profile():
                 {
                     "lastExecutionAt": None,
                     "lastExecutionState": None,
+                    "lastExecutionDurationMs": None,
                     "lastExecutionStatus": "Sin ejecuciones",
                     "lastExecutionPublicId": None,
                     "lastExecutionCodename": None,

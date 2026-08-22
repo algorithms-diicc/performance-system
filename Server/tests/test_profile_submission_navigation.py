@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from flask import Flask
@@ -34,8 +34,33 @@ def aggregate_row():
         "running_executions": 1,
         "processing_executions": 0,
         "cancelled_executions": 0,
-        "avg_duration_ms": 1250,
+        "avg_duration_ms": 9000,
     }
+
+
+LATEST_STARTED_AT = datetime(
+    2026,
+    8,
+    17,
+    12,
+    0,
+    tzinfo=timezone.utc,
+)
+
+
+def latest_execution(**overrides):
+    row = {
+        "execution_state": "COMPLETED",
+        "public_id": "00000000-0000-0000-0000-000000000010",
+        "codename": "exec10LCS",
+        "submission_id": 42,
+        "duration_ms": 1250,
+        "started_at": LATEST_STARTED_AT,
+        "finished_at": LATEST_STARTED_AT + timedelta(seconds=9),
+        "activity_at": LATEST_STARTED_AT + timedelta(seconds=9),
+    }
+    row.update(overrides)
+    return row
 
 
 class ScriptedCursor:
@@ -77,9 +102,9 @@ class ProfileSubmissionNavigationTests(unittest.TestCase):
         app.register_blueprint(profile_bp)
         self.client = app.test_client()
 
-    def _get_profile(self, last_execution):
+    def _get_profile(self, last_execution, aggregate=None):
         conn = ScriptedConnection([
-            aggregate_row(),
+            aggregate if aggregate is not None else aggregate_row(),
             last_execution,
         ])
         with patch(
@@ -93,13 +118,7 @@ class ProfileSubmissionNavigationTests(unittest.TestCase):
         return response, conn
 
     def test_last_submission_id_is_exposed_without_removing_summary_fields(self):
-        response, conn = self._get_profile({
-            "execution_state": "COMPLETED",
-            "public_id": "00000000-0000-0000-0000-000000000010",
-            "codename": "exec10LCS",
-            "submission_id": 42,
-            "activity_at": datetime(2026, 8, 17, tzinfo=timezone.utc),
-        })
+        response, conn = self._get_profile(latest_execution())
 
         self.assertEqual(response.status_code, 200)
         summary = response.get_json()["summary"]
@@ -108,18 +127,89 @@ class ProfileSubmissionNavigationTests(unittest.TestCase):
         self.assertEqual(summary["lastExecutionState"], "COMPLETED")
         self.assertEqual(summary["executionsCount"], 6)
         self.assertEqual(summary["submissionsCount"], 4)
+        self.assertEqual(summary["avgDurationMs"], 9000.0)
+        self.assertEqual(summary["lastExecutionDurationMs"], 1250.0)
         self.assertIn("e.submission_id", conn.executed[1][0])
+        self.assertIn("e.duration_ms", conn.executed[1][0])
+        self.assertIn("e.started_at", conn.executed[1][0])
+        self.assertIn("e.finished_at", conn.executed[1][0])
+        self.assertIn("ORDER BY e.id DESC", conn.executed[1][0])
+        self.assertNotIn("NOW()", conn.executed[1][0])
         self.assertTrue(conn.closed)
 
+    def test_latest_duration_falls_back_to_finished_minus_started(self):
+        response, _conn = self._get_profile(
+            latest_execution(
+                duration_ms=None,
+                finished_at=LATEST_STARTED_AT + timedelta(
+                    milliseconds=2750
+                ),
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        summary = response.get_json()["summary"]
+        self.assertEqual(summary["lastExecutionDurationMs"], 2750.0)
+        self.assertEqual(summary["avgDurationMs"], 9000.0)
+
+    def test_active_latest_execution_never_uses_current_time(self):
+        response, conn = self._get_profile(
+            latest_execution(
+                execution_state="RUNNING",
+                duration_ms=None,
+                finished_at=None,
+                activity_at=LATEST_STARTED_AT,
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        summary = response.get_json()["summary"]
+        self.assertEqual(summary["lastExecutionState"], "RUNNING")
+        self.assertIsNone(summary["lastExecutionDurationMs"])
+        self.assertNotIn("NOW()", conn.executed[1][0])
+
+    def test_incomplete_timestamps_do_not_invent_latest_duration(self):
+        response, _conn = self._get_profile(
+            latest_execution(
+                duration_ms=None,
+                started_at=None,
+            )
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(
+            response.get_json()["summary"]["lastExecutionDurationMs"]
+        )
+
     def test_last_submission_id_is_null_when_there_is_no_execution(self):
-        response, _conn = self._get_profile(None)
+        empty_aggregate = aggregate_row()
+        empty_aggregate.update({
+            "submissions_count": 0,
+            "executions_count": 0,
+            "completed_executions": 0,
+            "failed_executions": 0,
+            "timeout_executions": 0,
+            "error_executions": 0,
+            "queued_executions": 0,
+            "running_executions": 0,
+            "processing_executions": 0,
+            "cancelled_executions": 0,
+            "avg_duration_ms": None,
+        })
+        response, _conn = self._get_profile(
+            None,
+            aggregate=empty_aggregate,
+        )
 
         self.assertEqual(response.status_code, 200)
         summary = response.get_json()["summary"]
         self.assertIsNone(summary["lastSubmissionId"])
         self.assertIsNone(summary["lastExecutionCodename"])
+        self.assertIsNone(summary["lastExecutionDurationMs"])
         self.assertEqual(summary["lastExecutionStatus"], "Sin ejecuciones")
-        self.assertEqual(summary["completedExecutions"], 3)
+        self.assertEqual(summary["completedExecutions"], 0)
+        self.assertEqual(summary["executionsCount"], 0)
+        self.assertIn("avgDurationMs", summary)
 
 
 if __name__ == "__main__":

@@ -231,7 +231,7 @@ const es = {
     lastSession: "Última sesión",
     lastExecution: "Última ejecución",
     academicContext: "Contexto académico",
-    coursesTitle: "Mis cursos",
+    coursesTitle: "Cursos para mis análisis",
     coursesDescription:
       "Cursos activos en los que puedes asociar nuevos experimentos.",
     coursesLoadingTitle: "Cargando tus cursos",
@@ -267,7 +267,7 @@ const es = {
     latestExecution: "Ejecución más reciente",
     status: "Estado",
     date: "Fecha",
-    averageDuration: "Duración media",
+    duration: "Duración",
     viewExperiment: "Ver experimento",
     viewLastResult: "Ver último resultado",
     viewFullHistory: "Ver historial completo",
@@ -1664,6 +1664,14 @@ const es = {
     source: {
       title: "Fuente de esta ejecución",
     },
+    executionStates: {
+      queued: "En cola",
+      running: "En ejecución",
+      processing: "Procesando",
+      completed: "Completada",
+      failed: "Error",
+      cancelled: "Cancelada",
+    },
     fields: {
       technicalId: "ID técnico",
       state: "Estado",
@@ -1676,7 +1684,7 @@ const es = {
       compilerFlags: "Flags del compilador",
       points: "Puntos",
       samplesPerPoint: "Muestras por punto",
-      warmupRounds: "Warmup rounds",
+      warmupRounds: "Rondas de calentamiento",
       perfScope: "Ámbito perf",
       eventFallback: "Fallback por evento",
       cpuVendor: "Fabricante CPU",

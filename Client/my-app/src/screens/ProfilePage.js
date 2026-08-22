@@ -571,8 +571,8 @@ const ProfilePage = () => {
                 </div>
 
                 <div>
-                  <span>{t("profile.averageDuration")}</span>
-                  <strong>{formatDuration(summary.avgDurationMs, locale, t("profile.noData"))}</strong>
+                  <span>{t("profile.duration")}</span>
+                  <strong>{formatDuration(summary.lastExecutionDurationMs, locale, t("profile.noData"))}</strong>
                 </div>
               </div>
 

@@ -232,7 +232,7 @@ const en = {
     lastSession: "Last session",
     lastExecution: "Last execution",
     academicContext: "Academic context",
-    coursesTitle: "My courses",
+    coursesTitle: "Courses for my analyses",
     coursesDescription:
       "Active courses where you can associate new experiments.",
     coursesLoadingTitle: "Loading your courses",
@@ -268,7 +268,7 @@ const en = {
     latestExecution: "Most recent execution",
     status: "Status",
     date: "Date",
-    averageDuration: "Average duration",
+    duration: "Duration",
     viewExperiment: "View experiment",
     viewLastResult: "View latest result",
     viewFullHistory: "View full history",
@@ -1661,6 +1661,14 @@ const en = {
     source: {
       title: "Source for this execution",
     },
+    executionStates: {
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      completed: "Completed",
+      failed: "Failed",
+      cancelled: "Cancelled",
+    },
     fields: {
       technicalId: "Technical ID",
       state: "State",
@@ -1673,7 +1681,7 @@ const en = {
       compilerFlags: "Compiler flags",
       points: "Points",
       samplesPerPoint: "Samples per point",
-      warmupRounds: "Warm-up rounds",
+      warmupRounds: "Warmup rounds",
       perfScope: "perf scope",
       eventFallback: "Per-event fallback",
       cpuVendor: "CPU vendor",

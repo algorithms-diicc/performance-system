@@ -1,10 +1,22 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+} from "react-router-dom";
 
 import Navbar from "./Navbar";
 
-const renderNavbar = (roleName) =>
+const renderNavbar = (
+  roleName,
+  onLogout = jest.fn()
+) =>
   render(
     <MemoryRouter>
       <Navbar
@@ -14,8 +26,14 @@ const renderNavbar = (roleName) =>
           email: "ada@example.com",
           role_name: roleName,
         }}
-        onLogout={jest.fn()}
+        onLogout={onLogout}
       />
+      <Routes>
+        <Route
+          path="/profile"
+          element={<div>Profile route target</div>}
+        />
+      </Routes>
     </MemoryRouter>
   );
 
@@ -64,5 +82,40 @@ describe("Navbar primary modules", () => {
     expect(
       screen.getByRole("link", { name: /Administración/i })
     ).toHaveAttribute("href", "/admin/users");
+  });
+
+  test("profile uses React Router and closes the user menu", () => {
+    renderNavbar("Student");
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Ada Lovelace/i })
+    );
+    const profileLink = screen.getByRole("menuitem", {
+      name: /Mi perfil/i,
+    });
+
+    expect(profileLink).toHaveAttribute("href", "/profile");
+    expect(profileLink.tagName).toBe("A");
+
+    fireEvent.click(profileLink);
+
+    expect(screen.getByText("Profile route target")).toBeInTheDocument();
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  test("logout still delegates to the existing handler", async () => {
+    const onLogout = jest.fn();
+    renderNavbar("Student", onLogout);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /Ada Lovelace/i })
+    );
+    fireEvent.click(
+      screen.getByRole("menuitem", { name: /Cerrar sesión/i })
+    );
+
+    await waitFor(() =>
+      expect(onLogout).toHaveBeenCalledTimes(1)
+    );
   });
 });

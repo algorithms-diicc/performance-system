@@ -9,9 +9,12 @@ import axios from "axios";
 
 import {
   I18nProvider,
+  translate,
   useI18n,
 } from "../i18n";
-import ReproducibilityPanel from "./ReproducibilityPanel";
+import ReproducibilityPanel, {
+  executionStateLabel,
+} from "./ReproducibilityPanel";
 
 jest.mock("axios");
 jest.mock("../utils/downloadAuthenticatedFile");
@@ -44,7 +47,7 @@ const manifest = {
   configuration: {
     inputSize: 5000,
     samples: 30,
-    compilerFlags: "-O2 -std=c++17",
+    compilerFlags: "-O3 -std=c++17",
     measurement: {
       points: 10,
       samplesPerPoint: 3,
@@ -55,8 +58,8 @@ const manifest = {
   },
   environmentObserved: {
     cpu: {
-      vendor: "GenuineIntel",
-      model: "Intel Core i5-9400",
+      vendor: "AuthenticAMD",
+      model: "AMD Ryzen 5 3600",
       architecture: "x86_64",
       logicalCpus: 6,
     },
@@ -188,14 +191,20 @@ describe("ReproducibilityPanel i18n", () => {
         name: "Download source .cpp",
       })
     ).toBeInTheDocument();
+    expect(screen.getByText("Completed")).toBeInTheDocument();
+    expect(screen.queryByText("COMPLETED")).not.toBeInTheDocument();
+    expect(screen.getByText("Warmup rounds")).toBeInTheDocument();
 
     [
       "exec70LCS",
       "public-execution-10",
       "LCS",
       "balanced",
-      "-O2 -std=c++17",
-      "Intel Core i5-9400",
+      "-O3 -std=c++17",
+      "AuthenticAMD",
+      "AMD Ryzen 5 3600",
+      "x86_64",
+      "perf",
       "CombinedResults.csv",
     ].forEach((value) => {
       expect(
@@ -257,10 +266,59 @@ describe("ReproducibilityPanel i18n", () => {
         name: "Descargar fuente .cpp",
       })
     ).toBeInTheDocument();
+    expect(screen.getByText("Completada")).toBeInTheDocument();
+    expect(
+      screen.getByText("Rondas de calentamiento")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("COMPLETED")).not.toBeInTheDocument();
     expect(
       screen.getAllByText("exec70LCS").length
     ).toBeGreaterThan(0);
+    ["AuthenticAMD", "x86_64", "perf", "-O3 -std=c++17"].forEach(
+      (value) => {
+        expect(screen.getAllByText(value).length).toBeGreaterThan(0);
+      }
+    );
 
     expect(axios.get).toHaveBeenCalledTimes(2);
+  });
+
+  test.each([
+    ["QUEUED", "En cola", "Queued"],
+    ["RUNNING", "En ejecución", "Running"],
+    ["PROCESSING", "Procesando", "Processing"],
+    ["COMPLETED", "Completada", "Completed"],
+    ["FAILED", "Error", "Failed"],
+    ["CANCELLED", "Cancelada", "Cancelled"],
+  ])(
+    "localizes canonical state %s without mutating the raw value",
+    (state, expectedEs, expectedEn) => {
+      expect(
+        executionStateLabel(
+          state,
+          (key, params) => translate("es", key, params)
+        )
+      ).toBe(expectedEs);
+      expect(
+        executionStateLabel(
+          state,
+          (key, params) => translate("en", key, params)
+        )
+      ).toBe(expectedEn);
+      expect(state).toBe(state.toUpperCase());
+    }
+  );
+
+  test("falls back safely for an unknown persisted state", () => {
+    expect(
+      executionStateLabel(" future_state ", (key, params) =>
+        translate("es", key, params)
+      )
+    ).toBe("FUTURE_STATE");
+    expect(
+      executionStateLabel(null, (key, params) =>
+        translate("es", key, params)
+      )
+    ).toBe("No disponible");
   });
 });

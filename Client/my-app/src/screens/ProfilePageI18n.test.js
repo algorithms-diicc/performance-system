@@ -30,7 +30,8 @@ const summary = {
   runningExecutions: 0,
   processingExecutions: 0,
   cancelledExecutions: 0,
-  avgDurationMs: 1250,
+  avgDurationMs: 9000,
+  lastExecutionDurationMs: 1250,
   lastExecutionAt: "2026-08-17T12:00:00Z",
   lastExecutionState: "COMPLETED",
   lastExecutionStatus: "Completado",
@@ -79,6 +80,15 @@ describe("ProfilePage i18n", () => {
 
     expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
     expect(screen.getByText("Student")).toBeInTheDocument();
+    expect(screen.getByText("Experiments")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "Courses for my analyses",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Duration")).toBeInTheDocument();
+    expect(screen.getByText("1.25 s")).toBeInTheDocument();
+    expect(screen.queryByText("9 s")).not.toBeInTheDocument();
 
     expect(
       screen.getByText("Active", { selector: ".profile-badge" })

@@ -690,18 +690,12 @@ function Navbar({
 
 
                 <div className="app-user-dropdown-divider" />
-{/* Perfil: visible para comunicar la futura
-                    arquitectura, pero claramente deshabilitado. */}
 
-                <button
-                  type="button"
+                <Link
+                  to="/profile"
                   role="menuitem"
                   className="app-user-dropdown-item"
-                  onClick={() => {
-                    setIsUserMenuOpen(false);
-                    window.location.href =
-                      "/profile";
-                  }}
+                  onClick={() => setIsUserMenuOpen(false)}
                 >
 
                   <UserRound
@@ -713,7 +707,7 @@ function Navbar({
                     {t("navbar.profile")}
                   </span>
 
-                </button>
+                </Link>
 
 
                 <div className="app-user-dropdown-divider" />

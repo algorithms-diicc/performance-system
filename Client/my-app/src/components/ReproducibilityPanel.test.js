@@ -267,7 +267,9 @@ describe("ReproducibilityPanel", () => {
     expect(screen.getByText("30")).toBeInTheDocument();
     expect(screen.getByText("-O2 -std=c++17")).toBeInTheDocument();
     expect(screen.getByText("Muestras por punto")).toBeInTheDocument();
-    expect(screen.getByText("Warmup rounds")).toBeInTheDocument();
+    expect(
+      screen.getByText("Rondas de calentamiento")
+    ).toBeInTheDocument();
     expect(screen.getByText("Fallback por evento")).toBeInTheDocument();
     expect(
       screen.getByRole("heading", {

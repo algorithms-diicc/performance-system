@@ -33,6 +33,12 @@ describe("i18n formatters", () => {
   test("formats technical duration units without translating them", () => {
     expect(
       formatDuration(1250, "en-US", "No data")
-    ).toBe("1.3 s");
+    ).toBe("1.25 s");
+  });
+
+  test("uses the supplied fallback for a missing duration", () => {
+    expect(
+      formatDuration(null, "es-CL", "Sin datos")
+    ).toBe("Sin datos");
   });
 });

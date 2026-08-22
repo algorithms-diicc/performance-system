@@ -33,7 +33,8 @@ const summary = {
   runningExecutions: 0,
   processingExecutions: 0,
   cancelledExecutions: 0,
-  avgDurationMs: 1250,
+  avgDurationMs: 9000,
+  lastExecutionDurationMs: 1250,
   lastExecutionAt: "2026-08-17T12:00:00Z",
   lastExecutionState: "COMPLETED",
   lastExecutionStatus: "Completado",
@@ -92,7 +93,9 @@ describe("ProfilePage submission navigation", () => {
     await renderProfile();
 
     expect(
-      await screen.findByRole("heading", { name: "Mis cursos" })
+      await screen.findByRole("heading", {
+        name: "Cursos para mis análisis",
+      })
     ).toBeInTheDocument();
     expect(
       screen.getByText("Actualmente no tienes cursos activos.")
@@ -201,6 +204,38 @@ describe("ProfilePage submission navigation", () => {
     expect(
       screen.getByRole("link", { name: /Ver historial completo/i })
     ).toHaveAttribute("href", "/history");
+  });
+
+  test("preserves Experimentos and shows latest duration instead of the average", async () => {
+    await renderProfile();
+
+    expect(screen.getByText("Experimentos")).toBeInTheDocument();
+    expect(screen.getByText("Duración")).toBeInTheDocument();
+    expect(screen.getByText("1,25 s")).toBeInTheDocument();
+    expect(screen.queryByText("9 s")).not.toBeInTheDocument();
+  });
+
+  test("keeps an active latest execution while rendering null duration safely", async () => {
+    await renderProfile({
+      completedExecutions: 0,
+      runningExecutions: 1,
+      lastExecutionState: "RUNNING",
+      lastExecutionDurationMs: null,
+      lastSubmissionId: 43,
+    });
+
+    expect(
+      screen.getByText("En ejecución", {
+        selector: ".profile-last-execution strong",
+      })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Sin datos")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Ver experimento/i })
+    ).toHaveAttribute("href", "/submissions/43");
+    expect(
+      screen.queryByRole("link", { name: /Ver último resultado/i })
+    ).not.toBeInTheDocument();
   });
 
   test.each(["FAILED", "RUNNING"])(

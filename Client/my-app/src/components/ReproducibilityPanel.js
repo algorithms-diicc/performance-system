@@ -40,6 +40,15 @@ const INTEGRITY_KEYS = Object.freeze({
   invalid_archive: "invalidArchive",
 });
 
+const EXECUTION_STATE_KEYS = Object.freeze({
+  QUEUED: "queued",
+  RUNNING: "running",
+  PROCESSING: "processing",
+  COMPLETED: "completed",
+  FAILED: "failed",
+  CANCELLED: "cancelled",
+});
+
 const resolveText = (
   t,
   key,
@@ -77,6 +86,26 @@ const displayValue = (
     return value ? yes : no;
   }
   return String(value);
+};
+
+export const executionStateLabel = (
+  value,
+  t
+) => {
+  const normalized = String(value || "").trim().toUpperCase();
+  const key = EXECUTION_STATE_KEYS[normalized];
+
+  if (key) {
+    return resolveText(
+      t,
+      `reproducibilityPanel.executionStates.${key}`
+    );
+  }
+
+  return normalized || resolveText(
+    t,
+    "reproducibilityPanel.common.unavailable"
+  );
 };
 
 const formatDateTime = (
@@ -670,7 +699,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
               />
               <DataItem
                 label={t("reproducibilityPanel.fields.state")}
-                value={execution.state}
+                value={executionStateLabel(execution.state, t)}
               />
               <DataItem
                 label={t("reproducibilityPanel.fields.created")}

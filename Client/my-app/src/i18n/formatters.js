@@ -28,6 +28,14 @@ export const formatDuration = (
   locale,
   fallback = ""
 ) => {
+  if (
+    milliseconds === null ||
+    milliseconds === undefined ||
+    milliseconds === ""
+  ) {
+    return fallback;
+  }
+
   const value = Number(milliseconds);
 
   if (!Number.isFinite(value) || value < 0) {
@@ -39,7 +47,7 @@ export const formatDuration = (
   }
 
   const number = new Intl.NumberFormat(locale, {
-    maximumFractionDigits: 1,
+    maximumFractionDigits: 2,
   });
 
   const seconds = value / 1000;
