@@ -28,6 +28,7 @@ import AdminUserDetail from "./screens/AdminUserDetail";
 import AdminLayout from "./screens/AdminLayout";
 import AdminAccessRequests from "./screens/AdminAccessRequests";
 import AdminAuditLog from "./screens/AdminAuditLog";
+import AdminSystemStatus from "./screens/AdminSystemStatus";
 
 import TeacherLayout from "./screens/TeacherLayout";
 import TeacherCourses from "./screens/TeacherCourses";
@@ -470,6 +471,7 @@ const AppInner = () => {
           <Route path="users/:id" element={<AdminUserDetail />} />
           <Route path="access-requests" element={<AdminAccessRequests />} />
           <Route path="audit-log" element={<AdminAuditLog />} />
+          <Route path="system-status" element={<AdminSystemStatus />} />
         </Route>
 
         {/* ====================================================

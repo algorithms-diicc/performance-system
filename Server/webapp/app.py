@@ -53,6 +53,7 @@ from .routes.submissions_routes import submissions_bp
 from .routes.metrics_routes import metrics_bp
 from .routes.admin_access_requests_routes import admin_access_requests_bp
 from .routes.admin_audit_log_routes import admin_audit_log_bp
+from .routes.admin_system_status_routes import admin_system_status_bp
 from .routes.results_routes import results_bp
 from .routes.execution_status_routes import execution_status_bp
 from .routes.teacher_courses_routes import teacher_courses_bp
@@ -240,6 +241,7 @@ app.register_blueprint(submissions_bp)
 app.register_blueprint(metrics_bp)
 app.register_blueprint(admin_access_requests_bp)
 app.register_blueprint(admin_audit_log_bp)
+app.register_blueprint(admin_system_status_bp)
 app.register_blueprint(results_bp)
 app.register_blueprint(execution_status_bp)
 app.register_blueprint(teacher_courses_bp)

@@ -86,6 +86,9 @@ const AdminLayout = () => {
           <NavLink to="/admin/audit-log">
             {t("adminLayout.auditLog")}
           </NavLink>
+          <NavLink to="/admin/system-status">
+            {t("adminLayout.systemStatus")}
+          </NavLink>
         </nav>
         <Outlet />
       </div>

@@ -91,6 +91,12 @@ jest.mock("./screens/AdminUserDetail", () => () => (
   </div>
 ));
 
+jest.mock("./screens/AdminSystemStatus", () => () => (
+  <div data-testid="screen-admin-system-status">
+    Estado del sistema
+  </div>
+));
+
 jest.mock("./screens/TeacherLayout", () => {
   const {
     Outlet: MockOutlet,
@@ -233,6 +239,43 @@ describe("CORE-05H-1 App shell and routing regression", () => {
     expect(
       await screen.findByTestId("screen-admin-users")
     ).toBeInTheDocument();
+  });
+
+  test("admin reaches the system status route", async () => {
+    setRoute("/admin/system-status");
+    mockAuthenticatedUser({
+      id: 2,
+      email: "admin@udec.cl",
+      role_id: 2,
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByTestId("screen-admin-system-status")
+    ).toBeInTheDocument();
+  });
+
+  test.each([
+    ["Student", 1],
+    ["Teacher", 3],
+  ])("%s cannot reach the system status route", async (roleName, roleId) => {
+    setRoute("/admin/system-status");
+    mockAuthenticatedUser({
+      id: roleId + 10,
+      email: `${roleName.toLowerCase()}@udec.cl`,
+      role_id: roleId,
+      role_name: roleName,
+    });
+
+    render(<App />);
+
+    expect(
+      await screen.findByTestId("screen-system-403")
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("screen-admin-system-status")
+    ).not.toBeInTheDocument();
   });
 
   test("authenticated user visiting login is redirected home", async () => {

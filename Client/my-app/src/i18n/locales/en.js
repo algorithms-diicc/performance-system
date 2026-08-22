@@ -3141,11 +3141,114 @@ const en = {
     users: "Users",
     accessRequests: "Access requests",
     auditLog: "Audit log",
+    systemStatus: "System status",
     pending: {
       one:
         "{{count}} pending access request",
       other:
         "{{count}} pending access requests",
+    },
+  },
+
+  adminSystemStatus: {
+    eyebrow: "Administration",
+    title: "System status",
+    description:
+      "Verifiable operational signals observed by the backend. This view does not replace a monitoring platform.",
+    unavailable: "Unavailable",
+    actions: {
+      refresh: "Refresh",
+      refreshing: "Refreshing…",
+      retry: "Retry",
+    },
+    states: {
+      loadingTitle: "Checking status",
+      loadingDescription:
+        "Persisted signals and safe configuration are being read.",
+      errorTitle: "The diagnostic could not be refreshed",
+      errorDescription:
+        "The system status could not be retrieved.",
+    },
+    sections: {
+      system: "System",
+      queue: "Execution queue",
+      processes: "Auxiliary processes",
+      runtime: "Operational configuration",
+      measurement: "Latest observed measurement environment",
+    },
+    system: {
+      backend: "Backend",
+      database: "PostgreSQL",
+      checkedAt: "Checked at",
+    },
+    statuses: {
+      AVAILABLE: "Available",
+      UNAVAILABLE: "Unavailable",
+      UNKNOWN: "Unknown",
+    },
+    lockSignals: {
+      LOCK_OBSERVED: "Lock observed",
+      LOCK_NOT_OBSERVED: "Lock not observed",
+      UNKNOWN: "Unknown",
+    },
+    queue: {
+      queued: "Queued",
+      running: "Running",
+      processing: "Processing",
+      staleActive: "Stale active",
+      oldestQueuedAt: "Oldest queued",
+      latestCompletedAt: "Latest completed",
+      latestFailedAt: "Latest failed",
+      failedHelper:
+        "A failed Execution may be caused by submitted code and does not imply a global system failure.",
+    },
+    processes: {
+      dispatcher: "Dispatcher",
+      watchdog: "Watchdog",
+      lockHelper:
+        "An advisory lock is a point-in-time coordination signal: it does not guarantee progress and is not a health check.",
+    },
+    runtime: {
+      executionMode: "Execution mode",
+      heartbeatSeconds: "Heartbeat (seconds)",
+      activeStaleSeconds: "Stale threshold (seconds)",
+      helper:
+        "Configuration values observed by the backend for this request.",
+    },
+    modes: {
+      local: "Local",
+      remote: "Remote",
+      unknown: "Unknown",
+    },
+    measurement: {
+      historicalWarning:
+        "These data are historical, come from the latest Execution with a valid snapshot, and do not represent live health.",
+      observedAt: "Observed at",
+      schemaVersion: "Snapshot schema",
+      cpuModel: "CPU model",
+      architecture: "Architecture",
+      logicalCpus: "Logical CPUs",
+      perfVersion: "perf version",
+      perfEventParanoid: "perf_event_paranoid",
+      energyPackage: "Package energy",
+      energyCores: "Cores energy",
+      energyRam: "RAM energy",
+      eventExposed: "Event exposed",
+      probeState: "Probe state",
+      measurementAvailable: "Measurement available",
+    },
+    boolean: {
+      yes: "Yes",
+      no: "No",
+    },
+    probeStates: {
+      numeric: "Numeric sample",
+      permission_denied: "Permission denied",
+      not_supported: "Not supported by perf",
+      not_counted: "Not counted",
+      event_not_exposed: "Event not exposed",
+      backend_error: "Measurement backend error",
+      no_numeric_sample: "No numeric sample",
     },
   },
 

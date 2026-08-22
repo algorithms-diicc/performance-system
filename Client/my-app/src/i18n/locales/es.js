@@ -3143,11 +3143,114 @@ const es = {
     users: "Usuarios",
     accessRequests: "Solicitudes",
     auditLog: "Auditoría",
+    systemStatus: "Estado del sistema",
     pending: {
       one:
         "{{count}} solicitud de acceso pendiente",
       other:
         "{{count}} solicitudes de acceso pendientes",
+    },
+  },
+
+  adminSystemStatus: {
+    eyebrow: "Administración",
+    title: "Estado del sistema",
+    description:
+      "Señales operacionales verificables observadas por el backend. Esta vista no sustituye una plataforma de monitoreo.",
+    unavailable: "No disponible",
+    actions: {
+      refresh: "Actualizar",
+      refreshing: "Actualizando…",
+      retry: "Reintentar",
+    },
+    states: {
+      loadingTitle: "Consultando estado",
+      loadingDescription:
+        "Se están leyendo señales persistidas y configuración segura.",
+      errorTitle: "No fue posible actualizar el diagnóstico",
+      errorDescription:
+        "No fue posible consultar el estado del sistema.",
+    },
+    sections: {
+      system: "Sistema",
+      queue: "Cola de ejecuciones",
+      processes: "Procesos auxiliares",
+      runtime: "Configuración operativa",
+      measurement: "Último entorno de medición observado",
+    },
+    system: {
+      backend: "Backend",
+      database: "PostgreSQL",
+      checkedAt: "Consulta realizada",
+    },
+    statuses: {
+      AVAILABLE: "Disponible",
+      UNAVAILABLE: "No disponible",
+      UNKNOWN: "Desconocido",
+    },
+    lockSignals: {
+      LOCK_OBSERVED: "Lock observado",
+      LOCK_NOT_OBSERVED: "Lock no observado",
+      UNKNOWN: "Desconocido",
+    },
+    queue: {
+      queued: "En cola",
+      running: "Ejecutando",
+      processing: "Procesando",
+      staleActive: "Activas stale",
+      oldestQueuedAt: "Más antigua en cola",
+      latestCompletedAt: "Última completada",
+      latestFailedAt: "Última fallida",
+      failedHelper:
+        "Una Execution fallida puede deberse al código enviado y no implica una falla global del sistema.",
+    },
+    processes: {
+      dispatcher: "Dispatcher",
+      watchdog: "Watchdog",
+      lockHelper:
+        "El advisory lock es una señal puntual de coordinación: no garantiza progreso ni equivale a un health check.",
+    },
+    runtime: {
+      executionMode: "Modo de ejecución",
+      heartbeatSeconds: "Heartbeat (segundos)",
+      activeStaleSeconds: "Umbral stale (segundos)",
+      helper:
+        "Valores de configuración observados por el backend en esta solicitud.",
+    },
+    modes: {
+      local: "Local",
+      remote: "Remoto",
+      unknown: "Desconocido",
+    },
+    measurement: {
+      historicalWarning:
+        "Estos datos son históricos, provienen de la última Execution con snapshot válido y no representan health en vivo.",
+      observedAt: "Observado en",
+      schemaVersion: "Schema del snapshot",
+      cpuModel: "Modelo de CPU",
+      architecture: "Arquitectura",
+      logicalCpus: "CPU lógicas",
+      perfVersion: "Versión de perf",
+      perfEventParanoid: "perf_event_paranoid",
+      energyPackage: "Energía package",
+      energyCores: "Energía cores",
+      energyRam: "Energía RAM",
+      eventExposed: "Evento expuesto",
+      probeState: "Estado de la prueba",
+      measurementAvailable: "Medición disponible",
+    },
+    boolean: {
+      yes: "Sí",
+      no: "No",
+    },
+    probeStates: {
+      numeric: "Muestra numérica",
+      permission_denied: "Permiso denegado",
+      not_supported: "No soportado por perf",
+      not_counted: "No contabilizado",
+      event_not_exposed: "Evento no expuesto",
+      backend_error: "Error del backend de medición",
+      no_numeric_sample: "Sin muestra numérica",
     },
   },
 

@@ -82,6 +82,9 @@ describe("AdminLayout i18n", () => {
       screen.getByRole("link", { name: "Audit log" })
     ).toHaveAttribute("href", "/admin/audit-log");
     expect(
+      screen.getByRole("link", { name: "System status" })
+    ).toHaveAttribute("href", "/admin/system-status");
+    expect(
       await screen.findByLabelText(
         "3 pending access requests"
       )
@@ -105,6 +108,9 @@ describe("AdminLayout i18n", () => {
     expect(
       screen.getByRole("link", { name: "Auditoría" })
     ).toHaveAttribute("href", "/admin/audit-log");
+    expect(
+      screen.getByRole("link", { name: "Estado del sistema" })
+    ).toHaveAttribute("href", "/admin/system-status");
     expect(
       screen.getByLabelText(
         "3 solicitudes de acceso pendientes"
