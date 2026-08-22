@@ -14,6 +14,10 @@ import {
   parseReusePublicId,
 } from "./reuse/executionReuseModel";
 import {
+  buildRepeatConfiguration,
+  parseRepeatSubmissionId,
+} from "./repeat/submissionRepeatModel";
+import {
   applyArchiveTitleSuggestion,
   hasMeaningfulDraft,
   manualSubmissionTitle,
@@ -267,6 +271,7 @@ function RenderFormPage({ currentUser }) {
   const [showOverview, setShowOverview] = useState(false);
   const [draftRestored, setDraftRestored] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
+  const [repeatFeedback, setRepeatFeedback] = useState(null);
   const [executionSnapshot, setExecutionSnapshot] = useState(null);
   const submitRequestLockRef = useRef(false);
 
@@ -292,6 +297,7 @@ function RenderFormPage({ currentUser }) {
     handleDrop,
     handleDragOver,
     handleDragLeave,
+    analyzeArchiveFile,
     reset: resetZipAnalysis,
   } = useZipAnalysis();
 
@@ -411,9 +417,10 @@ function RenderFormPage({ currentUser }) {
     }
 
     // Precedencia canónica:
-    // execution > reuse > course.
+    // execution > repeat > reuse > course.
     if (
       parseExecutionPublicIds(location.search).length > 0 ||
+      parseRepeatSubmissionId(location.search) ||
       parseReusePublicId(location.search)
     ) {
       return;
@@ -559,6 +566,7 @@ function RenderFormPage({ currentUser }) {
 
       if (
         parseExecutionPublicIds(initialSearchRef.current).length > 0 ||
+        parseRepeatSubmissionId(initialSearchRef.current) ||
         parseReusePublicId(initialSearchRef.current)
       ) {
         return;
@@ -645,10 +653,161 @@ function RenderFormPage({ currentUser }) {
     }
   }, []);
 
+  // ======= Iteración 5: repetición segura de Experimento histórico =======
+  useEffect(() => {
+    // Recuperación persistente tiene precedencia sobre Repeat.
+    if (parseExecutionPublicIds(location.search).length > 0) {
+      return undefined;
+    }
+
+    const repeatSubmissionId = parseRepeatSubmissionId(
+      location.search
+    );
+    if (!repeatSubmissionId) return undefined;
+
+    if (courseContextLoading || courseContextError) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadRepeat = async () => {
+      try {
+        setSubmissionError("");
+        setRepeatFeedback(null);
+
+        const descriptorResponse = await axios.get(
+          `${serverURL}api/submissions/${encodeURIComponent(
+            repeatSubmissionId
+          )}/repeat`,
+          {
+            withCredentials: true,
+            headers: {
+              "Cache-Control": "no-cache",
+              Pragma: "no-cache",
+            },
+          }
+        );
+        if (cancelled) return;
+
+        const repeat = buildRepeatConfiguration(
+          descriptorResponse.data?.repeat || null,
+          activeCourses
+        );
+        if (!repeat) {
+          setSubmissionError(
+            messageState("renderForm.page.errors.repeatInvalid")
+          );
+          return;
+        }
+
+        const archiveResponse = await axios.get(
+          `${serverURL}${repeat.archiveUrl.replace(/^\/+/, "")}`,
+          {
+            withCredentials: true,
+            responseType: "blob",
+          }
+        );
+        if (cancelled) return;
+
+        const archiveBlob =
+          archiveResponse.data instanceof Blob
+            ? archiveResponse.data
+            : new Blob([archiveResponse.data], {
+                type: "application/zip",
+              });
+        const archiveFile = new File(
+          [archiveBlob],
+          repeat.archiveFilename,
+          { type: "application/zip" }
+        );
+        const archiveAccepted = await analyzeArchiveFile(
+          archiveFile
+        );
+        if (cancelled) return;
+
+        if (!archiveAccepted) {
+          setSubmissionError(
+            messageState("renderForm.page.errors.repeatArchive")
+          );
+          return;
+        }
+
+        // Repeat nunca copia el título histórico: vuelve a aplicar la misma
+        // sugerencia derivada del nombre real del ZIP recién validado. Hacerlo
+        // aquí evita que el orden de los efectos deje el título en blanco.
+        setTitleState(
+          applyArchiveTitleSuggestion(
+            manualSubmissionTitle(""),
+            archiveFile.name
+          )
+        );
+        setNote("");
+        setSelectedTaskType(repeat.selectedTaskType);
+        setDataType(repeat.dataType);
+        setInputSize(repeat.inputSize);
+        setSamples(repeat.samples);
+        setExecutionProfile(repeat.executionProfile);
+        setSelectedCourseId(repeat.courseId || "");
+        setParamErrors({ inputSize: "", samples: "" });
+        setExecutionSnapshot(null);
+        setFileList([]);
+        setShowOverview(false);
+        setIsSubmitting(false);
+        setDraftRestored(false);
+        setSubmissionError("");
+        setRepeatFeedback({
+          key: "renderForm.page.repeat.loaded",
+          params: { id: repeat.sourceSubmissionId },
+        });
+
+        navigate(
+          { pathname: location.pathname, search: "" },
+          { replace: true }
+        );
+      } catch (error) {
+        if (cancelled) return;
+
+        const status = error?.response?.status;
+        const key =
+          status === 401
+            ? "renderForm.page.errors.repeatSession"
+            : status === 403
+            ? "renderForm.page.errors.repeatForbidden"
+            : status === 404
+            ? "renderForm.page.errors.repeatUnavailable"
+            : status === 409
+            ? "renderForm.page.errors.repeatInconsistent"
+            : status === 422
+            ? "renderForm.page.errors.repeatArchive"
+            : "renderForm.page.errors.repeatGeneric";
+
+        setSubmissionError(messageState(key));
+      }
+    };
+
+    loadRepeat();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCourses,
+    analyzeArchiveFile,
+    courseContextError,
+    courseContextLoading,
+    location.pathname,
+    location.search,
+    navigate,
+  ]);
+
   // ======= ITERATION 7F: reutilización de configuración histórica =======
   useEffect(() => {
     // Recuperación persistente tiene precedencia sobre reutilización.
-    if (parseExecutionPublicIds(location.search).length > 0) {
+    if (
+      parseExecutionPublicIds(location.search).length > 0 ||
+      parseRepeatSubmissionId(location.search)
+    ) {
       return undefined;
     }
 
@@ -781,6 +940,7 @@ function RenderFormPage({ currentUser }) {
 
       if (
         parseExecutionPublicIds(location.search).length > 0 ||
+        parseRepeatSubmissionId(location.search) ||
         parseReusePublicId(location.search)
       ) {
         return;
@@ -985,6 +1145,7 @@ function RenderFormPage({ currentUser }) {
     setIsSubmitting(false);
     setShowOverview(false);
     setSubmissionError("");
+    setRepeatFeedback(null);
     if (location.search) {
       navigate(
         { pathname: location.pathname, search: "" },
@@ -1548,6 +1709,12 @@ function RenderFormPage({ currentUser }) {
             <button type="button" onClick={handleResetForm}>
               {t("renderForm.page.draft.clear")}
             </button>
+          </div>
+        )}
+
+        {repeatFeedback && (
+          <div className="rf-repeat-notice" role="status">
+            {resolveMessageState(repeatFeedback, t)}
           </div>
         )}
 

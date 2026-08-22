@@ -75,6 +75,15 @@ describe("submissionOverviewModel", () => {
     ).toBe("FAILED");
   });
 
+  test("aggregate CANCELLED when every terminal execution is cancelled", () => {
+    expect(
+      deriveSubmissionAggregateState({
+        executionsCount: 2,
+        cancelledExecutions: 2,
+      })
+    ).toBe("CANCELLED");
+  });
+
   test("aggregate IN_PROGRESS has precedence while children are active", () => {
     expect(
       deriveSubmissionAggregateState({

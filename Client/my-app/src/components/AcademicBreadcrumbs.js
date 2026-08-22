@@ -65,6 +65,7 @@ const buildAcademicBreadcrumbItems = (
     sourceFilename,
     course,
     courseId,
+    isOwner = false,
   },
   t
 ) => {
@@ -87,7 +88,13 @@ const buildAcademicBreadcrumbItems = (
   const academicSupervisor =
     adminUser || isTeacherUser(currentUser);
 
-  if (adminUser && !normalizedCourseId) {
+  if (isOwner) {
+    items.push({
+      key: "history",
+      label: tr("academicBreadcrumbs.history"),
+      href: "/history",
+    });
+  } else if (adminUser && !normalizedCourseId) {
     items.push(
       {
         key: "administration",

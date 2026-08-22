@@ -11,6 +11,7 @@ SUBMISSION_AGGREGATE_LABELS = {
     "COMPLETED": "Completado",
     "PARTIAL": "Parcial",
     "FAILED": "Error",
+    "CANCELLED": "Cancelado",
 }
 
 CAMM_BENCHMARKS = frozenset({
@@ -54,8 +55,11 @@ def derive_submission_aggregate_state(row):
     if completed > 0 and unsuccessful_terminal > 0:
         return "PARTIAL"
 
-    if completed == 0 and unsuccessful_terminal > 0:
+    if completed == 0 and failed > 0:
         return "FAILED"
+
+    if completed == 0 and failed == 0 and cancelled > 0:
+        return "CANCELLED"
 
     return "EMPTY"
 

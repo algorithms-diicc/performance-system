@@ -8,6 +8,7 @@ from ..repositories import submission_repository
 from ..utils.db_utils import db_cursor
 from ..utils.auth_decorators import get_user_role_name, login_required
 from ..utils.api_errors import (
+    APIError,
     handle_api_errors,
     ValidationError,
     NotFoundError,
@@ -23,6 +24,13 @@ from ..services.execution_history_service import (
 from ..services.submission_history_service import (
     build_submission_history_projection,
 )
+from ..services.submission_repeat_service import (
+    SubmissionRepeatConfigurationInvalid,
+    SubmissionRepeatForbidden,
+    SubmissionRepeatNotFound,
+    get_submission_repeat_for_user,
+)
+from ..services.source_provenance_service import SourceProvenanceError
 from ..services.execution_creation_service import (
     InvalidExecutionRequest,
     normalize_submission_note,
@@ -45,6 +53,7 @@ HISTORY_STATUS_FILTERS = frozenset({
     "COMPLETED",
     "PARTIAL",
     "FAILED",
+    "CANCELLED",
 })
 
 HISTORY_BENCHMARK_FILTERS = {
@@ -62,6 +71,7 @@ def _parse_submission_history_filters():
         request.args.get("benchmark") or ""
     ).strip().upper()
     raw_course = str(request.args.get("course_id") or "").strip()
+    raw_reference = str(request.args.get("reference") or "").strip()
     query = str(request.args.get("q") or "").strip()
 
     if raw_status and raw_status not in HISTORY_STATUS_FILTERS:
@@ -105,11 +115,17 @@ def _parse_submission_history_filters():
             "El parámetro 'q' no puede superar 200 caracteres."
         )
 
+    if raw_reference not in {"", "0", "1"}:
+        raise BadRequestError(
+            "El parámetro 'reference' debe ser '1' o '0'."
+        )
+
     return {
         "status": raw_status or None,
         "benchmark": raw_benchmark or None,
         "courseMode": course_mode,
         "courseId": course_id,
+        "referenceOnly": raw_reference == "1",
         "query": query or None,
     }
 
@@ -125,6 +141,9 @@ def _build_submission_history_cte(user_id, filters):
     elif course_mode == "course":
         where_parts.append("s.course_id = %s")
         params.append(filters["courseId"])
+
+    if filters.get("referenceOnly"):
+        where_parts.append("s.is_pinned = TRUE")
 
     benchmark = filters.get("benchmark")
     if benchmark:
@@ -153,6 +172,7 @@ def _build_submission_history_cte(user_id, filters):
             (
               COALESCE(s.title, '') ILIKE %s
               OR COALESCE(s.original_filename, '') ILIKE %s
+              OR COALESCE(s.note, '') ILIKE %s
               OR EXISTS (
                 SELECT 1
                 FROM executions qe
@@ -165,7 +185,7 @@ def _build_submission_history_cte(user_id, filters):
             )
             """.strip()
         )
-        params.extend([pattern, pattern, pattern])
+        params.extend([pattern, pattern, pattern, pattern])
 
     where_sql = "\n              AND ".join(where_parts)
 
@@ -280,11 +300,13 @@ def _build_submission_history_cte(user_id, filters):
             THEN 'PARTIAL'
 
           WHEN sb.completed_executions = 0
-            AND (
-              sb.failed_executions
-              + sb.cancelled_executions
-            ) > 0
+            AND sb.failed_executions > 0
             THEN 'FAILED'
+
+          WHEN sb.completed_executions = 0
+            AND sb.failed_executions = 0
+            AND sb.cancelled_executions > 0
+            THEN 'CANCELLED'
 
           ELSE 'EMPTY'
         END AS aggregate_state
@@ -1111,6 +1133,61 @@ def get_submission_executions(submission_id: int):
         ), 200
     finally:
         conn.close()
+
+
+# ==========================
+# GET /api/submissions/<id>/repeat
+# ==========================
+
+@submissions_bp.route(
+    "/submissions/<int:submission_id>/repeat",
+    methods=["GET"],
+)
+@login_required
+@handle_api_errors
+def get_submission_repeat(submission_id: int):
+    """Describe una repetición segura sin crear ni ejecutar nada."""
+    conn = get_connection()
+    try:
+        access_row = _assert_current_user_can_view_submission(
+            submission_id,
+            conn,
+        )
+        if not is_submission_owner(
+            access_row,
+            g.current_user["id"],
+        ):
+            raise ForbiddenError(
+                "Solo el propietario puede repetir este Experimento."
+            )
+    finally:
+        conn.close()
+
+    try:
+        descriptor = get_submission_repeat_for_user(
+            submission_id=submission_id,
+            current_user_id=g.current_user["id"],
+        )
+    except SubmissionRepeatNotFound:
+        raise NotFoundError("El Experimento solicitado no existe.")
+    except SubmissionRepeatForbidden:
+        raise ForbiddenError(
+            "Solo el propietario puede repetir este Experimento."
+        )
+    except SubmissionRepeatConfigurationInvalid as error:
+        raise APIError(
+            str(error),
+            status_code=409,
+            code="REPEAT_CONFIGURATION_INCONSISTENT",
+        )
+    except SourceProvenanceError as error:
+        raise APIError(
+            error.message,
+            status_code=error.status_code,
+            code=error.code,
+        )
+
+    return jsonify({"repeat": descriptor}), 200
 
 
 # ==========================

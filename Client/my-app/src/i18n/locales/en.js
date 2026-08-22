@@ -147,8 +147,9 @@ const en = {
     filtersHint: "Filters are applied to your full history before results are paginated.",
     clearFilters: "Clear filters",
     search: "Search",
-    searchHint: "Title, ZIP file, or C++ / .cpp source",
-    searchPlaceholder: "E.g. sorting, sorting.zip, merge.cpp",
+    searchHint: "Title, ZIP file, .cpp file, or note",
+    searchPlaceholder: "E.g. sorting, sorting.zip, merge.cpp, baseline reference",
+    referencesOnly: "References only",
     status: "Status",
     filterByStatus: "Filter by status",
     allStatuses: "All statuses",
@@ -198,6 +199,7 @@ const en = {
       completed: "Completed",
       partial: "Partial",
       failed: "Failed",
+      cancelled: "Cancelled",
     },
     errors: {
       load: "Your history could not be loaded.",
@@ -698,6 +700,10 @@ const en = {
         restored: "Your previous configuration was restored.",
         clear: "Clear draft",
       },
+      repeat: {
+        loaded:
+          "Experiment #{{id}} was loaded for repetition. Review the configuration before running it.",
+      },
       validations: {
         numberRequired: "Enter a numeric value.",
         numberInvalid: "Enter a valid number.",
@@ -743,6 +749,20 @@ const en = {
           "The execution used as a reference no longer exists.",
         reuseGeneric:
           "The historical configuration could not be reused.",
+        repeatInvalid:
+          "The historical Experiment descriptor is invalid.",
+        repeatSession:
+          "Your session expired. Sign in again to repeat the Experiment.",
+        repeatForbidden:
+          "Only the owner can repeat this Experiment.",
+        repeatUnavailable:
+          "The verified historical ZIP is unavailable for repeating this Experiment.",
+        repeatInconsistent:
+          "The historical executions do not share a common configuration. You can reuse one execution configuration instead.",
+        repeatArchive:
+          "The historical ZIP did not pass the validation required for a new analysis.",
+        repeatGeneric:
+          "The Experiment could not be loaded for repetition.",
         submitNoExecutions:
           "The server registered the request but returned no queued executions.",
         submitNetwork:
@@ -763,6 +783,7 @@ const en = {
 
   academicBreadcrumbs: {
     navigationAria: "Breadcrumb",
+    history: "History",
     administration: "Administration",
     users: "Users",
     supervision: "Supervision",
@@ -834,6 +855,7 @@ const en = {
       completed: "Completed",
       partial: "Partial",
       failed: "Error",
+      cancelled: "Cancelled",
       empty: "No executions",
       unknown: "Unknown",
     },
@@ -925,6 +947,28 @@ const en = {
       title: "Implementations",
       description:
         "Each C++ file keeps its own execution and independent results.",
+      hierarchy:
+        "Each .cpp file in the experiment creates an independent execution and keeps its own results.",
+    },
+    reference: {
+      regionAria: "Compatible references for comparison",
+      title: "Compare with reference",
+      description: "Experimental references for {{name}}.",
+      loading: "Finding references and evaluating compatibility…",
+      empty:
+        "No references are available. Mark an Experiment as a Reference to use it here.",
+      compare: "Compare",
+      errors: {
+        forbidden:
+          "Personal references are available only to their owner.",
+        load: "Experimental references could not be loaded.",
+      },
+    },
+    previous: {
+      loading: "Finding previous…",
+      none: "There is no compatible previous execution.",
+      error:
+        "The compatible previous execution could not be found.",
     },
     comparison: {
       needTwo:
@@ -967,12 +1011,16 @@ const en = {
       retry: "Retry",
       copySha: "Copy full SHA-256",
       cancel: "Cancel",
+      close: "Close",
       save: "Save",
       edit: "Edit",
       refreshStates: "Refresh statuses",
       compareImplementations: "Compare implementations",
       viewCode: "View code",
       reuseConfiguration: "Reuse configuration",
+      repeatExperiment: "Repeat experiment",
+      compareReference: "Compare with reference",
+      comparePrevious: "Compare with compatible previous",
       viewResult: "View result",
     },
   },

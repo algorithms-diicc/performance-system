@@ -37,6 +37,7 @@ const INITIAL_FILTERS = Object.freeze({
   benchmark: "",
   courseId: "",
   query: "",
+  referenceOnly: false,
 });
 
 const HISTORY_FILTER_OPTIONS_URL =
@@ -52,6 +53,7 @@ const buildHistoryUrl = (page, filters) => {
   if (filters.benchmark) params.set("benchmark", filters.benchmark);
   if (filters.courseId) params.set("course_id", filters.courseId);
   if (filters.query) params.set("q", filters.query);
+  if (filters.referenceOnly) params.set("reference", "1");
 
   return `/api/submissions?${params.toString()}`;
 };
@@ -120,6 +122,7 @@ const aggregateStateLabel = (state, t) => {
     COMPLETED: "history.states.completed",
     PARTIAL: "history.states.partial",
     FAILED: "history.states.failed",
+    CANCELLED: "history.states.cancelled",
   };
 
   return t(keys[normalized] || "history.states.empty");
@@ -138,6 +141,9 @@ const statusClass = (state) => {
   }
   if (normalized === "FAILED") {
     return "history-status--danger";
+  }
+  if (normalized === "CANCELLED") {
+    return "history-status--cancelled";
   }
   if (normalized === "IN_PROGRESS") {
     return "history-status--info";
@@ -418,6 +424,9 @@ const HistoryPage = () => {
                   <option value="FAILED">
                     {t("history.states.failed")}
                   </option>
+                  <option value="CANCELLED">
+                    {t("history.states.cancelled")}
+                  </option>
                 </select>
               </label>
 
@@ -494,6 +503,20 @@ const HistoryPage = () => {
                 </select>
               </label>
             </div>
+
+            <label className="history-reference-filter">
+              <input
+                type="checkbox"
+                checked={filters.referenceOnly}
+                onChange={(event) =>
+                  updateFilter(
+                    "referenceOnly",
+                    event.target.checked
+                  )
+                }
+              />
+              <span>{t("history.referencesOnly")}</span>
+            </label>
           </section>
 
           <section

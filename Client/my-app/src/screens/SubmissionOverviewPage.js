@@ -27,6 +27,7 @@ import {
   Gauge,
   GraduationCap,
   GitCompareArrows,
+  History,
   Pencil,
   RefreshCw,
   Save,
@@ -66,6 +67,9 @@ import {
 import {
   buildReuseSearch,
 } from "./RenderForm/reuse/executionReuseModel";
+import {
+  buildRepeatSearch,
+} from "./RenderForm/repeat/submissionRepeatModel";
 
 import "./SubmissionOverviewPage.css";
 
@@ -187,6 +191,8 @@ const aggregateStateKey = (state) => {
       "submissionOverview.aggregateStates.partial",
     FAILED:
       "submissionOverview.aggregateStates.failed",
+    CANCELLED:
+      "submissionOverview.aggregateStates.cancelled",
     EMPTY:
       "submissionOverview.aggregateStates.empty",
   };
@@ -195,6 +201,20 @@ const aggregateStateKey = (state) => {
     keys[normalized] ||
     "submissionOverview.aggregateStates.unknown"
   );
+};
+
+const referenceStatusKey = (status) => {
+  const normalized = String(status || "")
+    .trim()
+    .toLowerCase();
+  return [
+    "compatible",
+    "limited",
+    "incompatible",
+    "unavailable",
+  ].includes(normalized)
+    ? `comparisonModel.historicalStatuses.${normalized}`
+    : "comparisonModel.historicalStatuses.unavailable";
 };
 
 const comparisonIneligibilityKey = (
@@ -298,6 +318,18 @@ const SubmissionOverviewPage = ({ currentUser }) => {
   const [comparisonMode, setComparisonMode] = useState(false);
   const [comparisonSelection, setComparisonSelection] = useState([]);
   const [comparisonFeedback, setComparisonFeedback] = useState("");
+  const [referenceState, setReferenceState] = useState({
+    open: false,
+    execution: null,
+    kind: "idle",
+    items: [],
+    errorKey: "",
+  });
+  const [previousState, setPreviousState] = useState({
+    codename: "",
+    kind: "idle",
+    messageKey: "",
+  });
 
   const encodedSubmissionId = encodeURIComponent(
     String(submissionId || "")
@@ -347,6 +379,18 @@ const SubmissionOverviewPage = ({ currentUser }) => {
       setComparisonMode(false);
       setComparisonSelection([]);
       setComparisonFeedback("");
+      setReferenceState({
+        open: false,
+        execution: null,
+        kind: "idle",
+        items: [],
+        errorKey: "",
+      });
+      setPreviousState({
+        codename: "",
+        kind: "idle",
+        messageKey: "",
+      });
     } catch (error) {
       console.error("Error cargando Submission overview:", error);
       setRequestError(error);
@@ -440,6 +484,95 @@ const SubmissionOverviewPage = ({ currentUser }) => {
 
     if (orderedSelection.length < 2 || orderedSelection.length > 4) return;
     navigate(buildComparisonPath(orderedSelection));
+  };
+
+  const handleOpenReferenceCandidates = async (execution) => {
+    const codename = String(execution?.codename || "").trim();
+    if (!codename || !permissions.canEditMetadata) return;
+
+    setReferenceState({
+      open: true,
+      execution,
+      kind: "loading",
+      items: [],
+      errorKey: "",
+    });
+
+    try {
+      const response = await axios.post(
+        `${serverURL}api/comparisons/reference-candidates`,
+        { execution: codename },
+        { withCredentials: true }
+      );
+
+      setReferenceState({
+        open: true,
+        execution,
+        kind: "success",
+        items: Array.isArray(response.data?.items)
+          ? response.data.items
+          : [],
+        errorKey: "",
+      });
+    } catch (error) {
+      setReferenceState({
+        open: true,
+        execution,
+        kind: "error",
+        items: [],
+        errorKey:
+          error?.response?.status === 403
+            ? "submissionOverview.reference.errors.forbidden"
+            : "submissionOverview.reference.errors.load",
+      });
+    }
+  };
+
+  const handlePreviousCompatible = async (execution) => {
+    const codename = String(execution?.codename || "").trim();
+    if (!codename || previousState.kind === "loading") return;
+
+    setPreviousState({
+      codename,
+      kind: "loading",
+      messageKey: "",
+    });
+
+    try {
+      const response = await axios.post(
+        `${serverURL}api/comparisons/previous-compatible`,
+        { execution: codename },
+        { withCredentials: true }
+      );
+      const candidate = response.data?.candidate || null;
+      const candidateCodename = String(
+        candidate?.codename || ""
+      ).trim();
+
+      if (candidateCodename && candidate?.selectable === true) {
+        setPreviousState({
+          codename: "",
+          kind: "idle",
+          messageKey: "",
+        });
+        navigate(
+          buildComparisonPath([codename, candidateCodename])
+        );
+        return;
+      }
+
+      setPreviousState({
+        codename,
+        kind: "empty",
+        messageKey: "submissionOverview.previous.none",
+      });
+    } catch {
+      setPreviousState({
+        codename,
+        kind: "error",
+        messageKey: "submissionOverview.previous.error",
+      });
+    }
   };
 
   useEffect(() => {
@@ -765,6 +898,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           submissionId={submission.id}
           course={submission.course}
           courseId={submission.courseId}
+          isOwner={permissions.canViewPrivateMetadata === true}
         />
 
         <header className="submission-overview__header">
@@ -858,6 +992,18 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   : t(
                       "submissionOverview.archive.downloadAction"
                     )}
+              </button>
+              <button
+                type="button"
+                className="submission-overview__button submission-overview__button--primary"
+                onClick={() =>
+                  navigate(
+                    `/${buildRepeatSearch(submission.id)}`
+                  )
+                }
+              >
+                <RefreshCw size={16} strokeWidth={2} aria-hidden="true" />
+                {t("submissionOverview.actions.repeatExperiment")}
               </button>
             </div>
           )}
@@ -1242,6 +1388,11 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   "submissionOverview.implementations.description"
                 )}
               </p>
+              <p className="submission-overview__hierarchy-note">
+                {t(
+                  "submissionOverview.implementations.hierarchy"
+                )}
+              </p>
             </div>
 
             <div className="submission-overview__implementation-heading-actions">
@@ -1349,6 +1500,96 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   )}
                 </button>
               </div>
+            </div>
+          )}
+
+          {referenceState.open && (
+            <div
+              className="submission-overview__reference-panel"
+              role="region"
+              aria-label={t(
+                "submissionOverview.reference.regionAria"
+              )}
+            >
+              <div className="submission-overview__reference-heading">
+                <div>
+                  <strong>
+                    {t("submissionOverview.reference.title")}
+                  </strong>
+                  <p>
+                    {t("submissionOverview.reference.description", {
+                      name: executionDisplayName(
+                        referenceState.execution,
+                        t(
+                          "submissionOverview.fallbacks.unnamedFile"
+                        )
+                      ),
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="submission-overview__button submission-overview__button--ghost"
+                  onClick={() =>
+                    setReferenceState({
+                      open: false,
+                      execution: null,
+                      kind: "idle",
+                      items: [],
+                      errorKey: "",
+                    })
+                  }
+                >
+                  {t("submissionOverview.actions.close")}
+                </button>
+              </div>
+
+              {referenceState.kind === "loading" ? (
+                <p role="status">
+                  {t("submissionOverview.reference.loading")}
+                </p>
+              ) : referenceState.kind === "error" ? (
+                <p role="alert">
+                  {t(referenceState.errorKey)}
+                </p>
+              ) : referenceState.items.length === 0 ? (
+                <p role="status">
+                  {t("submissionOverview.reference.empty")}
+                </p>
+              ) : (
+                <ul className="submission-overview__reference-list">
+                  {referenceState.items.map((candidate) => (
+                    <li key={candidate.codename}>
+                      <div>
+                        <strong>
+                          {candidate.sourceFilename ||
+                            candidate.submissionTitle ||
+                            candidate.codename}
+                        </strong>
+                        <span>
+                          {t(referenceStatusKey(candidate.status))}
+                        </span>
+                        {candidate.reason && <p>{candidate.reason}</p>}
+                      </div>
+                      <button
+                        type="button"
+                        className="submission-overview__button submission-overview__button--secondary"
+                        disabled={candidate.selectable !== true}
+                        onClick={() =>
+                          navigate(
+                            buildComparisonPath([
+                              referenceState.execution.codename,
+                              candidate.codename,
+                            ])
+                          )
+                        }
+                      >
+                        {t("submissionOverview.reference.compare")}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -1655,6 +1896,53 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                           </button>
                         )}
 
+                        {canOpenResult &&
+                          permissions.canEditMetadata && (
+                            <button
+                              type="button"
+                              className="submission-overview__button submission-overview__button--secondary"
+                              onClick={() =>
+                                handleOpenReferenceCandidates(execution)
+                              }
+                            >
+                              <Star
+                                size={16}
+                                strokeWidth={2}
+                                aria-hidden="true"
+                              />
+                              {t(
+                                "submissionOverview.actions.compareReference"
+                              )}
+                            </button>
+                          )}
+
+                        {canOpenResult && (
+                          <button
+                            type="button"
+                            className="submission-overview__button submission-overview__button--secondary"
+                            onClick={() =>
+                              handlePreviousCompatible(execution)
+                            }
+                            disabled={
+                              previousState.kind === "loading"
+                            }
+                          >
+                            <History
+                              size={16}
+                              strokeWidth={2}
+                              aria-hidden="true"
+                            />
+                            {previousState.kind === "loading" &&
+                            previousState.codename === execution.codename
+                              ? t(
+                                  "submissionOverview.previous.loading"
+                                )
+                              : t(
+                                  "submissionOverview.actions.comparePrevious"
+                                )}
+                          </button>
+                        )}
+
                         {canOpenResult && (
                           <button
                             type="button"
@@ -1679,6 +1967,19 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                         )}
                       </div>
                     </div>
+                    {previousState.codename === execution.codename &&
+                      previousState.messageKey && (
+                        <p
+                          className="submission-overview__shortcut-feedback"
+                          role={
+                            previousState.kind === "error"
+                              ? "alert"
+                              : "status"
+                          }
+                        >
+                          {t(previousState.messageKey)}
+                        </p>
+                      )}
                   </article>
                 );
               })}

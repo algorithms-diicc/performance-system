@@ -340,6 +340,7 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
                 "&benchmark=camm"
                 "&course_id=personal"
                 "&q=slow"
+                "&reference=1"
             )
         )
 
@@ -353,6 +354,7 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
             self.assertIn("filtered_history", sql)
             self.assertIn("WHERE aggregate_state = %s", sql)
             self.assertIn("s.course_id IS NULL", sql)
+            self.assertIn("s.is_pinned = TRUE", sql)
             self.assertIn(
                 "UPPER(COALESCE(be.benchmark, ''))",
                 sql,
@@ -362,6 +364,7 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
                 "COALESCE(s.original_filename, '') ILIKE %s",
                 sql,
             )
+            self.assertIn("COALESCE(s.note, '') ILIKE %s", sql)
             self.assertIn(
                 "qe.execution_config->>'original_filename'",
                 sql,
@@ -411,6 +414,7 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
             "?course_id=abc",
             "?course_id=0",
             "?q={}".format("x" * 201),
+            "?reference=true",
         ]
 
         for query_string in invalid_queries:
@@ -421,6 +425,21 @@ class SubmissionMetadataRoutesTests(unittest.TestCase):
 
                 self.assertEqual(response.status_code, 400)
                 self.assertEqual(conn.executed, [])
+
+    def test_cancelled_is_an_accepted_history_filter(self):
+        response, conn = self._get_list(
+            query_string="?status=CANCELLED"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("CANCELLED", conn.executed[0][1])
+        self.assertIn("WHERE aggregate_state = %s", conn.executed[0][0])
+
+    def test_reference_zero_is_strict_false(self):
+        response, conn = self._get_list(query_string="?reference=0")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("s.is_pinned = TRUE", conn.executed[0][0])
 
     def test_detail_serializes_owner_metadata(self):
         response, conn = self._get_detail()

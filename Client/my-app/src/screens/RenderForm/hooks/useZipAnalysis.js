@@ -161,6 +161,7 @@ function useZipAnalysis() {
     handleDrop,
     handleDragOver,
     handleDragLeave,
+    analyzeArchiveFile: analyzeZipFile,
     reset,
   };
 }

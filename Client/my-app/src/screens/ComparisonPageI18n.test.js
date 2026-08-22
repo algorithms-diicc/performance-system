@@ -159,6 +159,15 @@ describe("ComparisonPage i18n", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
+    axios.get.mockResolvedValue({
+      data: {
+        submission: { id: 42, courseId: null, course: null },
+        permissions: {
+          canEditMetadata: true,
+          canViewPrivateMetadata: true,
+        },
+      },
+    });
   });
 
   test("localizes comparison chrome while preserving user and technical data", async () => {

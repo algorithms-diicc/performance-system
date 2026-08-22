@@ -134,6 +134,10 @@ describe("RenderImage reproducibility integration", () => {
     manifestError = null,
     traceError = null,
     submissionValue = submissionDetail,
+    submissionPermissions = {
+      canEditMetadata: true,
+      canViewPrivateMetadata: true,
+    },
     submissionError = null,
     resultsError = null,
   } = {}) => {
@@ -191,9 +195,12 @@ describe("RenderImage reproducibility integration", () => {
 
       if (requestURL.includes("/api/submissions/")) {
         return submissionError
-          ? Promise.reject(submissionError)
-          : Promise.resolve({
-              data: { submission: submissionValue },
+            ? Promise.reject(submissionError)
+            : Promise.resolve({
+              data: {
+                submission: submissionValue,
+                permissions: submissionPermissions,
+              },
             });
       }
 
@@ -292,6 +299,12 @@ describe("RenderImage reproducibility integration", () => {
   });
 
   test("Teacher direct URL loads Submission context once and links the canonical course", async () => {
+    arrangeRequests({
+      submissionPermissions: {
+        canEditMetadata: false,
+        canViewPrivateMetadata: false,
+      },
+    });
     renderPage({ currentUser: TEACHER_USER });
 
     const navigation = await screen.findByRole("navigation", {
@@ -315,6 +328,24 @@ describe("RenderImage reproducibility integration", () => {
       { withCredentials: true }
     );
   });
+
+  test.each([TEACHER_USER, ADMIN_USER])(
+    "owner role uses History for result breadcrumbs",
+    async (currentUser) => {
+      renderPage({ currentUser });
+
+      const navigation = await screen.findByRole("navigation", {
+        name: "Ruta de navegación",
+      });
+      expect(
+        await within(navigation).findByRole("link", {
+          name: "Historial",
+        })
+      ).toHaveAttribute("href", "/history");
+      expect(navigation).not.toHaveTextContent("Supervisión");
+      expect(navigation).not.toHaveTextContent("Administración");
+    }
+  );
 
   test.each([
     [STUDENT_USER, "Mi perfil", "/profile"],

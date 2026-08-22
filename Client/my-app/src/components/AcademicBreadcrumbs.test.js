@@ -30,11 +30,12 @@ describe("AcademicBreadcrumbs", () => {
       currentUser: student,
       page: "submission",
       submissionId: 7,
+      isOwner: true,
     });
 
     expect(
-      within(navigation).getByRole("link", { name: "Mi perfil" })
-    ).toHaveAttribute("href", "/profile");
+      within(navigation).getByRole("link", { name: "Historial" })
+    ).toHaveAttribute("href", "/history");
     expect(within(navigation).getByText("Experimento #7")).toHaveAttribute(
       "aria-current",
       "page"
@@ -47,6 +48,7 @@ describe("AcademicBreadcrumbs", () => {
       page: "result",
       submissionId: 7,
       sourceFilename: "solucion.cpp",
+      isOwner: true,
     });
 
     expect(
@@ -81,6 +83,26 @@ describe("AcademicBreadcrumbs", () => {
       "aria-current",
       "page"
     );
+  });
+
+  test.each([
+    [teacher, "Teacher"],
+    [admin, "Admin"],
+  ])("owner %s always returns through History", (currentUser) => {
+    const navigation = renderBreadcrumbs({
+      currentUser,
+      page: "submission",
+      submissionId: 7,
+      course,
+      courseId: 9,
+      isOwner: true,
+    });
+
+    expect(
+      within(navigation).getByRole("link", { name: "Historial" })
+    ).toHaveAttribute("href", "/history");
+    expect(navigation).not.toHaveTextContent("Supervisión");
+    expect(navigation).not.toHaveTextContent("Administración");
   });
 
   test("builds the Teacher Result route through course and Submission", () => {

@@ -146,8 +146,9 @@ const es = {
     filtersHint: "Los filtros se aplican sobre todo tu historial, antes de paginar los resultados.",
     clearFilters: "Limpiar filtros",
     search: "Buscar",
-    searchHint: "Título, archivo ZIP o fuente C++ / .cpp",
-    searchPlaceholder: "Ej. ordenamiento, sorting.zip, merge.cpp",
+    searchHint: "Título, archivo ZIP, archivo .cpp o nota",
+    searchPlaceholder: "Ej. ordenamiento, sorting.zip, merge.cpp, referencia base",
+    referencesOnly: "Solo referencias",
     status: "Estado",
     filterByStatus: "Filtrar por estado",
     allStatuses: "Todos los estados",
@@ -197,6 +198,7 @@ const es = {
       completed: "Completado",
       partial: "Parcial",
       failed: "Error",
+      cancelled: "Cancelado",
     },
     errors: {
       load: "No fue posible cargar tu historial.",
@@ -698,6 +700,10 @@ const es = {
         restored: "Se restauró tu configuración anterior.",
         clear: "Limpiar borrador",
       },
+      repeat: {
+        loaded:
+          "Experimento #{{id}} cargado para repetición. Revisa la configuración antes de ejecutar.",
+      },
       validations: {
         numberRequired: "Ingresa un valor numérico.",
         numberInvalid: "Ingresa un número válido.",
@@ -744,6 +750,20 @@ const es = {
           "La ejecución usada como referencia ya no existe.",
         reuseGeneric:
           "No fue posible reutilizar la configuración histórica.",
+        repeatInvalid:
+          "El descriptor del Experimento histórico no es válido.",
+        repeatSession:
+          "Tu sesión expiró. Inicia sesión nuevamente para repetir el Experimento.",
+        repeatForbidden:
+          "Solo el propietario puede repetir este Experimento.",
+        repeatUnavailable:
+          "El ZIP histórico verificado no está disponible para repetir este Experimento.",
+        repeatInconsistent:
+          "Las ejecuciones históricas no comparten una configuración común. Puedes reutilizar una configuración individual.",
+        repeatArchive:
+          "El ZIP histórico no superó la validación requerida para un nuevo análisis.",
+        repeatGeneric:
+          "No fue posible cargar el Experimento para repetición.",
         submitNoExecutions:
           "El servidor registró la solicitud, pero no devolvió ejecuciones en cola.",
         submitNetwork:
@@ -764,6 +784,7 @@ const es = {
 
   academicBreadcrumbs: {
     navigationAria: "Ruta de navegación",
+    history: "Historial",
     administration: "Administración",
     users: "Usuarios",
     supervision: "Supervisión",
@@ -835,6 +856,7 @@ const es = {
       completed: "Completado",
       partial: "Parcial",
       failed: "Error",
+      cancelled: "Cancelado",
       empty: "Sin ejecuciones",
       unknown: "Desconocido",
     },
@@ -926,6 +948,28 @@ const es = {
       title: "Implementaciones",
       description:
         "Cada archivo C++ conserva su propia ejecución y resultados independientes.",
+      hierarchy:
+        "Cada archivo .cpp del experimento genera una ejecución independiente y conserva sus propios resultados.",
+    },
+    reference: {
+      regionAria: "Referencias compatibles para comparar",
+      title: "Comparar con referencia",
+      description: "Referencias experimentales para {{name}}.",
+      loading: "Buscando referencias y evaluando compatibilidad…",
+      empty:
+        "No hay referencias disponibles. Marca un Experimento como Referencia para usarlo aquí.",
+      compare: "Comparar",
+      errors: {
+        forbidden:
+          "Las referencias personales solo están disponibles para el propietario.",
+        load: "No fue posible cargar las referencias experimentales.",
+      },
+    },
+    previous: {
+      loading: "Buscando anterior…",
+      none: "No existe una ejecución anterior compatible.",
+      error:
+        "No fue posible buscar la ejecución anterior compatible.",
     },
     comparison: {
       needTwo:
@@ -968,12 +1012,16 @@ const es = {
       retry: "Reintentar",
       copySha: "Copiar SHA-256 completo",
       cancel: "Cancelar",
+      close: "Cerrar",
       save: "Guardar",
       edit: "Editar",
       refreshStates: "Actualizar estados",
       compareImplementations: "Comparar implementaciones",
       viewCode: "Ver código",
       reuseConfiguration: "Reutilizar configuración",
+      repeatExperiment: "Repetir experimento",
+      compareReference: "Comparar con referencia",
+      comparePrevious: "Comparar con anterior compatible",
       viewResult: "Ver resultado",
     },
   },

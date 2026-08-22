@@ -236,6 +236,78 @@ describe("HistoryPage", () => {
     );
   });
 
+  test("filters references before pagination and searches personal notes", async () => {
+    renderHistory();
+
+    await screen.findByRole("heading", {
+      name: "Comparación de ordenamiento",
+    });
+    expect(
+      screen.getByText("Título, archivo ZIP, archivo .cpp o nota")
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Solo referencias" })
+    );
+
+    await waitFor(() => {
+      expect(requestJson).toHaveBeenCalledWith(
+        "/api/submissions?page=1&page_size=20&reference=1",
+        { credentials: "include" },
+        { fallback: "No fue posible cargar tu historial." }
+      );
+    });
+
+    fireEvent.change(
+      screen.getByRole("searchbox", { name: /Buscar/i }),
+      { target: { value: "baseline personal" } }
+    );
+    fireEvent.click(screen.getByRole("button", { name: /^Buscar$/i }));
+
+    await waitFor(() => {
+      expect(requestJson).toHaveBeenCalledWith(
+        "/api/submissions?page=1&page_size=20&q=baseline+personal&reference=1",
+        { credentials: "include" },
+        { fallback: "No fue posible cargar tu historial." }
+      );
+    });
+  });
+
+  test("renders and filters the CANCELLED aggregate state", async () => {
+    requestJson.mockImplementation((url) => {
+      if (url === "/api/submissions/history-filter-options") {
+        return Promise.resolve({ courses: [] });
+      }
+      if (url.startsWith("/api/submissions?")) {
+        return Promise.resolve(
+          historyResponse({
+            items: [{ ...item, aggregateState: "CANCELLED" }],
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    renderHistory();
+    expect(
+      await screen.findByText("Cancelado", {
+        selector: ".history-status",
+      })
+    ).toHaveClass("history-status--cancelled");
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Filtrar por estado" }),
+      { target: { value: "CANCELLED" } }
+    );
+    await waitFor(() =>
+      expect(requestJson).toHaveBeenCalledWith(
+        "/api/submissions?page=1&page_size=20&status=CANCELLED",
+        { credentials: "include" },
+        { fallback: "No fue posible cargar tu historial." }
+      )
+    );
+  });
+
   test("clears active filters and returns to the unfiltered first page", async () => {
     renderHistory();
 
@@ -247,10 +319,13 @@ describe("HistoryPage", () => {
       screen.getByRole("combobox", { name: "Filtrar por estado" }),
       { target: { value: "FAILED" } }
     );
+    fireEvent.click(
+      screen.getByRole("checkbox", { name: "Solo referencias" })
+    );
 
     await waitFor(() => {
       expect(requestJson).toHaveBeenCalledWith(
-        "/api/submissions?page=1&page_size=20&status=FAILED",
+        "/api/submissions?page=1&page_size=20&status=FAILED&reference=1",
         { credentials: "include" },
         { fallback: "No fue posible cargar tu historial." }
       );
@@ -259,6 +334,10 @@ describe("HistoryPage", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Limpiar filtros" })
     );
+
+    expect(
+      screen.getByRole("checkbox", { name: "Solo referencias" })
+    ).not.toBeChecked();
 
     await waitFor(() => {
       const baselineCalls = requestJson.mock.calls.filter(

@@ -282,35 +282,20 @@ describe("SubmissionOverviewPage", () => {
   });
 
   test.each([
-    [
-      "Student",
-      STUDENT_USER,
-      "Mi perfil",
-      "/profile",
-    ],
-    [
-      "Teacher",
-      TEACHER_USER,
-      "CC4102 · Diseño y Análisis de Algoritmos",
-      "/teacher/courses/9",
-    ],
-    [
-      "Admin",
-      ADMIN_USER,
-      "CC4102 · Diseño y Análisis de Algoritmos",
-      "/teacher/courses/9",
-    ],
+    ["Student", STUDENT_USER],
+    ["Teacher", TEACHER_USER],
+    ["Admin", ADMIN_USER],
   ])(
-    "builds the %s breadcrumb from currentUser and canonical Submission data",
-    async (_role, currentUser, linkName, href) => {
+    "builds the owner %s breadcrumb from canonical permissions",
+    async (_role, currentUser) => {
       await renderLoadedPage({ currentUser });
 
       const navigation = screen.getByRole("navigation", {
         name: "Ruta de navegación",
       });
       expect(
-        within(navigation).getByRole("link", { name: linkName })
-      ).toHaveAttribute("href", href);
+        within(navigation).getByRole("link", { name: "Historial" })
+      ).toHaveAttribute("href", "/history");
       expect(
         within(navigation).getByText("Experimento #42")
       ).toHaveAttribute("aria-current", "page");
@@ -321,6 +306,50 @@ describe("SubmissionOverviewPage", () => {
       ).toBe(false);
     }
   );
+
+  test.each([
+    ["Teacher", TEACHER_USER],
+    ["Admin", ADMIN_USER],
+  ])(
+    "%s non-owner with course keeps the supervision breadcrumb",
+    async (_role, currentUser) => {
+      await renderLoadedPage({
+        currentUser,
+        permissions: readOnlyPermissions,
+      });
+
+      const navigation = screen.getByRole("navigation", {
+        name: "Ruta de navegación",
+      });
+      expect(
+        within(navigation).getByRole("link", {
+          name: "CC4102 · Diseño y Análisis de Algoritmos",
+        })
+      ).toHaveAttribute("href", "/teacher/courses/9");
+      expect(
+        within(navigation).queryByRole("link", { name: "Historial" })
+      ).not.toBeInTheDocument();
+    }
+  );
+
+  test("Admin non-owner personal Experiment keeps Administration Users", async () => {
+    await renderLoadedPage({
+      currentUser: ADMIN_USER,
+      submission: {
+        ...ownerSubmission,
+        courseId: null,
+        course: null,
+      },
+      permissions: readOnlyPermissions,
+    });
+
+    const navigation = screen.getByRole("navigation", {
+      name: "Ruta de navegación",
+    });
+    expect(
+      within(navigation).getByRole("link", { name: "Usuarios" })
+    ).toHaveAttribute("href", "/admin/users");
+  });
 
   test("renders multiple implementation cards in the same layout and exposes PARTIAL aggregate", async () => {
     const failedExecution = {
@@ -666,6 +695,11 @@ describe("SubmissionOverviewPage", () => {
         name: "Descargar ZIP original",
       })
     ).not.toBeInTheDocument();
+    expect(
+      within(information).queryByRole("button", {
+        name: "Repetir experimento",
+      })
+    ).not.toBeInTheDocument();
   });
 
   test("source unavailable opens contextual state without fake code", async () => {
@@ -875,6 +909,125 @@ describe("SubmissionOverviewPage", () => {
       screen.getByText(
         "Este experimento todavía no registra implementaciones ejecutables."
       )
+    ).toBeInTheDocument();
+  });
+
+  test("owner can repeat only by navigating to a reviewable preload", async () => {
+    await renderLoadedPage();
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: "Repetir experimento",
+      })
+    );
+
+    expect(mockNavigate).toHaveBeenCalledWith("/?repeat=42");
+    expect(axios.post).not.toHaveBeenCalled();
+  });
+
+  test("explains ZIP to independent .cpp executions", async () => {
+    await renderLoadedPage();
+
+    expect(
+      screen.getByText(
+        "Cada archivo .cpp del experimento genera una ejecución independiente y conserva sus propios resultados."
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("reference browser exposes compatible and incompatible reasons and builds a two-execution path", async () => {
+    axios.post.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            codename: "reference-compatible",
+            sourceFilename: "baseline.cpp",
+            status: "LIMITED",
+            selectable: true,
+            reason: "Cobertura común limitada.",
+          },
+          {
+            codename: "reference-blocked",
+            sourceFilename: "other-hardware.cpp",
+            status: "INCOMPATIBLE",
+            selectable: false,
+            reason: "El hardware es distinto.",
+          },
+        ],
+      },
+    });
+    await renderLoadedPage();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Comparar con referencia",
+      })
+    );
+
+    const panel = await screen.findByRole("region", {
+      name: "Referencias compatibles para comparar",
+    });
+    expect(within(panel).getByText("baseline.cpp")).toBeInTheDocument();
+    expect(within(panel).getByText("Con limitaciones")).toBeInTheDocument();
+    expect(within(panel).getByText("El hardware es distinto.")).toBeInTheDocument();
+    expect(
+      within(panel).getAllByRole("button", { name: "Comparar" })[1]
+    ).toBeDisabled();
+
+    fireEvent.click(
+      within(panel).getAllByRole("button", { name: "Comparar" })[0]
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      "/compare?execution=opaque-codename-10&execution=reference-compatible"
+    );
+    expect(axios.post).toHaveBeenCalledWith(
+      expect.stringMatching(/api\/comparisons\/reference-candidates$/),
+      { execution: "opaque-codename-10" },
+      { withCredentials: true }
+    );
+  });
+
+  test("reference browser has a useful no-reference state", async () => {
+    axios.post.mockResolvedValueOnce({ data: { items: [] } });
+    await renderLoadedPage();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Comparar con referencia",
+      })
+    );
+
+    expect(
+      await screen.findByText(/Marca un Experimento como Referencia/i)
+    ).toBeInTheDocument();
+  });
+
+  test("previous compatible navigates or reports a localized empty result", async () => {
+    axios.post
+      .mockResolvedValueOnce({
+        data: {
+          candidate: {
+            codename: "previous-compatible",
+            selectable: true,
+          },
+        },
+      })
+      .mockResolvedValueOnce({ data: { candidate: null } });
+    await renderLoadedPage();
+
+    const action = screen.getByRole("button", {
+      name: "Comparar con anterior compatible",
+    });
+    fireEvent.click(action);
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        "/compare?execution=opaque-codename-10&execution=previous-compatible"
+      )
+    );
+
+    fireEvent.click(action);
+    expect(
+      await screen.findByText("No existe una ejecución anterior compatible.")
     ).toBeInTheDocument();
   });
 

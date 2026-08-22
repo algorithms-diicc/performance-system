@@ -3606,6 +3606,17 @@
   cursor: pointer;
 }
 
+.rf-page .rf-repeat-notice {
+  margin-bottom: var(--ps-space-4);
+  padding: var(--ps-space-3) var(--ps-space-4);
+  color: var(--ps-info);
+  background: var(--ps-info-soft);
+  border: 1px solid var(--ps-info);
+  border-radius: var(--ps-radius-md);
+  font-size: var(--ps-font-size-sm);
+  font-weight: 650;
+}
+
 .rf-page .param-readonly-value {
   min-height: 76px;
   padding: var(--ps-space-3) var(--ps-space-4);

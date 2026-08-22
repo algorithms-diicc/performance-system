@@ -384,6 +384,7 @@ const ComparisonPage = ({ currentUser }) => {
     error: null,
   });
   const [showIncompatible, setShowIncompatible] = useState(false);
+  const [breadcrumbContext, setBreadcrumbContext] = useState(null);
   const [auditOpen, setAuditOpen] = useState(false);
   const [aiState, setAiState] = useState({
     kind: "idle",
@@ -636,6 +637,47 @@ const ComparisonPage = ({ currentUser }) => {
     currentUser,
     t
   );
+
+  useEffect(() => {
+    let active = true;
+    setBreadcrumbContext(null);
+
+    if (!context.submissionId) {
+      return () => {
+        active = false;
+      };
+    }
+
+    axios
+      .get(
+        `${serverURL}api/submissions/${encodeURIComponent(
+          String(context.submissionId)
+        )}`,
+        { withCredentials: true }
+      )
+      .then((response) => {
+        if (!active) return;
+        const submission = response.data?.submission || null;
+        if (!submission) return;
+
+        setBreadcrumbContext({
+          course: submission.course || null,
+          courseId:
+            submission.courseId ?? submission.course?.id ?? null,
+          isOwner: Boolean(
+            response.data?.permissions?.canViewPrivateMetadata ||
+              response.data?.permissions?.canEditMetadata
+          ),
+        });
+      })
+      .catch(() => {
+        if (active) setBreadcrumbContext(null);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [context.submissionId]);
   const structuredPedagogy =
     data?.pedagogy?.generation
       ?.presentation_contract ===
@@ -855,6 +897,9 @@ const ComparisonPage = ({ currentUser }) => {
             currentUser={currentUser}
             page="comparison"
             submissionId={context.submissionId}
+            course={breadcrumbContext?.course}
+            courseId={breadcrumbContext?.courseId}
+            isOwner={breadcrumbContext?.isOwner === true}
           />
         </div>
         <header className="comparison-page__header">

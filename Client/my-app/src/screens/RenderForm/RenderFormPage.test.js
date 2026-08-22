@@ -158,6 +158,7 @@ jest.mock("./components/StatusPanel", () => {
     fileList,
     isSubmitting,
     onPrepareNewAnalysis,
+    submissionError,
   }) {
     return ReactModule.createElement(
       ReactModule.Fragment,
@@ -172,6 +173,13 @@ jest.mock("./components/StatusPanel", () => {
         { type: "button", onClick: onReset },
         "Limpiar configuración"
       ),
+      submissionError
+        ? ReactModule.createElement(
+            "div",
+            { role: "alert" },
+            submissionError
+          )
+        : null,
       isSubmitting &&
       Array.isArray(fileList) &&
       fileList.length > 0
@@ -302,6 +310,10 @@ describe("RenderFormPage 6A onboarding", () => {
     jest.clearAllMocks();
     window.localStorage.clear();
     window.alert = jest.fn();
+    Object.defineProperty(File.prototype, "arrayBuffer", {
+      configurable: true,
+      value: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
+    });
 
     axios.get.mockResolvedValue(courseResponse);
     axios.mockReturnValue(new Promise(() => {}));
@@ -628,6 +640,111 @@ describe("RenderFormPage 6A onboarding", () => {
     expect(
       screen.queryByText("Se restauró tu configuración anterior.")
     ).not.toBeInTheDocument();
+  });
+
+  test("repeat downloads and validates the historical ZIP, preloads values, and never auto-submits", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        testName: "Borrador que Repeat debe omitir",
+        note: "No copiar",
+        selectedTaskType: "lcs",
+      })
+    );
+
+    axios.get.mockImplementation((url, options) => {
+      if (url.includes("api/student/courses")) {
+        return Promise.resolve({
+          data: {
+            items: [{ id: 12, code: "CC4102" }],
+            selectionRequired: false,
+          },
+        });
+      }
+      if (url.includes("/submissions/42/repeat")) {
+        return Promise.resolve({
+          data: {
+            repeat: {
+              sourceSubmissionId: 42,
+              archiveFilename: "sorting.zip",
+              archiveUrl: "/api/submissions/42/archive",
+              benchmark: "CAMMR",
+              inputSize: 5000,
+              samples: 30,
+              executionProfile: "BALANCED",
+              courseId: 12,
+            },
+          },
+        });
+      }
+      if (url.includes("/submissions/42/archive")) {
+        expect(options).toMatchObject({
+          withCredentials: true,
+          responseType: "blob",
+        });
+        return Promise.resolve({
+          data: new Blob(["zip-content"], {
+            type: "application/zip",
+          }),
+        });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    await renderPage(
+      "/new-analysis?repeat=42&reuse=must-not-win&course=99"
+    );
+
+    expect(
+      await screen.findByText(
+        "Experimento #42 cargado para repetición. Revisa la configuración antes de ejecutar."
+      )
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("selected-task-type")).toHaveTextContent(
+      "camm"
+    );
+    expect(screen.getByTestId("data-type")).toHaveTextContent("cammr");
+    expect(screen.getByTestId("input-size")).toHaveTextContent("5000");
+    expect(screen.getByTestId("samples")).toHaveTextContent("30");
+    expect(screen.getByTestId("execution-profile")).toHaveTextContent(
+      "equilibrado"
+    );
+    expect(screen.getByTestId("selected-course")).toHaveTextContent("12");
+    expect(screen.getByLabelText("Nombre del test")).toHaveValue("sorting");
+    expect(screen.getByLabelText(/Nota personal/)).toHaveValue("");
+    expect(screen.getByText("sorting.zip", { selector: ".file-meta-name" }))
+      .toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Revisar y ejecutar" })
+    ).toBeEnabled();
+    expect(
+      axios.get.mock.calls.some(([url]) => String(url).includes("/reuse"))
+    ).toBe(false);
+    expect(axios).not.toHaveBeenCalled();
+    expect(JSZip.loadAsync).toHaveBeenCalledTimes(1);
+  });
+
+  test("repeat configuration inconsistency stays review-only and localized", async () => {
+    axios.get.mockImplementation((url) => {
+      if (url.includes("api/student/courses")) {
+        return Promise.resolve(courseResponse);
+      }
+      if (url.includes("/submissions/42/repeat")) {
+        return Promise.reject({ response: { status: 409 } });
+      }
+      return Promise.reject(new Error(`Unexpected GET ${url}`));
+    });
+
+    await renderPage("/new-analysis?repeat=42");
+
+    expect(
+      await screen.findByText(/no comparten una configuración común/i)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Revisar y ejecutar" })
+    ).toBeDisabled();
+    expect(axios).not.toHaveBeenCalled();
   });
 
   test("note is secondary, editable, counted and limited to 500", async () => {

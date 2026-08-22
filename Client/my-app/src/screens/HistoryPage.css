@@ -196,6 +196,23 @@
   box-shadow: 0 0 0 3px var(--ps-primary-soft);
 }
 
+.history-reference-filter {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-2);
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-sm);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.history-reference-filter input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--ps-primary);
+}
+
 .history-summary {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -321,6 +338,12 @@
   color: var(--ps-text-secondary);
   background: var(--ps-surface-subtle);
   border: 1px solid var(--ps-border);
+}
+
+.history-status--cancelled {
+  color: var(--ps-text-secondary);
+  background: var(--ps-surface-subtle);
+  border: 1px dashed var(--ps-border-strong);
 }
 
 .history-card__metadata {

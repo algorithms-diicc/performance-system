@@ -225,6 +225,23 @@ const lastPlotProps = () =>
 describe("ComparisonPage", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    axios.get.mockResolvedValue({
+      data: {
+        submission: {
+          id: 42,
+          courseId: 9,
+          course: {
+            id: 9,
+            code: "CC4102",
+            name: "Algoritmos",
+          },
+        },
+        permissions: {
+          canEditMetadata: true,
+          canViewPrivateMetadata: true,
+        },
+      },
+    });
   });
 
   test("invalid query renders a controlled state and never sends POST", async () => {
@@ -794,6 +811,45 @@ describe("ComparisonPage", () => {
       "aria-current",
       "page"
     );
+    expect(
+      await within(breadcrumbs).findByRole("link", { name: "Historial" })
+    ).toHaveAttribute("href", "/history");
+    expect(axios.get).toHaveBeenCalledWith(
+      expect.stringMatching(/api\/submissions\/42$/),
+      { withCredentials: true }
+    );
+  });
+
+  test("same-submission non-owner comparison uses its course context", async () => {
+    axios.get.mockResolvedValue({
+      data: {
+        submission: {
+          id: 42,
+          courseId: 9,
+          course: {
+            id: 9,
+            code: "CC4102",
+            name: "Algoritmos",
+          },
+        },
+        permissions: {
+          canEditMetadata: false,
+          canViewPrivateMetadata: false,
+        },
+      },
+    });
+    await renderResolved(compatiblePayload, {
+      currentUser: { role_name: "Teacher" },
+    });
+
+    const breadcrumbs = screen.getByRole("navigation", {
+      name: "Ruta de navegación",
+    });
+    expect(
+      await within(breadcrumbs).findByRole("link", {
+        name: "CC4102 · Algoritmos",
+      })
+    ).toHaveAttribute("href", "/teacher/courses/9");
   });
 
   test.each([
@@ -824,6 +880,7 @@ describe("ComparisonPage", () => {
       within(breadcrumbs).getByRole("link", { name: label })
     ).toHaveAttribute("href", href);
     expect(breadcrumbs).not.toHaveTextContent(/propietario|owner|usuario #/i);
+    expect(axios.get).not.toHaveBeenCalled();
   });
 
   test("uses sourceFilename as the primary unique legend label", async () => {

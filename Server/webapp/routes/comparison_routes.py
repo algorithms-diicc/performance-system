@@ -76,11 +76,15 @@ def _comparison_error(status_code, code, message):
 def _validated_execution_values(
     values,
     *,
+    minimum=2,
     maximum,
     count_message,
     error_code="INVALID_COMPARISON_REQUEST",
 ):
-    if not isinstance(values, list) or not 2 <= len(values) <= maximum:
+    if (
+        not isinstance(values, list)
+        or not minimum <= len(values) <= maximum
+    ):
         _comparison_error(
             400,
             error_code,
@@ -200,6 +204,24 @@ def _validated_candidate_selection():
     )
 
 
+def _validated_single_execution():
+    body = request.get_json(silent=True)
+    if not isinstance(body, dict) or set(body) != {"execution"}:
+        _comparison_error(
+            400,
+            "INVALID_COMPARISON_SHORTCUT_REQUEST",
+            "La solicitud debe contener únicamente el campo execution.",
+        )
+
+    return _validated_execution_values(
+        [body.get("execution")],
+        minimum=1,
+        maximum=1,
+        count_message="La solicitud requiere una execution.",
+        error_code="INVALID_COMPARISON_SHORTCUT_REQUEST",
+    )[0]
+
+
 def _current_role_name():
     role_name = getattr(g, "current_role_name", None)
     return role_name or get_user_role_name(g.current_user)
@@ -220,6 +242,21 @@ def _authorize_all(codenames):
             raise ForbiddenError(
                 "No tienes permiso para comparar las ejecuciones solicitadas."
             )
+
+
+def _authorize_one(codename):
+    try:
+        return assert_execution_viewer(
+            codename=codename,
+            current_user_id=g.current_user["id"],
+            current_role_name=_current_role_name(),
+        )
+    except ExecutionAccessNotFound:
+        raise NotFoundError("La ejecución solicitada no existe.")
+    except ExecutionAccessForbidden:
+        raise ForbiddenError(
+            "No tienes permiso para comparar la ejecución solicitada."
+        )
 
 
 def _load_execution_context(codename):
@@ -486,3 +523,128 @@ def list_comparison_candidates():
             "truncated": bool(candidate_rows.get("truncated")),
         }
     ), 200
+
+
+@comparisons_bp.route(
+    "/comparisons/reference-candidates",
+    methods=["POST"],
+)
+@login_required
+def list_reference_comparison_candidates():
+    codename = _validated_single_execution()
+    access_row = _authorize_one(codename)
+    owner_user_id = access_row.get("owner_user_id")
+
+    # Las Referencias y sus notas son metadata personal. Incluso Teacher/Admin
+    # deben usar este browser únicamente sobre su propio Experimento.
+    if int(owner_user_id) != int(g.current_user["id"]):
+        raise ForbiddenError(
+            "Las referencias personales solo están disponibles para su propietario."
+        )
+
+    selected_contexts, selected_results = _load_selected_comparison_inputs(
+        [codename]
+    )
+    candidate_rows = (
+        comparison_repository.list_reference_candidate_executions(
+            owner_user_id=owner_user_id,
+            excluded_codename=codename,
+        )
+    )
+
+    role_name = _current_role_name()
+    items = []
+    for row in candidate_rows.get("items", []):
+        candidate_codename = str(row.get("codename") or "").strip()
+        if not candidate_codename or not _candidate_is_visible(
+            candidate_codename,
+            role_name,
+        ):
+            continue
+        candidate_context = (
+            export_repository.get_execution_export_row_by_codename(
+                candidate_codename
+            )
+        )
+        if candidate_context is None:
+            continue
+        items.append(
+            _candidate_item(
+                candidate_codename,
+                candidate_context,
+                selected_contexts,
+                selected_results,
+            )
+        )
+
+    return jsonify(
+        {
+            "schemaVersion": "1.0",
+            "execution": codename,
+            "items": items,
+            "truncated": bool(candidate_rows.get("truncated")),
+        }
+    ), 200
+
+
+@comparisons_bp.route(
+    "/comparisons/previous-compatible",
+    methods=["POST"],
+)
+@login_required
+def get_previous_compatible_execution():
+    codename = _validated_single_execution()
+    access_row = _authorize_one(codename)
+    owner_user_id = access_row.get("owner_user_id")
+    selected_contexts, selected_results = _load_selected_comparison_inputs(
+        [codename]
+    )
+    role_name = _current_role_name()
+    offset = 0
+    while True:
+        repository_args = {
+            "current_codename": codename,
+            "owner_user_id": owner_user_id,
+        }
+        if offset:
+            repository_args["offset"] = offset
+        candidate_rows = (
+            comparison_repository.list_previous_candidate_executions(
+                **repository_args
+            )
+        )
+
+        rows = candidate_rows.get("items", [])
+        for row in rows:
+            candidate_codename = str(
+                row.get("codename") or ""
+            ).strip()
+            if not candidate_codename or not _candidate_is_visible(
+                candidate_codename,
+                role_name,
+            ):
+                continue
+            candidate_context = (
+                export_repository.get_execution_export_row_by_codename(
+                    candidate_codename
+                )
+            )
+            if candidate_context is None:
+                continue
+            candidate = _candidate_item(
+                candidate_codename,
+                candidate_context,
+                selected_contexts,
+                selected_results,
+            )
+            if candidate.get("selectable") is True:
+                return jsonify({"candidate": candidate}), 200
+
+        # Cada lectura permanece acotada, pero la búsqueda sigue siendo exacta:
+        # si una página no contiene un candidate seleccionable, se avanza en
+        # el mismo orden determinista hasta agotar las filas anteriores.
+        if not candidate_rows.get("truncated") or not rows:
+            break
+        offset += len(rows)
+
+    return jsonify({"candidate": None}), 200

@@ -96,9 +96,20 @@ class SubmissionHistoryServiceTests(unittest.TestCase):
             "FAILED",
         )
 
+    def test_all_cancelled_submission_is_cancelled(self):
+        row = aggregate_row(
+            executions_count=2,
+            cancelled_executions=2,
+        )
+        self.assertEqual(
+            derive_submission_aggregate_state(row),
+            "CANCELLED",
+        )
+
     def test_labels_are_stable(self):
         self.assertEqual(aggregate_state_label("PARTIAL"), "Parcial")
         self.assertEqual(aggregate_state_label("COMPLETED"), "Completado")
+        self.assertEqual(aggregate_state_label("CANCELLED"), "Cancelado")
 
     def test_camm_variants_share_one_ui_family(self):
         for value in ("CAMM", "CAMMR", "CAMMS", "CAMMSO"):

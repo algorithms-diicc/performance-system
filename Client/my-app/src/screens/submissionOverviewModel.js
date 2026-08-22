@@ -3,6 +3,7 @@ export const SUBMISSION_AGGREGATE_LABELS = {
   COMPLETED: "Completado",
   PARTIAL: "Parcial",
   FAILED: "Error",
+  CANCELLED: "Cancelado",
   EMPTY: "Sin ejecuciones",
 };
 
@@ -96,8 +97,12 @@ export function deriveSubmissionAggregateState(
     return "PARTIAL";
   }
 
-  if (completed === 0 && unsuccessfulTerminal > 0) {
+  if (completed === 0 && failed > 0) {
     return "FAILED";
+  }
+
+  if (completed === 0 && failed === 0 && cancelled > 0) {
+    return "CANCELLED";
   }
 
   return "EMPTY";

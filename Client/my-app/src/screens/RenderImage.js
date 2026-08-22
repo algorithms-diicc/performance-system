@@ -630,6 +630,10 @@ function RenderImage({ currentUser }) {
           courseId: normalizeSubmissionId(
             detail.courseId ?? detail.course?.id
           ),
+          isOwner: Boolean(
+            response.data?.permissions?.canViewPrivateMetadata ||
+              response.data?.permissions?.canEditMetadata
+          ),
         });
       })
       .catch(() => {
@@ -1067,6 +1071,7 @@ function RenderImage({ currentUser }) {
           }
           course={submissionNavigationContext?.course}
           courseId={submissionNavigationContext?.courseId}
+          isOwner={submissionNavigationContext?.isOwner === true}
         />
 
         <header className="results-header">
