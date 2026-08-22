@@ -149,12 +149,13 @@ check(
     and normalized_spec["source_language"] != "C",
 )
 
-try:
-    validate_source_specs([{"original_filename": "main.c"}])
-    public_creation_blocks_c = False
-except InvalidExecutionRequest:
-    public_creation_blocks_c = True
-check("Creación pública 8B continúa rechazando C", public_creation_blocks_c)
+c_creation = validate_source_specs([{"original_filename": "main.c"}])[0]
+check(
+    "Foundation v2 permite activar C sin metadata controlada por cliente",
+    c_creation["source_language"] == "C"
+    and c_creation["compiler"] == "gcc"
+    and c_creation["compiler_flags"] == "-O3",
+)
 
 
 class Info:
@@ -243,29 +244,27 @@ check(
 )
 
 with tempfile.TemporaryDirectory() as temp_dir:
-    try:
-        store_and_inspect_zip(
-            zip_storage(
-                [("main.c", b"int main(void){return 0;}\n")]
-            ),
-            temp_dir,
-        )
-        c_upload_is_blocked = False
-    except UploadValidationError:
-        c_upload_is_blocked = True
-check("C-only ZIP sigue bloqueado por upload público", c_upload_is_blocked)
+    c_upload = store_and_inspect_zip(
+        zip_storage(
+            [("main.c", b"int main(void){return 0;}\n")]
+        ),
+        temp_dir,
+    )
+check("Activación 8C acepta C-only sobre foundation v2", len(c_upload.sources) == 1)
 
 check(
-    "Upload service y /sendcode permanecen byte-identical a HEAD",
-    unchanged_from_head("Server/webapp/services/upload_service.py")
-    and unchanged_from_head("Server/webapp/app.py"),
+    "Upload y /sendcode reutilizan inferencia central de source_contract",
+    "is_supported_source_filename" in read(
+        "Server/webapp/services/upload_service.py"
+    )
+    and "infer_v2_source_metadata" in read("Server/webapp/app.py"),
 )
 check(
-    "Hardware snapshot e Iteración 7 system status permanecen intactos",
-    all(
+    "Snapshot mantiene schema 1.0 e Iteración 7 permanece intacta",
+    '"schema_version": "1.0"' in read("Server/hardware_snapshot.py")
+    and all(
         unchanged_from_head(path)
         for path in (
-            "Server/hardware_snapshot.py",
             "Server/webapp/repositories/system_status_repository.py",
             "Server/webapp/services/system_status_service.py",
             "Server/webapp/routes/admin_system_status_routes.py",
@@ -273,14 +272,10 @@ check(
     ),
 )
 check(
-    "Slave/socketUtils/dispatcher runner/perf permanecen intactos",
+    "Activación runtime no altera perf ni postproceso científico",
     all(
         unchanged_from_head(path)
         for path in (
-            "Server/slave.py",
-            "Server/webapp/socketUtils.py",
-            "Server/execution_dispatcher.py",
-            "Server/webapp/services/execution_runner_service.py",
             "Server/measurescript3.sh",
             "Server/measurescript4.sh",
             "Server/measurescript5.sh",
@@ -297,13 +292,9 @@ check(
     ),
 )
 check(
-    "Frontend, README y configuración permanecen intactos",
+    "README y configuración permanecen intactos",
     unchanged_from_head("README.md")
     and unchanged_from_head(".env.example")
-    and not subprocess.run(
-        ["git", "diff", "--quiet", "HEAD", "--", "Client/my-app"],
-        cwd=ROOT,
-    ).returncode,
 )
 
 production_changes = "\n".join(
@@ -323,30 +314,30 @@ status_lines = subprocess.run(
     text=True,
 ).stdout.splitlines()
 changed_paths = {line[3:] for line in status_lines if len(line) > 3}
-allowed_paths = {
-    "Server/source_contract.py",
-    "Server/tests/test_source_contract.py",
-    "Server/tests/test_upload_service.py",
-    "Server/tests/test_execution_creation_service.py",
-    "Server/tests/test_execution_dispatch_service.py",
-    "Server/tests/test_source_provenance_service.py",
-    "Server/tests/test_trace_routes.py",
-    "Server/tests/test_reproducibility_service.py",
-    "Server/webapp/services/execution_creation_service.py",
-    "Server/webapp/services/execution_dispatch_service.py",
-    "Server/webapp/services/source_provenance_service.py",
-    "Server/webapp/repositories/trace_repository.py",
-    "Server/webapp/routes/trace_routes.py",
-    "Server/webapp/services/reproducibility_service.py",
-    "Server/webapp/tests/validate_iteration8b_ec01_foundation.py",
+forbidden_paths = {
+    "Server/db/schema.sql",
+    "README.md",
+    "Client/my-app/src/screens/TutorialPage.js",
+    "Client/my-app/src/screens/ComparisonPage.js",
 }
 check(
-    "Working tree 8B está limitado a la whitelist aprobada",
-    changed_paths <= allowed_paths,
+    "Foundation sigue sin tocar schema/README/Tutorial/Comparison",
+    changed_paths.isdisjoint(forbidden_paths)
+    and not any("Server/db/migrations/" in path for path in changed_paths),
 )
 check(
     "Tests focales y validador 8B existen",
-    all((ROOT / path).is_file() for path in allowed_paths if "test" in path),
+    all(
+        (ROOT / path).is_file()
+        for path in (
+            "Server/tests/test_source_contract.py",
+            "Server/tests/test_execution_creation_service.py",
+            "Server/tests/test_execution_dispatch_service.py",
+            "Server/tests/test_source_provenance_service.py",
+            "Server/tests/test_reproducibility_service.py",
+            "Server/webapp/tests/validate_iteration8b_ec01_foundation.py",
+        )
+    ),
 )
 
 passed = sum(checks)

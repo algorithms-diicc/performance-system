@@ -4,6 +4,10 @@ from types import SimpleNamespace
 import tempfile
 import unittest
 
+from Server.tests.plotly_test_support import ensure_plotly_importable
+
+ensure_plotly_importable()
+
 from Server.webapp.services.execution_runner_service import (
     legacy_submission_status_from_counts,
     run_single_execution,
@@ -197,6 +201,82 @@ class ExecutionRunnerTests(unittest.TestCase):
                     "CombinedResults.csv",
                 ),
             )
+
+    def test_v2_source_metadata_reaches_slave_without_changing_postprocessing(self):
+        cases = (
+            ("C", "gcc", ".c", "A.c"),
+            ("C++", "g++", ".cpp", "A.cpp"),
+        )
+
+        for language, compiler, extension, original in cases:
+            with self.subTest(language=language):
+                with tempfile.TemporaryDirectory() as tmp:
+                    base = Path(tmp)
+                    status_dir = base / "status"
+                    static_dir = base / "static"
+                    source = base / original
+                    source.write_text("source", encoding="utf-8")
+                    calls, dependencies = self._base_dependencies(static_dir)
+                    slave_calls = []
+                    dependencies["slave_serve_func"] = (
+                        lambda *args, **kwargs: slave_calls.append(
+                            (args, kwargs)
+                        )
+                    )
+
+                    result = run_single_execution(
+                        source_path=str(source),
+                        codename="execA",
+                        original_filename=original,
+                        input_size=1000,
+                        samples=10,
+                        status_dir=str(status_dir),
+                        static_dir=str(static_dir),
+                        base_dir=str(base),
+                        source_contract_version=2,
+                        source_language=language,
+                        compiler=compiler,
+                        compiler_flags="-O3",
+                        technical_extension=extension,
+                        metadata_provenance="explicit",
+                        **dependencies,
+                    )
+
+                    self.assertEqual(result["execution_state"], "COMPLETED")
+                    self.assertEqual(slave_calls[0][1]["compiler"], compiler)
+                    self.assertEqual(
+                        slave_calls[0][1]["technical_extension"],
+                        extension,
+                    )
+                    self.assertEqual(
+                        calls["graphs"],
+                        [(["execA"], [original], "1000")],
+                    )
+
+    def test_legacy_call_keeps_five_argument_slave_protocol(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            static_dir = base / "static"
+            calls, dependencies = self._base_dependencies(static_dir)
+            slave_calls = []
+            dependencies["slave_serve_func"] = (
+                lambda *args, **kwargs: slave_calls.append((args, kwargs))
+            )
+
+            run_single_execution(
+                source_path=str(base / "legacy.cpp"),
+                codename="legacySIZE",
+                original_filename="legacy.cpp",
+                input_size=100,
+                samples=10,
+                status_dir=str(base / "status"),
+                static_dir=str(static_dir),
+                base_dir=str(base),
+                **dependencies,
+            )
+
+            self.assertEqual(len(slave_calls[0][0]), 5)
+            self.assertEqual(slave_calls[0][1], {})
 
     def test_claimed_execution_uses_claim_activation(self):
         with tempfile.TemporaryDirectory() as tmp:

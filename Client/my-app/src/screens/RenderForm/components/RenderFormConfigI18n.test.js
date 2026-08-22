@@ -148,8 +148,16 @@ describe("RenderForm configuration i18n", () => {
           testName="Mi experimento"
           fileName="code.zip"
           fileMeta={{
-            cppCount: 7,
-            cppSample: ["src/a.cpp", "src/b.cpp", "src/c.cpp", "src/d.cpp", "src/e.cpp"],
+            sourceCount: 7,
+            cCount: 2,
+            cppCount: 5,
+            sourceSample: [
+              "src/a.c",
+              "src/b.cpp",
+              "src/c.c",
+              "src/d.cpp",
+              "src/e.cpp",
+            ],
           }}
           taskTitle="Datos numéricos"
           taskId="camm"
@@ -173,8 +181,8 @@ describe("RenderForm configuration i18n", () => {
     expect(screen.getByText("Numeric data")).toBeInTheDocument();
     expect(screen.getByText("Random numbers")).toBeInTheDocument();
     expect(screen.getByText("Balanced")).toBeInTheDocument();
-    expect(screen.getByText("7 .cpp files")).toBeInTheDocument();
-    expect(screen.getByText("src/a.cpp")).toBeInTheDocument();
+    expect(screen.getByText("7 sources · 2 C · 5 C++")).toBeInTheDocument();
+    expect(screen.getByText("src/a.c")).toBeInTheDocument();
     expect(screen.getByText("+2 more")).toBeInTheDocument();
     expect(screen.getByText("student@udec.cl")).toBeInTheDocument();
     expect(

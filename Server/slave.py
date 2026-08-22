@@ -5,14 +5,36 @@ try:
     from .hardware_snapshot import collect_hardware_snapshot
 except ImportError:
     from hardware_snapshot import collect_hardware_snapshot
+try:
+    from .source_contract import (
+        CANONICAL_COMPILER_FLAGS,
+        COMPILER_C,
+        COMPILER_CPP,
+        SourceContractError,
+        infer_legacy_cpp_metadata,
+        validate_runtime_source_metadata,
+    )
+except ImportError:
+    from source_contract import (
+        CANONICAL_COMPILER_FLAGS,
+        COMPILER_C,
+        COMPILER_CPP,
+        SourceContractError,
+        infer_legacy_cpp_metadata,
+        validate_runtime_source_metadata,
+    )
 import subprocess as sub
 import time
 import os
 import signal
 import sys
 import shlex
+import re
 
-from utils.logger import log_admin, log_admin_stage
+try:
+    from .utils.logger import log_admin, log_admin_stage
+except ImportError:
+    from utils.logger import log_admin, log_admin_stage
 
 
 # ============================================================
@@ -39,6 +61,7 @@ REMOTE_SSH_TIMEOUT_SECONDS = max(
     1,
     int(os.getenv("REMOTE_SSH_TIMEOUT_SECONDS", "15")),
 )
+CODENAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
 
 
 # ============================================================
@@ -250,25 +273,79 @@ def receive_payload(sock):
     )
 
 
+class PayloadValidationError(ValueError):
+    """El payload no representa una combinación runtime permitida."""
+
+
+def validate_source_payload(payload):
+    """Resuelve v1 legacy o valida estrictamente la tupla v2."""
+    if not isinstance(payload, dict):
+        raise PayloadValidationError("El payload debe ser un objeto JSON.")
+
+    payload_version = payload.get("payload_version", 1)
+    if type(payload_version) is not int or payload_version not in (1, 2):
+        raise PayloadValidationError(
+            "payload_version debe ser 1 o 2."
+        )
+
+    if payload_version == 1:
+        v2_fields = (
+            "source_language",
+            "source_extension",
+            "compiler",
+            "compiler_flags",
+        )
+        if any(field in payload for field in v2_fields):
+            raise PayloadValidationError(
+                "Un payload v1 no puede declarar metadata v2."
+            )
+        return infer_legacy_cpp_metadata(
+            {
+                "original_filename": "legacy.cpp",
+                "compiler_flags": CANONICAL_COMPILER_FLAGS,
+            }
+        )
+
+    try:
+        return validate_runtime_source_metadata(
+            source_contract_version=2,
+            source_language=payload.get("source_language"),
+            compiler=payload.get("compiler"),
+            compiler_flags=payload.get("compiler_flags"),
+            technical_extension=payload.get("source_extension"),
+        )
+    except SourceContractError as exc:
+        raise PayloadValidationError(
+            "La metadata C/C++ del payload v2 no es válida."
+        ) from exc
+
+
 # ============================================================
 # ARCHIVO C/C++
 # ============================================================
 
-def write_code_to_file(name_request, code):
+def write_code_to_file(name_request, code, source_extension=".cpp"):
     """
     Guarda el código recibido en:
 
-        Server/test/<nombre>.cpp
+        Server/test/<nombre>.c|.cpp
     """
 
-    safe_name = os.path.basename(
-        name_request
-    )
+    safe_name = str(name_request or "").strip()
+    if not CODENAME_RE.fullmatch(safe_name):
+        raise ValueError("El codename del payload no es válido.")
+    if source_extension not in (".c", ".cpp"):
+        raise ValueError("La extensión técnica no es canónica.")
+    if not isinstance(code, str):
+        raise ValueError("El código del payload debe ser texto UTF-8.")
 
     full_path = os.path.join(
         TEST_DIR,
-        f"{safe_name}.cpp"
+        f"{safe_name}{source_extension}"
     )
+    full_path = os.path.realpath(full_path)
+    if os.path.dirname(full_path) != os.path.realpath(TEST_DIR):
+        raise ValueError("La ruta técnica escapa de Server/test.")
 
     try:
 
@@ -287,7 +364,7 @@ def write_code_to_file(name_request, code):
 
         return full_path
 
-    except Exception as e:
+    except (OSError, UnicodeError) as e:
 
         log_admin_stage(
             "FILE_WRITE_ERROR",
@@ -371,6 +448,27 @@ def build_measurement_environment(measurement):
     return env
 
 
+def build_compile_argv(source_file, executable, compiler):
+    """Construye el único argv de compilación permitido por E-C01."""
+    expected_extension = {
+        COMPILER_C: ".c",
+        COMPILER_CPP: ".cpp",
+    }.get(compiler)
+    if expected_extension is None:
+        raise ValueError("El compilador no pertenece al contrato C/C++.")
+    if os.path.splitext(str(source_file))[1] != expected_extension:
+        raise ValueError(
+            "La extensión técnica no coincide con el compilador."
+        )
+    return [
+        compiler,
+        CANONICAL_COMPILER_FLAGS,
+        source_file,
+        "-o",
+        executable,
+    ]
+
+
 def run_benchmark(
     test_type,
     source_file,
@@ -379,11 +477,12 @@ def run_benchmark(
     measure_script_name,
     measure_args,
     measurement=None,
+    compiler=COMPILER_CPP,
 ):
     """
     Función común para LCS, CAMM y SIZE.
 
-    1. Compila el archivo C++.
+    1. Compila la fuente C/C++ con su toolchain canónico.
     2. Ejecuta el measurescript correspondiente.
     3. Comprueba que se genere un CSV.
     4. Devuelve la ruta del CSV o un código de error.
@@ -435,13 +534,11 @@ def run_benchmark(
     # Comando de compilación
     # --------------------------------------------------------
 
-    compile_cmd = [
-        "g++",
-        "-O3",
+    compile_cmd = build_compile_argv(
         source_file,
-        "-o",
-        executable
-    ]
+        executable,
+        compiler,
+    )
 
 
     # --------------------------------------------------------
@@ -499,6 +596,7 @@ def run_benchmark(
             text=True,
             cwd=SERVER_DIR,
             timeout=COMPILE_TIMEOUT_SECONDS,
+            shell=False,
         )
     except sub.TimeoutExpired:
         duration = time.time() - t0
@@ -884,6 +982,7 @@ def cae_lcs(
     input_size,
     samples,
     measurement=None,
+    compiler=COMPILER_CPP,
 ):
 
     input_file = os.path.join(
@@ -905,7 +1004,8 @@ def cae_lcs(
             samples
         ]
         ,
-        measurement=measurement
+        measurement=measurement,
+        compiler=compiler,
     )
 
 
@@ -919,6 +1019,7 @@ def cae_camm(
     samples,
     task,
     measurement=None,
+    compiler=COMPILER_CPP,
 ):
 
     input_dir = os.path.join(
@@ -967,7 +1068,8 @@ def cae_camm(
             samples
         ]
         ,
-        measurement=measurement
+        measurement=measurement,
+        compiler=compiler,
     )
 
 
@@ -980,6 +1082,7 @@ def cae_size(
     input_size,
     samples,
     measurement=None,
+    compiler=COMPILER_CPP,
 ):
 
     return run_benchmark(
@@ -993,7 +1096,8 @@ def cae_size(
             samples
         ]
         ,
-        measurement=measurement
+        measurement=measurement,
+        compiler=compiler,
     )
 
 
@@ -1006,7 +1110,8 @@ def send_results(
     port,
     name_request,
     result_name,
-    measurement=None
+    measurement=None,
+    compiler=None,
 ):
 
     try:
@@ -1046,6 +1151,7 @@ def send_results(
         "results": results,
         "hardware_snapshot": collect_hardware_snapshot(
             measurement=measurement,
+            compiler=compiler,
         ),
     }
 
@@ -1101,10 +1207,12 @@ def send_json_result(
     port,
     error_dict,
     measurement=None,
+    compiler=None,
 ):
     error_dict = dict(error_dict)
     error_dict["hardware_snapshot"] = collect_hardware_snapshot(
         measurement=measurement,
+        compiler=compiler,
     )
 
     try:
@@ -1504,6 +1612,24 @@ def main():
 
             continue
 
+        try:
+            source_metadata = validate_source_payload(payload_dict)
+            if not isinstance(payload_dict.get("code"), str):
+                raise PayloadValidationError(
+                    "El campo code debe ser texto UTF-8."
+                )
+        except PayloadValidationError as exc:
+            log_admin_stage(
+                "PAYLOAD_VALIDATION_ERROR",
+                str(exc),
+            )
+            print(
+                "[❌ Payload C/C++ rechazado antes de materializar: "
+                f"{exc}]"
+            )
+            time.sleep(QUEUE_POLL_SECONDS)
+            continue
+
 
         print(
             "[📦 Payload recibido]"
@@ -1515,6 +1641,12 @@ def main():
                     "name":
                         payload_dict.get(
                             "name"
+                        ),
+
+                    "payload_version":
+                        payload_dict.get(
+                            "payload_version",
+                            1,
                         ),
 
                     "cmd":
@@ -1531,6 +1663,15 @@ def main():
                         payload_dict.get(
                             "samples"
                         ),
+
+                    "source_language":
+                        source_metadata.source_language,
+
+                    "source_extension":
+                        source_metadata.technical_extension,
+
+                    "compiler":
+                        source_metadata.compiler,
 
                     "code_size":
                         len(
@@ -1549,10 +1690,20 @@ def main():
         # GUARDAR CÓDIGO
         # ----------------------------------------------------
 
-        filename = write_code_to_file(
-            payload_dict["name"],
-            payload_dict["code"]
-        )
+        try:
+            filename = write_code_to_file(
+                payload_dict["name"],
+                payload_dict["code"],
+                source_metadata.technical_extension,
+            )
+        except (TypeError, ValueError) as exc:
+            log_admin_stage(
+                "FILE_VALIDATION_ERROR",
+                str(exc),
+            )
+            print(f"[❌ Fuente no materializada: {exc}]")
+            time.sleep(QUEUE_POLL_SECONDS)
+            continue
 
 
         if filename is None:
@@ -1614,6 +1765,7 @@ def main():
                 input_size,
                 samples,
                 measurement=measurement,
+                compiler=source_metadata.compiler,
             )
 
 
@@ -1628,6 +1780,7 @@ def main():
                 input_size,
                 samples,
                 measurement=measurement,
+                compiler=source_metadata.compiler,
             )
 
 
@@ -1643,6 +1796,7 @@ def main():
                 samples,
                 task_name,
                 measurement=measurement,
+                compiler=source_metadata.compiler,
             )
 
 
@@ -1707,6 +1861,7 @@ def main():
                 MASTER_RESULT_PORT,
                 result_name,
                 measurement=measurement,
+                compiler=source_metadata.compiler,
             )
 
 
@@ -1718,6 +1873,7 @@ def main():
                 task_name,
                 result_name,
                 measurement=measurement,
+                compiler=source_metadata.compiler,
             )
 
 

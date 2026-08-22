@@ -6,7 +6,7 @@ import {
 const valid = {
   file: { name: "code.zip" },
   fileError: "",
-  fileMeta: { cppCount: 1 },
+  fileMeta: { sourceCount: 1, cCount: 0, cppCount: 1 },
   isInspectingZip: false,
   selectedTaskType: "lcs",
   inputSize: 500,
@@ -32,6 +32,16 @@ const valid = {
 describe("analysisReadinessModel", () => {
   test("ready configuration has no missing requirements", () => {
     expect(buildAnalysisRequirements(valid)).toEqual([]);
+  });
+
+  test.each([
+    { sourceCount: 1, cCount: 1, cppCount: 0 },
+    { sourceCount: 1, cCount: 0, cppCount: 1 },
+    { sourceCount: 2, cCount: 1, cppCount: 1 },
+  ])("C-only, C++-only and mixed ZIP metadata are ready", (fileMeta) => {
+    expect(
+      buildAnalysisRequirements({ ...valid, fileMeta })
+    ).toEqual([]);
   });
 
   test.each([

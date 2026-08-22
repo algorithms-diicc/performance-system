@@ -317,7 +317,7 @@ const en = {
       testNameLabel: "Test name",
       testNamePlaceholder: "E.g. optimized LCS, blocked CAMM, etc.",
       testNameHelp:
-        "This name identifies the Experiment. A ZIP can contain multiple implementations, and each .cpp file creates its own execution.",
+        "This name identifies the Experiment. Each .c or .cpp file in the ZIP creates an independent execution.",
       noteLabel: "Personal note",
       optional: "(optional)",
       notePrivate: "Only you can see this note.",
@@ -327,11 +327,15 @@ const en = {
       dropTitle: "Drag and drop the .zip here",
       dropHint: "or click to select a file from your computer.",
       maxHint:
-        "Recommended max: {{max}} MB. The .zip must contain at least one .cpp file.",
+        "Recommended max: {{max}} MB. The ZIP must contain at least one .c or .cpp file.",
       inspecting: "Analyzing contents…",
       cppFiles: {
         one: "{{count}} .cpp file",
         other: "{{count}} .cpp files",
+      },
+      sourceSummary: {
+        one: "{{count}} source · {{c}} C · {{cpp}} C++",
+        other: "{{count}} sources · {{c}} C · {{cpp}} C++",
       },
       examplesInside: "Examples inside the .zip:",
     },
@@ -477,7 +481,7 @@ const en = {
       unnamed: "(unnamed)",
       file: "File",
       noFile: "No file selected",
-      implementations: "Implementations / .cpp sources",
+      implementations: "Implementations / C/C++ sources",
       sources: "Included sources",
       moreSources: {
         one: "+{{count}} more",
@@ -508,6 +512,8 @@ const en = {
           "The recommended maximum size is {{max}} MB. The current file is {{size}}.",
         noCpp:
           "The .zip contains no .cpp files. Review its contents before uploading it again.",
+        noSource:
+          "The ZIP must contain at least one .c or .cpp file.",
         unreadable:
           "The .zip contents could not be read. Try again or use another file.",
       },
@@ -531,7 +537,7 @@ const en = {
         requirements: {
           zipRequired: "Select a ZIP archive.",
           zipInspecting: "Wait while the ZIP archive is validated.",
-          zipInvalid: "Select a valid ZIP archive containing at least one .cpp file.",
+          zipInvalid: "Select a valid ZIP archive containing at least one .c or .cpp file.",
           benchmarkRequired: "Choose a benchmark.",
           inputSizeInvalid: "Enter a valid maximum input size.",
           samplesInvalid:

@@ -4,6 +4,14 @@ import platform
 import re
 import subprocess
 
+try:
+    from .source_contract import COMPILER_C, COMPILER_CPP
+except ImportError:
+    try:
+        from Server.source_contract import COMPILER_C, COMPILER_CPP
+    except ImportError:
+        from source_contract import COMPILER_C, COMPILER_CPP
+
 ENERGY_EVENTS = {
     "EnergyPkg": "power/energy-pkg/",
     "EnergyCores": "power/energy-cores/",
@@ -49,6 +57,7 @@ def _perf_version(perf_bin):
             text=True,
             timeout=5,
             check=False,
+            shell=False,
         )
     except (OSError, subprocess.SubprocessError):
         return None
@@ -66,6 +75,7 @@ def _perf_list(perf_bin):
             text=True,
             timeout=10,
             check=False,
+            shell=False,
         )
     except (OSError, subprocess.SubprocessError):
         return ""
@@ -96,6 +106,7 @@ def _probe_perf_event(perf_bin, event):
             timeout=10,
             env=env,
             check=False,
+            shell=False,
         )
     except (OSError, subprocess.SubprocessError):
         return {
@@ -186,7 +197,39 @@ def _powercap_domains():
     return result
 
 
-def collect_hardware_snapshot(measurement=None, perf_bin=None):
+def _compiler_snapshot(compiler):
+    if compiler not in (COMPILER_C, COMPILER_CPP):
+        return None
+
+    version = None
+    try:
+        completed = subprocess.run(
+            [compiler, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=5,
+            check=False,
+            shell=False,
+        )
+        output = (completed.stdout or completed.stderr or "").strip()
+        if output:
+            version = output.splitlines()[0].strip() or None
+    except (OSError, subprocess.SubprocessError):
+        version = None
+
+    return {
+        "family": "GNU",
+        "name": compiler,
+        "version": version,
+    }
+
+
+def collect_hardware_snapshot(
+    measurement=None,
+    perf_bin=None,
+    compiler=None,
+):
     measurement = measurement if isinstance(measurement, dict) else {}
     perf_bin = perf_bin or os.getenv("PERF_BIN", "perf")
 
@@ -212,7 +255,7 @@ def collect_hardware_snapshot(measurement=None, perf_bin=None):
             ),
         }
 
-    return {
+    snapshot = {
         "schema_version": "1.0",
         "node": _cpu_identity(),
         "measurement": {
@@ -231,3 +274,11 @@ def collect_hardware_snapshot(measurement=None, perf_bin=None):
         },
         "energy": energy,
     }
+
+    compiler_snapshot = _compiler_snapshot(compiler)
+    if compiler_snapshot is not None:
+        snapshot["toolchain"] = {
+            "compiler": compiler_snapshot,
+        }
+
+    return snapshot

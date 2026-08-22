@@ -100,11 +100,43 @@ class UploadServiceTests(unittest.TestCase):
                 self.tmp.name,
             )
 
-    def test_c_only_zip_remains_rejected_by_public_upload_in_8b(self):
+    def test_c_only_zip_is_accepted_by_public_upload_in_8c(self):
+        upload = store_and_inspect_zip(
+            make_storage(
+                [("main.c", b"int main(void){return 0;}")]
+            ),
+            self.tmp.name,
+        )
+
+        self.assertEqual(
+            [source.original_filename for source in upload.sources],
+            ["main.c"],
+        )
+
+    def test_mixed_sources_preserve_interleaved_archive_order(self):
+        upload = store_and_inspect_zip(
+            make_storage(
+                [
+                    ("a.cpp", b"cpp-a"),
+                    ("b.c", b"c-b"),
+                    ("c.CPP", b"cpp-c"),
+                    ("d.C", b"c-d"),
+                    ("header.h", b"ignored"),
+                ]
+            ),
+            self.tmp.name,
+        )
+
+        self.assertEqual(
+            [source.original_filename for source in upload.sources],
+            ["a.cpp", "b.c", "c.CPP", "d.C"],
+        )
+
+    def test_duplicate_source_names_are_rejected_case_insensitive(self):
         with self.assertRaises(UploadValidationError):
             store_and_inspect_zip(
                 make_storage(
-                    [("main.c", b"int main(void){return 0;}")]
+                    [("src/Main.c", b"one"), ("src/main.C", b"two")]
                 ),
                 self.tmp.name,
             )

@@ -56,7 +56,7 @@ export function buildAnalysisRequirements({
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_REQUIRED);
   } else if (isInspectingZip) {
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INSPECTING);
-  } else if (!fileMeta || Number(fileMeta.cppCount) < 1) {
+  } else if (!fileMeta || Number(fileMeta.sourceCount) < 1) {
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INVALID);
   }
 

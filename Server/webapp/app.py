@@ -30,6 +30,7 @@ from pathlib import Path, PurePosixPath
 
 from .dataProcessing import *
 from .socketUtils import *
+from ..source_contract import infer_v2_source_metadata
 
 
 from .utils.api_errors import (
@@ -454,8 +455,6 @@ def cap_code():
             original_filename=stored_upload.original_filename,
             note=note,
             course_id=course_id,
-            compiler_flags="-O3",
-            language="C++",
         )
 
     except (UploadValidationError, InvalidExecutionRequest) as exc:
@@ -468,9 +467,9 @@ def cap_code():
             remove_stored_upload(stored_upload.stored_path)
         raise
 
-    cpp_dirs_on_zip = []
     names_on_zip = []
-    file_names = []
+    c_names_on_zip = []
+    cpp_names_on_zip = []
     created_artifacts = []
 
     try:
@@ -479,14 +478,17 @@ def cap_code():
             bundle["executions"],
         ):
             codename = execution["codename"]
+            source_metadata = infer_v2_source_metadata(
+                source.original_filename
+            )
 
             status_json_path = os.path.join(
                 STATIC_DIR,
                 codename + "_status.json",
             )
-            cpp_file_dir = os.path.join(
+            source_file_dir = os.path.join(
                 TEST_DIR,
-                codename + ".cpp",
+                codename + source_metadata.technical_extension,
             )
             status_file_path = os.path.join(
                 STATUS_DIR,
@@ -509,6 +511,10 @@ def cap_code():
                     {
                         "codename": codename,
                         "original_filename": source.original_filename,
+                        "source_language": (
+                            source_metadata.source_language
+                        ),
+                        "compiler": source_metadata.compiler,
                     }
                 ],
             }
@@ -527,13 +533,13 @@ def cap_code():
             created_artifacts.append(status_json_path)
 
             with open(
-                cpp_file_dir,
+                source_file_dir,
                 "w",
                 encoding="utf-8",
                 newline="\n",
             ) as handle:
                 handle.write(source.content)
-            created_artifacts.append(cpp_file_dir)
+            created_artifacts.append(source_file_dir)
 
             with open(
                 status_file_path,
@@ -549,9 +555,11 @@ def cap_code():
                 "📦 Archivo añadido a la cola de espera.",
             )
 
-            cpp_dirs_on_zip.append(cpp_file_dir)
             names_on_zip.append(codename)
-            file_names.append(source.original_filename)
+            if source_metadata.source_language == "C":
+                c_names_on_zip.append(codename)
+            else:
+                cpp_names_on_zip.append(codename)
 
     except Exception as exc:
         for execution in bundle["executions"]:
@@ -615,12 +623,20 @@ def cap_code():
             "status": "QUEUED",
             "taskType": task_type,
             "archiveSha256": stored_upload.sha256,
-            "cpp_files_queued": names_on_zip,
+            "source_files_queued": names_on_zip,
+            "c_files_queued": c_names_on_zip,
+            "cpp_files_queued": cpp_names_on_zip,
             "executions": [
                 {
                     "publicId": execution["public_id"],
                     "codename": execution["codename"],
                     "originalFilename": source.original_filename,
+                    "sourceLanguage": infer_v2_source_metadata(
+                        source.original_filename
+                    ).source_language,
+                    "compiler": infer_v2_source_metadata(
+                        source.original_filename
+                    ).compiler,
                     "state": execution["execution_state"],
                 }
                 for source, execution in zip(

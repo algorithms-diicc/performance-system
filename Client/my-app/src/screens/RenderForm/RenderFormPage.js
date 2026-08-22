@@ -1277,7 +1277,9 @@ function RenderFormPage({ currentUser }) {
             ? executionRecords
                 .map((execution) => execution.codename)
                 .filter(Boolean)
-            : response.data?.cpp_files_queued || [];
+            : response.data?.source_files_queued ||
+              response.data?.cpp_files_queued ||
+              [];
 
         if (
           queuedFiles.length > 0 &&

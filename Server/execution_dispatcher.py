@@ -191,7 +191,15 @@ def run_dispatch_cycle(
             status_dir=str(status_dir),
             static_dir=str(static_dir),
             base_dir=str(base_dir),
-            opt_cmd=_compiler_flags(execution),
+            opt_cmd=source["compiler_flags"],
+            source_contract_version=source[
+                "source_contract_version"
+            ],
+            source_language=source["source_language"],
+            compiler=source["compiler"],
+            compiler_flags=source["compiler_flags"],
+            technical_extension=source["technical_extension"],
+            metadata_provenance=source["metadata_provenance"],
             already_claimed=True,
             public_id=execution["public_id"],
         )

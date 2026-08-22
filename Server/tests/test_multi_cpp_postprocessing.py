@@ -7,6 +7,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from Server.tests.plotly_test_support import ensure_plotly_importable
+
+ensure_plotly_importable()
+
 
 def _load_app_module_without_starting_queue_thread():
     module_name = "Server.webapp.app"

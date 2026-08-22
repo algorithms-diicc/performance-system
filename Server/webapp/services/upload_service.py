@@ -11,13 +11,21 @@ import tempfile
 import uuid
 import zipfile
 
+from ...source_contract import is_supported_source_filename
+
 
 DEFAULT_MAX_ARCHIVE_BYTES = 10 * 1024 * 1024
-DEFAULT_MAX_CPP_BYTES = 2 * 1024 * 1024
-DEFAULT_MAX_TOTAL_CPP_BYTES = 10 * 1024 * 1024
-DEFAULT_MAX_CPP_FILES = 20
+DEFAULT_MAX_SOURCE_BYTES = 2 * 1024 * 1024
+DEFAULT_MAX_TOTAL_SOURCE_BYTES = 10 * 1024 * 1024
+DEFAULT_MAX_SOURCE_FILES = 20
 DEFAULT_MAX_ARCHIVE_ENTRIES = 200
 MAX_ORIGINAL_ZIP_FILENAME_CHARS = 512
+
+# Aliases públicos legacy: callers y validadores previos pueden seguir usando
+# los nombres cpp-only mientras 8C expone el contrato genérico de fuente.
+DEFAULT_MAX_CPP_BYTES = DEFAULT_MAX_SOURCE_BYTES
+DEFAULT_MAX_TOTAL_CPP_BYTES = DEFAULT_MAX_TOTAL_SOURCE_BYTES
+DEFAULT_MAX_CPP_FILES = DEFAULT_MAX_SOURCE_FILES
 
 
 class UploadValidationError(Exception):
@@ -25,10 +33,13 @@ class UploadValidationError(Exception):
 
 
 @dataclass(frozen=True)
-class CppSource:
+class Source:
     original_filename: str
     content: str
     size_bytes: int
+
+
+CppSource = Source
 
 
 @dataclass(frozen=True)
@@ -100,10 +111,13 @@ def store_and_inspect_zip(
     storage_dir,
     *,
     max_archive_bytes=DEFAULT_MAX_ARCHIVE_BYTES,
-    max_cpp_bytes=DEFAULT_MAX_CPP_BYTES,
-    max_total_cpp_bytes=DEFAULT_MAX_TOTAL_CPP_BYTES,
-    max_cpp_files=DEFAULT_MAX_CPP_FILES,
+    max_source_bytes=DEFAULT_MAX_SOURCE_BYTES,
+    max_total_source_bytes=DEFAULT_MAX_TOTAL_SOURCE_BYTES,
+    max_source_files=DEFAULT_MAX_SOURCE_FILES,
     max_archive_entries=DEFAULT_MAX_ARCHIVE_ENTRIES,
+    max_cpp_bytes=None,
+    max_total_cpp_bytes=None,
+    max_cpp_files=None,
 ):
     if file_storage is None:
         raise UploadValidationError("No se recibió archivo.")
@@ -156,8 +170,19 @@ def store_and_inspect_zip(
         if total_bytes == 0:
             raise UploadValidationError("El ZIP está vacío.")
 
+        # Los kwargs cpp-only se conservan como aliases y prevalecen cuando
+        # un caller legacy los entrega explícitamente.
+        if max_cpp_bytes is not None:
+            max_source_bytes = max_cpp_bytes
+        if max_total_cpp_bytes is not None:
+            max_total_source_bytes = max_total_cpp_bytes
+        if max_cpp_files is not None:
+            max_source_files = max_cpp_files
+
         sources = []
-        total_cpp_bytes = 0
+        seen_source_names = set()
+        declared_total_source_bytes = 0
+        total_source_bytes = 0
 
         try:
             with zipfile.ZipFile(str(temp_path), "r") as archive:
@@ -187,38 +212,56 @@ def store_and_inspect_zip(
                     if info.is_dir():
                         continue
 
-                    if not normalized_name.lower().endswith(".cpp"):
+                    if not is_supported_source_filename(normalized_name):
                         continue
 
-                    if len(sources) >= max_cpp_files:
+                    source_key = normalized_name.casefold()
+                    if source_key in seen_source_names:
                         raise UploadValidationError(
-                            "El ZIP contiene más de {} archivos .cpp.".format(
-                                max_cpp_files
+                            "El ZIP contiene una fuente C/C++ duplicada: {!r}."
+                            .format(normalized_name)
+                        )
+                    seen_source_names.add(source_key)
+
+                    if len(sources) >= max_source_files:
+                        raise UploadValidationError(
+                            "El ZIP contiene más de {} fuentes C/C++.".format(
+                                max_source_files
                             )
                         )
 
-                    if info.file_size > max_cpp_bytes:
+                    if info.file_size > max_source_bytes:
                         raise UploadValidationError(
                             "{} supera el límite individual de {} bytes.".format(
                                 normalized_name,
-                                max_cpp_bytes,
+                                max_source_bytes,
                             )
                         )
 
-                    total_cpp_bytes += info.file_size
-                    if total_cpp_bytes > max_total_cpp_bytes:
+                    declared_total_source_bytes += info.file_size
+                    if (
+                        declared_total_source_bytes
+                        > max_total_source_bytes
+                    ):
                         raise UploadValidationError(
-                            "Los archivos C++ superan el límite total de {} bytes."
-                            .format(max_total_cpp_bytes)
+                            "Las fuentes C/C++ superan el límite total de {} bytes."
+                            .format(max_total_source_bytes)
                         )
 
                     raw = archive.read(info)
 
-                    if len(raw) > max_cpp_bytes:
+                    if len(raw) > max_source_bytes:
                         raise UploadValidationError(
                             "{} supera el límite individual permitido.".format(
                                 normalized_name
                             )
+                        )
+
+                    total_source_bytes += len(raw)
+                    if total_source_bytes > max_total_source_bytes:
+                        raise UploadValidationError(
+                            "Las fuentes C/C++ superan el límite total de {} bytes."
+                            .format(max_total_source_bytes)
                         )
 
                     try:
@@ -237,7 +280,7 @@ def store_and_inspect_zip(
                         )
 
                     sources.append(
-                        CppSource(
+                        Source(
                             original_filename=normalized_name,
                             content=content,
                             size_bytes=len(raw),
@@ -251,7 +294,7 @@ def store_and_inspect_zip(
 
         if not sources:
             raise UploadValidationError(
-                "El ZIP debe contener al menos un archivo .cpp."
+                "El ZIP debe contener al menos un archivo .c o .cpp."
             )
 
         final_name = "{}.zip".format(uuid.uuid4().hex)

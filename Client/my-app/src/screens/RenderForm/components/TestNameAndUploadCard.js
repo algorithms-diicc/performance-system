@@ -153,22 +153,24 @@ function TestNameAndUploadCard({
                 {!isInspectingZip && (
                   <span>
                     ·{" "}
-                    {t("renderForm.upload.cppFiles", {
-                      count: fileMeta.cppCount,
+                    {t("renderForm.upload.sourceSummary", {
+                      count: fileMeta.sourceCount,
+                      c: fileMeta.cCount,
+                      cpp: fileMeta.cppCount,
                     })}
                   </span>
                 )}
               </div>
               {!isInspectingZip &&
-                fileMeta.cppSample &&
-                fileMeta.cppSample.length > 0 && (
+                fileMeta.sourceSample &&
+                fileMeta.sourceSample.length > 0 && (
                   <div className="file-meta-extra">
                     <span>
                       {t("renderForm.upload.examplesInside")}
                     </span>
                     <span>
-                      {fileMeta.cppSample.join(" · ")}
-                      {fileMeta.cppCount > fileMeta.cppSample.length
+                      {fileMeta.sourceSample.join(" · ")}
+                      {fileMeta.sourceCount > fileMeta.sourceSample.length
                         ? " · …"
                         : ""}
                     </span>

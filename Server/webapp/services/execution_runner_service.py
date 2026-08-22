@@ -57,6 +57,12 @@ def run_single_execution(
     static_dir,
     base_dir,
     opt_cmd="-O3",
+    source_contract_version=None,
+    source_language=None,
+    compiler=None,
+    compiler_flags=None,
+    technical_extension=None,
+    metadata_provenance=None,
     already_claimed=False,
     public_id=None,
     max_wait_seconds=None,
@@ -111,6 +117,17 @@ def run_single_execution(
     else:
         mark_worker_started_func(codename)
 
+    runtime_metadata = {}
+    if source_contract_version is not None:
+        runtime_metadata = {
+            "source_contract_version": source_contract_version,
+            "source_language": source_language,
+            "compiler": compiler,
+            "compiler_flags": compiler_flags,
+            "technical_extension": technical_extension,
+            "metadata_provenance": metadata_provenance,
+        }
+
     try:
         slave_serve_func(
             source_path,
@@ -118,6 +135,7 @@ def run_single_execution(
             opt_cmd,
             input_size,
             samples,
+            **runtime_metadata,
         )
     except Exception as exc:
         message = (

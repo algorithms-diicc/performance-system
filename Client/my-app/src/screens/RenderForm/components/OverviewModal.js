@@ -53,13 +53,18 @@ function OverviewModal({
     executionProfileId && translatedProfile !== translatedProfileKey
       ? translatedProfile
       : executionProfileLabel;
+  const sourceCount = Math.max(
+    0,
+    Number(fileMeta?.sourceCount) || 0
+  );
+  const cCount = Math.max(0, Number(fileMeta?.cCount) || 0);
   const cppCount = Math.max(0, Number(fileMeta?.cppCount) || 0);
-  const cppSample = Array.isArray(fileMeta?.cppSample)
-    ? fileMeta.cppSample.slice(0, 5)
+  const sourceSample = Array.isArray(fileMeta?.sourceSample)
+    ? fileMeta.sourceSample.slice(0, 5)
     : [];
   const additionalSources = Math.max(
     0,
-    cppCount - cppSample.length
+    sourceCount - sourceSample.length
   );
 
   return (
@@ -85,17 +90,19 @@ function OverviewModal({
                   <>
                     <dt>{t("renderForm.overview.implementations")}</dt>
                     <dd>
-                      {t("renderForm.upload.cppFiles", {
-                        count: cppCount,
+                      {t("renderForm.upload.sourceSummary", {
+                        count: sourceCount,
+                        c: cCount,
+                        cpp: cppCount,
                       })}
                     </dd>
 
-                    {cppSample.length > 0 && (
+                    {sourceSample.length > 0 && (
                       <>
                         <dt>{t("renderForm.overview.sources")}</dt>
                         <dd>
                           <ul className="rf-overview-source-list">
-                            {cppSample.map((source) => (
+                            {sourceSample.map((source) => (
                               <li key={source}>{source}</li>
                             ))}
                             {additionalSources > 0 && (

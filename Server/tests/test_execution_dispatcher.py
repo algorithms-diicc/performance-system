@@ -1,5 +1,9 @@
 import unittest
 
+from Server.tests.plotly_test_support import ensure_plotly_importable
+
+ensure_plotly_importable()
+
 from Server import execution_dispatcher as dispatcher
 
 
@@ -109,6 +113,12 @@ class ExecutionDispatcherTests(unittest.TestCase):
             return {
                 "source_path": "/tmp/execA.cpp",
                 "original_filename": "A.cpp",
+                "source_contract_version": None,
+                "source_language": "C++",
+                "compiler": "g++",
+                "compiler_flags": "-O2",
+                "technical_extension": ".cpp",
+                "metadata_provenance": "inferred_legacy_cpp",
             }
 
         def runner(**kwargs):
@@ -153,10 +163,55 @@ class ExecutionDispatcherTests(unittest.TestCase):
             runner_args["opt_cmd"],
             "-O2",
         )
+        self.assertIsNone(runner_args["source_contract_version"])
+        self.assertEqual(runner_args["source_language"], "C++")
+        self.assertEqual(runner_args["compiler"], "g++")
+        self.assertEqual(runner_args["technical_extension"], ".cpp")
         self.assertEqual(
             runner_args["codename"],
             "execA",
         )
+
+    def test_v2_c_runtime_metadata_is_forwarded_as_a_closed_tuple(self):
+        execution = execution_row()
+        execution["execution_config"] = {
+            "source_contract_version": 2,
+            "source_language": "C",
+            "compiler": "gcc",
+            "compiler_flags": "-O3",
+            "original_filename": "A.c",
+            "source_index": 0,
+        }
+        runner_calls = []
+
+        def materialize(*args, **kwargs):
+            return {
+                "source_path": "/tmp/execA.c",
+                "original_filename": "A.c",
+                "source_contract_version": 2,
+                "source_language": "C",
+                "compiler": "gcc",
+                "compiler_flags": "-O3",
+                "technical_extension": ".c",
+                "metadata_provenance": "explicit",
+            }
+
+        result = dispatcher.run_dispatch_cycle(
+            claim_func=lambda: dict(execution),
+            submission_repo=FakeSubmissionRepository(),
+            materialize_func=materialize,
+            runner_func=lambda **kwargs: (
+                runner_calls.append(kwargs)
+                or {"execution_state": "COMPLETED"}
+            ),
+            sync_func=lambda _submission_id: {"updated": True},
+        )
+
+        self.assertEqual(result["state"], "COMPLETED")
+        self.assertEqual(runner_calls[0]["source_language"], "C")
+        self.assertEqual(runner_calls[0]["compiler"], "gcc")
+        self.assertEqual(runner_calls[0]["compiler_flags"], "-O3")
+        self.assertEqual(runner_calls[0]["technical_extension"], ".c")
 
     def test_dispatch_failure_marks_execution_and_syncs_submission(self):
         execution = execution_row()
@@ -211,6 +266,12 @@ class ExecutionDispatcherTests(unittest.TestCase):
             return {
                 "source_path": "/tmp/execA.cpp",
                 "original_filename": "A.cpp",
+                "source_contract_version": None,
+                "source_language": "C++",
+                "compiler": "g++",
+                "compiler_flags": "-O2",
+                "technical_extension": ".cpp",
+                "metadata_provenance": "inferred_legacy_cpp",
             }
 
         def runner(**kwargs):

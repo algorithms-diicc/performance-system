@@ -1,8 +1,8 @@
 """Contrato cerrado de identidad de fuentes C/C++ para E-C01.
 
-Este módulo no depende de Flask ni de la base de datos. 8B mantiene el upload
-público limitado a C++, pero deja disponible el contrato v2 para persistencia,
-reconstrucción y procedencia. Las extensiones se interpretan con ``casefold``;
+Este módulo no depende de Flask ni de la base de datos. 8B dejó disponible el
+contrato v2 y 8C lo activa para C/C++ en persistencia, runtime, reconstrucción
+y procedencia. Las extensiones se interpretan con ``casefold``;
 por decisión de E-C01, ``.C`` representa C y se materializa técnicamente como
 ``.c`` en lugar de conservar la semántica especial que algunos compiladores
 aplican a un nombre POSIX terminado en ``.C``.
@@ -147,6 +147,36 @@ def validate_v2_source_metadata(config, filename=None):
             "Source extension, language, compiler and flags must match."
         )
     return expected
+
+
+def validate_runtime_source_metadata(
+    *,
+    source_contract_version,
+    source_language,
+    compiler,
+    compiler_flags,
+    technical_extension,
+):
+    """Valida la tupla transportada entre Master y Slave.
+
+    La extensión técnica no proviene de un nombre controlado por el cliente:
+    debe ser exactamente la forma canónica ``.c`` o ``.cpp``. El resto de la
+    tupla se contrasta con la misma regla cerrada usada al persistir v2.
+    """
+    if technical_extension not in _IDENTITY_BY_EXTENSION:
+        raise SourceContractError(
+            "Runtime source extension must be canonical .c or .cpp."
+        )
+
+    return validate_v2_source_metadata(
+        {
+            "source_contract_version": source_contract_version,
+            "source_language": source_language,
+            "compiler": compiler,
+            "compiler_flags": compiler_flags,
+        },
+        filename="source{}".format(technical_extension),
+    )
 
 
 def infer_legacy_cpp_metadata(config, filename=None):

@@ -93,7 +93,7 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         with self.assertRaises(InvalidExecutionRequest):
             validate_source_specs([])
 
-    def test_non_cpp_source_is_rejected(self):
+    def test_unsupported_source_is_rejected(self):
         with self.assertRaises(InvalidExecutionRequest):
             validate_source_specs([{"original_filename": "x.py"}])
 
@@ -185,6 +185,37 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         self.assertEqual(bundle["submission"]["language"], "C++")
         self.assertIsNone(srepo.calls[0]["original_filename"])
         self.assertIsNone(srepo.calls[0]["note"])
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
+    def test_c_submission_derives_language_and_gcc_metadata(
+        self,
+        _resolve_course,
+    ):
+        srepo = FakeSubmissionRepository()
+        erepo = FakeExecutionRepository()
+
+        bundle = create_submission_bundle(
+            user_id=5,
+            title="C upload",
+            archive_path="/srv/uploads/a.zip",
+            archive_sha256=self.SHA,
+            benchmark="SIZE",
+            input_size=500,
+            samples=10,
+            source_specs=[{"original_filename": "src/main.c"}],
+            submission_repo=srepo,
+            execution_repo=erepo,
+            conn=object(),
+        )
+
+        self.assertEqual(bundle["submission"]["language"], "C")
+        config = erepo.calls[0]["execution_config"]
+        self.assertEqual(config["source_language"], "C")
+        self.assertEqual(config["compiler"], "gcc")
+        self.assertEqual(config["compiler_flags"], "-O3")
 
     @patch(
         "Server.webapp.services.execution_creation_service.resolve_submission_course",
@@ -355,51 +386,59 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         "Server.webapp.services.execution_creation_service.resolve_submission_course",
         return_value=None,
     )
-    def test_cpp_v2_index_uses_combined_archive_order_without_creating_c(
+    def test_mixed_v2_index_uses_exact_interleaved_archive_order(
         self,
         _resolve_course,
     ):
         with tempfile.TemporaryDirectory() as temp_dir:
             archive_path = Path(temp_dir) / "mixed.zip"
             with zipfile.ZipFile(str(archive_path), "w") as archive:
-                archive.writestr("helper.c", "int helper(void){return 1;}")
-                archive.writestr("target.cpp", "int main(){return 0;}")
-                archive.writestr("other.cpp", "int other(){return 2;}")
+                archive.writestr("a.cpp", "cpp-a")
+                archive.writestr("b.c", "c-b")
+                archive.writestr("c.cpp", "cpp-c")
+                archive.writestr("d.c", "c-d")
             archive_sha256 = hashlib.sha256(
                 archive_path.read_bytes()
             ).hexdigest()
             erepo = FakeExecutionRepository()
 
-            create_submission_bundle(
+            bundle = create_submission_bundle(
                 user_id=5,
-                title="Mixed archive with C ignored publicly",
+                title="Mixed archive",
                 archive_path=str(archive_path),
                 archive_sha256=archive_sha256,
                 benchmark="LCS",
                 input_size=500,
                 samples=30,
                 source_specs=[
-                    {"original_filename": "target.cpp"},
-                    {"original_filename": "other.cpp"},
+                    {"original_filename": "a.cpp"},
+                    {"original_filename": "b.c"},
+                    {"original_filename": "c.cpp"},
+                    {"original_filename": "d.c"},
                 ],
                 submission_repo=FakeSubmissionRepository(),
                 execution_repo=erepo,
                 conn=object(),
             )
 
-        self.assertEqual(len(erepo.calls), 2)
+        self.assertEqual(bundle["submission"]["language"], "C/C++")
+        self.assertEqual(len(erepo.calls), 4)
         self.assertEqual(
             [
                 call["execution_config"]["source_index"]
                 for call in erepo.calls
             ],
-            [1, 2],
+            [0, 1, 2, 3],
         )
-        self.assertTrue(
-            all(
-                call["execution_config"]["source_language"] == "C++"
+        self.assertEqual(
+            [
+                (
+                    call["execution_config"]["source_language"],
+                    call["execution_config"]["compiler"],
+                )
                 for call in erepo.calls
-            )
+            ],
+            [("C++", "g++"), ("C", "gcc"), ("C++", "g++"), ("C", "gcc")],
         )
 
     @patch(

@@ -316,7 +316,7 @@ const es = {
       testNameLabel: "Nombre del test",
       testNamePlaceholder: "Ej: LCS optimizado, CAMM bloqueado, etc.",
       testNameHelp:
-        "Este nombre identifica el Experimento. Un ZIP puede contener varias implementaciones y cada archivo .cpp genera su propia ejecución.",
+        "Este nombre identifica el Experimento. Cada archivo .c o .cpp del ZIP genera una ejecución independiente.",
       noteLabel: "Nota personal",
       optional: "(opcional)",
       notePrivate: "Solo tú podrás ver esta nota.",
@@ -326,11 +326,15 @@ const es = {
       dropTitle: "Arrastra y suelta el .zip aquí",
       dropHint: "o haz clic para seleccionar un archivo desde tu equipo.",
       maxHint:
-        "Máx recomendado: {{max}} MB. El .zip debe contener al menos un archivo .cpp.",
+        "Máx recomendado: {{max}} MB. El ZIP debe contener al menos un archivo .c o .cpp.",
       inspecting: "Analizando contenido…",
       cppFiles: {
         one: "{{count}} archivo .cpp",
         other: "{{count}} archivos .cpp",
+      },
+      sourceSummary: {
+        one: "{{count}} fuente · {{c}} C · {{cpp}} C++",
+        other: "{{count}} fuentes · {{c}} C · {{cpp}} C++",
       },
       examplesInside: "Ejemplos dentro del .zip:",
     },
@@ -476,7 +480,7 @@ const es = {
       unnamed: "(sin nombre)",
       file: "Archivo",
       noFile: "Ningún archivo seleccionado",
-      implementations: "Implementaciones / Fuentes .cpp",
+      implementations: "Implementaciones / Fuentes C/C++",
       sources: "Fuentes incluidas",
       moreSources: {
         one: "+{{count}} más",
@@ -507,6 +511,8 @@ const es = {
           "El tamaño máximo recomendado es de {{max}} MB. El archivo actual pesa {{size}}.",
         noCpp:
           "El .zip no contiene archivos .cpp. Revisa el contenido antes de volver a subirlo.",
+        noSource:
+          "El ZIP debe contener al menos un archivo .c o .cpp.",
         unreadable:
           "No se pudo leer el contenido del .zip. Inténtalo nuevamente o con otro archivo.",
       },
@@ -531,7 +537,7 @@ const es = {
         requirements: {
           zipRequired: "Selecciona un archivo ZIP.",
           zipInspecting: "Espera mientras se valida el archivo ZIP.",
-          zipInvalid: "Selecciona un archivo ZIP válido que contenga al menos un .cpp.",
+          zipInvalid: "Selecciona un archivo ZIP válido que contenga al menos un archivo .c o .cpp.",
           benchmarkRequired: "Elige un benchmark.",
           inputSizeInvalid: "Ingresa un tamaño máximo de entrada válido.",
           samplesInvalid:

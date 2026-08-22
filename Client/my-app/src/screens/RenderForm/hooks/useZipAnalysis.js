@@ -66,13 +66,19 @@ function useZipAnalysis() {
         const arrayBuffer = await zipFile.arrayBuffer();
         const zip = await JSZip.loadAsync(arrayBuffer);
 
+        const sourceFiles = [];
+        const cFiles = [];
         const cppFiles = [];
         zip.forEach((relativePath, entry) => {
-          if (
-            !entry.dir &&
-            relativePath.toLowerCase().endsWith(".cpp")
-          ) {
+          if (entry.dir) return;
+
+          const normalizedPath = relativePath.toLowerCase();
+          if (normalizedPath.endsWith(".cpp")) {
+            sourceFiles.push(relativePath);
             cppFiles.push(relativePath);
+          } else if (normalizedPath.endsWith(".c")) {
+            sourceFiles.push(relativePath);
+            cFiles.push(relativePath);
           }
         });
 
@@ -80,13 +86,17 @@ function useZipAnalysis() {
           name: zipFile.name,
           sizeBytes: zipFile.size,
           sizeLabel: formatBytes(zipFile.size),
+          sourceCount: sourceFiles.length,
+          cCount: cFiles.length,
           cppCount: cppFiles.length,
+          sourceSample: sourceFiles.slice(0, 5),
+          // Alias de lectura para componentes/callers previos a 8C.
           cppSample: cppFiles.slice(0, 5),
         });
 
-        if (cppFiles.length === 0) {
+        if (sourceFiles.length === 0) {
           setFileErrorState({
-            key: "renderForm.workflow.zip.noCpp",
+            key: "renderForm.workflow.zip.noSource",
             params: {},
           });
         }

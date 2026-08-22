@@ -170,6 +170,27 @@ class SystemStatusRepositoryTests(unittest.TestCase):
         self.assertNotIn("SELECT e.hardware_snapshot,", normalized)
         self.assertNotIn("AS hardware_snapshot", normalized)
 
+    def test_schema_1_0_snapshot_with_additive_toolchain_remains_compatible(self):
+        snapshot = {
+            "schema_version": "1.0",
+            "node": {},
+            "measurement": {},
+            "energy": {},
+            "toolchain": {
+                "compiler": {
+                    "family": "GNU",
+                    "name": "gcc",
+                    "version": "gcc test",
+                }
+            },
+        }
+        normalized = " ".join(repository.SYSTEM_STATUS_SQL.split())
+
+        self.assertEqual(snapshot["schema_version"], "1.0")
+        self.assertNotIn("jsonb_object_keys", normalized)
+        self.assertNotIn("'{toolchain", normalized)
+        self.assertIn("->> 'schema_version' = '1.0'", normalized)
+
     def test_lock_sql_matches_database_objsubid_and_signed_bigint_halves(self):
         normalized = " ".join(repository.PROCESS_LOCKS_SQL.split())
 

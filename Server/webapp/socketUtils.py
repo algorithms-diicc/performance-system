@@ -25,6 +25,13 @@ import os
 import shutil
 from datetime import datetime
 
+from ..source_contract import (
+    CANONICAL_COMPILER_FLAGS,
+    METADATA_PROVENANCE_EXPLICIT,
+    SourceContractError,
+    validate_runtime_source_metadata,
+)
+
 
 # ============================================================
 # CONFIGURACIÓN DE RUTAS
@@ -597,12 +604,74 @@ def _load_measurement_snapshot(codename):
         return {}
 
 
+def build_execution_payload(
+    *,
+    name,
+    code,
+    input_size,
+    samples,
+    measurement=None,
+    source_contract_version=None,
+    source_language=None,
+    compiler=None,
+    compiler_flags=None,
+    technical_extension=None,
+    metadata_provenance=None,
+):
+    """Construye v1 legacy o v2 desde metadata cerrada del servidor."""
+    payload = {
+        "payload_version": 1,
+        "name": name,
+        "cmd": CANONICAL_COMPILER_FLAGS,
+        "code": code,
+        "input_size": input_size,
+        "samples": samples,
+        "measurement": (
+            measurement if isinstance(measurement, dict) else {}
+        ),
+    }
+
+    if source_contract_version is None:
+        return payload
+
+    if metadata_provenance != METADATA_PROVENANCE_EXPLICIT:
+        raise SourceContractError(
+            "Runtime v2 metadata must have explicit provenance."
+        )
+
+    metadata = validate_runtime_source_metadata(
+        source_contract_version=source_contract_version,
+        source_language=source_language,
+        compiler=compiler,
+        compiler_flags=compiler_flags,
+        technical_extension=technical_extension,
+    )
+    payload.update(
+        {
+            "payload_version": 2,
+            "cmd": metadata.compiler_flags,
+            "source_language": metadata.source_language,
+            "source_extension": metadata.technical_extension,
+            "compiler": metadata.compiler,
+            "compiler_flags": metadata.compiler_flags,
+        }
+    )
+    return payload
+
+
 def slave_serve(
     file_dir,
     name,
     cmd,
     input_size,
     samples,
+    *,
+    source_contract_version=None,
+    source_language=None,
+    compiler=None,
+    compiler_flags=None,
+    technical_extension=None,
+    metadata_provenance=None,
 ):
     """
     Crea los sockets utilizados para comunicarse
@@ -791,14 +860,19 @@ def slave_serve(
         # Construir payload
         # ----------------------------------------------------
 
-        payload = {
-            "name": name,
-            "cmd": cmd,
-            "code": code,
-            "input_size": input_size,
-            "samples": samples,
-            "measurement": measurement,
-        }
+        payload = build_execution_payload(
+            name=name,
+            code=code,
+            input_size=input_size,
+            samples=samples,
+            measurement=measurement,
+            source_contract_version=source_contract_version,
+            source_language=source_language,
+            compiler=compiler,
+            compiler_flags=compiler_flags,
+            technical_extension=technical_extension,
+            metadata_provenance=metadata_provenance,
+        )
 
         escribir_estado(
             name,
@@ -822,11 +896,16 @@ def slave_serve(
         print(
             json.dumps(
                 {
+                    "payload_version": payload["payload_version"],
                     "name": name,
-                    "cmd": cmd,
+                    "cmd": payload["cmd"],
                     "input_size": input_size,
                     "samples": samples,
                     "measurement": measurement,
+                    "source_language": payload.get("source_language"),
+                    "source_extension": payload.get("source_extension"),
+                    "compiler": payload.get("compiler"),
+                    "compiler_flags": payload.get("compiler_flags"),
                     "code_size": len(code),
                 },
                 indent=2,

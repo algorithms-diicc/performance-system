@@ -280,16 +280,13 @@ forbidden_parts = (
     "migration",
     ".env",
     "README.md",
-    "execution_dispatcher.py",
     "recovery_watchdog.py",
-    "slave.py",
-    "hardware_snapshot.py",
     "perf/",
     "Comparison",
     "Tutorial",
 )
 check(
-    "Working tree no toca schema/config/procesos/perf/Comparison/Tutorial",
+    "8C no toca schema/config/watchdog/perf/Comparison/Tutorial",
     not any(
         forbidden.casefold() in path.casefold()
         for path in changed_paths

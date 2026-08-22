@@ -42,8 +42,10 @@ describe("RenderForm shell i18n", () => {
           fileMeta={{
             name: "code.zip",
             sizeLabel: "1 MB",
-            cppCount: 2,
-            cppSample: ["a.cpp", "b.cpp"],
+            sourceCount: 2,
+            cCount: 1,
+            cppCount: 1,
+            sourceSample: ["a.c", "b.cpp"],
           }}
           fileError=""
           isDraggingFile={false}
@@ -73,7 +75,7 @@ describe("RenderForm shell i18n", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(/2 \.cpp files/)
+      screen.getByText(/2 sources · 1 C · 1 C\+\+/)
     ).toBeInTheDocument();
 
     expect(

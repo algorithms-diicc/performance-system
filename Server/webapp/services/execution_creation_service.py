@@ -4,7 +4,7 @@ CORE-04B-1 — Creación persistente de Submission + Executions.
 Responsabilidad:
 - validar la configuración mínima de creación;
 - crear UNA submission por upload;
-- crear UNA execution por archivo .cpp;
+- crear UNA execution por fuente .c/.cpp;
 - hacerlo en una única transacción;
 - devolver public_id/codename antes de que el trabajo sea encolado.
 
@@ -21,6 +21,7 @@ from psycopg2.extras import RealDictCursor
 
 from ...source_contract import (
     CANONICAL_COMPILER_FLAGS,
+    LANGUAGE_C,
     LANGUAGE_CPP,
     SOURCE_CONTRACT_VERSION,
     SourceContractError,
@@ -279,7 +280,7 @@ def make_codename(benchmark):
 def validate_source_specs(source_specs):
     if not isinstance(source_specs, (list, tuple)) or not source_specs:
         raise InvalidExecutionRequest(
-            "At least one C++ source is required."
+            "At least one C/C++ source is required."
         )
 
     normalized = []
@@ -321,11 +322,9 @@ def validate_source_specs(source_specs):
             source_metadata = infer_v2_source_metadata(original_filename)
         except SourceContractError:
             raise InvalidExecutionRequest(
-                "{} is not a .cpp source.".format(original_filename)
-            )
-        if source_metadata.source_language != LANGUAGE_CPP:
-            raise InvalidExecutionRequest(
-                "{} is not a .cpp source.".format(original_filename)
+                "{} is not a supported .c/.cpp source.".format(
+                    original_filename
+                )
             )
 
         # La ruta dentro del ZIP puede repetirse sólo si el ZIP fuese inválido;
@@ -333,7 +332,9 @@ def validate_source_specs(source_specs):
         key = original_filename.casefold()
         if key in seen_names:
             raise InvalidExecutionRequest(
-                "Duplicated C++ source name: {}.".format(original_filename)
+                "Duplicated C/C++ source name: {}.".format(
+                    original_filename
+                )
             )
         seen_names.add(key)
 
@@ -346,6 +347,23 @@ def validate_source_specs(source_specs):
         )
 
     return normalized
+
+
+def derive_submission_language(source_specs):
+    """Deriva el agregado visible sin intervenir en la selección runtime."""
+    languages = {
+        spec.get("source_language")
+        for spec in source_specs
+    }
+    if languages == {LANGUAGE_C}:
+        return LANGUAGE_C
+    if languages == {LANGUAGE_CPP}:
+        return LANGUAGE_CPP
+    if languages == {LANGUAGE_C, LANGUAGE_CPP}:
+        return "C/C++"
+    raise InvalidExecutionRequest(
+        "Source languages do not match the closed C/C++ contract."
+    )
 
 
 def _sha256_file(path):
@@ -443,7 +461,7 @@ def create_submission_bundle(
     original_filename=None,
     note=None,
     compiler_flags="-O3",
-    language="C++",
+    language=None,
     conn=None,
     submission_repo=submission_repository,
     execution_repo=execution_repository,
@@ -487,13 +505,17 @@ def create_submission_bundle(
     samples = _positive_int(samples, "samples")
     validate_execution_limits(benchmark, input_size, samples)
     source_specs = validate_source_specs(source_specs)
-    if str(language or "").strip() != LANGUAGE_CPP:
+    submission_language = derive_submission_language(source_specs)
+    if (
+        language not in (None, "")
+        and str(language).strip() != submission_language
+    ):
         raise InvalidExecutionRequest(
-            "8B only accepts the canonical C++ submission language."
+            "Submission language must match the derived C/C++ aggregate."
         )
     if str(compiler_flags or "").strip() != CANONICAL_COMPILER_FLAGS:
         raise InvalidExecutionRequest(
-            "8B only accepts the canonical -O3 compiler flags."
+            "Only the canonical -O3 compiler flags are accepted."
         )
     source_specs = _resolve_v2_source_indices(
         source_specs,
@@ -519,7 +541,7 @@ def create_submission_bundle(
         submission = submission_repo.create_submission(
             user_id=user_id,
             title=clean_title,
-            language=LANGUAGE_CPP,
+            language=submission_language,
             file_path=archive_path,
             original_filename=original_filename,
             code_hash=archive_sha256,

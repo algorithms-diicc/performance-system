@@ -17,6 +17,7 @@ from Server.webapp.services.execution_creation_service import (
 # tests. Se aíslan esos módulos legacy para no convertir Plotly en una
 # dependencia accidental de una prueba dirigida del contrato HTTP.
 data_processing_stub = ModuleType("Server.webapp.dataProcessing")
+data_processing_stub.graph_results = lambda *_args, **_kwargs: None
 socket_utils_stub = ModuleType("Server.webapp.socketUtils")
 socket_utils_stub.escribir_estado = lambda *_args, **_kwargs: None
 
@@ -68,16 +69,20 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
         auth_patch.start()
         self.addCleanup(auth_patch.stop)
 
-    def _post_sendcode(self, note=MISSING):
+    def _post_sendcode(self, note=MISSING, sources=None):
+        source_entries = sources or [
+            ("src/main.cpp", "int main() { return 0; }\n")
+        ]
         stored_upload = SimpleNamespace(
             stored_path=os.path.join(self.upload_dir, "internal.zip"),
             sha256="a" * 64,
             original_filename="algoritmos.zip",
             sources=[
                 SimpleNamespace(
-                    original_filename="src/main.cpp",
-                    content="int main() { return 0; }\n",
+                    original_filename=filename,
+                    content=content,
                 )
+                for filename, content in source_entries
             ],
         )
         observed_normalized_notes = []
@@ -90,10 +95,15 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
                 "submission": {"id": 81, "status": "QUEUED"},
                 "executions": [
                     {
-                        "public_id": "00000000-0000-0000-0000-000000000081",
-                        "codename": "onboardingLCS",
+                        "public_id": (
+                            "00000000-0000-0000-0000-{:012d}".format(
+                                81 + index
+                            )
+                        ),
+                        "codename": "onboarding{}LCS".format(index),
                         "execution_state": "QUEUED",
                     }
+                    for index, _source in enumerate(source_entries)
                 ],
             }
 
@@ -186,7 +196,9 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
         result["create"].assert_called_once()
         self.assertIsNone(result["create"].call_args.kwargs["note"])
         self.assertEqual(result["normalized_notes"], [None])
-        self.assertEqual(len(result["queue"]), 1)
+        # PostgreSQL/dispatcher es la cola productiva; /sendcode no repuebla
+        # el contenedor legacy en memoria.
+        self.assertEqual(result["queue"], [])
         result["update_status"].assert_not_called()
 
     def test_valid_note_reaches_creation_and_existing_normalizer(self):
@@ -234,6 +246,40 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
             [{"original_filename": "src/main.cpp"}],
         )
         result["create"].assert_called_once()
+
+    def test_mixed_upload_uses_canonical_response_and_technical_extensions(self):
+        result = self._post_sendcode(
+            sources=[
+                ("baseline.c", "int main(void) { return 0; }\n"),
+                ("optimized.cpp", "int main() { return 0; }\n"),
+            ]
+        )
+
+        self.assertEqual(result["response"].status_code, 202)
+        payload = result["response"].get_json()
+        self.assertEqual(
+            payload["source_files_queued"],
+            ["onboarding0LCS", "onboarding1LCS"],
+        )
+        self.assertEqual(payload["c_files_queued"], ["onboarding0LCS"])
+        self.assertEqual(payload["cpp_files_queued"], ["onboarding1LCS"])
+        self.assertEqual(
+            [item["sourceLanguage"] for item in payload["executions"]],
+            ["C", "C++"],
+        )
+        self.assertEqual(
+            [item["compiler"] for item in payload["executions"]],
+            ["gcc", "g++"],
+        )
+        self.assertTrue(
+            os.path.isfile(os.path.join(self.test_dir, "onboarding0LCS.c"))
+        )
+        self.assertTrue(
+            os.path.isfile(os.path.join(self.test_dir, "onboarding1LCS.cpp"))
+        )
+        kwargs = result["create"].call_args.kwargs
+        self.assertNotIn("language", kwargs)
+        self.assertNotIn("compiler_flags", kwargs)
 
 
 if __name__ == "__main__":
