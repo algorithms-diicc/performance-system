@@ -515,6 +515,21 @@ function ExecutionDetailModal({
                   <div>
                     <span>
                       {t(
+                        "teacherStudentDetail.modal.summary.source"
+                      )}
+                    </span>
+                    <strong>
+                      {detail.originalFilename ||
+                        detail.codename ||
+                        t(
+                          "teacherStudentDetail.executions.sourceFallback"
+                        )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      {t(
                         "teacherStudentDetail.modal.summary.submission"
                       )}
                     </span>
@@ -697,8 +712,8 @@ function ExecutionDetailModal({
                           )}
                         </dt>
                         <dd>
-                          {node.cpu_model ||
-                            detail.hardwareProfile ||
+                          {detail.hardwareProfile ||
+                            node.cpu_model ||
                             t(
                               "teacherStudentDetail.common.unavailable"
                             )}
@@ -1655,6 +1670,9 @@ export default function TeacherStudentDetail() {
                               {t("teacherStudentDetail.executions.table.execution")}
                             </th>
                             <th>
+                              {t("teacherStudentDetail.executions.table.source")}
+                            </th>
+                            <th>
                               {t("teacherStudentDetail.executions.table.submission")}
                             </th>
                             <th>
@@ -1696,10 +1714,20 @@ export default function TeacherStudentDetail() {
                                     <strong>
                                       #{execution.executionId}
                                     </strong>
-                                    <small>
-                                      {execution.codename ||
-                                        t("teacherStudentDetail.executions.noCodename")}
-                                    </small>
+                                  </td>
+
+                                  <td>
+                                    <div className="teacher-execution-source">
+                                      <strong>
+                                        {execution.originalFilename ||
+                                          execution.codename ||
+                                          t("teacherStudentDetail.executions.sourceFallback")}
+                                      </strong>
+                                      {execution.codename &&
+                                        execution.codename !== execution.originalFilename && (
+                                          <small>{execution.codename}</small>
+                                        )}
+                                    </div>
                                   </td>
 
                                   <td>
@@ -1749,7 +1777,7 @@ export default function TeacherStudentDetail() {
 
                                   <td>
                                     {execution.hardwareProfile ||
-                                      "—"}
+                                      t("teacherStudentDetail.common.unavailable")}
                                   </td>
 
                                   <td>

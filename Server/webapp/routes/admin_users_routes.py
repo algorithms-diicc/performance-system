@@ -737,6 +737,8 @@ def get_admin_user_executions(user_id: int):
               e.id AS execution_id,
               e.public_id::text AS public_id,
               e.codename,
+              e.execution_config ->> 'original_filename'
+                AS original_filename,
               e.submission_id,
               e.execution_state,
               e.failure_stage,
@@ -747,6 +749,7 @@ def get_admin_user_executions(user_id: int):
               e.finished_at,
               e.duration_ms,
               e.result_available,
+              e.hardware_snapshot,
               s.title AS submission_title,
               hp.name AS hardware_name
             """ + base_sql + """
@@ -1113,6 +1116,8 @@ def get_admin_execution_detail(execution_id: int):
                   e.id AS execution_id,
                   e.public_id::text AS public_id,
                   e.codename,
+                  e.execution_config ->> 'original_filename'
+                    AS original_filename,
                   e.submission_id,
                   e.execution_state,
                   e.failure_stage,
@@ -1169,9 +1174,6 @@ def get_admin_execution_detail(execution_id: int):
                     "hardware_snapshot"
                 )
                 or {},
-                "hardwareProfile": row.get(
-                    "hardware_name"
-                ),
                 "queuedAt": (
                     row["queued_at"].isoformat()
                     if row.get("queued_at")

@@ -64,6 +64,30 @@ def _duration_ms(row):
     return int(value) if value is not None else None
 
 
+def _clean_text(value):
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _hardware_label(row):
+    profile_name = _clean_text(row.get("hardware_name"))
+    if profile_name:
+        return profile_name
+
+    snapshot = row.get("hardware_snapshot") or {}
+    if not isinstance(snapshot, dict):
+        return None
+
+    node = snapshot.get("node") or {}
+    if not isinstance(node, dict):
+        return None
+
+    return _clean_text(node.get("cpu_model"))
+
+
 def serialize_execution_history_row(row):
     """
     Contrato de historial para una execution.
@@ -79,8 +103,8 @@ def serialize_execution_history_row(row):
         "publicId": row.get("public_id"),
         "codename": row.get("codename"),
         "originalFilename": (
-            row.get("original_filename")
-            or row.get("codename")
+            _clean_text(row.get("original_filename"))
+            or _clean_text(row.get("codename"))
         ),
         "submissionId": row.get("submission_id"),
         "submissionTitle": row.get("submission_title"),
@@ -94,7 +118,7 @@ def serialize_execution_history_row(row):
         "processingAt": _iso(row.get("processing_at")),
         "finishedAt": _iso(row.get("finished_at")),
         "durationMs": _duration_ms(row),
-        "hardwareProfile": row.get("hardware_name"),
+        "hardwareProfile": _hardware_label(row),
         "resultAvailable": bool(row.get("result_available")),
         "failure": build_failure_payload(row),
     }

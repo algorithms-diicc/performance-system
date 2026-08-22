@@ -146,7 +146,7 @@ const es = {
     filtersHint: "Los filtros se aplican sobre todo tu historial, antes de paginar los resultados.",
     clearFilters: "Limpiar filtros",
     search: "Buscar",
-    searchHint: "Título, archivo ZIP o fuente C/C++",
+    searchHint: "Título, archivo ZIP o fuente C++ / .cpp",
     searchPlaceholder: "Ej. ordenamiento, sorting.zip, merge.cpp",
     status: "Estado",
     filterByStatus: "Filtrar por estado",
@@ -243,10 +243,10 @@ const es = {
     activity: "Actividad",
     usageSummary: "Resumen de uso",
     usageDescription:
-      "Las cifras se calculan desde tus submissions y ejecuciones persistidas.",
+      "Las cifras se calculan desde tus experimentos y ejecuciones persistidas.",
     metrics: {
-      submissions: "Envíos",
-      submissionsHint: "Envíos registrados",
+      submissions: "Experimentos",
+      submissionsHint: "Experimentos registrados",
       executions: "Ejecuciones",
       executionsHint: "Ejecuciones totales",
       completed: "Completadas",
@@ -453,13 +453,13 @@ const es = {
       professor: "Profesor: {{name}}",
       professorUnavailable: "Profesor no disponible",
       automaticAssociation:
-        "Esta entrega quedará asociada automáticamente a tu único curso activo.",
+        "Este experimento quedará asociado automáticamente a tu único curso activo.",
       selectCourse: "Selecciona el curso",
       required: "Obligatorio",
-      deliveryCourse: "Curso de esta entrega",
+      deliveryCourse: "Curso de este experimento",
       selectPlaceholder: "Selecciona un curso…",
       multipleCoursesHelp:
-        "Tienes más de un curso activo. Elegirlo evita mezclar entregas de ramos o semestres distintos.",
+        "Tienes más de un curso activo. Elegirlo evita mezclar experimentos de ramos o semestres distintos.",
     },
     overview: {
       title: "Revisar experimento",
@@ -813,7 +813,7 @@ const es = {
         "Revisa tu sesión o vuelve a intentar la consulta.",
       notFoundTitle: "Experimento no disponible",
       notFoundDescription:
-        "No se encontró información para esta Submission.",
+        "No se encontró información para este experimento.",
       emptyTitle: "Sin ejecuciones",
       emptyDescription:
         "Este experimento todavía no registra implementaciones ejecutables.",
@@ -2265,7 +2265,7 @@ const es = {
     },
     kpis: {
       activeStudents: "Estudiantes activos",
-      submissions: "Envíos",
+      submissions: "Experimentos",
       executions: "Ejecuciones",
       completionRate: "Tasa de finalización",
     },
@@ -2391,7 +2391,7 @@ const es = {
     },
     metrics: {
       students: "Estudiantes",
-      submissions: "Envíos",
+      submissions: "Experimentos",
       executions: "Ejecuciones",
     },
     summary: {
@@ -2571,7 +2571,7 @@ const es = {
       table: {
         student: "Estudiante",
         status: "Estado",
-        submissions: "Envíos",
+        submissions: "Experimentos",
         executions: "Ejec.",
         completed: "OK",
         failed: "Fallidas",
@@ -2665,7 +2665,7 @@ const es = {
         "Último acceso",
     },
     summary: {
-      submissions: "Envíos",
+      submissions: "Experimentos",
       executions: "Ejecuciones",
       completed: "Completadas",
       failed: "Fallidas",
@@ -2673,7 +2673,7 @@ const es = {
     },
     tabs: {
       executions: "Ejecuciones",
-      submissions: "Envíos",
+      submissions: "Experimentos",
     },
     states: {
       queued: "En cola",
@@ -2695,7 +2695,7 @@ const es = {
       searchLabel:
         "Buscar ejecución",
       searchPlaceholder:
-        "Título de la entrega",
+        "Título del experimento",
       statusLabel: "Estado",
       statusAll: "Todos",
       loading:
@@ -2712,7 +2712,8 @@ const es = {
       },
       table: {
         execution: "Ejecución",
-        submission: "Envío",
+        source: "Fuente",
+        submission: "Experimento",
         state: "Estado",
         duration: "Duración",
         hardware: "Hardware",
@@ -2720,8 +2721,10 @@ const es = {
         detail: "Detalle",
       },
       noCodename: "Sin codename",
+      sourceFallback:
+        "Fuente no disponible",
       submissionFallback:
-        "Envío #{{id}}",
+        "Experimento #{{id}}",
     },
 
     modal: {
@@ -2738,7 +2741,8 @@ const es = {
           "No fue posible cargar el detalle.",
       },
       summary: {
-        submission: "Envío",
+        source: "Fuente",
+        submission: "Experimento",
         benchmark: "Benchmark",
         state: "Estado",
         duration: "Duración",
@@ -2778,22 +2782,22 @@ const es = {
     },
     submissions: {
       searchLabel:
-        "Buscar envío",
+        "Buscar experimento",
       searchPlaceholder:
-        "Título de la entrega",
-      loading: "Cargando envíos",
+        "Título del experimento",
+      loading: "Cargando experimentos",
       emptyTitle:
-        "Sin envíos en este curso",
+        "Sin experimentos en este curso",
       emptyDescription:
-        "Este estudiante todavía no tiene envíos asociados a esta instancia académica.",
+        "Este estudiante todavía no tiene experimentos asociados a esta instancia académica.",
       errors: {
         title:
-          "No pudimos cargar los envíos",
+          "No pudimos cargar los experimentos",
         load:
-          "No fue posible cargar los envíos.",
+          "No fue posible cargar los experimentos.",
       },
       table: {
-        submission: "Envío",
+        submission: "Experimento",
         status: "Estado",
         executions: "Ejec.",
         completed: "Completadas",
@@ -2813,7 +2817,7 @@ const es = {
           "Sin estado derivado",
       },
       fallback:
-        "Envío #{{id}}",
+        "Experimento #{{id}}",
     },
   },
 
@@ -2930,8 +2934,8 @@ const es = {
       "Creado {{date}}",
     activity: {
       submissions: {
-        one: "{{count}} envío",
-        other: "{{count}} envíos",
+        one: "{{count}} experimento",
+        other: "{{count}} experimentos",
       },
       executions: {
         one: "{{count}} ejecución",
@@ -2970,6 +2974,13 @@ const es = {
     },
   },
 
+  adminLayout: {
+    navAria: "Secciones de administración",
+    users: "Usuarios",
+    accessRequests: "Solicitudes",
+    auditLog: "Auditoría",
+  },
+
   adminUserDetail: {
     fallbacks: {
       name:
@@ -3001,7 +3012,7 @@ const es = {
       title:
         "Detalle de usuario",
       description:
-        "Perfil, entregas, ejecuciones y actividad administrativa.",
+        "Perfil, experimentos, ejecuciones y actividad administrativa.",
     },
     loading: {
       title:
@@ -3033,7 +3044,7 @@ const es = {
         "Última actividad",
     },
     summary: {
-      submissions: "Envíos",
+      submissions: "Experimentos",
       executions: "Ejecuciones",
       completed: "Completadas",
       failed: "Fallidas",
@@ -3045,7 +3056,7 @@ const es = {
       executions:
         "Ejecuciones",
       submissions:
-        "Submissions",
+        "Experimentos",
       audit: "Actividad",
     },
     pagination: {
@@ -3066,7 +3077,7 @@ const es = {
         active: "activas",
       },
       searchLabel:
-        "Buscar submission",
+        "Buscar experimento",
       searchPlaceholder:
         "Ej. LCS, SIZE, CAMMR...",
       statusLabel: "Estado",
@@ -3092,7 +3103,8 @@ const es = {
       },
       table: {
         execution: "Ejecución",
-        submission: "Submission",
+        source: "Fuente",
+        submission: "Experimento",
         state: "Estado",
         duration: "Duración",
         hardware: "Hardware",
@@ -3101,41 +3113,43 @@ const es = {
       },
       noCodename:
         "Sin codename",
+      sourceFallback:
+        "Fuente no disponible",
       submissionFallback:
-        "Submission #{{id}}",
+        "Experimento #{{id}}",
     },
     submissions: {
-      title: "Submissions",
+      title: "Experimentos",
       description:
-        "Entregas del usuario y distribución de sus ejecuciones.",
+        "Experimentos del usuario y distribución de sus ejecuciones.",
       total:
         "{{count}} total",
       searchLabel:
-        "Buscar submission",
+        "Buscar experimento",
       searchPlaceholder:
-        "Título de la entrega",
+        "Título del experimento",
       errors: {
         title:
-          "No pudimos cargar los submissions",
+          "No pudimos cargar los experimentos",
         load:
-          "No se pudieron cargar los submissions.",
+          "No se pudieron cargar los experimentos.",
       },
       loading: {
         title:
-          "Cargando submissions",
+          "Cargando experimentos",
         description:
-          "Consultando las entregas del usuario.",
+          "Consultando los experimentos del usuario.",
       },
       empty: {
         title:
-          "No hay submissions para mostrar",
+          "No hay experimentos para mostrar",
         filtered:
           "No hay coincidencias con la búsqueda actual.",
         unfiltered:
-          "Este usuario todavía no tiene submissions registrados.",
+          "Este usuario todavía no tiene experimentos registrados.",
       },
       table: {
-        submission: "Submission",
+        submission: "Experimento",
         status: "Estado",
         executions: "Ejecuciones",
         completed: "Completadas",
@@ -3152,7 +3166,7 @@ const es = {
         review: "En revisión",
       },
       fallback:
-        "Submission #{{id}}",
+        "Experimento #{{id}}",
     },
     audit: {
       title: "Actividad",
@@ -3202,13 +3216,14 @@ const es = {
           "No se pudo cargar el detalle de la ejecución.",
       },
       summary: {
-        submission: "Submission",
+        source: "Fuente",
+        submission: "Experimento",
         benchmark: "Benchmark",
         state: "Estado",
         duration: "Duración",
       },
       submissionFallback:
-        "Submission #{{id}}",
+        "Experimento #{{id}}",
       configuration: {
         title: "Configuración",
         input: "Input máximo",
@@ -3429,7 +3444,7 @@ const es = {
       eyebrow: "Guía de uso",
       title: "Cómo funciona Performance System",
       subtitle:
-        "Desde la carga del código hasta la interpretación de resultados: una guía breve para ejecutar mediciones reproducibles de algoritmos en C/C++.",
+        "Desde la carga del código hasta la interpretación de resultados: una guía breve para ejecutar mediciones reproducibles de algoritmos en C++ / .cpp.",
       featuresAria: "Características",
       badges: {
         controlled: "Ejecución controlada",
@@ -3441,14 +3456,14 @@ const es = {
       kicker: "Flujo principal",
       title: "De tu código a una medición interpretable",
       description:
-        "El sistema separa la preparación del envío, la ejecución y la presentación de resultados para que cada etapa sea trazable.",
+        "El sistema separa la preparación del experimento, la ejecución y la presentación de resultados para que cada etapa sea trazable.",
       visualReferenceLabel: "Referencia visual:",
       visualReferenceText:
         "las capturas actuales corresponden a la interfaz en español y fueron tomadas en modo oscuro. La ubicación y el funcionamiento de los controles son equivalentes en inglés y en modo claro.",
       step1: {
         title: "Prepara y sube tu proyecto",
         description:
-          "Carga un archivo ZIP con tu implementación en C/C++. Performance System valida el envío antes de incorporarlo a la ejecución.",
+          "Carga un archivo ZIP con tu implementación en C++ (.cpp). Performance System valida el archivo antes de incorporarlo al experimento.",
         shot: {
           alt: "Archivo ZIP seleccionado en el formulario de nuevo análisis",
           caption:
@@ -3466,7 +3481,7 @@ const es = {
         summaryShot: {
           alt: "Resumen completo del experimento listo para revisar y ejecutar",
           caption:
-            "El resumen permite comprobar los parámetros antes del envío.",
+            "El resumen permite comprobar los parámetros antes de ejecutar el experimento.",
         },
       },
       step3: {
@@ -3501,10 +3516,10 @@ const es = {
       kicker: "Antes de ejecutar",
       title: "Prepara correctamente el ZIP",
       description:
-        "El archivo comprimido debe contener el código fuente que deseas medir. La plataforma valida el envío antes de registrarlo para evitar formatos inesperados o archivos que no puedan procesarse.",
+        "El archivo comprimido debe contener el código fuente que deseas medir. La plataforma valida el ZIP antes de registrar el experimento para evitar formatos inesperados o archivos que no puedan procesarse.",
       exampleAria: "Ejemplo de ZIP",
       note:
-        "No incluyas rutas absolutas, enlaces simbólicos ni contenido ajeno a la prueba. Si el envío no cumple las validaciones, el sistema lo rechazará antes de ejecutarlo.",
+        "No incluyas rutas absolutas, enlaces simbólicos ni contenido ajeno a la prueba. Si el ZIP no cumple las validaciones, el sistema lo rechazará antes de ejecutar el experimento.",
     },
     configuration: {
       kicker: "Configuración",

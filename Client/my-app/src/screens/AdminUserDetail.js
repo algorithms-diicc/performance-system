@@ -1073,6 +1073,11 @@ function ExecutionsTab({
                     </th>
                     <th>
                       {t(
+                        "adminUserDetail.executions.table.source"
+                      )}
+                    </th>
+                    <th>
+                      {t(
                         "adminUserDetail.executions.table.submission"
                       )}
                     </th>
@@ -1129,16 +1134,29 @@ function ExecutionsTab({
                         >
 
                           <td>
+                            <strong>
+                              #{execution.executionId}
+                            </strong>
+                          </td>
+
+
+                          <td>
                             <div className="admin-detail-primary-cell">
                               <strong>
-                                #{execution.executionId}
-                              </strong>
-                              <span>
-                                {execution.codename
+                                {execution.originalFilename
+                                  || execution.codename
                                   || t(
-                                    "adminUserDetail.executions.noCodename"
+                                    "adminUserDetail.executions.sourceFallback"
                                   )}
-                              </span>
+                              </strong>
+                              {execution.codename
+                                && execution.codename
+                                  !== execution.originalFilename
+                                && (
+                                  <span>
+                                    {execution.codename}
+                                  </span>
+                                )}
                             </div>
                           </td>
 
@@ -2299,6 +2317,21 @@ function ExecutionDetailModal({
                   <div>
                     <span>
                       {t(
+                        "adminUserDetail.modal.summary.source"
+                      )}
+                    </span>
+                    <strong>
+                      {detail.originalFilename
+                        || detail.codename
+                        || t(
+                          "adminUserDetail.executions.sourceFallback"
+                        )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>
+                      {t(
                         "adminUserDetail.modal.summary.submission"
                       )}
                     </span>
@@ -2481,8 +2514,8 @@ function ExecutionDetailModal({
                           )}
                         </dt>
                         <dd>
-                          {node.cpu_model
-                            || detail.hardwareProfile
+                          {detail.hardwareProfile
+                            || node.cpu_model
                             || t(
                               "adminUserDetail.fallbacks.unavailable"
                             )}

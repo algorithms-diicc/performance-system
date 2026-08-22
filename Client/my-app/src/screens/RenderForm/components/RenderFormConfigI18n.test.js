@@ -35,7 +35,6 @@ const commonBenchmarkProps = {
   taskDisplayNames: { camm: "Datos numéricos" },
   taskSubtitles: { camm: "Texto español" },
   taskDescriptions: { camm: "Descripción española" },
-  taskIcons: { camm: "🔢" },
   taskBadges: { camm: "Dataset numérico" },
   inputSizeHelp: { camm: "Ayuda española" },
   paramLimits: {
@@ -49,11 +48,18 @@ const commonBenchmarkProps = {
 
 describe("RenderForm configuration i18n", () => {
   test("localizes benchmark presentation from technical ids", () => {
-    render(
+    const { container } = render(
       <I18nProvider initialLanguage="en">
         <TestTypeAndParamsCard {...commonBenchmarkProps} />
       </I18nProvider>
     );
+
+    expect(
+      container.querySelector(".label-icon .lucide-flask-conical")
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".test-option-icon .lucide-binary")
+    ).toBeInTheDocument();
 
     expect(screen.getByText("Numeric data")).toBeInTheDocument();
     expect(screen.getByText("Numeric dataset")).toBeInTheDocument();

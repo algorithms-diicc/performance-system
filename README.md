@@ -1,6 +1,6 @@
 # Performance System
 
-Plataforma web para la ejecución y análisis experimental de programas en C/C++, orientada al apoyo docente y al estudio de rendimiento computacional.
+Plataforma web para la ejecución y análisis experimental de programas en C++ (`.cpp`), orientada al apoyo docente y al estudio de rendimiento computacional.
 
 Performance System permite recibir implementaciones, ejecutar experimentos sobre un nodo de medición y presentar métricas agrupadas en categorías como **CPU, memoria, sistema, tiempo y energía**. La plataforma incorpora autenticación, persistencia de ejecuciones, perfiles experimentales, trazabilidad, administración de usuarios y funciones de supervisión académica mediante cursos.
 
@@ -16,7 +16,7 @@ El proyecto corresponde a una evolución sucesiva de trabajos de memoria desarro
 - Roles de usuario `Student`, `Teacher` y `Admin`.
 - Gestión de cursos y membresías de estudiantes.
 - Persistencia PostgreSQL de usuarios, sesiones, submissions, ejecuciones y contexto experimental.
-- Ejecución de programas C/C++ mediante un nodo medidor (`slave`).
+- Ejecución de programas C++ (`.cpp`) mediante un nodo medidor (`slave`).
 - Compilación con `g++`.
 - Recolección de métricas mediante Linux `perf`.
 - Perfiles de ejecución configurables.
@@ -596,7 +596,7 @@ La medición energética depende de soporte compatible con RAPL.
 
 El sistema incorpora autenticación, autorización por roles, validaciones de archivos y parámetros, límites operacionales, tiempos máximos y mecanismos de recuperación.
 
-Performance System ejecuta código C/C++ recibido por usuarios. Por esta razón debe desplegarse únicamente en infraestructura controlada y con una política de permisos adecuada al escenario académico previsto.
+Performance System ejecuta código C++ (`.cpp`) recibido por usuarios. Por esta razón debe desplegarse únicamente en infraestructura controlada y con una política de permisos adecuada al escenario académico previsto.
 
 Aunque se incorporaron controles para reducir riesgos operacionales, la versión actual **no afirma disponer de un aislamiento fuerte mediante contenedores o máquinas virtuales**.
 

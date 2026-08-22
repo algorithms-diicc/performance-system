@@ -127,7 +127,7 @@ describe("AdminUserDetail submission navigation", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Cerrar" }));
     fireEvent.click(
-      screen.getByRole("button", { name: /Submissions/i })
+      screen.getByRole("button", { name: /Experimentos/i })
     );
 
     expect(

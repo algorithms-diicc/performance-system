@@ -2124,6 +2124,8 @@ def get_course_student_executions(course_id, user_id):
                     e.id AS execution_id,
                     e.public_id::text AS public_id,
                     e.codename,
+                    e.execution_config ->> 'original_filename'
+                      AS original_filename,
                     e.submission_id,
                     e.execution_state,
                     e.failure_stage,
@@ -2134,6 +2136,7 @@ def get_course_student_executions(course_id, user_id):
                     e.finished_at,
                     e.duration_ms,
                     e.result_available,
+                    e.hardware_snapshot,
                     s.title AS submission_title,
                     hp.name AS hardware_name
                 """
@@ -2377,6 +2380,8 @@ def get_course_student_execution_detail(
                     e.id AS execution_id,
                     e.public_id::text AS public_id,
                     e.codename,
+                    e.execution_config ->> 'original_filename'
+                      AS original_filename,
                     e.submission_id,
                     e.execution_state,
                     e.failure_stage,
@@ -2446,9 +2451,6 @@ def get_course_student_execution_detail(
                     "hardware_snapshot"
                 )
                 or {},
-                "hardwareProfile": row.get(
-                    "hardware_name"
-                ),
                 "queuedAt": _iso(
                     row.get("queued_at")
                 ),

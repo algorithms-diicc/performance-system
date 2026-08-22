@@ -146,7 +146,7 @@ const en = {
     filtersHint: "Filters are applied to your full history before results are paginated.",
     clearFilters: "Clear filters",
     search: "Search",
-    searchHint: "Title, ZIP file, or C/C++ source",
+    searchHint: "Title, ZIP file, or C++ / .cpp source",
     searchPlaceholder: "E.g. sorting, sorting.zip, merge.cpp",
     status: "Status",
     filterByStatus: "Filter by status",
@@ -243,10 +243,10 @@ const en = {
     activity: "Activity",
     usageSummary: "Usage summary",
     usageDescription:
-      "These figures are calculated from your persisted submissions and executions.",
+      "These figures are calculated from your persisted experiments and executions.",
     metrics: {
-      submissions: "Submissions",
-      submissionsHint: "Registered submissions",
+      submissions: "Experiments",
+      submissionsHint: "Registered experiments",
       executions: "Executions",
       executionsHint: "Total executions",
       completed: "Completed",
@@ -453,13 +453,13 @@ const en = {
       professor: "Professor: {{name}}",
       professorUnavailable: "Professor unavailable",
       automaticAssociation:
-        "This submission will automatically be associated with your only active course.",
+        "This experiment will automatically be associated with your only active course.",
       selectCourse: "Select the course",
       required: "Required",
-      deliveryCourse: "Course for this submission",
+      deliveryCourse: "Course for this experiment",
       selectPlaceholder: "Select a course…",
       multipleCoursesHelp:
-        "You have more than one active course. Selecting one prevents submissions from different courses or terms from being mixed.",
+        "You have more than one active course. Selecting one prevents experiments from different courses or terms from being mixed.",
     },
     overview: {
       title: "Review experiment",
@@ -811,7 +811,7 @@ const en = {
         "Check your session or try the request again.",
       notFoundTitle: "Experiment unavailable",
       notFoundDescription:
-        "No information was found for this Submission.",
+        "No information was found for this experiment.",
       emptyTitle: "No executions",
       emptyDescription:
         "This experiment does not have any executable implementations yet.",
@@ -2261,7 +2261,7 @@ const en = {
     },
     kpis: {
       activeStudents: "Active students",
-      submissions: "Submissions",
+      submissions: "Experiments",
       executions: "Executions",
       completionRate: "Completion rate",
     },
@@ -2387,7 +2387,7 @@ const en = {
     },
     metrics: {
       students: "Students",
-      submissions: "Submissions",
+      submissions: "Experiments",
       executions: "Executions",
     },
     summary: {
@@ -2568,7 +2568,7 @@ const en = {
       table: {
         student: "Student",
         status: "Status",
-        submissions: "Submissions",
+        submissions: "Experiments",
         executions: "Exec.",
         completed: "OK",
         failed: "Failed",
@@ -2662,7 +2662,7 @@ const en = {
         "Last access",
     },
     summary: {
-      submissions: "Submissions",
+      submissions: "Experiments",
       executions: "Executions",
       completed: "Completed",
       failed: "Failed",
@@ -2670,7 +2670,7 @@ const en = {
     },
     tabs: {
       executions: "Executions",
-      submissions: "Submissions",
+      submissions: "Experiments",
     },
     states: {
       queued: "Queued",
@@ -2692,7 +2692,7 @@ const en = {
       searchLabel:
         "Search executions",
       searchPlaceholder:
-        "Submission title",
+        "Experiment title",
       statusLabel: "Status",
       statusAll: "All",
       loading:
@@ -2709,7 +2709,8 @@ const en = {
       },
       table: {
         execution: "Execution",
-        submission: "Submission",
+        source: "Source",
+        submission: "Experiment",
         state: "Status",
         duration: "Duration",
         hardware: "Hardware",
@@ -2717,8 +2718,10 @@ const en = {
         detail: "Details",
       },
       noCodename: "No codename",
+      sourceFallback:
+        "Source unavailable",
       submissionFallback:
-        "Submission #{{id}}",
+        "Experiment #{{id}}",
     },
 
     modal: {
@@ -2735,7 +2738,8 @@ const en = {
           "The execution details could not be loaded.",
       },
       summary: {
-        submission: "Submission",
+        source: "Source",
+        submission: "Experiment",
         benchmark: "Benchmark",
         state: "Status",
         duration: "Duration",
@@ -2775,23 +2779,23 @@ const en = {
     },
     submissions: {
       searchLabel:
-        "Search submissions",
+        "Search experiments",
       searchPlaceholder:
-        "Submission title",
+        "Experiment title",
       loading:
-        "Loading submissions",
+        "Loading experiments",
       emptyTitle:
-        "No submissions in this course",
+        "No experiments in this course",
       emptyDescription:
-        "This student does not have any submissions associated with this course instance yet.",
+        "This student does not have any experiments associated with this course instance yet.",
       errors: {
         title:
-          "Could not load submissions",
+          "Could not load experiments",
         load:
-          "The submissions could not be loaded.",
+          "The experiments could not be loaded.",
       },
       table: {
-        submission: "Submission",
+        submission: "Experiment",
         status: "Status",
         executions: "Exec.",
         completed: "Completed",
@@ -2811,7 +2815,7 @@ const en = {
           "No derived status",
       },
       fallback:
-        "Submission #{{id}}",
+        "Experiment #{{id}}",
     },
   },
 
@@ -2927,8 +2931,8 @@ const en = {
       "Created {{date}}",
     activity: {
       submissions: {
-        one: "{{count}} submission",
-        other: "{{count}} submissions",
+        one: "{{count}} experiment",
+        other: "{{count}} experiments",
       },
       executions: {
         one: "{{count}} execution",
@@ -2967,6 +2971,13 @@ const en = {
     },
   },
 
+  adminLayout: {
+    navAria: "Administration sections",
+    users: "Users",
+    accessRequests: "Access requests",
+    auditLog: "Audit log",
+  },
+
   adminUserDetail: {
     fallbacks: {
       name: "Unnamed user",
@@ -2997,7 +3008,7 @@ const en = {
       title:
         "User details",
       description:
-        "Profile, submissions, executions, and administrative activity.",
+        "Profile, experiments, executions, and administrative activity.",
     },
     loading: {
       title:
@@ -3030,7 +3041,7 @@ const en = {
     },
     summary: {
       submissions:
-        "Submissions",
+        "Experiments",
       executions: "Executions",
       completed: "Completed",
       failed: "Failed",
@@ -3042,7 +3053,7 @@ const en = {
       executions:
         "Executions",
       submissions:
-        "Submissions",
+        "Experiments",
       audit: "Activity",
     },
     pagination: {
@@ -3063,7 +3074,7 @@ const en = {
         active: "active",
       },
       searchLabel:
-        "Search submission",
+        "Search experiments",
       searchPlaceholder:
         "E.g. LCS, SIZE, CAMMR...",
       statusLabel: "Status",
@@ -3089,7 +3100,8 @@ const en = {
       },
       table: {
         execution: "Execution",
-        submission: "Submission",
+        source: "Source",
+        submission: "Experiment",
         state: "Status",
         duration: "Duration",
         hardware: "Hardware",
@@ -3098,41 +3110,43 @@ const en = {
       },
       noCodename:
         "No codename",
+      sourceFallback:
+        "Source unavailable",
       submissionFallback:
-        "Submission #{{id}}",
+        "Experiment #{{id}}",
     },
     submissions: {
-      title: "Submissions",
+      title: "Experiments",
       description:
-        "The user's submissions and the distribution of their executions.",
+        "The user's experiments and the distribution of their executions.",
       total:
         "{{count}} total",
       searchLabel:
-        "Search submission",
+        "Search experiments",
       searchPlaceholder:
-        "Submission title",
+        "Experiment title",
       errors: {
         title:
-          "Could not load submissions",
+          "Could not load experiments",
         load:
-          "The submissions could not be loaded.",
+          "The experiments could not be loaded.",
       },
       loading: {
         title:
-          "Loading submissions",
+          "Loading experiments",
         description:
-          "Querying the user's submissions.",
+          "Querying the user's experiments.",
       },
       empty: {
         title:
-          "No submissions to show",
+          "No experiments to show",
         filtered:
-          "No submissions match the current search.",
+          "No experiments match the current search.",
         unfiltered:
-          "This user does not have any registered submissions yet.",
+          "This user does not have any registered experiments yet.",
       },
       table: {
-        submission: "Submission",
+        submission: "Experiment",
         status: "Status",
         executions: "Executions",
         completed: "Completed",
@@ -3148,7 +3162,7 @@ const en = {
         review: "In review",
       },
       fallback:
-        "Submission #{{id}}",
+        "Experiment #{{id}}",
     },
     audit: {
       title: "Activity",
@@ -3198,13 +3212,14 @@ const en = {
           "The execution details could not be loaded.",
       },
       summary: {
-        submission: "Submission",
+        source: "Source",
+        submission: "Experiment",
         benchmark: "Benchmark",
         state: "Status",
         duration: "Duration",
       },
       submissionFallback:
-        "Submission #{{id}}",
+        "Experiment #{{id}}",
       configuration: {
         title: "Configuration",
         input: "Maximum input",
@@ -3429,7 +3444,7 @@ const en = {
       eyebrow: "User guide",
       title: "How Performance System works",
       subtitle:
-        "From uploading code to interpreting results: a short guide to running reproducible measurements of C/C++ algorithms.",
+        "From uploading code to interpreting results: a short guide to running reproducible measurements of C++ / .cpp algorithms.",
       featuresAria: "Features",
       badges: {
         controlled: "Controlled execution",
@@ -3441,14 +3456,14 @@ const en = {
       kicker: "Main flow",
       title: "From your code to an interpretable measurement",
       description:
-        "The system separates submission preparation, execution, and result presentation so that each stage remains traceable.",
+        "The system separates experiment preparation, execution, and result presentation so that each stage remains traceable.",
       visualReferenceLabel: "Visual reference:",
       visualReferenceText:
         "the current screenshots show the Spanish interface and were captured in dark mode. Control locations and behavior are equivalent in English and light mode.",
       step1: {
         title: "Prepare and upload your project",
         description:
-          "Upload a ZIP file containing your C/C++ implementation. Performance System validates the submission before adding it to the execution workflow.",
+          "Upload a ZIP file containing your C++ (.cpp) implementation. Performance System validates the archive before adding it to the experiment.",
         shot: {
           alt: "ZIP file selected in the new analysis form",
           caption:
@@ -3467,7 +3482,7 @@ const en = {
         summaryShot: {
           alt: "Complete experiment summary ready to review and run",
           caption:
-            "The summary lets you verify the parameters before submission.",
+            "The summary lets you verify the parameters before running the experiment.",
         },
       },
       step3: {
@@ -3502,10 +3517,10 @@ const en = {
       kicker: "Before running",
       title: "Prepare the ZIP correctly",
       description:
-        "The compressed file must contain the source code you want to measure. The platform validates the submission before registering it to prevent unexpected formats or files that cannot be processed.",
+        "The compressed file must contain the source code you want to measure. The platform validates the ZIP before registering the experiment to prevent unexpected formats or files that cannot be processed.",
       exampleAria: "ZIP example",
       note:
-        "Do not include absolute paths, symbolic links, or content unrelated to the test. If the submission does not pass validation, the system will reject it before execution.",
+        "Do not include absolute paths, symbolic links, or content unrelated to the test. If the ZIP does not pass validation, the system will reject it before running the experiment.",
     },
     configuration: {
       kicker: "Configuration",

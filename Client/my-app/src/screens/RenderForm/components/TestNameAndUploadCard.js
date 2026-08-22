@@ -1,5 +1,11 @@
 // src/screens/RenderForm/components/TestNameAndUploadCard.js
 import React from "react";
+import {
+  FolderArchive,
+  StickyNote,
+  Tag,
+  Upload,
+} from "lucide-react";
 
 import { useI18n } from "../../../i18n";
 import {
@@ -36,7 +42,9 @@ function TestNameAndUploadCard({
     <div className="rf-row rf-row-two">
       <section className="rf-panel">
         <label className="form-label" htmlFor="rf-test-name">
-          <span className="label-icon">🏷️</span>
+          <span className="label-icon" aria-hidden="true">
+            <Tag />
+          </span>
           {t("renderForm.upload.testNameLabel")}
         </label>
         <input
@@ -55,7 +63,9 @@ function TestNameAndUploadCard({
 
         <div className="rf-note-field">
           <label className="form-label" htmlFor="rf-submission-note">
-            <span className="label-icon">🗒️</span>
+            <span className="label-icon" aria-hidden="true">
+              <StickyNote />
+            </span>
             {t("renderForm.upload.noteLabel")}{" "}
             <span className="rf-note-optional">
               {t("renderForm.upload.optional")}
@@ -92,7 +102,9 @@ function TestNameAndUploadCard({
 
       <section className="rf-panel">
         <label className="form-label" htmlFor="rf-code-archive">
-          <span className="label-icon">📁</span>
+          <span className="label-icon" aria-hidden="true">
+            <FolderArchive />
+          </span>
           {t("renderForm.upload.archiveLabel")}
         </label>
 
@@ -110,7 +122,9 @@ function TestNameAndUploadCard({
           aria-label={t("renderForm.upload.selectAria")}
         >
           <div className="file-upload-content">
-            <div className="file-upload-icon">⬆️</div>
+            <div className="file-upload-icon" aria-hidden="true">
+              <Upload />
+            </div>
             <div className="file-upload-text">
               <span className="file-upload-title">
                 {t("renderForm.upload.dropTitle")}

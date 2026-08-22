@@ -54,6 +54,7 @@ const LanguageControl = () => {
 const execution = {
   executionId: 70,
   codename: "exec70LCS",
+  originalFilename: "solucion.cpp",
   submissionId: 42,
   submissionTitle:
     "Experimento canónico",
@@ -169,6 +170,30 @@ describe(
         expect(
           await screen.findByText(
             "exec70LCS"
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "solucion.cpp"
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Source",
+            {
+              selector: "th",
+            }
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByText(
+            "Experiment",
+            {
+              selector: "th",
+            }
           )
         ).toBeInTheDocument();
 

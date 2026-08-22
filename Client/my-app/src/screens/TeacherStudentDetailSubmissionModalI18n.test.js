@@ -57,6 +57,8 @@ const LanguageControl = () => {
 const execution = {
   executionId: 70,
   codename: "exec70LCS",
+  originalFilename:
+    "solucion.cpp",
   submissionId: 42,
   submissionTitle:
     "Experimento canónico",
@@ -277,6 +279,24 @@ describe(
 
         expect(
           within(dialog).getByText(
+            "Source"
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          within(dialog).getByText(
+            "solucion.cpp"
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          within(dialog).getByText(
+            "Experiment"
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          within(dialog).getByText(
             "Completed"
           )
         ).toBeInTheDocument();
@@ -289,9 +309,15 @@ describe(
 
         expect(
           within(dialog).getByText(
-            "Intel Core i7"
+            "Intel i7"
           )
         ).toBeInTheDocument();
+
+        expect(
+          within(dialog).queryByText(
+            "Intel Core i7"
+          )
+        ).not.toBeInTheDocument();
 
         expect(
           within(dialog).getByText(
@@ -391,7 +417,7 @@ describe(
             "button",
             {
               name:
-                "Submissions",
+                "Experiments",
             }
           )
         );
@@ -527,7 +553,7 @@ describe(
             "button",
             {
               name:
-                "Submissions",
+                "Experiments",
             }
           )
         );

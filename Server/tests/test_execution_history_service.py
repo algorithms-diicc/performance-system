@@ -163,6 +163,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             {
                 "execution_id": 61,
                 "codename": "fallbackSIZE",
+                "original_filename": "  ",
                 "submission_id": 56,
                 "execution_state": "COMPLETED",
                 "result_available": True,
@@ -172,6 +173,56 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             payload["originalFilename"],
             "fallbackSIZE",
         )
+
+    def test_serializer_prefers_named_hardware_profile(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 62,
+                "execution_state": "COMPLETED",
+                "hardware_name": "Laboratorio Ryzen",
+                "hardware_snapshot": {
+                    "node": {
+                        "cpu_model": "AMD Ryzen 5 3600",
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(
+            payload["hardwareProfile"],
+            "Laboratorio Ryzen",
+        )
+
+    def test_serializer_falls_back_to_snapshot_cpu_model(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 63,
+                "execution_state": "COMPLETED",
+                "hardware_name": None,
+                "hardware_snapshot": {
+                    "node": {
+                        "cpu_model": "Intel Core i5-9400",
+                    },
+                },
+            }
+        )
+
+        self.assertEqual(
+            payload["hardwareProfile"],
+            "Intel Core i5-9400",
+        )
+
+    def test_serializer_keeps_hardware_fallback_empty_for_legacy_rows(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 64,
+                "execution_state": "COMPLETED",
+                "hardware_name": " ",
+                "hardware_snapshot": {},
+            }
+        )
+
+        self.assertIsNone(payload["hardwareProfile"])
 
     def test_summary_keeps_legacy_alias(self):
         summary = summary_from_aggregate(

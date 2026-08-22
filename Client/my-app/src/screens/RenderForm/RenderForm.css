@@ -423,9 +423,23 @@
 .rf-page .label-icon {
   flex: 0 0 auto;
 
-  font-size: 1.05rem;
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color:
+    var(--ps-primary);
 
   line-height: 1;
+}
+
+
+.rf-page .label-icon svg {
+  width: 1.05rem;
+
+  height: 1.05rem;
 }
 
 
@@ -700,13 +714,21 @@
 
   justify-content: center;
 
-  font-size: 1.3rem;
+  color:
+    var(--ps-primary);
 
   background:
     var(--ps-primary-soft);
 
   border-radius:
     var(--ps-radius-sm);
+}
+
+
+.rf-page .file-upload-icon svg {
+  width: 1.35rem;
+
+  height: 1.35rem;
 }
 
 
@@ -920,9 +942,23 @@
 
 
 .rf-page .test-option-icon {
-  font-size: 1.15rem;
+  display: inline-flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  color:
+    var(--ps-primary);
 
   line-height: 1;
+}
+
+
+.rf-page .test-option-icon svg {
+  width: 1.15rem;
+
+  height: 1.15rem;
 }
 
 

@@ -876,6 +876,23 @@ button.teacher-attention-card:focus-visible {
   outline-offset: 3px;
 }
 
+.teacher-execution-source {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 220px;
+  overflow-wrap: anywhere;
+  color: var(--ps-text);
+}
+
+.teacher-execution-source strong {
+  font-weight: 700;
+}
+
+.teacher-execution-source small {
+  color: var(--ps-text-secondary);
+}
+
 .teacher-attention {
   display: inline-flex;
   padding: 0.23rem 0.5rem;
@@ -1289,7 +1306,7 @@ button.teacher-attention-card:focus-visible {
 
 .teacher-execution-modal-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: var(--ps-space-3);
   margin-bottom: var(--ps-space-4);
 }

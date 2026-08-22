@@ -295,6 +295,23 @@ describe("RenderFormPage 6A onboarding", () => {
     });
   });
 
+  test("uses Lucide icons for structural upload affordances", async () => {
+    const { container } = await renderPage();
+
+    expect(
+      container.querySelector(".label-icon .lucide-tag")
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".label-icon .lucide-sticky-note")
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".label-icon .lucide-folder-archive")
+    ).toBeInTheDocument();
+    expect(
+      container.querySelector(".file-upload-icon .lucide-upload")
+    ).toBeInTheDocument();
+  });
+
   test("file input suggests a title while preserving the real filename", async () => {
     await renderPage();
     await selectZipFromInput("mi.algoritmo.v2.zip");

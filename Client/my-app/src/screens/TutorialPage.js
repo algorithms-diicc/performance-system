@@ -255,7 +255,7 @@ const TutorialPage = () => {
             >
               <span>
                 <FileCode2 size={16} />
-                C / C++
+                C++ / .cpp
               </span>
               <span>
                 <ShieldCheck size={16} />

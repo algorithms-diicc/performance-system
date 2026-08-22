@@ -126,7 +126,9 @@ describe("TeacherStudentDetail submission navigation", () => {
     ).toHaveAttribute("href", "/code/exec70LCS");
 
     fireEvent.click(screen.getByText("Cerrar", { selector: "button" }));
-    fireEvent.click(screen.getByRole("button", { name: "Envíos" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Experimentos" })
+    );
 
     expect(
       await screen.findByRole("link", {

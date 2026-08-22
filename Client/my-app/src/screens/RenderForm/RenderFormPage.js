@@ -172,12 +172,6 @@ const taskDescriptions = {
     "El motor ejecuta el programa con valores crecientes del parámetro de entrada. Es útil cuando el algoritmo genera o administra sus datos a partir de un tamaño recibido como argumento.",
 };
 
-const taskIcons = {
-  lcs: "📝",
-  camm: "🔢",
-  size: "📏",
-};
-
 const taskBadges = {
   lcs: "Dataset de texto",
   camm: "Dataset numérico",
@@ -1628,7 +1622,6 @@ function RenderFormPage({ currentUser }) {
               taskDisplayNames={taskDisplayNames}
               taskSubtitles={taskSubtitles}
               taskDescriptions={taskDescriptions}
-              taskIcons={taskIcons}
               taskBadges={taskBadges}
               inputSizeHelp={inputSizeHelp}
               paramLimits={PARAM_LIMITS}

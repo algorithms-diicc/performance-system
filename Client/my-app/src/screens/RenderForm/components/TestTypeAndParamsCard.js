@@ -1,7 +1,19 @@
 // src/screens/RenderForm/components/TestTypeAndParamsCard.js
 import React from "react";
+import {
+  Binary,
+  FileText,
+  FlaskConical,
+  Ruler,
+} from "lucide-react";
 
 import { useI18n } from "../../../i18n";
+
+const defaultTaskIcons = {
+  lcs: FileText,
+  camm: Binary,
+  size: Ruler,
+};
 
 const profileIdFromValue = (value) => {
   const normalized = String(value || "")
@@ -94,7 +106,9 @@ function TestTypeAndParamsCard({
     <div className="rf-row">
       <section className="rf-panel">
         <div className="form-label">
-          <span className="label-icon">🧪</span>
+          <span className="label-icon" aria-hidden="true">
+            <FlaskConical />
+          </span>
           {t("renderForm.benchmark.sectionLabel")}
         </div>
 
@@ -105,6 +119,8 @@ function TestTypeAndParamsCard({
         <div className="test-options">
           {tasks.map((task) => {
             const isSelected = selectedTaskType === task.id;
+            const DefaultTaskIcon = defaultTaskIcons[task.id];
+            const taskIcon = taskIcons?.[task.id];
             const limitsInput = getLimits(task.id, "inputSize");
             const limitsSamples = getLimits(task.id, "samples");
             const recommendedInputValues =
@@ -140,8 +156,12 @@ function TestTypeAndParamsCard({
 
                     <div className="test-option-texts">
                       <div className="test-title-row">
-                        <span className="test-option-icon">
-                          {taskIcons[task.id]}
+                        <span
+                          className="test-option-icon"
+                          aria-hidden="true"
+                        >
+                          {taskIcon ||
+                            (DefaultTaskIcon && <DefaultTaskIcon />)}
                         </span>
                         <span className="test-title">
                           {taskText(
