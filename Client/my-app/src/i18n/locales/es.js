@@ -314,7 +314,7 @@ const es = {
       testNameLabel: "Nombre del test",
       testNamePlaceholder: "Ej: LCS optimizado, CAMM bloqueado, etc.",
       testNameHelp:
-        "Este nombre se usará para identificar la ejecución en la vista de resultados.",
+        "Este nombre identifica el Experimento. Un ZIP puede contener varias implementaciones y cada archivo .cpp genera su propia ejecución.",
       noteLabel: "Nota personal",
       optional: "(opcional)",
       notePrivate: "Solo tú podrás ver esta nota.",
@@ -337,9 +337,9 @@ const es = {
       environmentName: "Entorno de medición administrado",
       automaticBadge: "Automático",
       environmentDescription:
-        "Performance System enviará la prueba al nodo de medición configurado para esta instalación.",
+        "Las ejecuciones se envían al nodo de medición configurado para esta instalación.",
       environmentNote:
-        "La selección manual de hardware se habilitará cuando exista soporte real en el backend.",
+        "El entorno administrado y controlado favorece la comparabilidad y reproducibilidad, y reduce variaciones atribuibles a hardware no controlado. La procedencia del hardware se registra cuando está disponible.",
       profileLabel: "Perfil de medición",
       profileHelp:
         "Define cuántas veces se repite cada punto de medición. Más repeticiones suelen entregar resultados más estables, pero aumentan el tiempo total del experimento.",
@@ -385,6 +385,10 @@ const es = {
       increaseRepetitions: "Aumentar repeticiones",
       currentProfile:
         "El perfil actual es {{profile}}. Los valores 10, 30 y 50 corresponden a Rápido, Equilibrado y Exhaustivo; otros valores se registran como Personalizado.",
+      fixedByProfile: "Definido por el perfil {{profile}}.",
+      customProfileHelp:
+        "El perfil Personalizado permite elegir entre 1 y 100 repeticiones por punto.",
+      repetitionsSlider: "Repeticiones por punto",
       allowedRange:
         "Rango permitido: {{min}}–{{max}}. Es un límite de aceptación, no una garantía de tiempo de ejecución.",
       recommendedValues: "Valores recomendados",
@@ -470,6 +474,12 @@ const es = {
       unnamed: "(sin nombre)",
       file: "Archivo",
       noFile: "Ningún archivo seleccionado",
+      implementations: "Implementaciones / Fuentes .cpp",
+      sources: "Fuentes incluidas",
+      moreSources: {
+        one: "+{{count}} más",
+        other: "+{{count}} más",
+      },
       benchmark: "Benchmark",
       parameters: "Parámetros",
       maxSize: "Tamaño máximo",
@@ -515,7 +525,21 @@ const es = {
         readyText:
           "Puedes revisar el resumen detallado y confirmar la ejecución.",
         pendingText:
-          "Completa los campos obligatorios para habilitar la ejecución.",
+          "Completa estos requisitos para habilitar la revisión:",
+        requirements: {
+          zipRequired: "Selecciona un archivo ZIP.",
+          zipInspecting: "Espera mientras se valida el archivo ZIP.",
+          zipInvalid: "Selecciona un archivo ZIP válido que contenga al menos un .cpp.",
+          benchmarkRequired: "Elige un benchmark.",
+          inputSizeInvalid: "Ingresa un tamaño máximo de entrada válido.",
+          samplesInvalid:
+            "Define entre 1 y 100 repeticiones para el perfil Personalizado.",
+          dataTypeRequired: "Selecciona la distribución de datos para CAMM.",
+          courseLoading: "Espera mientras se carga tu contexto académico.",
+          courseUnavailable:
+            "Reintenta la carga del contexto académico antes de continuar.",
+          courseRequired: "Selecciona el curso para este experimento.",
+        },
         review: "Revisar y ejecutar",
         clear: "Limpiar configuración",
         hint:
@@ -539,6 +563,26 @@ const es = {
           "Puedes mantener esta vista abierta mientras se ejecuta el benchmark. Si recargas la página, Performance System intentará recuperar la ejecución.",
         prepareAnotherHint:
           "Preparar otro análisis no cancela esta ejecución: continuará en cola o en medición y podrás seguirla desde Historial.",
+      },
+      queue: {
+        title: "Posición FIFO por ejecución",
+        next: "Siguiente en la cola",
+        ahead: {
+          one: "{{count}} ejecución por delante",
+          other: "{{count}} ejecuciones por delante",
+        },
+        explanation:
+          "Las mediciones se despachan en orden FIFO. La posición puede cambiar cuando otras ejecuciones terminan o son reclamadas.",
+      },
+      events: {
+        accepted: "Solicitud aceptada.",
+        queued: "Ejecución incorporada a la cola FIFO.",
+        running: "El nodo de medición inició la ejecución.",
+        processing: "Procesando los resultados de medición.",
+        completed: "Resultados disponibles.",
+        failed: "La ejecución terminó con un error.",
+        failedWithMessage: "La ejecución falló: {{message}}",
+        cancelled: "La ejecución fue cancelada.",
       },
       completed: {
         kicker: "Completado",
@@ -650,6 +694,10 @@ const es = {
         other: "{{count}} archivos",
       },
       registeredEnvironment: "Entorno registrado",
+      draft: {
+        restored: "Se restauró tu configuración anterior.",
+        clear: "Limpiar borrador",
+      },
       validations: {
         numberRequired: "Ingresa un valor numérico.",
         numberInvalid: "Ingresa un número válido.",

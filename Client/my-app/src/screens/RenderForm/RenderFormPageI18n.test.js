@@ -79,7 +79,7 @@ describe("RenderFormPage i18n", () => {
     axios.get.mockResolvedValue(emptyCourses);
   });
 
-  test("localizes the page shell and pre-submit validation", async () => {
+  test("localizes inline pre-submit requirements without browser dialogs", async () => {
     await renderEnglishPage();
 
     expect(
@@ -98,9 +98,11 @@ describe("RenderFormPage i18n", () => {
       document.querySelector("form")
     );
 
-    expect(window.alert).toHaveBeenCalledWith(
-      "Please upload a .zip file before continuing."
-    );
+    expect(
+      screen.getByText("Select a ZIP archive.")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Choose a benchmark.")).toBeInTheDocument();
+    expect(window.alert).not.toHaveBeenCalled();
   });
 
   test("keeps parameter validation reactive when language changes", async () => {

@@ -102,6 +102,21 @@ describe("executionReuseModel", () => {
     );
   });
 
+  test("maps arbitrary historical samples to Custom", () => {
+    const config = buildReuseConfiguration(
+      {
+        benchmark: "LCS",
+        inputSize: 500,
+        samples: 41,
+        executionProfile: null,
+      },
+      []
+    );
+
+    expect(config.executionProfile).toBe("personalizado");
+    expect(config.samples).toBe(41);
+  });
+
   test("rejects unsupported historical benchmarks", () => {
     expect(
       buildReuseConfiguration(

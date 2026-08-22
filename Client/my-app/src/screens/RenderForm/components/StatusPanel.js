@@ -29,6 +29,16 @@ const PROGRESS_STEP_IDS = [
   "completed",
 ];
 
+const TECHNICAL_EVENT_ICONS = {
+  accepted: FileCheck2,
+  queued: Clock3,
+  running: Activity,
+  processing: Settings2,
+  completed: CheckCircle2,
+  failed: AlertTriangle,
+  cancelled: Circle,
+};
+
 function StatusPanel({
   fileList,
   messages,
@@ -42,6 +52,7 @@ function StatusPanel({
   pollingRequestError,
   summary,
   isSubmitDisabled,
+  requirements = [],
   onGoToResults,
   onReset,
   onPrepareNewAnalysis,
@@ -108,6 +119,7 @@ function StatusPanel({
         <ReadyPanel
           {...shared}
           isSubmitDisabled={isSubmitDisabled}
+          requirements={requirements}
           onReset={onReset}
         />
       )}
@@ -121,6 +133,7 @@ function StatusPanel({
           {...shared}
           progressIndex={progressIndex}
           messages={messages}
+          executionFiles={executionFiles}
           showTechnicalDetails={showTechnicalDetails}
           onToggleTechnical={() =>
             setShowTechnicalDetails((prev) => !prev)
@@ -176,6 +189,7 @@ function StatusPanel({
 function ReadyPanel({
   summary,
   isSubmitDisabled,
+  requirements,
   onReset,
   t,
 }) {
@@ -221,6 +235,18 @@ function ReadyPanel({
               ? t("renderForm.workflow.ready.readyText")
               : t("renderForm.workflow.ready.pendingText")}
           </p>
+
+          {!ready && requirements.length > 0 && (
+            <ul className="rf-readiness-requirements">
+              {requirements.map((requirement) => (
+                <li key={requirement}>
+                  {t(
+                    `renderForm.workflow.ready.requirements.${requirement}`
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
@@ -291,6 +317,7 @@ function RunningPanel({
   summary,
   progressIndex,
   messages,
+  executionFiles,
   showTechnicalDetails,
   onToggleTechnical,
   onPrepareNewAnalysis,
@@ -318,6 +345,8 @@ function RunningPanel({
       />
 
       <CompactExecutionSummary summary={summary} t={t} />
+
+      <QueuePositions executionFiles={executionFiles} t={t} />
 
       <ProgressStepper
         progressIndex={progressIndex}
@@ -751,6 +780,50 @@ function ProgressStepper({ progressIndex, t }) {
   );
 }
 
+function QueuePositions({ executionFiles, t }) {
+  const queued = Array.isArray(executionFiles)
+    ? executionFiles.filter(
+        (execution) =>
+          execution?.state === "QUEUED" &&
+          Number.isInteger(execution?.queueAhead) &&
+          execution.queueAhead >= 0
+      )
+    : [];
+
+  if (queued.length === 0) return null;
+
+  return (
+    <section
+      className="rf-queue-positions"
+      aria-label={t("renderForm.workflow.queue.title")}
+    >
+      <div className="rf-queue-heading">
+        <Clock3 size={17} aria-hidden="true" />
+        <strong>{t("renderForm.workflow.queue.title")}</strong>
+      </div>
+
+      <ul>
+        {queued.map((execution) => (
+          <li key={execution.publicId || execution.codename}>
+            <span>
+              {execution.originalName || execution.codename}
+            </span>
+            <strong>
+              {execution.queueAhead === 0
+                ? t("renderForm.workflow.queue.next")
+                : t("renderForm.workflow.queue.ahead", {
+                    count: execution.queueAhead,
+                  })}
+            </strong>
+          </li>
+        ))}
+      </ul>
+
+      <p>{t("renderForm.workflow.queue.explanation")}</p>
+    </section>
+  );
+}
+
 function TechnicalDetails({
   messages,
   open,
@@ -808,9 +881,11 @@ function TechnicalDetails({
                   {(group.messages || []).map(
                     (entry, index) => {
                       const classification =
-                        classifyTechnicalMessage(
-                          entry?.msg || ""
-                        );
+                        classifyTechnicalEvent(entry);
+                      const EventIcon =
+                        TECHNICAL_EVENT_ICONS[entry?.key];
+                      const eventText =
+                        resolveTechnicalEventText(entry, t);
 
                       return (
                         <li
@@ -826,11 +901,11 @@ function TechnicalDetails({
                               : ""}
                           </span>
 
-                          <span>
-                            {entry?.msg ||
-                              t(
-                                "renderForm.workflow.technical.messageWithoutContent"
-                              )}
+                          <span className="rf-technical-message">
+                            {EventIcon && (
+                              <EventIcon size={13} aria-hidden="true" />
+                            )}
+                            {eventText}
                           </span>
                         </li>
                       );
@@ -944,45 +1019,30 @@ function getFileProgressIndex({ group, file }) {
     file?.status || group?.status || ""
   ).toUpperCase();
 
-  const text = (group?.messages || [])
-    .map((entry) => entry?.msg || "")
-    .join(" ")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+  const eventKeys = new Set(
+    (group?.messages || [])
+      .map((entry) => entry?.key)
+      .filter(Boolean)
+  );
 
   if (
     status === "DONE" ||
-    text.includes("procesando resultado") ||
-    text.includes("procesando metrica") ||
-    text.includes("generando resultado") ||
-    text.includes("resultado csv") ||
-    text.includes("csv guardado") ||
-    text.includes("grafico")
+    status === "PROCESSING" ||
+    eventKeys.has("processing")
   ) {
     return 4;
   }
 
   if (
-    text.includes("enviando test al slave") ||
-    text.includes("ejecutando test") ||
-    text.includes("ejecutando benchmark") ||
-    text.includes("ejecutando script")
+    status === "RUNNING" ||
+    eventKeys.has("running")
   ) {
     return 3;
   }
 
   if (
-    text.includes("archivo recibido correctamente") ||
-    text.includes("preparando") ||
-    text.includes("compilando")
-  ) {
-    return 2;
-  }
-
-  if (
     status.includes("QUEUE") ||
-    text.includes("cola")
+    eventKeys.has("queued")
   ) {
     return 1;
   }
@@ -1028,42 +1088,33 @@ function getFriendlyErrorMessage(rawMessage, t) {
   return t("renderForm.workflow.friendlyErrors.server");
 }
 
-function classifyTechnicalMessage(text) {
-  const value = String(text || "")
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "");
+function resolveTechnicalEventText(entry, t) {
+  const key = String(entry?.key || "").trim();
 
-  if (
-    value.includes("resultados listos") ||
-    value.includes("compilacion exitosa") ||
-    value.includes("recibido correctamente")
-  ) {
-    return "success";
+  if (!key) {
+    return (
+      entry?.msg ||
+      t("renderForm.workflow.technical.messageWithoutContent")
+    );
   }
 
-  if (
-    value.includes("timeout") ||
-    value.includes("tiempo limite") ||
-    value.includes("error de compilacion") ||
-    value.includes("error en ejecucion") ||
-    value.includes("error ejecucion") ||
-    value.includes("no se genero") ||
-    value.includes("no se pudo") ||
-    value.includes("fallo inesperado") ||
-    value.includes("❌")
-  ) {
-    return "error";
+  if (key === "failed" && entry?.message) {
+    return t("renderForm.workflow.events.failedWithMessage", {
+      message: entry.message,
+    });
   }
 
-  if (
-    value.includes("warning") ||
-    value.includes("aviso") ||
-    value.includes("⚠")
-  ) {
-    return "warning";
-  }
+  const translationKey = `renderForm.workflow.events.${key}`;
+  const translated = t(translationKey);
 
+  return translated === translationKey
+    ? t("renderForm.workflow.technical.messageWithoutContent")
+    : translated;
+}
+
+function classifyTechnicalEvent(entry) {
+  if (entry?.key === "completed") return "success";
+  if (["failed", "cancelled"].includes(entry?.key)) return "error";
   return "info";
 }
 

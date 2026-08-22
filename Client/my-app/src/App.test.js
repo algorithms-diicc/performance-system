@@ -11,8 +11,11 @@ jest.mock("react-plotly.js", () => () => (
   <div data-testid="plotly-chart" />
 ));
 
-jest.mock("./screens/RenderForm", () => () => (
-  <div data-testid="screen-render-form">
+jest.mock("./screens/RenderForm", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-render-form"
+    data-current-user-email={currentUser?.email || ""}
+  >
     Nuevo análisis
   </div>
 ));
@@ -250,6 +253,7 @@ describe("CORE-05H-1 App shell and routing regression", () => {
   });
 
   test.each([
+    ["/", "screen-render-form"],
     ["/code/exec70LCS", "screen-render-image"],
     ["/submissions/42", "screen-submission-overview"],
     ["/compare?execution=one&execution=two", "screen-comparison"],

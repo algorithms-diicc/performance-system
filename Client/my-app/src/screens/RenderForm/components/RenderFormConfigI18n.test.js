@@ -26,7 +26,6 @@ const commonBenchmarkProps = {
   onSamplesSliderChange: noop,
   paramErrors: { inputSize: "", samples: "" },
   inputSizePresets: { camm: [2000, 5000] },
-  samplesPresets: [10, 20, 30],
   numericalInputOptions: [
     { value: "cammr", label: "Números aleatorios" },
   ],
@@ -43,7 +42,7 @@ const commonBenchmarkProps = {
       samples: { min: 1, max: 100, step: 1 },
     },
   },
-  executionProfile: "Equilibrado",
+  executionProfile: "equilibrado",
 };
 
 describe("RenderForm configuration i18n", () => {
@@ -64,15 +63,45 @@ describe("RenderForm configuration i18n", () => {
     expect(screen.getByText("Numeric data")).toBeInTheDocument();
     expect(screen.getByText("Numeric dataset")).toBeInTheDocument();
     expect(screen.getByText("Random numbers")).toBeInTheDocument();
+    expect(screen.getByTestId("fixed-profile-samples")).toHaveTextContent(
+      "30 repetitions per point"
+    );
+    expect(
+      screen.queryByLabelText("Decrease repetitions")
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole("slider", {
+      name: "Repetitions per point",
+    })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Datos numéricos")
+    ).not.toBeInTheDocument();
+  });
+
+  test("Custom is the only profile exposing 1–100 repetition controls", () => {
+    render(
+      <I18nProvider initialLanguage="en">
+        <TestTypeAndParamsCard
+          {...commonBenchmarkProps}
+          executionProfile="personalizado"
+          samples={40}
+        />
+      </I18nProvider>
+    );
+
+    const inputs = screen.getAllByRole("spinbutton");
+    const repetitions = inputs.find(
+      (input) => input.getAttribute("min") === "1"
+    );
+
+    expect(repetitions).toHaveAttribute("max", "100");
+    expect(repetitions).toHaveAttribute("step", "1");
     expect(
       screen.getByLabelText("Decrease repetitions")
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/The current profile is Balanced/i)
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Datos numéricos")
-    ).not.toBeInTheDocument();
+      screen.getByRole("slider", { name: "Repetitions per point" })
+    ).toHaveAttribute("max", "100");
+    expect(screen.queryByRole("button", { name: "20" })).not.toBeInTheDocument();
   });
 
   test("localizes academic context while preserving course data", () => {
@@ -118,6 +147,10 @@ describe("RenderForm configuration i18n", () => {
           isSubmitting={false}
           testName="Mi experimento"
           fileName="code.zip"
+          fileMeta={{
+            cppCount: 7,
+            cppSample: ["src/a.cpp", "src/b.cpp", "src/c.cpp", "src/d.cpp", "src/e.cpp"],
+          }}
           taskTitle="Datos numéricos"
           taskId="camm"
           inputSize={5000}
@@ -140,6 +173,10 @@ describe("RenderForm configuration i18n", () => {
     expect(screen.getByText("Numeric data")).toBeInTheDocument();
     expect(screen.getByText("Random numbers")).toBeInTheDocument();
     expect(screen.getByText("Balanced")).toBeInTheDocument();
+    expect(screen.getByText("7 .cpp files")).toBeInTheDocument();
+    expect(screen.getByText("src/a.cpp")).toBeInTheDocument();
+    expect(screen.getByText("+2 more")).toBeInTheDocument();
+    expect(screen.getByText("student@udec.cl")).toBeInTheDocument();
     expect(
       screen.getByText("Managed measurement environment")
     ).toBeInTheDocument();

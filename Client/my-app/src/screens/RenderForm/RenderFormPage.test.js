@@ -35,11 +35,28 @@ jest.mock("./components/MeasurementAndProfileSection", () => {
   const ReactModule = require("react");
   return function MockMeasurement({
     executionProfile,
+    onExecutionProfileChange,
   }) {
     return ReactModule.createElement(
-      "span",
-      { "data-testid": "execution-profile" },
-      executionProfile || ""
+      ReactModule.Fragment,
+      null,
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "execution-profile" },
+        executionProfile || ""
+      ),
+      ["rapido", "equilibrado", "exhaustivo", "personalizado"].map(
+        (profile) =>
+          ReactModule.createElement(
+            "button",
+            {
+              key: profile,
+              type: "button",
+              onClick: () => onExecutionProfileChange(profile),
+            },
+            `Perfil ${profile}`
+          )
+      )
     );
   };
 });
@@ -401,11 +418,70 @@ describe("RenderFormPage 6A onboarding", () => {
     expect(screen.getByLabelText(/Nota personal/)).toHaveValue(
       "Recordar comparar con la versión base"
     );
+    expect(
+      screen.getByText("Se restauró tu configuración anterior.")
+    ).toBeInTheDocument();
 
     await selectZipFromInput("nuevo.zip");
     expect(screen.getByLabelText("Nombre del test")).toHaveValue(
       "Borrador recuperado"
     );
+  });
+
+  test("default autosave does not show a false restored-draft notice", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        testName: "",
+        note: "",
+        selectedTaskType: "",
+        inputSize: 1000,
+        samples: 30,
+        dataType: "",
+        executionProfile: "equilibrado",
+      })
+    );
+
+    await renderPage();
+
+    expect(
+      screen.queryByText("Se restauró tu configuración anterior.")
+    ).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
+  });
+
+  test("clear draft restores coherent defaults and removes persistence", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        testName: "Borrador",
+        note: "Nota",
+        selectedTaskType: "lcs",
+        inputSize: 750,
+        samples: 40,
+        dataType: "",
+        executionProfile: "personalizado",
+      })
+    );
+
+    await renderPage();
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Limpiar borrador" })
+    );
+
+    expect(screen.getByLabelText("Nombre del test")).toHaveValue("");
+    expect(screen.getByLabelText(/Nota personal/)).toHaveValue("");
+    expect(screen.getByTestId("selected-task-type")).toHaveTextContent("");
+    expect(screen.getByTestId("execution-profile")).toHaveTextContent(
+      "equilibrado"
+    );
+    await waitFor(() => {
+      expect(window.localStorage.getItem(DRAFT_KEY)).toBeNull();
+    });
   });
 
   test("an old draft without note loads the empty optional field", async () => {
@@ -421,6 +497,14 @@ describe("RenderFormPage 6A onboarding", () => {
   });
 
   test("a title recovered from an execution remains manual", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        testName: "Borrador que no debe ganar",
+      })
+    );
+
     axios.get.mockImplementation((url) => {
       if (url.includes("api/student/courses")) {
         return Promise.resolve(courseResponse);
@@ -447,6 +531,9 @@ describe("RenderFormPage 6A onboarding", () => {
         "Ejecución recuperada"
       )
     );
+    expect(
+      screen.queryByText("Se restauró tu configuración anterior.")
+    ).not.toBeInTheDocument();
 
     await selectZipFromInput("reemplazo.zip");
     expect(screen.getByLabelText("Nombre del test")).toHaveValue(
@@ -455,6 +542,18 @@ describe("RenderFormPage 6A onboarding", () => {
   });
 
   test("reuse preloads configuration without copying historical content", async () => {
+    window.localStorage.setItem(
+      DRAFT_KEY,
+      JSON.stringify({
+        version: 1,
+        testName: "Borrador que no debe contaminar reuse",
+        selectedTaskType: "size",
+        inputSize: 2500,
+        samples: 50,
+        executionProfile: "exhaustivo",
+      })
+    );
+
     axios.get.mockImplementation((url) => {
       if (url.includes("api/student/courses")) {
         return Promise.resolve({
@@ -526,6 +625,9 @@ describe("RenderFormPage 6A onboarding", () => {
         name: "Revisar y ejecutar",
       })
     ).toBeDisabled();
+    expect(
+      screen.queryByText("Se restauró tu configuración anterior.")
+    ).not.toBeInTheDocument();
   });
 
   test("note is secondary, editable, counted and limited to 500", async () => {
@@ -562,36 +664,43 @@ describe("RenderFormPage 6A onboarding", () => {
     expect(note).toHaveValue("");
   });
 
-  test("manual canonical sample counts keep the canonical measurement profile", async () => {
+  test("predefined profiles synchronize 10/30/50 and Custom keeps manual samples", async () => {
     await renderPage();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Muestras 10" })
+      screen.getByRole("button", { name: "Perfil rapido" })
     );
     expect(
       screen.getByTestId("execution-profile")
     ).toHaveTextContent("rapido");
+    expect(screen.getByTestId("samples")).toHaveTextContent("10");
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Muestras 30" })
+      screen.getByRole("button", { name: "Perfil equilibrado" })
     );
     expect(
       screen.getByTestId("execution-profile")
     ).toHaveTextContent("equilibrado");
+    expect(screen.getByTestId("samples")).toHaveTextContent("30");
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Muestras 50" })
+      screen.getByRole("button", { name: "Perfil exhaustivo" })
     );
     expect(
       screen.getByTestId("execution-profile")
     ).toHaveTextContent("exhaustivo");
+    expect(screen.getByTestId("samples")).toHaveTextContent("50");
 
+    fireEvent.click(
+      screen.getByRole("button", { name: "Perfil personalizado" })
+    );
     fireEvent.click(
       screen.getByRole("button", { name: "Muestras 40" })
     );
     expect(
       screen.getByTestId("execution-profile")
     ).toHaveTextContent("personalizado");
+    expect(screen.getByTestId("samples")).toHaveTextContent("40");
   });
 
   test("an accepted submission clears the saved draft", async () => {

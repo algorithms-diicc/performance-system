@@ -15,10 +15,16 @@ import {
 } from "./reuse/executionReuseModel";
 import {
   applyArchiveTitleSuggestion,
+  hasMeaningfulDraft,
   manualSubmissionTitle,
   normalizeDraftNote,
   resolveSubmissionTitle,
 } from "./formOnboardingModel";
+import { buildAnalysisRequirements } from "./analysisReadinessModel";
+import {
+  EXECUTION_PROFILE_SAMPLES,
+  normalizeExecutionProfile,
+} from "./executionProfileModel";
 import {
   resolveCourseQuerySelection,
 } from "./courseOnboardingModel";
@@ -68,8 +74,6 @@ const inputSizePresets = {
   size: [1000, 2500, 5000],
 };
 
-const samplesPresets = [10, 20, 30];
-
 /**
  * El backend actual no ofrece selección de hardware.
  * Por eso el entorno se presenta como información y no como un selector.
@@ -78,9 +82,9 @@ const executionEnvironment = {
   name: "Entorno de medición administrado",
   badge: "Automático",
   description:
-    "Performance System enviará la prueba al nodo de medición configurado para esta instalación.",
+    "Las ejecuciones se envían al nodo de medición configurado para esta instalación.",
   note:
-    "La selección manual de hardware se habilitará cuando exista soporte real en el backend.",
+    "El entorno controlado favorece la comparabilidad y reproducibilidad; la procedencia del hardware se registra cuando está disponible.",
 };
 
 /**
@@ -123,26 +127,6 @@ const executionProfiles = [
       "Permite definir manualmente el número de repeticiones por punto de medición.",
   },
 ];
-
-const EXECUTION_PROFILE_SAMPLES = {
-  rapido: 10,
-  equilibrado: 30,
-  exhaustivo: 50,
-};
-
-const inferExecutionProfileFromSamples = (value) => {
-  const numeric = Number(value);
-
-  if (!Number.isFinite(numeric)) {
-    return "personalizado";
-  }
-
-  const match = Object.entries(
-    EXECUTION_PROFILE_SAMPLES
-  ).find(([, profileSamples]) => profileSamples === numeric);
-
-  return match?.[0] || "personalizado";
-};
 
 /**
  * Nombres pedagógicos. Los IDs internos se conservan porque forman parte
@@ -254,30 +238,12 @@ const normalizeRecoveredDataType = (value) => {
     : "";
 };
 
-const normalizeRecoveredProfileId = (value) => {
-  const normalized = String(value || "")
-    .trim()
-    .toLowerCase();
-
-  const map = {
-    quick: "rapido",
-    rapido: "rapido",
-    balanced: "equilibrado",
-    equilibrado: "equilibrado",
-    exhaustive: "exhaustivo",
-    exhaustivo: "exhaustivo",
-    custom: "personalizado",
-    personalizado: "personalizado",
-  };
-
-  return map[normalized] || "";
-};
-
 function RenderFormPage({ currentUser }) {
   const { t } = useI18n();
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const initialSearchRef = useRef(location.search);
 
   // ======= Estado general del formulario =======
   const [titleState, setTitleState] = useState(() =>
@@ -299,6 +265,7 @@ function RenderFormPage({ currentUser }) {
   const [fileList, setFileList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
   const [submissionError, setSubmissionError] = useState("");
   const [executionSnapshot, setExecutionSnapshot] = useState(null);
   const submitRequestLockRef = useRef(false);
@@ -528,8 +495,9 @@ function RenderFormPage({ currentUser }) {
           recoveredDataType: normalizeRecoveredDataType(
             first?.benchmark
           ),
-          recoveredProfileId: normalizeRecoveredProfileId(
-            first?.executionProfile
+          recoveredProfileId: normalizeExecutionProfile(
+            first?.executionProfile,
+            first?.samples
           ),
           recoveredHardwareProfile: String(
             first?.hardwareProfile || ""
@@ -588,6 +556,14 @@ function RenderFormPage({ currentUser }) {
   useEffect(() => {
     try {
       if (typeof window === "undefined") return;
+
+      if (
+        parseExecutionPublicIds(initialSearchRef.current).length > 0 ||
+        parseReusePublicId(initialSearchRef.current)
+      ) {
+        return;
+      }
+
       const raw = window.localStorage.getItem(RENDER_FORM_DRAFT_KEY);
       if (!raw) return;
 
@@ -603,12 +579,18 @@ function RenderFormPage({ currentUser }) {
         dataType: savedDataType = "",
         executionProfile: savedProfile = "equilibrado",
       } = draft;
+      const restoredProfile = normalizeExecutionProfile(
+        savedProfile,
+        savedSamples
+      );
+      const fixedProfileSamples =
+        EXECUTION_PROFILE_SAMPLES[restoredProfile];
 
       setTitleState(manualSubmissionTitle(savedTestName));
       setNote(normalizeDraftNote(savedNote));
       setSelectedTaskType(savedTaskType || "");
       setDataType(savedDataType);
-      setExecutionProfile(savedProfile);
+      setExecutionProfile(restoredProfile);
 
       if (savedTaskType && PARAM_LIMITS[savedTaskType]) {
         const limitsInput = PARAM_LIMITS[savedTaskType].inputSize;
@@ -635,7 +617,11 @@ function RenderFormPage({ currentUser }) {
         );
 
         setInputSize(safeInputSize);
-        setSamples(safeSamples);
+        setSamples(
+          typeof fixedProfileSamples === "number"
+            ? fixedProfileSamples
+            : safeSamples
+        );
       } else {
         setInputSize(
           typeof savedInputSize === "number" && !Number.isNaN(savedInputSize)
@@ -643,13 +629,17 @@ function RenderFormPage({ currentUser }) {
             : 1000
         );
         setSamples(
-          typeof savedSamples === "number" && !Number.isNaN(savedSamples)
+          typeof fixedProfileSamples === "number"
+            ? fixedProfileSamples
+            : typeof savedSamples === "number" &&
+              !Number.isNaN(savedSamples)
             ? savedSamples
             : 30
         );
       }
 
       setParamErrors({ inputSize: "", samples: "" });
+      setDraftRestored(hasMeaningfulDraft(draft));
     } catch (e) {
       console.error("Error al cargar configuración previa del test:", e);
     }
@@ -789,6 +779,13 @@ function RenderFormPage({ currentUser }) {
     try {
       if (typeof window === "undefined") return;
 
+      if (
+        parseExecutionPublicIds(location.search).length > 0 ||
+        parseReusePublicId(location.search)
+      ) {
+        return;
+      }
+
       const draft = {
         version: 1,
         testName,
@@ -806,10 +803,14 @@ function RenderFormPage({ currentUser }) {
         executionProfile,
       };
 
-      window.localStorage.setItem(
-        RENDER_FORM_DRAFT_KEY,
-        JSON.stringify(draft)
-      );
+      if (hasMeaningfulDraft(draft)) {
+        window.localStorage.setItem(
+          RENDER_FORM_DRAFT_KEY,
+          JSON.stringify(draft)
+        );
+      } else {
+        window.localStorage.removeItem(RENDER_FORM_DRAFT_KEY);
+      }
     } catch (e) {
       console.warn("No se pudo guardar la configuración del test:", e);
     }
@@ -821,6 +822,7 @@ function RenderFormPage({ currentUser }) {
     samples,
     dataType,
     executionProfile,
+    location.search,
   ]);
 
   // ======= Helpers de validación de parámetros =======
@@ -887,23 +889,21 @@ function RenderFormPage({ currentUser }) {
   };
 
   const handleSamplesChange = (e) => {
+    if (executionProfile !== "personalizado") return;
+
     const raw = e.target.value;
     const value = raw === "" ? "" : Number(raw);
 
     setSamples(value);
-    setExecutionProfile(
-      inferExecutionProfileFromSamples(value)
-    );
     validateParam("samples", raw);
   };
 
   const handleSamplesSliderChange = (e) => {
+    if (executionProfile !== "personalizado") return;
+
     const value = Number(e.target.value);
 
     setSamples(value);
-    setExecutionProfile(
-      inferExecutionProfileFromSamples(value)
-    );
     validateParam("samples", value);
   };
 
@@ -979,6 +979,7 @@ function RenderFormPage({ currentUser }) {
     setParamErrors({ inputSize: "", samples: "" });
     setDataType("");
     setExecutionProfile("equilibrado");
+    setDraftRestored(false);
 
     setFileList([]);
     setIsSubmitting(false);
@@ -1012,39 +1013,7 @@ function RenderFormPage({ currentUser }) {
   const handleOpenOverview = (event) => {
     event.preventDefault();
 
-    // Chequeos básicos
-    if (!file) {
-      alert(t("renderForm.page.alerts.fileRequired"));
-      return;
-    }
-    if (!selectedTaskType) {
-      alert(t("renderForm.page.alerts.benchmarkRequired"));
-      return;
-    }
-    if (fileError) {
-      alert(t("renderForm.page.alerts.fileError"));
-      return;
-    }
-    if (paramErrors.inputSize || paramErrors.samples) {
-      alert(t("renderForm.page.alerts.parameterError"));
-      return;
-    }
-    if (selectedTaskType === "camm" && !dataType) {
-      alert(t("renderForm.page.alerts.dataTypeRequired"));
-      return;
-    }
-    if (courseContextLoading) {
-      alert(t("renderForm.page.alerts.courseLoading"));
-      return;
-    }
-    if (courseContextError) {
-      alert(t("renderForm.page.alerts.courseUnavailable"));
-      return;
-    }
-    if (courseSelectionRequired && !selectedCourseId) {
-      alert(t("renderForm.page.alerts.courseRequired"));
-      return;
-    }
+    if (analysisRequirements.length > 0 || isSubmitting) return;
 
     setShowOverview(true);
   };
@@ -1158,6 +1127,7 @@ function RenderFormPage({ currentUser }) {
               window.localStorage.removeItem(
                 RENDER_FORM_DRAFT_KEY
               );
+              setDraftRestored(false);
             }
           } catch (error) {
             console.warn(
@@ -1477,19 +1447,25 @@ function RenderFormPage({ currentUser }) {
   };
 
 
-  const hasParamErrors = Boolean(
-    paramErrors.inputSize || paramErrors.samples
-  );
+  const analysisRequirements = buildAnalysisRequirements({
+    file,
+    fileError,
+    fileMeta,
+    isInspectingZip,
+    selectedTaskType,
+    inputSize,
+    samples,
+    paramLimits: PARAM_LIMITS,
+    executionProfile,
+    dataType,
+    courseContextLoading,
+    courseContextError,
+    courseSelectionRequired,
+    selectedCourseId,
+  });
+
   const isSubmitDisabled =
-    !file ||
-    !selectedTaskType ||
-    isSubmitting ||
-    hasParamErrors ||
-    !!fileError ||
-    courseContextLoading ||
-    !!courseContextError ||
-    (courseSelectionRequired && !selectedCourseId) ||
-    (selectedTaskType === "camm" && !dataType);
+    isSubmitting || analysisRequirements.length > 0;
 
   const currentInputLimits = getLimits("inputSize");
   const currentSamplesLimits = getLimits("samples");
@@ -1566,6 +1542,15 @@ function RenderFormPage({ currentUser }) {
           </p>
         </div>
 
+        {draftRestored && (
+          <div className="rf-draft-notice" role="status">
+            <span>{t("renderForm.page.draft.restored")}</span>
+            <button type="button" onClick={handleResetForm}>
+              {t("renderForm.page.draft.clear")}
+            </button>
+          </div>
+        )}
+
         <div className="rf-main-layout">
           {/* =================== COLUMNA IZQUIERDA: CONFIGURACIÓN =================== */}
           <div className="rf-main-left">
@@ -1615,7 +1600,6 @@ function RenderFormPage({ currentUser }) {
               onSamplesSliderChange={handleSamplesSliderChange}
               paramErrors={localizedParamErrors}
               inputSizePresets={inputSizePresets}
-              samplesPresets={samplesPresets}
               numericalInputOptions={numericalInputOptionsUI}
               dataType={dataType}
               onDataTypeChange={handleDataTypeChange}
@@ -1651,6 +1635,7 @@ function RenderFormPage({ currentUser }) {
             pollingRequestError={pollingRequestError}
             summary={statusSummary}
             isSubmitDisabled={isSubmitDisabled}
+            requirements={analysisRequirements}
             onGoToResults={handleGoToResults}
             onReset={handleResetForm}
             onPrepareNewAnalysis={handlePrepareNewAnalysis}
@@ -1669,6 +1654,7 @@ function RenderFormPage({ currentUser }) {
         isSubmitting={isSubmitting}
         testName={testName}
         fileName={file ? file.name : null}
+        fileMeta={fileMeta}
         taskTitle={getTaskTitle()}
         taskId={selectedTaskType}
         inputSize={inputSize}

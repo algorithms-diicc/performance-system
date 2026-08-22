@@ -315,7 +315,7 @@ const en = {
       testNameLabel: "Test name",
       testNamePlaceholder: "E.g. optimized LCS, blocked CAMM, etc.",
       testNameHelp:
-        "This name will identify the execution in the results view.",
+        "This name identifies the Experiment. A ZIP can contain multiple implementations, and each .cpp file creates its own execution.",
       noteLabel: "Personal note",
       optional: "(optional)",
       notePrivate: "Only you can see this note.",
@@ -338,9 +338,9 @@ const en = {
       environmentName: "Managed measurement environment",
       automaticBadge: "Automatic",
       environmentDescription:
-        "Performance System will send the test to the measurement node configured for this installation.",
+        "Executions are sent to the measurement node configured for this installation.",
       environmentNote:
-        "Manual hardware selection will be enabled when real backend support is available.",
+        "The managed, controlled environment supports comparability and reproducibility while reducing variation from uncontrolled hardware. Hardware provenance is recorded when available.",
       profileLabel: "Measurement profile",
       profileHelp:
         "Defines how many times each measurement point is repeated. More repetitions usually provide more stable results, but increase the total experiment time.",
@@ -386,6 +386,10 @@ const en = {
       increaseRepetitions: "Increase repetitions",
       currentProfile:
         "The current profile is {{profile}}. Values 10, 30, and 50 map to Quick, Balanced, and Exhaustive; other values are recorded as Custom.",
+      fixedByProfile: "Defined by the {{profile}} profile.",
+      customProfileHelp:
+        "The Custom profile lets you choose from 1 to 100 repetitions per point.",
+      repetitionsSlider: "Repetitions per point",
       allowedRange:
         "Allowed range: {{min}}–{{max}}. This is an acceptance limit, not a guarantee of execution time.",
       recommendedValues: "Recommended values",
@@ -471,6 +475,12 @@ const en = {
       unnamed: "(unnamed)",
       file: "File",
       noFile: "No file selected",
+      implementations: "Implementations / .cpp sources",
+      sources: "Included sources",
+      moreSources: {
+        one: "+{{count}} more",
+        other: "+{{count}} more",
+      },
       benchmark: "Benchmark",
       parameters: "Parameters",
       maxSize: "Maximum size",
@@ -515,7 +525,21 @@ const en = {
         readyText:
           "You can review the detailed summary and confirm the execution.",
         pendingText:
-          "Complete the required fields to enable the execution.",
+          "Complete these requirements to enable review:",
+        requirements: {
+          zipRequired: "Select a ZIP archive.",
+          zipInspecting: "Wait while the ZIP archive is validated.",
+          zipInvalid: "Select a valid ZIP archive containing at least one .cpp file.",
+          benchmarkRequired: "Choose a benchmark.",
+          inputSizeInvalid: "Enter a valid maximum input size.",
+          samplesInvalid:
+            "Choose between 1 and 100 repetitions for the Custom profile.",
+          dataTypeRequired: "Select the data distribution for CAMM.",
+          courseLoading: "Wait while your academic context loads.",
+          courseUnavailable:
+            "Retry loading the academic context before continuing.",
+          courseRequired: "Select the course for this experiment.",
+        },
         review: "Review and run",
         clear: "Clear configuration",
         hint:
@@ -539,6 +563,26 @@ const en = {
           "You can keep this view open while the benchmark runs. If you reload the page, Performance System will attempt to recover the execution.",
         prepareAnotherHint:
           "Preparing another analysis does not cancel this execution: it will remain queued or running and you can follow it from History.",
+      },
+      queue: {
+        title: "FIFO position per execution",
+        next: "Next in queue",
+        ahead: {
+          one: "{{count}} execution ahead",
+          other: "{{count}} executions ahead",
+        },
+        explanation:
+          "Measurements are dispatched in FIFO order. The position can change as other executions finish or are claimed.",
+      },
+      events: {
+        accepted: "Request accepted.",
+        queued: "Execution added to the FIFO queue.",
+        running: "The measurement node started the execution.",
+        processing: "Processing measurement results.",
+        completed: "Results available.",
+        failed: "The execution ended with an error.",
+        failedWithMessage: "Execution failed: {{message}}",
+        cancelled: "The execution was cancelled.",
       },
       completed: {
         kicker: "Completed",
@@ -650,6 +694,10 @@ const en = {
         other: "{{count}} files",
       },
       registeredEnvironment: "Registered environment",
+      draft: {
+        restored: "Your previous configuration was restored.",
+        clear: "Clear draft",
+      },
       validations: {
         numberRequired: "Enter a numeric value.",
         numberInvalid: "Enter a valid number.",

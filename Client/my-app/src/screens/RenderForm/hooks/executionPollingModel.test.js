@@ -1,8 +1,9 @@
 import {
   aggregatePollingState,
-  buildMessagesFromSnapshot,
+  buildEventsFromSnapshot,
   indexExecutionRecords,
   normalizeExecutionSnapshot,
+  normalizeQueueAhead,
 } from "./executionPollingModel";
 
 describe("executionPollingModel", () => {
@@ -42,29 +43,61 @@ describe("executionPollingModel", () => {
     expect(item.resultsReady).toBe(false);
   });
 
-  test("PROCESSING synthesizes processing messages", () => {
-    const messages = buildMessagesFromSnapshot({
+  test("PROCESSING produces semantic events without UI phrases", () => {
+    const events = buildEventsFromSnapshot({
       state: "PROCESSING",
       startedAt: "2026-08-11T01:00:00",
       processingAt: "2026-08-11T01:01:00",
     });
-    expect(
-      messages.some((entry) =>
-        entry.msg.includes("Generando gráficos")
-      )
-    ).toBe(true);
+    expect(events.map((entry) => entry.key)).toEqual([
+      "accepted",
+      "running",
+      "processing",
+    ]);
+    expect(events.every((entry) => entry.msg === undefined)).toBe(true);
   });
 
-  test("COMPLETED synthesizes Resultados listos", () => {
-    const messages = buildMessagesFromSnapshot({
+  test("COMPLETED produces a completed semantic event", () => {
+    const events = buildEventsFromSnapshot({
       state: "COMPLETED",
       resultAvailable: true,
     });
+    expect(events.map((entry) => entry.key)).toContain("completed");
+  });
+
+  test("failed event preserves only the controlled public message as data", () => {
     expect(
-      messages.some((entry) =>
-        entry.msg.includes("Resultados listos")
-      )
-    ).toBe(true);
+      buildEventsFromSnapshot({
+        state: "FAILED",
+        failure: { message: "Controlled failure" },
+      }).find((entry) => entry.key === "failed")
+    ).toMatchObject({
+      key: "failed",
+      message: "Controlled failure",
+    });
+  });
+
+  test.each([
+    ["QUEUED", 0, 0],
+    ["QUEUED", "1", 1],
+    ["QUEUED", 2, 2],
+    ["QUEUED", -1, null],
+    ["QUEUED", 1.5, null],
+    ["RUNNING", 3, null],
+    ["COMPLETED", 0, null],
+  ])("normalizes queueAhead for %s / %s", (state, value, expected) => {
+    expect(normalizeQueueAhead(value, state)).toBe(expected);
+  });
+
+  test("snapshot carries queueAhead only while queued", () => {
+    expect(
+      normalizeExecutionSnapshot({ state: "QUEUED", queueAhead: 2 })
+        .queueAhead
+    ).toBe(2);
+    expect(
+      normalizeExecutionSnapshot({ state: "PROCESSING", queueAhead: 2 })
+        .queueAhead
+    ).toBeNull();
   });
 
   test("aggregate allDone only when all completed", () => {

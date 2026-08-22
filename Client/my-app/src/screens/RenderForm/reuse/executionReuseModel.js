@@ -1,3 +1,5 @@
+import { normalizeExecutionProfile } from "../executionProfileModel";
+
 const REUSE_QUERY_KEY = "reuse";
 
 const BENCHMARK_REUSE_CONFIG = {
@@ -8,26 +10,6 @@ const BENCHMARK_REUSE_CONFIG = {
   CAMMSO: { selectedTaskType: "camm", dataType: "cammso" },
   CAMMS: { selectedTaskType: "camm", dataType: "camms" },
 };
-
-const EXECUTION_PROFILE_MAP = {
-  QUICK: "rapido",
-  BALANCED: "equilibrado",
-  EXHAUSTIVE: "exhaustivo",
-  CUSTOM: "personalizado",
-};
-
-function resolveExecutionProfile(profile, samples) {
-  const normalized = String(profile || "").trim().toUpperCase();
-
-  if (EXECUTION_PROFILE_MAP[normalized]) {
-    return EXECUTION_PROFILE_MAP[normalized];
-  }
-
-  if (Number(samples) === 10) return "rapido";
-  if (Number(samples) === 30) return "equilibrado";
-  if (Number(samples) === 50) return "exhaustivo";
-  return "personalizado";
-}
 
 export function parseReusePublicId(search = "") {
   const params = new URLSearchParams(search);
@@ -86,7 +68,7 @@ export function buildReuseConfiguration(
     dataType: benchmarkConfig.dataType,
     inputSize: descriptor.inputSize,
     samples: descriptor.samples,
-    executionProfile: resolveExecutionProfile(
+    executionProfile: normalizeExecutionProfile(
       descriptor.executionProfile,
       descriptor.samples
     ),

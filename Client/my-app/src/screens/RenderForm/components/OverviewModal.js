@@ -7,6 +7,7 @@ function OverviewModal({
   isSubmitting,
   testName,
   fileName,
+  fileMeta,
   taskTitle,
   taskId,
   inputSize,
@@ -52,6 +53,14 @@ function OverviewModal({
     executionProfileId && translatedProfile !== translatedProfileKey
       ? translatedProfile
       : executionProfileLabel;
+  const cppCount = Math.max(0, Number(fileMeta?.cppCount) || 0);
+  const cppSample = Array.isArray(fileMeta?.cppSample)
+    ? fileMeta.cppSample.slice(0, 5)
+    : [];
+  const additionalSources = Math.max(
+    0,
+    cppCount - cppSample.length
+  );
 
   return (
     <div className="rf-modal-backdrop">
@@ -71,6 +80,37 @@ function OverviewModal({
 
                 <dt>{t("renderForm.overview.file")}</dt>
                 <dd>{fileName || t("renderForm.overview.noFile")}</dd>
+
+                {fileMeta && (
+                  <>
+                    <dt>{t("renderForm.overview.implementations")}</dt>
+                    <dd>
+                      {t("renderForm.upload.cppFiles", {
+                        count: cppCount,
+                      })}
+                    </dd>
+
+                    {cppSample.length > 0 && (
+                      <>
+                        <dt>{t("renderForm.overview.sources")}</dt>
+                        <dd>
+                          <ul className="rf-overview-source-list">
+                            {cppSample.map((source) => (
+                              <li key={source}>{source}</li>
+                            ))}
+                            {additionalSources > 0 && (
+                              <li>
+                                {t("renderForm.overview.moreSources", {
+                                  count: additionalSources,
+                                })}
+                              </li>
+                            )}
+                          </ul>
+                        </dd>
+                      </>
+                    )}
+                  </>
+                )}
 
                 <dt>{t("renderForm.overview.benchmark")}</dt>
                 <dd>{resolvedTaskTitle}</dd>

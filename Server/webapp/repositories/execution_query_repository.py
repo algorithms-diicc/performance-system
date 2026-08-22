@@ -8,6 +8,15 @@ def get_execution_snapshot_row(public_id, conn=None):
         with db.cursor(cursor_factory=RealDictCursor) as cur:
             cur.execute(
                 """
+                WITH ordered_queue AS (
+                    SELECT
+                        id,
+                        ROW_NUMBER() OVER (
+                            ORDER BY queued_at ASC NULLS LAST, id ASC
+                        ) - 1 AS queue_ahead
+                    FROM executions
+                    WHERE execution_state = 'QUEUED'
+                )
                 SELECT
                     e.public_id::text AS public_id,
                     e.submission_id,
@@ -33,10 +42,16 @@ def get_execution_snapshot_row(public_id, conn=None):
                     e.duration_ms,
                     s.user_id AS owner_user_id,
                     s.title AS submission_title,
-                    hp.name AS hardware_profile_name
+                    hp.name AS hardware_profile_name,
+                    CASE
+                        WHEN e.execution_state = 'QUEUED'
+                        THEN oq.queue_ahead
+                        ELSE NULL
+                    END AS queue_ahead
                 FROM executions e
                 JOIN submissions s ON s.id = e.submission_id
                 LEFT JOIN hardware_profiles hp ON hp.id = e.hardware_profile_id
+                LEFT JOIN ordered_queue oq ON oq.id = e.id
                 WHERE e.public_id = %s::uuid
                 LIMIT 1;
                 """,

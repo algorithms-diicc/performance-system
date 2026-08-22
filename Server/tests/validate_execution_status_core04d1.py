@@ -21,6 +21,12 @@ checks = [
     ck("Repository joins submissions", "JOIN submissions s" in repo),
     ck("Canonical execution_state exposed", '"state": state' in service),
     ck(
+        "FIFO queueAhead exposed",
+        '"queueAhead": queue_ahead' in service
+        and "ORDER BY queued_at ASC NULLS LAST, id ASC" in repo,
+    ),
+    ck("Queue snapshot does not lock rows", "FOR UPDATE" not in repo),
+    ck(
         "Controlled public failure exposed",
         "PUBLIC_FAILURE_MESSAGES" in service
         and '"stage": stage or None' in service

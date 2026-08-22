@@ -98,13 +98,14 @@ function useExecutionPolling(
             taskType: "",
             inputSize: null,
             samples: null,
-            messages: [],
+            events: [],
             resultsReady: false,
             hasError: false,
             errorMessage: "",
             resultAvailable: false,
             resultsUrl: null,
             failure: null,
+            queueAhead: null,
             unavailable: true,
             requestStatus: error?.response?.status || null,
             requestError: friendlyRequestError(
@@ -132,7 +133,7 @@ function useExecutionPolling(
           originalName: item.originalName,
           status: item.status,
           state: item.state,
-          messages: item.messages,
+          messages: item.events,
         }))
       );
 

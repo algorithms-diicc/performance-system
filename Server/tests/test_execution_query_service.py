@@ -35,6 +35,7 @@ def row(state="QUEUED"):
         "result_path": None,
         "duration_ms": None,
         "hardware_profile_name": None,
+        "queue_ahead": 0,
     }
 
 class Tests(unittest.TestCase):
@@ -49,6 +50,13 @@ class Tests(unittest.TestCase):
     def test_queued(self):
         p = build_execution_snapshot(row("QUEUED"), 5)
         self.assertFalse(p["terminal"])
+        self.assertEqual(p["queueAhead"], 0)
+
+    def test_queued_with_two_earlier_executions(self):
+        r = row("QUEUED")
+        r["queue_ahead"] = 2
+        p = build_execution_snapshot(r, 5)
+        self.assertEqual(p["queueAhead"], 2)
 
     def test_running(self):
         r = row("RUNNING")
@@ -56,6 +64,7 @@ class Tests(unittest.TestCase):
         r["started_at"] = r["queued_at"] + timedelta(seconds=1)
         p = build_execution_snapshot(r, 5)
         self.assertEqual(p["stateVersion"], 1)
+        self.assertIsNone(p["queueAhead"])
 
     def test_processing(self):
         r = row("PROCESSING")
@@ -63,6 +72,7 @@ class Tests(unittest.TestCase):
         r["processing_at"] = r["queued_at"] + timedelta(seconds=5)
         p = build_execution_snapshot(r, 5)
         self.assertEqual(p["state"], "PROCESSING")
+        self.assertIsNone(p["queueAhead"])
 
     def test_completed_results_url(self):
         r = row("COMPLETED")
@@ -74,6 +84,7 @@ class Tests(unittest.TestCase):
         self.assertTrue(p["resultAvailable"])
         self.assertEqual(p["resultsUrl"], "/api/executions/abc123LCS/results")
         self.assertNotIn("resultPath", p)
+        self.assertIsNone(p["queueAhead"])
 
     def test_duration(self):
         r = row("COMPLETED")
@@ -120,6 +131,12 @@ class Tests(unittest.TestCase):
     def test_original_filename(self):
         p = build_execution_snapshot(row(), 5)
         self.assertEqual(p["originalFilename"], "lcs_template.cpp")
+
+    def test_snapshot_does_not_expose_queue_rows_or_other_owners(self):
+        p = build_execution_snapshot(row(), 5)
+        self.assertNotIn("ownerUserId", p)
+        self.assertNotIn("queuedExecutions", p)
+        self.assertNotIn("queueOwners", p)
 
 if __name__ == "__main__":
     unittest.main()

@@ -48,7 +48,6 @@ function TestTypeAndParamsCard({
   onSamplesSliderChange,
   paramErrors,
   inputSizePresets,
-  samplesPresets,
   numericalInputOptions,
   dataType,
   onDataTypeChange,
@@ -80,6 +79,7 @@ function TestTypeAndParamsCard({
     translatedProfile === profileKey
       ? executionProfile
       : translatedProfile;
+  const isCustomProfile = profileId === "personalizado";
 
   const handleSamplesStep = (direction, limitsSamples) => {
     const current =
@@ -324,95 +324,105 @@ function TestTypeAndParamsCard({
                           {t("renderForm.benchmark.repetitionsPerPoint")}
                         </label>
 
-                        <div className="param-input-with-stepper">
-                          <button
-                            type="button"
-                            className="stepper-button"
-                            onClick={() =>
-                              handleSamplesStep("dec", limitsSamples)
-                            }
-                            aria-label={t(
-                              "renderForm.benchmark.decreaseRepetitions"
-                            )}
-                          >
-                            −
-                          </button>
+                        {isCustomProfile ? (
+                          <>
+                            <div className="param-input-with-stepper">
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() =>
+                                  handleSamplesStep("dec", limitsSamples)
+                                }
+                                aria-label={t(
+                                  "renderForm.benchmark.decreaseRepetitions"
+                                )}
+                              >
+                                −
+                              </button>
 
-                          <input
-                            type="number"
-                            className={`param-input ${
-                              paramErrors.samples ? "param-input-error" : ""
-                            }`}
-                            value={samples === "" ? "" : samples}
-                            onChange={onSamplesChange}
-                            min={limitsSamples?.min ?? 1}
-                            max={limitsSamples?.max}
-                          />
+                              <input
+                                type="number"
+                                className={`param-input ${
+                                  paramErrors.samples
+                                    ? "param-input-error"
+                                    : ""
+                                }`}
+                                value={samples === "" ? "" : samples}
+                                onChange={onSamplesChange}
+                                min={limitsSamples?.min ?? 1}
+                                max={limitsSamples?.max ?? 100}
+                                step={limitsSamples?.step ?? 1}
+                              />
 
-                          <button
-                            type="button"
-                            className="stepper-button"
-                            onClick={() =>
-                              handleSamplesStep("inc", limitsSamples)
-                            }
-                            aria-label={t(
-                              "renderForm.benchmark.increaseRepetitions"
-                            )}
-                          >
-                            +
-                          </button>
-                        </div>
-
-                        <p className="param-context-help">
-                          {t("renderForm.benchmark.currentProfile", {
-                            profile: profileLabel,
-                          })}
-                        </p>
-
-                        {limitsSamples && (
-                          <div className="param-range-wrapper">
-                            <input
-                              type="range"
-                              className="param-range"
-                              min={limitsSamples.min}
-                              max={limitsSamples.max}
-                              step={limitsSamples.step}
-                              value={
-                                typeof samples === "number" &&
-                                !Number.isNaN(samples)
-                                  ? samples
-                                  : limitsSamples.min
-                              }
-                              onChange={onSamplesSliderChange}
-                            />
-                            <div className="param-range-labels">
-                              <span>{limitsSamples.min}</span>
-                              <span>{limitsSamples.max}</span>
+                              <button
+                                type="button"
+                                className="stepper-button"
+                                onClick={() =>
+                                  handleSamplesStep("inc", limitsSamples)
+                                }
+                                aria-label={t(
+                                  "renderForm.benchmark.increaseRepetitions"
+                                )}
+                              >
+                                +
+                              </button>
                             </div>
+
+                            <p className="param-context-help">
+                              {t(
+                                "renderForm.benchmark.customProfileHelp"
+                              )}
+                            </p>
+
+                            {limitsSamples && (
+                              <div className="param-range-wrapper">
+                                <input
+                                  type="range"
+                                  className="param-range"
+                                  aria-label={t(
+                                    "renderForm.benchmark.repetitionsSlider"
+                                  )}
+                                  min={limitsSamples.min}
+                                  max={limitsSamples.max}
+                                  step={limitsSamples.step}
+                                  value={
+                                    typeof samples === "number" &&
+                                    !Number.isNaN(samples)
+                                      ? samples
+                                      : limitsSamples.min
+                                  }
+                                  onChange={onSamplesSliderChange}
+                                />
+                                <div className="param-range-labels">
+                                  <span>{limitsSamples.min}</span>
+                                  <span>{limitsSamples.max}</span>
+                                </div>
+                              </div>
+                            )}
+
+                            {paramErrors.samples && (
+                              <p className="param-error">
+                                {paramErrors.samples}
+                              </p>
+                            )}
+                          </>
+                        ) : (
+                          <div
+                            className="param-readonly-value"
+                            data-testid="fixed-profile-samples"
+                          >
+                            <strong>
+                              {t("renderForm.measurement.repetitions", {
+                                count: samples,
+                              })}
+                            </strong>
+                            <span>
+                              {t(
+                                "renderForm.benchmark.fixedByProfile",
+                                { profile: profileLabel }
+                              )}
+                            </span>
                           </div>
-                        )}
-
-                        <div className="param-suggestions">
-                          {samplesPresets.map((preset) => (
-                            <button
-                              key={preset}
-                              type="button"
-                              className="param-chip"
-                              onClick={() =>
-                                onSamplesSliderChange({
-                                  target: { value: preset },
-                                })
-                              }
-                            >
-                              {preset}
-                            </button>
-                          ))}
-                        </div>
-
-                        {paramErrors.samples && (
-                          <p className="param-error">
-                            {paramErrors.samples}
-                          </p>
                         )}
                       </div>
 

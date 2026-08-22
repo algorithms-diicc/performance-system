@@ -108,6 +108,14 @@ def build_execution_snapshot(row, current_user_id):
         # API expone solamente mensajes públicos controlados por código/etapa.
         failure = build_public_failure_payload(row)
 
+    queue_ahead = None
+    if state == "QUEUED":
+        raw_queue_ahead = row.get("queue_ahead")
+        queue_ahead = max(
+            0,
+            int(raw_queue_ahead) if raw_queue_ahead is not None else 0,
+        )
+
     return {
         "publicId": row.get("public_id"),
         "submissionId": row.get("submission_id"),
@@ -124,6 +132,7 @@ def build_execution_snapshot(row, current_user_id):
         "hardwareProfile": row.get("hardware_profile_name"),
         "createdAt": _iso(row.get("created_at")),
         "queuedAt": _iso(row.get("queued_at")),
+        "queueAhead": queue_ahead,
         "startedAt": _iso(row.get("started_at")),
         "processingAt": _iso(row.get("processing_at")),
         "finishedAt": _iso(row.get("finished_at")),

@@ -74,7 +74,6 @@ function ParamsHarness() {
         inputSizePresets={{
           size: [1000, 2500, 5000],
         }}
-        samplesPresets={[10, 20, 30]}
         numericalInputOptions={[]}
         dataType=""
         onDataTypeChange={noop}
@@ -165,6 +164,19 @@ describe("RenderForm workflow i18n", () => {
     ).toBeInTheDocument();
   });
 
+  test("lists only the exact pending readiness requirements", () => {
+    renderStatus({
+      isSubmitDisabled: true,
+      requirements: ["zipRequired", "courseRequired"],
+    });
+
+    expect(screen.getByText("Select a ZIP archive.")).toBeInTheDocument();
+    expect(
+      screen.getByText("Select the course for this experiment.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Choose a benchmark.")).not.toBeInTheDocument();
+  });
+
   test("localizes completed and friendly compilation-error states", () => {
     const view = renderStatus({
       fileList: ["exec-a"],
@@ -238,7 +250,7 @@ describe("RenderForm workflow i18n", () => {
     expect(onPrepareNewAnalysis).toHaveBeenCalledTimes(1);
   });
 
-  test("keeps raw technical log messages unchanged", () => {
+  test("localizes semantic polling events in technical details", () => {
     renderStatus({
       fileList: ["exec-a"],
       messages: [
@@ -249,7 +261,7 @@ describe("RenderForm workflow i18n", () => {
           messages: [
             {
               time: "10:20:30",
-              msg: "compilando código del estudiante",
+              key: "running",
             },
           ],
         },
@@ -269,10 +281,50 @@ describe("RenderForm workflow i18n", () => {
     );
 
     expect(
-      screen.getByText(
-        "compilando código del estudiante"
-      )
+      screen.getByText("The measurement node started the execution.")
     ).toBeInTheDocument();
+    expect(screen.queryByText(/Enviando test al slave/i)).not.toBeInTheDocument();
+  });
+
+  test("shows per-execution FIFO positions for zero, one and many ahead", () => {
+    renderStatus({
+      fileList: ["exec-a", "exec-b", "exec-c"],
+      isSubmitting: true,
+      executionFiles: [
+        {
+          publicId: "p-a",
+          codename: "exec-a",
+          originalName: "a.cpp",
+          state: "QUEUED",
+          queueAhead: 0,
+          resultsReady: false,
+        },
+        {
+          publicId: "p-b",
+          codename: "exec-b",
+          originalName: "b.cpp",
+          state: "QUEUED",
+          queueAhead: 1,
+          resultsReady: false,
+        },
+        {
+          publicId: "p-c",
+          codename: "exec-c",
+          originalName: "c.cpp",
+          state: "QUEUED",
+          queueAhead: 4,
+          resultsReady: false,
+        },
+      ],
+    });
+
+    expect(screen.getByText("Next in queue")).toBeInTheDocument();
+    expect(screen.getByText("1 execution ahead")).toBeInTheDocument();
+    expect(screen.getByText("4 executions ahead")).toBeInTheDocument();
+    expect(screen.getByText(/dispatched in FIFO order/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/\bETA\b|estimated time|minutes remaining/i)
+    ).not.toBeInTheDocument();
   });
 
   test("distinguishes recommended input values from the allowed hard range", () => {

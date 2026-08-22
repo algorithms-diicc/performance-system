@@ -95,3 +95,27 @@ export function normalizeDraftNote(value) {
   if (typeof value !== "string") return "";
   return limitText(value, MAX_SUBMISSION_NOTE_CHARS);
 }
+
+/**
+ * Evita tratar como restaurable el objeto default que genera el autosave.
+ */
+export function hasMeaningfulDraft(draft) {
+  if (!draft || typeof draft !== "object") return false;
+
+  if (String(draft.testName || "").trim()) return true;
+  if (String(draft.note || "").trim()) return true;
+  if (String(draft.selectedTaskType || "").trim()) return true;
+  if (String(draft.dataType || "").trim()) return true;
+
+  const profile = String(
+    draft.executionProfile || "equilibrado"
+  ).trim();
+
+  if (profile && profile !== "equilibrado") return true;
+
+  const inputSize = Number(draft.inputSize);
+  if (Number.isFinite(inputSize) && inputSize !== 1000) return true;
+
+  const samples = Number(draft.samples);
+  return Number.isFinite(samples) && samples !== 30;
+}

@@ -279,7 +279,7 @@ const AppInner = () => {
           element={
             isAuthenticated
               ? (
-                <RenderForm />
+                <RenderForm currentUser={currentUser} />
               )
               : (
                 <Navigate

@@ -25,6 +25,15 @@ checks = [
     ck("codename presente", bool(p.get("codename"))),
     ck("estado canónico válido", p.get("state") in {"QUEUED","RUNNING","PROCESSING","COMPLETED","FAILED","CANCELLED"}),
     ck("stateVersion entero", isinstance(p.get("stateVersion"), int)),
+    ck(
+        "queueAhead coherente",
+        (
+            isinstance(p.get("queueAhead"), int)
+            and p.get("queueAhead") >= 0
+        )
+        if p.get("state") == "QUEUED"
+        else p.get("queueAhead") is None,
+    ),
     ck("submissionId presente", p.get("submissionId") is not None),
     ck("benchmark presente", bool(p.get("benchmark"))),
     ck("resultPath no expuesto", "resultPath" not in p),

@@ -3,6 +3,7 @@ import {
   MAX_SUBMISSION_TITLE_CHARS,
   TITLE_ORIGIN,
   applyArchiveTitleSuggestion,
+  hasMeaningfulDraft,
   manualSubmissionTitle,
   normalizeDraftNote,
   resolveSubmissionTitle,
@@ -139,5 +140,32 @@ describe("formOnboardingModel draft compatibility", () => {
     expect(normalizeDraftNote("n".repeat(700))).toHaveLength(
       MAX_SUBMISSION_NOTE_CHARS
     );
+  });
+
+  test("default autosave object is not a meaningful draft", () => {
+    expect(
+      hasMeaningfulDraft({
+        version: 1,
+        testName: "",
+        note: "",
+        selectedTaskType: "",
+        inputSize: 1000,
+        samples: 30,
+        dataType: "",
+        executionProfile: "equilibrado",
+      })
+    ).toBe(false);
+  });
+
+  test.each([
+    [{ testName: "Experimento" }],
+    [{ note: "comparar" }],
+    [{ selectedTaskType: "lcs" }],
+    [{ dataType: "cammr" }],
+    [{ executionProfile: "rapido" }],
+    [{ inputSize: 2500 }],
+    [{ samples: 40 }],
+  ])("recognizes meaningful draft evidence", (draft) => {
+    expect(hasMeaningfulDraft(draft)).toBe(true);
   });
 });

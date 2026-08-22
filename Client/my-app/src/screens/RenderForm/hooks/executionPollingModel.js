@@ -4,78 +4,66 @@ export const TERMINAL_STATES = new Set([
   "CANCELLED",
 ]);
 
-function message(time, msg) {
-  return { time: time || "", msg };
+function event(time, key, details = {}) {
+  return { key, time: time || "", ...details };
 }
 
-export function buildMessagesFromSnapshot(snapshot = {}) {
+export function buildEventsFromSnapshot(snapshot = {}) {
   const state = String(snapshot.state || "").toUpperCase();
-  const messages = [];
+  const events = [];
 
-  messages.push(
-    message(
-      snapshot.createdAt || snapshot.queuedAt,
-      "📦 Archivo añadido a la cola de espera."
-    )
-  );
-
-  if (
-    snapshot.startedAt ||
-    ["RUNNING", "PROCESSING", "COMPLETED", "FAILED"].includes(state)
-  ) {
-    messages.push(
-      message(snapshot.startedAt, "📨 Archivo recibido correctamente.")
-    );
-    messages.push(
-      message(
-        snapshot.startedAt,
-        "🚚 Enviando test al slave para ejecutar las mediciones."
-      )
+  if (snapshot.createdAt || snapshot.queuedAt || state) {
+    events.push(
+      event(snapshot.createdAt || snapshot.queuedAt, "accepted")
     );
   }
 
-  if (
-    snapshot.processingAt ||
-    state === "PROCESSING" ||
-    state === "COMPLETED"
-  ) {
-    messages.push(
-      message(
-        snapshot.processingAt,
-        "✅ Test ejecutado correctamente. Resultados CSV recibidos."
-      )
-    );
-    messages.push(
-      message(snapshot.processingAt, "📊 Generando gráficos...")
-    );
+  if (snapshot.queuedAt || state === "QUEUED") {
+    events.push(event(snapshot.queuedAt, "queued"));
   }
 
-  if (state === "COMPLETED" && snapshot.resultAvailable) {
-    messages.push(
-      message(snapshot.finishedAt, "✅ Resultados listos.")
-    );
+  if (snapshot.startedAt || state === "RUNNING") {
+    events.push(event(snapshot.startedAt, "running"));
+  }
+
+  if (snapshot.processingAt || state === "PROCESSING") {
+    events.push(event(snapshot.processingAt, "processing"));
+  }
+
+  if (state === "COMPLETED") {
+    events.push(event(snapshot.finishedAt, "completed"));
   }
 
   if (state === "FAILED") {
     const failure = snapshot.failure || {};
-    messages.push(
-      message(
+    events.push(
+      event(
         snapshot.finishedAt || snapshot.updatedAt,
-        `❌ ${failure.message || "La ejecución terminó con un error."}`
+        "failed",
+        failure.message ? { message: failure.message } : {}
       )
     );
   }
 
   if (state === "CANCELLED") {
-    messages.push(
-      message(
-        snapshot.finishedAt || snapshot.updatedAt,
-        "❌ La ejecución fue cancelada."
-      )
+    events.push(
+      event(snapshot.finishedAt || snapshot.updatedAt, "cancelled")
     );
   }
 
-  return messages;
+  return events;
+}
+
+export function normalizeQueueAhead(value, state) {
+  if (String(state || "").toUpperCase() !== "QUEUED") {
+    return null;
+  }
+
+  const numeric = Number(value);
+
+  return Number.isInteger(numeric) && numeric >= 0
+    ? numeric
+    : null;
 }
 
 export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
@@ -92,10 +80,7 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
     state === "FAILED" || state === "CANCELLED";
 
   const errorMessage =
-    snapshot.failure?.message ||
-    (state === "CANCELLED"
-      ? "La ejecución fue cancelada."
-      : "");
+    snapshot.failure?.message || "";
 
   return {
     publicId: snapshot.publicId || fallback.publicId || "",
@@ -113,7 +98,7 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
     taskType: snapshot.benchmark || "",
     inputSize: snapshot.inputSize,
     samples: snapshot.samples,
-    messages: buildMessagesFromSnapshot(snapshot),
+    events: buildEventsFromSnapshot(snapshot),
     resultsReady,
     hasError,
     errorMessage,
@@ -121,6 +106,7 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
     resultsUrl: snapshot.resultsUrl || null,
     failure: snapshot.failure || null,
     queuedAt: snapshot.queuedAt || null,
+    queueAhead: normalizeQueueAhead(snapshot.queueAhead, state),
     startedAt: snapshot.startedAt || null,
     processingAt: snapshot.processingAt || null,
     finishedAt: snapshot.finishedAt || null,
