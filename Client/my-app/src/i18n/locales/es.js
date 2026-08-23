@@ -3789,6 +3789,315 @@ const es = {
   },
 
   tutorialPage: {
+    v9: {
+      screenshot: {
+        expandAria: "Ampliar captura: {{alt}}",
+        zoom: "Ampliar",
+      },
+      hero: {
+        eyebrow: "Guía de uso",
+        title: "De código a evidencia de rendimiento",
+        subtitle:
+          "Carga implementaciones C o C++, configura el experimento, ejecuta mediciones reproducibles y analiza sus resultados.",
+        featuresAria: "Características de la guía",
+        badges: {
+          controlled: "Entorno de medición controlado",
+          reproducible: "Resultados reproducibles y comparables",
+        },
+      },
+      navigation: {
+        aria: "Etapas de la guía",
+        create: "Crear un experimento",
+        results: "Entender resultados",
+        compare: "Recuperar y comparar",
+        supervise: "Supervisar un curso",
+      },
+      observation: {
+        title: "Qué observar",
+      },
+      create: {
+        kicker: "Crear un experimento",
+        title: "Del ZIP a ejecuciones independientes",
+        description:
+          "Un experimento agrupa implementaciones bajo una configuración común. Cada fuente soportada se compila, mide y conserva como una ejecución independiente.",
+        contract: {
+          aria:
+            "Un experimento ZIP contiene algoritmo punto c y algoritmo punto cpp; cada fuente produce su propia ejecución y resultado.",
+          experiment: "Experimento ZIP",
+          container: "Contenedor de implementaciones",
+          execution: "Ejecución",
+          result: "Resultado",
+        },
+        independent: {
+          title: "Una fuente, una ejecución",
+          text:
+            "1 fuente soportada → 1 Ejecución → 1 ejecutable → 1 conjunto de mediciones y resultados.",
+        },
+        shared: {
+          title: "Contexto experimental común",
+          text:
+            "Las implementaciones del experimento comparten benchmark, tamaños de entrada, repeticiones y configuración base para sostener una lectura trazable.",
+        },
+        mixed: {
+          title: "C, C++ o mixed",
+          text:
+            "Las fuentes .c usan gcc, las fuentes .cpp usan g++ y un mismo ZIP puede contener ambos lenguajes.",
+        },
+        noLinking: {
+          title: "El ZIP no es un proyecto multiarchivo",
+          text:
+            "Las fuentes no se enlazan entre sí. No uses main.c + helper.c como un único programa ni incluyas Make, CMake o translation units dependientes.",
+        },
+        newAnalysis: {
+          alt:
+            "Formulario de Nuevo análisis con un ZIP mixed C y C++ reconocido",
+          caption:
+            "Antes de ejecutar, el resumen confirma las fuentes detectadas y la configuración del experimento.",
+          points: {
+            summary:
+              "El ZIP ec01_mixed_golden_post8c.zip se reconoce como 2 fuentes · 1 C · 1 C++.",
+            sources:
+              "El resumen conserva los nombres de ambas implementaciones.",
+            ready:
+              "Benchmark, tamaños, repeticiones y entorno quedan visibles antes de ejecutar.",
+          },
+        },
+        mixedExecutions: {
+          alt:
+            "Detalle de un experimento mixed con una ejecución C y otra C++",
+          caption:
+            "Cada fuente conserva lenguaje, compilador, ejecución y resultado propios.",
+          points: {
+            c: "size_fixture.c aparece como C · gcc.",
+            cpp: "size_fixture.cpp aparece como C++ · g++.",
+            independent:
+              "Las mediciones de una implementación no se mezclan con las de la otra.",
+            actions:
+              "Desde cada ejecución puedes abrir código, reutilizar configuración, comparar o revisar el resultado.",
+          },
+        },
+      },
+      examples: {
+        kicker: "Ejemplos descargables",
+        title: "Tres formas válidas de preparar un experimento",
+        description:
+          "Las URLs públicas se mantienen. Cada ZIP respeta el contrato de entrada y salida de su benchmark y muestra una modalidad admitida por el producto.",
+        observeLabel: "Qué observar",
+        download: "Descargar ejemplo {{benchmark}}",
+        contractNote:
+          "Cada archivo .c o .cpp es una implementación autónoma con su propio punto de entrada. Los ZIP no contienen headers, build systems ni fuentes no soportadas.",
+        modes: {
+          mixed: "Mixed C + C++",
+          c: "C",
+          cpp: "C++",
+        },
+        size: {
+          title: "Insertion Sort vs. Merge Sort",
+          description:
+            "Un experimento mixed con dos algoritmos que generan el mismo conjunto determinista desde el tamaño N.",
+          observe:
+            "Compara cómo cambian tiempo e instrucciones entre insertion_sort.c y merge_sort.cpp al crecer N.",
+        },
+        lcs: {
+          title: "Longest Common Subsequence",
+          description:
+            "Una implementación C con programación dinámica sobre las líneas del archivo entregado por el benchmark.",
+          observe:
+            "Relaciona el crecimiento del trabajo con la cantidad de líneas procesadas y la tabla dinámica.",
+        },
+        camm: {
+          title: "Multiplicación de matrices por bloques",
+          description:
+            "Una implementación C++ que procesa los valores numéricos entregados como argumentos por el benchmark.",
+          observe:
+            "Revisa tiempo, instrucciones y comportamiento de caché mientras aumenta la entrada.",
+        },
+      },
+      results: {
+        kicker: "Entender resultados",
+        title: "Lee primero la evidencia medida",
+        description:
+          "El resultado combina contexto experimental, indicadores, tendencias e interpretación. La disponibilidad exacta de cada métrica depende del hardware y del backend de medición.",
+        evidence: {
+          title: "Las mediciones son la fuente primaria",
+          text:
+            "Empieza por los valores y sus unidades, continúa con la interpretación determinística basada en reglas reproducibles y usa la asistencia IA solo como complemento.",
+        },
+        flow: {
+          aria: "Orden pedagógico para interpretar un resultado",
+          context: "Contexto experimental",
+          indicators: "Indicadores principales",
+          trends: "Tendencias y gráficos",
+          deterministic: "Interpretación determinística",
+          ai: "Asistencia IA complementaria",
+          reproducibility: "Reproducibilidad",
+        },
+        metrics: {
+          title: "Familias de métricas",
+          description:
+            "El sistema presenta únicamente familias respaldadas por las series observadas. Energía aparece solo cuando el entorno puede exponerla.",
+          time: {
+            title: "Tiempo de ejecución",
+            text:
+              "Describe cuánto tarda la implementación para cada tamaño y repetición bajo la configuración seleccionada.",
+          },
+          instructions: {
+            title: "Instrucciones e IPC",
+            text:
+              "Relaciona el trabajo retirado por el procesador con los ciclos observados y la eficiencia de ejecución.",
+          },
+          cache: {
+            title: "Caché y predicción de saltos",
+            text:
+              "Contextualiza fallos de caché y de predicción cuando esos contadores están disponibles.",
+          },
+          energy: {
+            title: "Energía",
+            text:
+              "Se muestra únicamente cuando el hardware y el backend entregan una serie válida.",
+          },
+        },
+        overview: {
+          alt:
+            "Vista de resultados con contexto experimental, indicadores e interpretación guiada",
+          caption:
+            "El contexto y los indicadores preceden a la lectura guiada de las tendencias.",
+          points: {
+            context: "El encabezado identifica benchmark y entorno.",
+            configuration:
+              "El tamaño máximo y las repeticiones delimitan el contexto experimental.",
+            kpis:
+              "Los KPIs visibles incluyen Tiempo, IPC, Cache miss, Branch miss e Instrucciones.",
+            interpretation:
+              "La interpretación guiada comienza después de la evidencia cuantitativa.",
+          },
+        },
+        reproducibility: {
+          alt:
+            "Panel de reproducibilidad de una fuente C con provenance y toolchain observada",
+          caption:
+            "La configuración declarada y el entorno observado se presentan como capas distintas de trazabilidad.",
+          points: {
+            source:
+              "La fuente size_fixture.c se identifica como C con provenance explícita v2.",
+            declared:
+              "La configuración declara gcc y flags -O3.",
+            hardware:
+              "El snapshot registra el hardware observado durante la medición.",
+            observed:
+              "El trace confirma backend perf, compilador gcc y su versión observada.",
+          },
+        },
+        provenance: {
+          declared: {
+            label: "Configuración declarada",
+            title: "Lo solicitado antes de ejecutar",
+            text:
+              "Lenguaje, compilador y flags forman el contrato reproducible configurado para la fuente.",
+          },
+          observed: {
+            label: "Entorno observado",
+            title: "Lo registrado durante la ejecución",
+            text:
+              "El trace y el snapshot documentan backend, versión real del compilador y hardware observado.",
+          },
+        },
+      },
+      compare: {
+        kicker: "Recuperar y comparar",
+        title: "Vuelve a la evidencia y evalúa su compatibilidad",
+        description:
+          "Historial conserva experimentos y ejecuciones para recuperar resultados, repetir configuraciones, marcar referencias y construir comparaciones auditables.",
+        history: {
+          alt:
+            "Historial con experimentos C, mixed C y C++, y C++",
+          caption:
+            "Cada experimento muestra sus fuentes, benchmark, estado y acciones de recuperación.",
+          points: {
+            experiments:
+              "El historial distingue experimentos C, mixed C/C++ y C++.",
+            sources:
+              "Fuentes, benchmark y estado permiten reconocer la evidencia correcta.",
+            actions:
+              "Desde aquí puedes recuperar, repetir, marcar una referencia o comparar.",
+          },
+        },
+        compatibility: {
+          title: "Tres estados, tres decisiones distintas",
+          description:
+            "La compatibilidad resume condiciones relevantes; no reemplaza la revisión de métricas, warnings y blockers.",
+          compatible: {
+            title: "Compatible",
+            text:
+              "Las condiciones relevantes están alineadas y la comparación directa está permitida.",
+          },
+          limited: {
+            title: "Con limitaciones",
+            text:
+              "Existen diferencias que requieren cautela, pero las métricas comparables permanecen visibles. C/gcc frente a C++/g++ es el ejemplo canónico.",
+          },
+          incompatible: {
+            title: "Incompatible",
+            text:
+              "Un blocker impide tratar la comparación como válida bajo el contrato científico actual.",
+          },
+        },
+        evidence: {
+          title: "LIMITED no significa INCOMPATIBLE",
+          text:
+            "Una diferencia de lenguaje o toolchain debe advertirse, no ocultar tiempo, IPC, caché o saltos cuando las series y demás condiciones siguen siendo comparables.",
+        },
+        comparison: {
+          alt:
+            "Comparación limitada entre una ejecución C con gcc y otra C++ con g++",
+          caption:
+            "La advertencia de toolchain convive con las métricas que conservan evidencia común válida.",
+          points: {
+            toolchains: "La comparación identifica C/gcc y C++/g++.",
+            coverage: "Cuatro de cinco métricas objetivo son comparables.",
+            visible:
+              "Tiempo, IPC, caché y branch permanecen visibles.",
+            energy:
+              "Energía se marca como no comparable cuando no existe una serie común válida.",
+          },
+        },
+      },
+      teacher: {
+        kicker: "Supervisar un curso",
+        title: "Convierte señales operativas en atención académica",
+        description:
+          "La supervisión ayuda a localizar casos que requieren revisión sin convertir la actividad del sistema en una calificación.",
+        screenshot: {
+          alt:
+            "Supervisión docente de un curso con atención académica y actividad de estudiantes",
+          caption:
+            "La vista reúne señales del curso y accesos al detalle de cada estudiante.",
+        },
+        points: {
+          attention: "Atención académica reúne casos que requieren revisión.",
+          noExecutions: "Se identifican estudiantes sin ejecuciones.",
+          failures: "Los fallos predominantes orientan el diagnóstico.",
+          activity: "La actividad reciente aporta contexto operativo.",
+          students:
+            "La lista permite abrir la ficha y el último resultado disponible.",
+        },
+        guardrail:
+          "Son señales operativas para revisar casos, sin calificar ni comparar estudiantes. No representan rankings ni puntuaciones.",
+        cta: "Abrir Supervisión",
+      },
+      final: {
+        kicker: "Siguiente paso",
+        title: "Conserva el contexto junto a cada medición",
+        description:
+          "Prepara fuentes autónomas, verifica el resumen antes de ejecutar y vuelve al historial para interpretar o comparar resultados bajo condiciones explícitas.",
+        newAnalysis: "Ir a Nuevo análisis",
+        history: "Abrir Historial",
+      },
+      lightbox: {
+        aria: "Captura ampliada de la guía",
+        closeAria: "Cerrar captura ampliada",
+      },
+    },
     screenshot: {
       expandAria: "Ampliar captura: {{alt}}",
       zoom: "Ampliar",

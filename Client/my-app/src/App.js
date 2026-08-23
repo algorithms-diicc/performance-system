@@ -375,7 +375,7 @@ const AppInner = () => {
           element={
             isAuthenticated
               ? (
-                <TutorialPage />
+                <TutorialPage currentUser={currentUser} />
               )
               : (
                 <Navigate

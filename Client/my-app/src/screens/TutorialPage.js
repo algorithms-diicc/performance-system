@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Activity,
   Archive,
@@ -14,9 +14,7 @@ import {
   History,
   Info,
   Layers3,
-  MemoryStick,
   PlayCircle,
-  ServerCog,
   Settings2,
   ShieldCheck,
   Sparkles,
@@ -25,152 +23,167 @@ import {
   Zap,
   ZoomIn,
 } from "lucide-react";
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 
 import "./TutorialPage.css";
 
-import configSummaryShot from "../assets/tutorial/tutorial-config-summary.png";
-import profileSettingsShot from "../assets/tutorial/tutorial-profile-settings.png";
-import progressDetailsShot from "../assets/tutorial/tutorial-progress-details.png";
-import progressOverviewShot from "../assets/tutorial/tutorial-progress-overview.png";
-import recentResultShot from "../assets/tutorial/tutorial-recent-result.png";
-import resultsOverviewShot from "../assets/tutorial/tutorial-results-overview.png";
-import timeChartShot from "../assets/tutorial/tutorial-time-chart.png";
-import uploadShot from "../assets/tutorial/tutorial-upload.png";
+import newAnalysisEn from "../assets/tutorial/tutorial-01-new-analysis-en.png";
+import newAnalysisEs from "../assets/tutorial/tutorial-01-new-analysis-es.png";
+import mixedExecutionsEn from "../assets/tutorial/tutorial-02-mixed-executions-en.png";
+import mixedExecutionsEs from "../assets/tutorial/tutorial-02-mixed-executions-es.png";
+import resultsOverviewEn from "../assets/tutorial/tutorial-03-results-overview-en.png";
+import resultsOverviewEs from "../assets/tutorial/tutorial-03-results-overview-es.png";
+import reproducibilityEn from "../assets/tutorial/tutorial-04-reproducibility-en.png";
+import reproducibilityEs from "../assets/tutorial/tutorial-04-reproducibility-es.png";
+import historyEn from "../assets/tutorial/tutorial-05-history-en.png";
+import historyEs from "../assets/tutorial/tutorial-05-history-es.png";
+import comparisonEn from "../assets/tutorial/tutorial-06-comparison-en.png";
+import comparisonEs from "../assets/tutorial/tutorial-06-comparison-es.png";
+import teacherCourseEn from "../assets/tutorial/tutorial-07-teacher-course-en.png";
+import teacherCourseEs from "../assets/tutorial/tutorial-07-teacher-course-es.png";
 
+import { canAccessTeacherArea } from "../common/userAccessModel";
 import { useI18n } from "../i18n";
 
-const FLOW_STEPS = [
-  {
-    number: "01",
-    icon: UploadCloud,
-    titleKey: "tutorialPage.flow.step1.title",
-    descriptionKey: "tutorialPage.flow.step1.description",
-    shots: [
-      {
-        src: uploadShot,
-        altKey: "tutorialPage.flow.step1.shot.alt",
-        captionKey: "tutorialPage.flow.step1.shot.caption",
-        variant: "upload",
-      },
-    ],
-  },
-  {
-    number: "02",
-    icon: Settings2,
-    titleKey: "tutorialPage.flow.step2.title",
-    descriptionKey: "tutorialPage.flow.step2.description",
-    shots: [
-      {
-        src: profileSettingsShot,
-        altKey: "tutorialPage.flow.step2.profileShot.alt",
-        captionKey: "tutorialPage.flow.step2.profileShot.caption",
-        variant: "profiles",
-      },
-      {
-        src: configSummaryShot,
-        altKey: "tutorialPage.flow.step2.summaryShot.alt",
-        captionKey: "tutorialPage.flow.step2.summaryShot.caption",
-        variant: "summary",
-      },
-    ],
-  },
-  {
-    number: "03",
-    icon: PlayCircle,
-    titleKey: "tutorialPage.flow.step3.title",
-    descriptionKey: "tutorialPage.flow.step3.description",
-    shots: [
-      {
-        src: progressOverviewShot,
-        altKey: "tutorialPage.flow.step3.overviewShot.alt",
-        captionKey: "tutorialPage.flow.step3.overviewShot.caption",
-        variant: "portrait",
-      },
-      {
-        src: progressDetailsShot,
-        altKey: "tutorialPage.flow.step3.detailsShot.alt",
-        captionKey: "tutorialPage.flow.step3.detailsShot.caption",
-        variant: "portrait",
-      },
-    ],
-  },
-  {
-    number: "04",
-    icon: BarChart3,
-    titleKey: "tutorialPage.flow.step4.title",
-    descriptionKey: "tutorialPage.flow.step4.description",
-    shots: [
-      {
-        src: resultsOverviewShot,
-        altKey: "tutorialPage.flow.step4.shot.alt",
-        captionKey: "tutorialPage.flow.step4.shot.caption",
-        variant: "results",
-      },
-    ],
-  },
+const COPY = "tutorialPage.v9";
+
+const CORE_NAV_ITEMS = [
+  { number: "01", id: "crear", labelKey: `${COPY}.navigation.create` },
+  { number: "02", id: "resultados", labelKey: `${COPY}.navigation.results` },
+  { number: "03", id: "comparar", labelKey: `${COPY}.navigation.compare` },
 ];
 
-const EXECUTION_STATES = [
-  { code: "QUEUED", key: "queued" },
-  { code: "RUNNING", key: "running" },
-  { code: "PROCESSING", key: "processing" },
-  { code: "COMPLETED", key: "completed" },
-];
+const TEACHER_NAV_ITEM = {
+  number: "04",
+  id: "supervisar",
+  labelKey: `${COPY}.navigation.supervise`,
+};
 
-const METRICS = [
-  { icon: Clock3, key: "time" },
-  { icon: Cpu, key: "cpu" },
-  { icon: MemoryStick, key: "memory" },
-  { icon: Zap, key: "energy" },
-];
-
-const GOOD_PRACTICE_KEYS = [
-  "tutorialPage.goodPractices.items.sameConfig",
-  "tutorialPage.goodPractices.items.externalProcesses",
-  "tutorialPage.goodPractices.items.repetitions",
-  "tutorialPage.goodPractices.items.jointInterpretation",
-];
+const SCREENSHOTS = {
+  newAnalysis: {
+    id: "new-analysis",
+    es: newAnalysisEs,
+    en: newAnalysisEn,
+    altKey: `${COPY}.create.newAnalysis.alt`,
+    captionKey: `${COPY}.create.newAnalysis.caption`,
+  },
+  mixedExecutions: {
+    id: "mixed-executions",
+    es: mixedExecutionsEs,
+    en: mixedExecutionsEn,
+    altKey: `${COPY}.create.mixedExecutions.alt`,
+    captionKey: `${COPY}.create.mixedExecutions.caption`,
+  },
+  resultsOverview: {
+    id: "results-overview",
+    es: resultsOverviewEs,
+    en: resultsOverviewEn,
+    altKey: `${COPY}.results.overview.alt`,
+    captionKey: `${COPY}.results.overview.caption`,
+  },
+  reproducibility: {
+    id: "reproducibility",
+    es: reproducibilityEs,
+    en: reproducibilityEn,
+    altKey: `${COPY}.results.reproducibility.alt`,
+    captionKey: `${COPY}.results.reproducibility.caption`,
+  },
+  history: {
+    id: "history",
+    es: historyEs,
+    en: historyEn,
+    altKey: `${COPY}.compare.history.alt`,
+    captionKey: `${COPY}.compare.history.caption`,
+  },
+  comparison: {
+    id: "comparison",
+    es: comparisonEs,
+    en: comparisonEn,
+    altKey: `${COPY}.compare.comparison.alt`,
+    captionKey: `${COPY}.compare.comparison.caption`,
+  },
+  teacherCourse: {
+    id: "teacher-course",
+    es: teacherCourseEs,
+    en: teacherCourseEn,
+    altKey: `${COPY}.teacher.screenshot.alt`,
+    captionKey: `${COPY}.teacher.screenshot.caption`,
+  },
+};
 
 const STARTER_EXAMPLES = [
   {
     benchmark: "SIZE",
-    titleKey: "tutorialPage.examples.size.title",
-    descriptionKey: "tutorialPage.examples.size.description",
-    observeKey: "tutorialPage.examples.size.observe",
-    files: ["insertion_sort.cpp", "merge_sort.cpp"],
+    mode: "mixed",
+    titleKey: `${COPY}.examples.size.title`,
+    descriptionKey: `${COPY}.examples.size.description`,
+    observeKey: `${COPY}.examples.size.observe`,
+    modeKey: `${COPY}.examples.modes.mixed`,
+    files: ["insertion_sort.c", "merge_sort.cpp"],
     href: "/tutorial-codigos/size_template.zip",
   },
   {
     benchmark: "LCS",
-    titleKey: "tutorialPage.examples.lcs.title",
-    descriptionKey: "tutorialPage.examples.lcs.description",
-    observeKey: "tutorialPage.examples.lcs.observe",
-    files: ["longest_common_subsequence.cpp"],
+    mode: "c",
+    titleKey: `${COPY}.examples.lcs.title`,
+    descriptionKey: `${COPY}.examples.lcs.description`,
+    observeKey: `${COPY}.examples.lcs.observe`,
+    modeKey: `${COPY}.examples.modes.c`,
+    files: ["longest_common_subsequence.c"],
     href: "/tutorial-codigos/lcs_template.zip",
   },
   {
     benchmark: "CAMM",
-    titleKey: "tutorialPage.examples.camm.title",
-    descriptionKey: "tutorialPage.examples.camm.description",
-    observeKey: "tutorialPage.examples.camm.observe",
+    mode: "cpp",
+    titleKey: `${COPY}.examples.camm.title`,
+    descriptionKey: `${COPY}.examples.camm.description`,
+    observeKey: `${COPY}.examples.camm.observe`,
+    modeKey: `${COPY}.examples.modes.cpp`,
     files: ["blocked_matrix_multiplication.cpp"],
     href: "/tutorial-codigos/camm_template.zip",
   },
 ];
 
-const RECENT_RESULT_SHOT = {
-  src: recentResultShot,
-  altKey: "tutorialPage.continuity.shot.alt",
-  captionKey: "tutorialPage.continuity.shot.caption",
-  variant: "recent",
-};
+const RESULT_FLOW = [
+  { icon: Settings2, key: "context" },
+  { icon: Gauge, key: "indicators" },
+  { icon: BarChart3, key: "trends" },
+  { icon: CheckCircle2, key: "deterministic" },
+  { icon: Sparkles, key: "ai" },
+  { icon: ShieldCheck, key: "reproducibility" },
+];
 
-const TIME_CHART_SHOT = {
-  src: timeChartShot,
-  altKey: "tutorialPage.results.example.shot.alt",
-  captionKey: "tutorialPage.results.example.shot.caption",
-  variant: "chart",
+const METRIC_FAMILIES = [
+  { icon: Clock3, key: "time" },
+  { icon: Cpu, key: "instructions" },
+  { icon: Activity, key: "cache" },
+  { icon: Zap, key: "energy" },
+];
+
+const COMPATIBILITY_STATES = [
+  { code: "COMPATIBLE", key: "compatible" },
+  { code: "LIMITED", key: "limited", featured: true },
+  { code: "INCOMPATIBLE", key: "incompatible" },
+];
+
+const localizeShot = (shot, language) => ({
+  ...shot,
+  src: language === "en" ? shot.en : shot.es,
+});
+
+const SectionHeading = ({ number, kickerKey, titleKey, descriptionKey }) => {
+  const { t } = useI18n();
+
+  return (
+    <div className="tutorial-section-heading">
+      <div className="tutorial-section-heading__meta">
+        <span className="tutorial-section-number">{number}</span>
+        <span className="tutorial-section-kicker">{t(kickerKey)}</span>
+      </div>
+      <h2>{t(titleKey)}</h2>
+      <p>{t(descriptionKey)}</p>
+    </div>
+  );
 };
 
 const TutorialScreenshot = ({ shot, onOpen }) => {
@@ -178,30 +191,75 @@ const TutorialScreenshot = ({ shot, onOpen }) => {
   const alt = t(shot.altKey);
 
   return (
-    <figure className={`tutorial-shot tutorial-shot--${shot.variant || "default"}`}>
+    <figure className="tutorial-shot" data-testid={`tutorial-shot-${shot.id}`}>
       <button
         type="button"
         className="tutorial-shot__button"
-        onClick={() => onOpen(shot)}
-        aria-label={t("tutorialPage.screenshot.expandAria", { alt })}
+        onClick={(event) => onOpen(shot.id, event.currentTarget)}
+        aria-label={t(`${COPY}.screenshot.expandAria`, { alt })}
       >
-        <span className="tutorial-shot__viewport">
-          <img src={shot.src} alt={alt} loading="lazy" />
-        </span>
+        <img
+          src={shot.src}
+          alt={alt}
+          loading="lazy"
+          data-testid={`tutorial-image-${shot.id}`}
+        />
         <span className="tutorial-shot__zoom" aria-hidden="true">
           <ZoomIn size={16} />
-          {t("tutorialPage.screenshot.zoom")}
+          {t(`${COPY}.screenshot.zoom`)}
         </span>
       </button>
-      {shot.captionKey && <figcaption>{t(shot.captionKey)}</figcaption>}
+      <figcaption>{t(shot.captionKey)}</figcaption>
     </figure>
   );
 };
 
-const TutorialPage = () => {
-  const [activeShot, setActiveShot] = useState(null);
-  const location = useLocation();
+const ObservationList = ({ pointKeys }) => {
   const { t } = useI18n();
+
+  return (
+    <aside className="tutorial-observation">
+      <div className="tutorial-observation__title">
+        <Info size={18} aria-hidden="true" />
+        <h3>{t(`${COPY}.observation.title`)}</h3>
+      </div>
+      <ul>
+        {pointKeys.map((pointKey) => (
+          <li key={pointKey}>
+            <CheckCircle2 size={16} aria-hidden="true" />
+            <span>{t(pointKey)}</span>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+};
+
+const MediaStory = ({ shot, pointKeys, reverse = false, onOpen }) => (
+  <div className={`tutorial-media-story${reverse ? " tutorial-media-story--reverse" : ""}`}>
+    <TutorialScreenshot shot={shot} onOpen={onOpen} />
+    <ObservationList pointKeys={pointKeys} />
+  </div>
+);
+
+const TutorialPage = ({ currentUser = null }) => {
+  const [activeShotId, setActiveShotId] = useState(null);
+  const closeButtonRef = useRef(null);
+  const lastTriggerRef = useRef(null);
+  const location = useLocation();
+  const { language, t } = useI18n();
+
+  const showTeacherSection = canAccessTeacherArea(currentUser);
+  const navItems = showTeacherSection
+    ? [...CORE_NAV_ITEMS, TEACHER_NAV_ITEM]
+    : CORE_NAV_ITEMS;
+  const shot = (name) => localizeShot(SCREENSHOTS[name], language);
+  const activeShotDefinition = activeShotId
+    ? Object.values(SCREENSHOTS).find(({ id }) => id === activeShotId)
+    : null;
+  const activeShot = activeShotDefinition
+    ? localizeShot(activeShotDefinition, language)
+    : null;
 
   useEffect(() => {
     if (!location.hash) return undefined;
@@ -215,25 +273,34 @@ const TutorialPage = () => {
 
     const target = document.getElementById(targetId);
     if (target && typeof target.scrollIntoView === "function") {
-      target.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     return undefined;
   }, [location.hash]);
 
   useEffect(() => {
-    if (!activeShot) return undefined;
+    if (!activeShotId) return undefined;
+
+    closeButtonRef.current?.focus();
 
     const closeOnEscape = (event) => {
-      if (event.key === "Escape") setActiveShot(null);
+      if (event.key === "Escape") setActiveShotId(null);
     };
 
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [activeShot]);
+  }, [activeShotId]);
+
+  const openShot = (shotId, trigger) => {
+    lastTriggerRef.current = trigger;
+    setActiveShotId(shotId);
+  };
+
+  const closeShot = () => {
+    setActiveShotId(null);
+    lastTriggerRef.current?.focus();
+  };
 
   return (
     <div className="app-page tutorial-page">
@@ -241,428 +308,170 @@ const TutorialPage = () => {
         <div className="tutorial-container">
           <header className="tutorial-hero">
             <div className="tutorial-eyebrow">
-              <Sparkles size={16} />
-              <span>{t("tutorialPage.hero.eyebrow")}</span>
+              <Sparkles size={16} aria-hidden="true" />
+              <span>{t(`${COPY}.hero.eyebrow`)}</span>
             </div>
+            <h1>{t(`${COPY}.hero.title`)}</h1>
+            <p>{t(`${COPY}.hero.subtitle`)}</p>
 
-            <h1 className="tutorial-title">{t("tutorialPage.hero.title")}</h1>
-
-            <p className="tutorial-subtitle">{t("tutorialPage.hero.subtitle")}</p>
-
-            <div
-              className="tutorial-hero-badges"
-              aria-label={t("tutorialPage.hero.featuresAria")}
-            >
-              <span>
-                <FileCode2 size={16} />
-                C++ / .cpp
-              </span>
-              <span>
-                <ShieldCheck size={16} />
-                {t("tutorialPage.hero.badges.controlled")}
-              </span>
-              <span>
-                <Activity size={16} />
-                {t("tutorialPage.hero.badges.performance")}
-              </span>
-              <span>
-                <BarChart3 size={16} />
-                {t("tutorialPage.hero.badges.visualization")}
-              </span>
+            <div className="tutorial-hero-badges" aria-label={t(`${COPY}.hero.featuresAria`)}>
+              <span><FileCode2 size={16} aria-hidden="true" />C / .c</span>
+              <span><Code2 size={16} aria-hidden="true" />C++ / .cpp</span>
+              <span><ShieldCheck size={16} aria-hidden="true" />{t(`${COPY}.hero.badges.controlled`)}</span>
+              <span><Activity size={16} aria-hidden="true" />{t(`${COPY}.hero.badges.reproducible`)}</span>
             </div>
           </header>
 
-          <section className="tutorial-section">
-            <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">
-                {t("tutorialPage.flow.kicker")}
-              </span>
-              <h2>{t("tutorialPage.flow.title")}</h2>
-              <p>{t("tutorialPage.flow.description")}</p>
+          <nav className="tutorial-step-nav" aria-label={t(`${COPY}.navigation.aria`)} data-testid="tutorial-primary-navigation">
+            {navItems.map((item) => (
+              <a href={`#${item.id}`} key={item.id}>
+                <span>{item.number}</span>
+                {t(item.labelKey)}
+              </a>
+            ))}
+          </nav>
 
-              <div className="tutorial-capture-context" role="note">
-                <Info size={16} aria-hidden="true" />
-                <span>
-                  <strong>{t("tutorialPage.flow.visualReferenceLabel")}</strong>{" "}
-                  {t("tutorialPage.flow.visualReferenceText")}
-                </span>
+          <section className="tutorial-section" id="crear">
+            <SectionHeading number="01" kickerKey={`${COPY}.create.kicker`} titleKey={`${COPY}.create.title`} descriptionKey={`${COPY}.create.description`} />
+
+            <div className="tutorial-contract-diagram" role="img" aria-label={t(`${COPY}.create.contract.aria`)}>
+              <div className="tutorial-contract-diagram__root">
+                <Archive size={23} aria-hidden="true" />
+                <strong>{t(`${COPY}.create.contract.experiment`)}</strong>
+                <span>{t(`${COPY}.create.contract.container`)}</span>
+              </div>
+              <div className="tutorial-contract-diagram__branches">
+                <div className="tutorial-contract-branch">
+                  <div><code>algoritmo.c</code><span>C · gcc</span></div>
+                  <ChevronRight aria-hidden="true" />
+                  <div><PlayCircle size={17} aria-hidden="true" /><strong>{t(`${COPY}.create.contract.execution`)}</strong></div>
+                  <ChevronRight aria-hidden="true" />
+                  <div><BarChart3 size={17} aria-hidden="true" /><strong>{t(`${COPY}.create.contract.result`)}</strong></div>
+                </div>
+                <div className="tutorial-contract-branch">
+                  <div><code>algoritmo.cpp</code><span>C++ · g++</span></div>
+                  <ChevronRight aria-hidden="true" />
+                  <div><PlayCircle size={17} aria-hidden="true" /><strong>{t(`${COPY}.create.contract.execution`)}</strong></div>
+                  <ChevronRight aria-hidden="true" />
+                  <div><BarChart3 size={17} aria-hidden="true" /><strong>{t(`${COPY}.create.contract.result`)}</strong></div>
+                </div>
               </div>
             </div>
 
-            <div className="tutorial-flow">
-              {FLOW_STEPS.map((step, index) => {
-                const Icon = step.icon;
-
-                return (
-                  <article className="tutorial-flow-card" key={step.number}>
-                    <div className="tutorial-flow-card__top">
-                      <span className="tutorial-step-number">{step.number}</span>
-                      <div className="tutorial-step-icon">
-                        <Icon size={22} strokeWidth={1.9} />
-                      </div>
-                    </div>
-
-                    <h3>{t(step.titleKey)}</h3>
-                    <p>{t(step.descriptionKey)}</p>
-
-                    <div
-                      className={`tutorial-flow-card__media tutorial-flow-card__media--${step.shots.length} tutorial-flow-card__media--step-${step.number}`}
-                    >
-                      {step.shots.map((shot) => (
-                        <TutorialScreenshot
-                          key={shot.src}
-                          shot={shot}
-                          onOpen={setActiveShot}
-                        />
-                      ))}
-                    </div>
-
-                    {index < FLOW_STEPS.length - 1 && (
-                      <ChevronRight
-                        className="tutorial-flow-card__arrow"
-                        size={20}
-                        aria-hidden="true"
-                      />
-                    )}
-                  </article>
-                );
-              })}
+            <div className="tutorial-concept-grid">
+              <article><Layers3 size={21} aria-hidden="true" /><h3>{t(`${COPY}.create.independent.title`)}</h3><p>{t(`${COPY}.create.independent.text`)}</p></article>
+              <article><Settings2 size={21} aria-hidden="true" /><h3>{t(`${COPY}.create.shared.title`)}</h3><p>{t(`${COPY}.create.shared.text`)}</p></article>
+              <article><Archive size={21} aria-hidden="true" /><h3>{t(`${COPY}.create.mixed.title`)}</h3><p>{t(`${COPY}.create.mixed.text`)}</p></article>
             </div>
+
+            <div className="tutorial-callout" role="note">
+              <Info size={19} aria-hidden="true" />
+              <div><strong>{t(`${COPY}.create.noLinking.title`)}</strong><p>{t(`${COPY}.create.noLinking.text`)}</p></div>
+            </div>
+
+            <MediaStory shot={shot("newAnalysis")} pointKeys={[`${COPY}.create.newAnalysis.points.summary`, `${COPY}.create.newAnalysis.points.sources`, `${COPY}.create.newAnalysis.points.ready`]} onOpen={openShot} />
+            <MediaStory shot={shot("mixedExecutions")} reverse pointKeys={[`${COPY}.create.mixedExecutions.points.c`, `${COPY}.create.mixedExecutions.points.cpp`, `${COPY}.create.mixedExecutions.points.independent`, `${COPY}.create.mixedExecutions.points.actions`]} onOpen={openShot} />
           </section>
 
-          <section className="tutorial-section tutorial-two-column">
-            <article className="tutorial-panel">
-              <div className="tutorial-panel-title">
-                <Archive size={21} />
-                <div>
-                  <span className="tutorial-section-kicker">
-                    {t("tutorialPage.zip.kicker")}
-                  </span>
-                  <h2>{t("tutorialPage.zip.title")}</h2>
-                </div>
-              </div>
-
-              <p>{t("tutorialPage.zip.description")}</p>
-
-              <div
-                className="tutorial-file-tree"
-                aria-label={t("tutorialPage.zip.exampleAria")}
-              >
-                <span>mi_algoritmo.zip</span>
-                <span className="tutorial-file-tree__child">
-                  └── algoritmo.cpp
-                </span>
-              </div>
-
-              <div className="tutorial-note">
-                <Info size={18} />
-                <p>{t("tutorialPage.zip.note")}</p>
-              </div>
-            </article>
-
-            <article className="tutorial-panel">
-              <div className="tutorial-panel-title">
-                <Settings2 size={21} />
-                <div>
-                  <span className="tutorial-section-kicker">
-                    {t("tutorialPage.configuration.kicker")}
-                  </span>
-                  <h2>{t("tutorialPage.configuration.title")}</h2>
-                </div>
-              </div>
-
-              <div className="tutorial-definition-list">
-                <div>
-                  <strong>Benchmark</strong>
-                  <span>{t("tutorialPage.configuration.benchmark")}</span>
-                </div>
-                <div>
-                  <strong>{t("tutorialPage.configuration.inputSizeLabel")}</strong>
-                  <span>{t("tutorialPage.configuration.inputSize")}</span>
-                </div>
-                <div>
-                  <strong>{t("tutorialPage.configuration.repetitionsLabel")}</strong>
-                  <span>{t("tutorialPage.configuration.repetitions")}</span>
-                </div>
-                <div>
-                  <strong>{t("tutorialPage.configuration.profileLabel")}</strong>
-                  <span>{t("tutorialPage.configuration.profile")}</span>
-                </div>
-              </div>
-            </article>
-          </section>
-
-          <section
-            className="tutorial-section tutorial-examples-section"
-            id="ejemplos"
-            aria-labelledby="tutorial-examples-title"
-          >
+          <section className="tutorial-section tutorial-examples" id="ejemplos" aria-labelledby="tutorial-examples-title">
             <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">
-                {t("tutorialPage.examples.kicker")}
-              </span>
-              <h2 id="tutorial-examples-title">{t("tutorialPage.examples.title")}</h2>
-              <p>{t("tutorialPage.examples.description")}</p>
+              <div className="tutorial-section-heading__meta"><Download size={18} aria-hidden="true" /><span className="tutorial-section-kicker">{t(`${COPY}.examples.kicker`)}</span></div>
+              <h2 id="tutorial-examples-title">{t(`${COPY}.examples.title`)}</h2>
+              <p>{t(`${COPY}.examples.description`)}</p>
             </div>
 
             <div className="tutorial-example-grid">
               {STARTER_EXAMPLES.map((example) => (
                 <article className="tutorial-example-card" key={example.benchmark}>
-                  <div className="tutorial-example-card__top">
-                    <span className="tutorial-example-benchmark">
-                      {example.benchmark}
-                    </span>
-                    <FileCode2 size={21} aria-hidden="true" />
-                  </div>
-
+                  <div className="tutorial-example-card__top"><span className="tutorial-example-benchmark">{example.benchmark}</span><span className={`tutorial-example-mode tutorial-example-mode--${example.mode}`}>{t(example.modeKey)}</span></div>
                   <h3>{t(example.titleKey)}</h3>
                   <p>{t(example.descriptionKey)}</p>
-
-                  <div className="tutorial-example-files">
-                    {example.files.map((filename) => (
-                      <code key={filename}>{filename}</code>
-                    ))}
-                  </div>
-
-                  <div className="tutorial-example-observe">
-                    <strong>{t("tutorialPage.examples.observeLabel")}</strong>
-                    <span>{t(example.observeKey)}</span>
-                  </div>
-
-                  <a
-                    href={example.href}
-                    download
-                    className="tutorial-example-download"
-                  >
-                    <Download size={16} aria-hidden="true" />
-                    {t("tutorialPage.examples.download", {
-                      benchmark: example.benchmark,
-                    })}
-                  </a>
+                  <div className="tutorial-example-files">{example.files.map((filename) => <code key={filename}>{filename}</code>)}</div>
+                  <div className="tutorial-example-observe"><strong>{t(`${COPY}.examples.observeLabel`)}</strong><span>{t(example.observeKey)}</span></div>
+                  <a href={example.href} download className="tutorial-example-download"><Download size={16} aria-hidden="true" />{t(`${COPY}.examples.download`, { benchmark: example.benchmark })}</a>
                 </article>
               ))}
             </div>
 
-            <div className="tutorial-note tutorial-examples-note">
-              <Info size={18} aria-hidden="true" />
-              <p>{t("tutorialPage.examples.sizeNote")}</p>
-            </div>
+            <div className="tutorial-callout" role="note"><Info size={19} aria-hidden="true" /><p>{t(`${COPY}.examples.contractNote`)}</p></div>
           </section>
 
-          <section className="tutorial-section">
-            <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">
-                {t("tutorialPage.states.kicker")}
-              </span>
-              <h2>{t("tutorialPage.states.title")}</h2>
-              <p>{t("tutorialPage.states.description")}</p>
-            </div>
+          <section className="tutorial-section" id="resultados">
+            <SectionHeading number="02" kickerKey={`${COPY}.results.kicker`} titleKey={`${COPY}.results.title`} descriptionKey={`${COPY}.results.description`} />
 
-            <div className="tutorial-state-grid">
-              {EXECUTION_STATES.map((state) => (
-                <article className="tutorial-state-card" key={state.code}>
-                  <span className="tutorial-state-dot" aria-hidden="true" />
-                  <div>
-                    <div className="tutorial-state-card__title">
-                      <strong>
-                        {t(`tutorialPage.states.items.${state.key}.name`)}
-                      </strong>
-                      <code>{state.code}</code>
-                    </div>
-                    <p>
-                      {t(`tutorialPage.states.items.${state.key}.description`)}
-                    </p>
-                  </div>
-                </article>
+            <div className="tutorial-evidence-principle"><Gauge size={24} aria-hidden="true" /><div><h3>{t(`${COPY}.results.evidence.title`)}</h3><p>{t(`${COPY}.results.evidence.text`)}</p></div></div>
+
+            <ol className="tutorial-result-flow" aria-label={t(`${COPY}.results.flow.aria`)}>
+              {RESULT_FLOW.map(({ icon: Icon, key }, index) => (
+                <li key={key}><span className="tutorial-result-flow__number">{String(index + 1).padStart(2, "0")}</span><Icon size={19} aria-hidden="true" /><span>{t(`${COPY}.results.flow.${key}`)}</span></li>
               ))}
-            </div>
+            </ol>
 
-            <div className="tutorial-failure-note">
-              <ServerCog size={20} />
-              <div>
-                <strong>{t("tutorialPage.states.failure.title")}</strong>
-                <p>{t("tutorialPage.states.failure.description")}</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="tutorial-section tutorial-resume-panel">
-            <div className="tutorial-resume-panel__copy">
-              <div className="tutorial-panel-title">
-                <History size={21} />
-                <div>
-                  <span className="tutorial-section-kicker">
-                    {t("tutorialPage.continuity.kicker")}
-                  </span>
-                  <h2>{t("tutorialPage.continuity.title")}</h2>
-                </div>
-              </div>
-
-              <p>{t("tutorialPage.continuity.description")}</p>
-
-              <div className="tutorial-note">
-                <Info size={18} />
-                <p>
-                  <strong>{t("tutorialPage.continuity.lastResultLabel")}</strong>{" "}
-                  {t("tutorialPage.continuity.lastResultDescription")}
-                </p>
-              </div>
-            </div>
-
-            <TutorialScreenshot
-              shot={RECENT_RESULT_SHOT}
-              onOpen={setActiveShot}
-            />
-          </section>
-
-          <section className="tutorial-section">
-            <div className="tutorial-section-heading">
-              <span className="tutorial-section-kicker">
-                {t("tutorialPage.results.kicker")}
-              </span>
-              <h2>{t("tutorialPage.results.title")}</h2>
-              <p>{t("tutorialPage.results.description")}</p>
-            </div>
-
+            <div className="tutorial-subheading"><h3>{t(`${COPY}.results.metrics.title`)}</h3><p>{t(`${COPY}.results.metrics.description`)}</p></div>
             <div className="tutorial-metric-grid">
-              {METRICS.map((metric) => {
-                const Icon = metric.icon;
-
-                return (
-                  <article className="tutorial-metric-card" key={metric.key}>
-                    <div className="tutorial-metric-card__icon">
-                      <Icon size={22} strokeWidth={1.8} />
-                    </div>
-                    <h3>
-                      {t(`tutorialPage.results.metrics.${metric.key}.title`)}
-                    </h3>
-                    <p>
-                      {t(`tutorialPage.results.metrics.${metric.key}.text`)}
-                    </p>
-                  </article>
-                );
-              })}
+              {METRIC_FAMILIES.map(({ icon: Icon, key }) => (
+                <article className="tutorial-metric-card" key={key}><Icon size={22} aria-hidden="true" /><h4>{t(`${COPY}.results.metrics.${key}.title`)}</h4><p>{t(`${COPY}.results.metrics.${key}.text`)}</p></article>
+              ))}
             </div>
 
-            <div className="tutorial-result-example">
-              <div className="tutorial-result-example__copy">
-                <span className="tutorial-section-kicker">
-                  {t("tutorialPage.results.example.kicker")}
-                </span>
-                <h3>{t("tutorialPage.results.example.title")}</h3>
-                <p>{t("tutorialPage.results.example.description")}</p>
-                <ul>
-                  <li>{t("tutorialPage.results.example.points.unit")}</li>
-                  <li>{t("tutorialPage.results.example.points.trend")}</li>
-                  <li>{t("tutorialPage.results.example.points.compare")}</li>
-                </ul>
-              </div>
+            <MediaStory shot={shot("resultsOverview")} pointKeys={[`${COPY}.results.overview.points.context`, `${COPY}.results.overview.points.configuration`, `${COPY}.results.overview.points.kpis`, `${COPY}.results.overview.points.interpretation`]} onOpen={openShot} />
+            <MediaStory shot={shot("reproducibility")} reverse pointKeys={[`${COPY}.results.reproducibility.points.source`, `${COPY}.results.reproducibility.points.declared`, `${COPY}.results.reproducibility.points.hardware`, `${COPY}.results.reproducibility.points.observed`]} onOpen={openShot} />
 
-              <TutorialScreenshot
-                shot={TIME_CHART_SHOT}
-                onOpen={setActiveShot}
-              />
+            <div className="tutorial-provenance-grid">
+              <article><span>{t(`${COPY}.results.provenance.declared.label`)}</span><h3>{t(`${COPY}.results.provenance.declared.title`)}</h3><p>{t(`${COPY}.results.provenance.declared.text`)}</p><code>C · gcc · -O3</code></article>
+              <article><span>{t(`${COPY}.results.provenance.observed.label`)}</span><h3>{t(`${COPY}.results.provenance.observed.title`)}</h3><p>{t(`${COPY}.results.provenance.observed.text`)}</p><code>perf · gcc 9.4.0</code></article>
             </div>
           </section>
 
-          <section className="tutorial-section tutorial-two-column">
-            <article className="tutorial-panel">
-              <div className="tutorial-panel-title">
-                <Gauge size={21} />
-                <div>
-                  <span className="tutorial-section-kicker">
-                    {t("tutorialPage.interpretation.kicker")}
-                  </span>
-                  <h2>{t("tutorialPage.interpretation.title")}</h2>
-                </div>
-              </div>
+          <section className="tutorial-section" id="comparar">
+            <SectionHeading number="03" kickerKey={`${COPY}.compare.kicker`} titleKey={`${COPY}.compare.title`} descriptionKey={`${COPY}.compare.description`} />
 
-              <p>{t("tutorialPage.interpretation.description")}</p>
+            <MediaStory shot={shot("history")} pointKeys={[`${COPY}.compare.history.points.experiments`, `${COPY}.compare.history.points.sources`, `${COPY}.compare.history.points.actions`]} onOpen={openShot} />
 
-              <div className="tutorial-analysis-preview">
-                <div>
-                  <Activity size={18} />
-                  <span>{t("tutorialPage.interpretation.preview.trend")}</span>
-                </div>
-                <div>
-                  <Layers3 size={18} />
-                  <span>{t("tutorialPage.interpretation.preview.metrics")}</span>
-                </div>
-                <div>
-                  <Code2 size={18} />
-                  <span>
-                    {t("tutorialPage.interpretation.preview.implementation")}
-                  </span>
-                </div>
-              </div>
-            </article>
+            <div className="tutorial-subheading"><h3>{t(`${COPY}.compare.compatibility.title`)}</h3><p>{t(`${COPY}.compare.compatibility.description`)}</p></div>
+            <div className="tutorial-compatibility-grid">
+              {COMPATIBILITY_STATES.map((state) => (
+                <article key={state.code} className={`tutorial-compatibility-card${state.featured ? " tutorial-compatibility-card--featured" : ""}`}>
+                  <code>{state.code}</code>
+                  <h4>{t(`${COPY}.compare.compatibility.${state.key}.title`)}</h4>
+                  <p>{t(`${COPY}.compare.compatibility.${state.key}.text`)}</p>
+                  {state.featured && <div className="tutorial-toolchain-example"><span>C / gcc</span><ChevronRight size={17} aria-hidden="true" /><span>C++ / g++</span></div>}
+                </article>
+              ))}
+            </div>
 
-            <article className="tutorial-panel">
-              <div className="tutorial-panel-title">
-                <CheckCircle2 size={21} />
-                <div>
-                  <span className="tutorial-section-kicker">
-                    {t("tutorialPage.goodPractices.kicker")}
-                  </span>
-                  <h2>{t("tutorialPage.goodPractices.title")}</h2>
-                </div>
-              </div>
+            <div className="tutorial-callout tutorial-callout--emphasis" role="note"><Activity size={20} aria-hidden="true" /><div><strong>{t(`${COPY}.compare.evidence.title`)}</strong><p>{t(`${COPY}.compare.evidence.text`)}</p></div></div>
 
-              <ul className="tutorial-check-list">
-                {GOOD_PRACTICE_KEYS.map((practiceKey) => (
-                  <li key={practiceKey}>
-                    <CheckCircle2 size={17} />
-                    <span>{t(practiceKey)}</span>
-                  </li>
-                ))}
-              </ul>
-            </article>
+            <MediaStory shot={shot("comparison")} reverse pointKeys={[`${COPY}.compare.comparison.points.toolchains`, `${COPY}.compare.comparison.points.coverage`, `${COPY}.compare.comparison.points.visible`, `${COPY}.compare.comparison.points.energy`]} onOpen={openShot} />
           </section>
 
-          <section className="tutorial-section">
-            <article className="tutorial-final-card">
-              <div className="tutorial-final-card__icon">
-                <BarChart3 size={24} />
+          {showTeacherSection && (
+            <section className="tutorial-section tutorial-teacher-section" id="supervisar" data-testid="tutorial-teacher-section">
+              <SectionHeading number="04" kickerKey={`${COPY}.teacher.kicker`} titleKey={`${COPY}.teacher.title`} descriptionKey={`${COPY}.teacher.description`} />
+              <MediaStory shot={shot("teacherCourse")} pointKeys={[`${COPY}.teacher.points.attention`, `${COPY}.teacher.points.noExecutions`, `${COPY}.teacher.points.failures`, `${COPY}.teacher.points.activity`, `${COPY}.teacher.points.students`]} onOpen={openShot} />
+              <div className="tutorial-teacher-actions">
+                <div><ShieldCheck size={22} aria-hidden="true" /><p>{t(`${COPY}.teacher.guardrail`)}</p></div>
+                <Link to="/teacher/courses" className="tutorial-primary-link">{t(`${COPY}.teacher.cta`)}<ChevronRight size={17} aria-hidden="true" /></Link>
               </div>
-              <div>
-                <span className="tutorial-section-kicker">
-                  {t("tutorialPage.final.kicker")}
-                </span>
-                <h2>{t("tutorialPage.final.title")}</h2>
-                <p>{t("tutorialPage.final.description")}</p>
-              </div>
-            </article>
+            </section>
+          )}
+
+          <section className="tutorial-section tutorial-final-card">
+            <div><span className="tutorial-section-kicker">{t(`${COPY}.final.kicker`)}</span><h2>{t(`${COPY}.final.title`)}</h2><p>{t(`${COPY}.final.description`)}</p></div>
+            <div className="tutorial-final-card__actions">
+              <Link to="/" className="tutorial-primary-link"><UploadCloud size={17} aria-hidden="true" />{t(`${COPY}.final.newAnalysis`)}</Link>
+              <Link to="/history" className="tutorial-secondary-link"><History size={17} aria-hidden="true" />{t(`${COPY}.final.history`)}</Link>
+            </div>
           </section>
         </div>
       </main>
 
       {activeShot && (
-        <div
-          className="tutorial-lightbox"
-          role="dialog"
-          aria-modal="true"
-          aria-label={t("tutorialPage.lightbox.aria")}
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setActiveShot(null);
-          }}
-        >
+        <div className="tutorial-lightbox" role="dialog" aria-modal="true" aria-label={t(`${COPY}.lightbox.aria`)} onMouseDown={(event) => { if (event.target === event.currentTarget) closeShot(); }}>
           <div className="tutorial-lightbox__dialog">
-            <button
-              type="button"
-              className="tutorial-lightbox__close"
-              onClick={() => setActiveShot(null)}
-              aria-label={t("tutorialPage.lightbox.closeAria")}
-            >
-              <X size={20} />
-            </button>
-
-            <div
-              className={`tutorial-lightbox__viewport tutorial-lightbox__viewport--${activeShot.variant || "default"}`}
-            >
-              <img src={activeShot.src} alt={t(activeShot.altKey)} />
-            </div>
-
-            {activeShot.captionKey && <p>{t(activeShot.captionKey)}</p>}
+            <button ref={closeButtonRef} type="button" className="tutorial-lightbox__close" onClick={closeShot} aria-label={t(`${COPY}.lightbox.closeAria`)}><X size={20} aria-hidden="true" /></button>
+            <img src={activeShot.src} alt={t(activeShot.altKey)} />
+            <p>{t(activeShot.captionKey)}</p>
           </div>
         </div>
       )}

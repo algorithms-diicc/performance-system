@@ -53,8 +53,11 @@ jest.mock("./common/Navbar", () => () => (
   </nav>
 ));
 
-jest.mock("./screens/TutorialPage", () => () => (
-  <div data-testid="screen-tutorial">
+jest.mock("./screens/TutorialPage", () => ({ currentUser }) => (
+  <div
+    data-testid="screen-tutorial"
+    data-current-user-email={currentUser?.email || ""}
+  >
     Cómo funciona
   </div>
 ));
@@ -300,6 +303,7 @@ describe("CORE-05H-1 App shell and routing regression", () => {
     ["/code/exec70LCS", "screen-render-image"],
     ["/submissions/42", "screen-submission-overview"],
     ["/compare?execution=one&execution=two", "screen-comparison"],
+    ["/tutorial", "screen-tutorial"],
   ])("passes the single currentUser session to %s", async (path, testId) => {
     setRoute(path);
     mockAuthenticatedUser({

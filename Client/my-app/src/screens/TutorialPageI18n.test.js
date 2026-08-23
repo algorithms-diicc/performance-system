@@ -3,142 +3,110 @@ import {
   fireEvent,
   render,
   screen,
+  within,
 } from "@testing-library/react";
-import {
-  MemoryRouter,
-} from "react-router-dom";
+import { MemoryRouter } from "react-router-dom";
 
-import {
-  I18nProvider,
-  useI18n,
-} from "../i18n";
-
+import { I18nProvider, useI18n } from "../i18n";
 import TutorialPage from "./TutorialPage";
+
+const TEACHER = {
+  id: 30,
+  role_name: "Teacher",
+};
 
 const LanguageControl = () => {
   const { setLanguage } = useI18n();
 
   return (
-    <button
-      type="button"
-      onClick={() => setLanguage("es")}
-    >
+    <button type="button" onClick={() => setLanguage("es")}>
       switch-es
     </button>
   );
 };
 
-describe("TutorialPage i18n", () => {
+const renderBilingualTutorial = () => render(
+  <I18nProvider initialLanguage="en">
+    <LanguageControl />
+    <MemoryRouter initialEntries={["/tutorial#ejemplos"]}>
+      <TutorialPage currentUser={TEACHER} />
+    </MemoryRouter>
+  </I18nProvider>
+);
+
+describe("TutorialPage Iteration 9 i18n", () => {
   beforeEach(() => {
     Element.prototype.scrollIntoView = jest.fn();
   });
 
-  test(
-    "localizes the guide while preserving canonical example downloads",
-    () => {
-      render(
-        <I18nProvider initialLanguage="en">
-          <LanguageControl />
-          <MemoryRouter initialEntries={["/tutorial#ejemplos"]}>
-            <TutorialPage />
-          </MemoryRouter>
-        </I18nProvider>
-      );
+  test("localizes navigation, captions, and compatibility semantics", () => {
+    renderBilingualTutorial();
+    const navigation = screen.getByTestId("tutorial-primary-navigation");
 
-      expect(
-        screen.getByRole("heading", {
-          name: "How Performance System works",
-        })
-      ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "From code to performance evidence" })
+    ).toBeInTheDocument();
+    expect(
+      within(navigation).getByRole("link", { name: /Create an experiment/ })
+    ).toHaveAttribute("href", "#crear");
+    expect(
+      within(navigation).getByRole("link", { name: /Supervise a course/ })
+    ).toHaveAttribute("href", "#supervisar");
+    expect(screen.getByRole("heading", { name: "Limited" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Each source preserves its own language, compiler, execution, and result/)
+    ).toBeInTheDocument();
 
-      expect(
-        screen.getByRole("heading", {
-          name: "Classic algorithms ready to measure",
-        })
-      ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "switch-es" }));
 
-      expect(
-        screen.getByRole("link", {
-          name: "Download SIZE example",
-        })
-      ).toHaveAttribute(
-        "href",
-        "/tutorial-codigos/size_template.zip"
-      );
+    expect(
+      screen.getByRole("heading", { name: "De código a evidencia de rendimiento" })
+    ).toBeInTheDocument();
+    expect(
+      within(navigation).getByRole("link", { name: /Crear un experimento/ })
+    ).toHaveAttribute("href", "#crear");
+    expect(
+      within(navigation).getByRole("link", { name: /Supervisar un curso/ })
+    ).toHaveAttribute("href", "#supervisar");
+    expect(
+      screen.getByRole("heading", { name: "Con limitaciones" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Cada fuente conserva lenguaje, compilador, ejecución y resultado propios/)
+    ).toBeInTheDocument();
+  });
 
-      expect(
-        screen.getByRole("link", {
-          name: "Download LCS example",
-        })
-      ).toHaveAttribute(
-        "href",
-        "/tutorial-codigos/lcs_template.zip"
-      );
+  test("switches all seven visible screenshots from English to Spanish assets", () => {
+    renderBilingualTutorial();
 
-      expect(
-        screen.getByRole("link", {
-          name: "Download CAMM example",
-        })
-      ).toHaveAttribute(
-        "href",
-        "/tutorial-codigos/camm_template.zip"
-      );
+    const englishImages = screen.getAllByTestId(/^tutorial-image-/);
+    expect(englishImages).toHaveLength(7);
+    englishImages.forEach((image) => {
+      expect(image.getAttribute("src")).toMatch(/-en\.png$/);
+    });
 
-      expect(
-        Element.prototype.scrollIntoView
-      ).toHaveBeenCalled();
-    }
-  );
+    fireEvent.click(screen.getByRole("button", { name: "switch-es" }));
 
-  test(
-    "reactively localizes screenshot accessibility text while reusing the same asset",
-    () => {
-      render(
-        <I18nProvider initialLanguage="en">
-          <LanguageControl />
-          <MemoryRouter>
-            <TutorialPage />
-          </MemoryRouter>
-        </I18nProvider>
-      );
+    const spanishImages = screen.getAllByTestId(/^tutorial-image-/);
+    expect(spanishImages).toHaveLength(7);
+    spanishImages.forEach((image) => {
+      expect(image.getAttribute("src")).toMatch(/-es\.png$/);
+    });
+  });
 
-      const englishImage = screen.getByRole("img", {
-        name: "ZIP file selected in the new analysis form",
-      });
+  test("keeps technical identifiers canonical in both languages", () => {
+    renderBilingualTutorial();
 
-      const source = englishImage.getAttribute("src");
+    expect(screen.getAllByText("C / gcc").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("C++ / g++").length).toBeGreaterThan(0);
+    expect(screen.getByText("C · gcc · -O3")).toBeInTheDocument();
+    expect(screen.getByText("perf · gcc 9.4.0")).toBeInTheDocument();
 
-      expect(
-        screen.getByText(
-          "The selected file must contain at least one .cpp source file."
-        )
-      ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "switch-es" }));
 
-      fireEvent.click(
-        screen.getByRole("button", {
-          name: "switch-es",
-        })
-      );
-
-      expect(
-        screen.getByRole("heading", {
-          name: "Cómo funciona Performance System",
-        })
-      ).toBeInTheDocument();
-
-      const spanishImage = screen.getByRole("img", {
-        name: "Archivo ZIP seleccionado en el formulario de nuevo análisis",
-      });
-
-      expect(
-        spanishImage.getAttribute("src")
-      ).toBe(source);
-
-      expect(
-        screen.getByText(
-          "El archivo seleccionado debe contener al menos una fuente .cpp."
-        )
-      ).toBeInTheDocument();
-    }
-  );
+    expect(screen.getAllByText("C / gcc").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("C++ / g++").length).toBeGreaterThan(0);
+    expect(screen.getByText("C · gcc · -O3")).toBeInTheDocument();
+    expect(screen.getByText("perf · gcc 9.4.0")).toBeInTheDocument();
+  });
 });
