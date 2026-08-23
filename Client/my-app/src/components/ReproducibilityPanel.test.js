@@ -10,7 +10,9 @@ import {
 import axios from "axios";
 
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
-import ReproducibilityPanel from "./ReproducibilityPanel";
+import ReproducibilityPanel, {
+  sourceDownloadFilename,
+} from "./ReproducibilityPanel";
 
 jest.mock("axios");
 jest.mock("../utils/downloadAuthenticatedFile");
@@ -42,6 +44,8 @@ const manifest = {
   },
   source: {
     filename: "nested/std_sort.cpp",
+    language: "C++",
+    metadataProvenance: "explicit",
     sourceIndex: 0,
     available: true,
     sha256: SOURCE_SHA,
@@ -50,6 +54,7 @@ const manifest = {
   configuration: {
     inputSize: 5000,
     samples: 30,
+    compiler: "g++",
     compilerFlags: "-O2 -std=c++17",
     measurement: {
       points: 10,
@@ -72,6 +77,13 @@ const manifest = {
       version: "perf version 6.8",
       requestedScope: "process",
       perfEventParanoid: "-1",
+    },
+    toolchain: {
+      compiler: {
+        family: "GNU",
+        name: "g++",
+        version: "g++ (Ubuntu 9.4.0) 9.4.0",
+      },
     },
   },
   artifacts: {
@@ -174,6 +186,13 @@ describe("ReproducibilityPanel", () => {
     });
   });
 
+  test("selects a language-aware source download fallback", () => {
+    expect(sourceDownloadFilename("nested/main.c", "C")).toBe("main.c");
+    expect(sourceDownloadFilename("", "C")).toBe("source.c");
+    expect(sourceDownloadFilename(null, "C++")).toBe("source.cpp");
+    expect(sourceDownloadFilename(undefined, null)).toBe("source.txt");
+  });
+
   test("starts collapsed without delaying requests, context, or refetching on expand", async () => {
     const onContextChange = jest.fn();
 
@@ -266,6 +285,12 @@ describe("ReproducibilityPanel", () => {
     expect(screen.getByText("5000")).toBeInTheDocument();
     expect(screen.getByText("30")).toBeInTheDocument();
     expect(screen.getByText("-O2 -std=c++17")).toBeInTheDocument();
+    expect(screen.getAllByText("C++").length).toBeGreaterThan(0);
+    expect(screen.getByText("Explícita (contrato v2)")).toBeInTheDocument();
+    expect(screen.getAllByText("g++").length).toBeGreaterThan(1);
+    expect(
+      screen.getByText("g++ (Ubuntu 9.4.0) 9.4.0")
+    ).toBeInTheDocument();
     expect(screen.getByText("Muestras por punto")).toBeInTheDocument();
     expect(
       screen.getByText("Rondas de calentamiento")
@@ -278,6 +303,55 @@ describe("ReproducibilityPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Intel Core i5-9400")).toBeInTheDocument();
     expect(screen.getByText("perf version 6.8")).toBeInTheDocument();
+  });
+
+  test("shows inferred compiler from trace for a byte-stable legacy manifest", async () => {
+    const legacyManifestSource = {
+      ...manifest.source,
+    };
+    delete legacyManifestSource.language;
+    delete legacyManifestSource.metadataProvenance;
+    const legacyManifestConfiguration = {
+      ...manifest.configuration,
+    };
+    delete legacyManifestConfiguration.compiler;
+    const legacyManifest = {
+      ...manifest,
+      source: legacyManifestSource,
+      configuration: legacyManifestConfiguration,
+    };
+    const legacyTrace = {
+      ...trace,
+      execution: {
+        ...trace.execution,
+        source: {
+          ...legacyManifestSource,
+          language: "C++",
+          compiler: "g++",
+          metadataProvenance:
+            "inferred_legacy_cpp",
+        },
+      },
+    };
+
+    await renderPanel({
+      manifestValue: legacyManifest,
+      traceValue: legacyTrace,
+    });
+
+    expect(
+      screen.getAllByText("C++").length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Inferida (C++ legacy)")
+    ).toBeInTheDocument();
+    const configuredCompilerItem = screen
+      .getByText("Compilador configurado")
+      .closest(".reproducibility-panel__data-item");
+    expect(configuredCompilerItem).toHaveTextContent("g++");
+    expect(configuredCompilerItem).not.toHaveTextContent(
+      "No disponible"
+    );
   });
 
   test("shows source, measurements and archive integrity without internal paths or raw JSON", async () => {
@@ -321,7 +395,7 @@ describe("ReproducibilityPanel", () => {
     await renderPanel();
 
     const actions = [
-      ["Descargar fuente .cpp", /\/source\/download$/, "std_sort.cpp"],
+      ["Descargar fuente", /\/source\/download$/, "std_sort.cpp"],
       ["Descargar manifest JSON", /\/manifest\/download$/, "performance-system-exec70LCS-manifest.json"],
       ["Descargar CSV", /\/measurements\/download$/, "performance-system-exec70LCS.csv"],
       ["Descargar paquete reproducible", /\/bundle$/, "performance-system-exec70LCS-bundle.zip"],
@@ -375,7 +449,7 @@ describe("ReproducibilityPanel", () => {
 
     expect(screen.getByRole("button", { name: "Ver código" })).toBeDisabled();
     expect(
-      screen.getByRole("button", { name: "Descargar fuente .cpp" })
+      screen.getByRole("button", { name: "Descargar fuente" })
     ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Descargar CSV" })).toBeDisabled();
     expect(
@@ -401,7 +475,7 @@ describe("ReproducibilityPanel", () => {
         name: "Hardware observado durante la ejecución",
       })
       .closest("article");
-    expect(within(hardware).getAllByText("No disponible").length).toBe(8);
+    expect(within(hardware).getAllByText("No disponible").length).toBe(10);
 
     cleanup();
     await renderPanel({

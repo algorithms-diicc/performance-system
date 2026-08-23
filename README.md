@@ -1,6 +1,6 @@
 # Performance System
 
-Plataforma web para la ejecución y análisis experimental de programas en C++ (`.cpp`), orientada al apoyo docente y al estudio de rendimiento computacional.
+Plataforma web para la ejecución y análisis experimental de programas en C (`.c`) y C++ (`.cpp`), orientada al apoyo docente y al estudio de rendimiento computacional.
 
 Performance System permite recibir implementaciones, ejecutar experimentos sobre un nodo de medición y presentar métricas agrupadas en categorías como **CPU, memoria, sistema, tiempo y energía**. La plataforma incorpora autenticación, persistencia de ejecuciones, perfiles experimentales, trazabilidad, administración de usuarios y funciones de supervisión académica mediante cursos.
 
@@ -16,8 +16,8 @@ El proyecto corresponde a una evolución sucesiva de trabajos de memoria desarro
 - Roles de usuario `Student`, `Teacher` y `Admin`.
 - Gestión de cursos y membresías de estudiantes.
 - Persistencia PostgreSQL de usuarios, sesiones, submissions, ejecuciones y contexto experimental.
-- Ejecución de programas C++ (`.cpp`) mediante un nodo medidor (`slave`).
-- Compilación con `g++`.
+- Ejecución de programas C (`.c`) y C++ (`.cpp`) mediante un nodo medidor (`slave`).
+- Compilación canónica con `gcc` para C y `g++` para C++.
 - Recolección de métricas mediante Linux `perf`.
 - Perfiles de ejecución configurables.
 - Persistencia y trazabilidad del estado de las ejecuciones.
@@ -47,7 +47,7 @@ flowchart LR
 
     subgraph NODE["Nodo de medición"]
         S["Slave"]
-        C["g++"]
+        C["gcc / g++"]
         P["perf"]
     end
 
@@ -80,13 +80,13 @@ El `recovery_watchdog` también es un proceso independiente. Recupera únicament
 
 ```mermaid
 flowchart TD
-    A["Usuario configura y envía código"]
+    A["Usuario configura y envía fuentes .c/.cpp"]
     B["Backend valida la solicitud"]
     C["Se crean Submission y Execution"]
     D["Execution queda en cola"]
     E["Dispatcher reclama la siguiente Execution FIFO"]
     F["Slave recibe la ejecución"]
-    G["Compilación con g++"]
+    G["Compilación con gcc o g++"]
     H["Warmup y mediciones con perf"]
     I["Slave retorna los resultados"]
     J["Backend procesa y persiste"]
@@ -106,6 +106,13 @@ flowchart TD
     K --> L
 ```
 
+Un ZIP puede contener varias fuentes C/C++ independientes. Cada archivo
+soportado (`.c` o `.cpp`) origina una `Execution` separada: no se enlazan
+fuentes entre sí y no se interpretan proyectos multiarchivo, `Makefile` ni
+CMake. El contrato actual usa los compiladores indicados con flags canónicos
+`-O3` y conserva la identidad de lenguaje, compilador y procedencia en la
+trazabilidad de cada ejecución.
+
 ---
 
 ## Entorno técnico validado
@@ -117,6 +124,7 @@ La versión actual ha sido validada en el siguiente entorno:
 | Ubuntu | 20.04 LTS |
 | Python | 3.8.10 |
 | PostgreSQL | 12.22 |
+| `gcc` | 9.4.0 |
 | `g++` | 9.4.0 |
 | Linux `perf` | kernel 5.15 |
 | Node.js | 24.11.0 |
@@ -133,6 +141,7 @@ Se requiere, como mínimo:
 
 - Python 3 y soporte para entornos virtuales;
 - PostgreSQL;
+- `gcc`;
 - `g++`;
 - Linux `perf`;
 - Node.js y npm para construir o desarrollar el frontend;
@@ -596,7 +605,7 @@ La medición energética depende de soporte compatible con RAPL.
 
 El sistema incorpora autenticación, autorización por roles, validaciones de archivos y parámetros, límites operacionales, tiempos máximos y mecanismos de recuperación.
 
-Performance System ejecuta código C++ (`.cpp`) recibido por usuarios. Por esta razón debe desplegarse únicamente en infraestructura controlada y con una política de permisos adecuada al escenario académico previsto.
+Performance System ejecuta código C (`.c`) y C++ (`.cpp`) recibido por usuarios. Por esta razón debe desplegarse únicamente en infraestructura controlada y con una política de permisos adecuada al escenario académico previsto.
 
 Aunque se incorporaron controles para reducir riesgos operacionales, la versión actual **no afirma disponer de un aislamiento fuerte mediante contenedores o máquinas virtuales**.
 

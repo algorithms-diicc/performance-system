@@ -31,7 +31,7 @@ from .comparison_pedagogy_service import build_comparison_pedagogy
 
 
 COMPARISON_AI_SCHEMA_VERSION = "1.0"
-COMPARISON_AI_PROMPT_VERSION = "iter11e-comparison-v1"
+COMPARISON_AI_PROMPT_VERSION = "iter11e-comparison-v2"
 DEFAULT_MODEL = "gpt-5.6-luna"
 DEFAULT_TRANSPORT = "mock"
 CACHE_DIRNAME = "_comparison_ai"
@@ -289,7 +289,10 @@ def build_comparison_ai_context(comparison_payload, language="es"):
     metrics = pedagogy.get("metrics") or {}
     limitations = pedagogy.get("limitations") or {}
 
-    implementations = _collect_implementations(metrics)
+    implementations = _collect_implementations(
+        metrics,
+        comparison.get("executions"),
+    )
 
     return {
         "contract": {
@@ -719,9 +722,58 @@ def validate_comparison_ai_output(output, context):
     )
 
 
-def _collect_implementations(metrics):
+def _public_execution_metadata(executions):
+    by_identity = {}
+    for execution in executions if isinstance(executions, list) else []:
+        if not isinstance(execution, dict):
+            continue
+        source_language = _clean_text(execution.get("sourceLanguage"))
+        compiler = _clean_text(execution.get("compiler"))
+        if source_language not in {"C", "C++"}:
+            source_language = None
+        if compiler not in {"gcc", "g++"}:
+            compiler = None
+
+        hardware = execution.get("hardwareObserved") or {}
+        toolchain = (
+            hardware.get("toolchain")
+            if isinstance(hardware, dict)
+            else {}
+        ) or {}
+        compiler_version = (
+            _clean_text(toolchain.get("version"))
+            if isinstance(toolchain, dict)
+            else None
+        )
+        if (
+            compiler_version
+            and (
+                len(compiler_version) > 256
+                or "/" in compiler_version
+                or "\\" in compiler_version
+            )
+        ):
+            compiler_version = None
+        metadata = {
+            "source_language": source_language,
+            "compiler": compiler,
+            "compiler_version": compiler_version,
+        }
+        for identity in (
+            execution.get("publicId"),
+            execution.get("codename"),
+            execution.get("sourceFilename"),
+        ):
+            normalized = _clean_text(identity)
+            if normalized:
+                by_identity.setdefault(normalized, metadata)
+    return by_identity
+
+
+def _collect_implementations(metrics, executions=None):
     collected = []
     seen = set()
+    execution_metadata = _public_execution_metadata(executions)
 
     for metric_payload in metrics.values():
         for section in ("observation", "trend", "variability"):
@@ -734,13 +786,21 @@ def _collect_implementations(metrics):
                 if not stable_id or stable_id in seen:
                     continue
                 seen.add(stable_id)
-                collected.append({
+                item = {
                     "id": stable_id,
                     "public_id": public_id,
                     "codename": codename,
                     "source_filename": filename,
                     "label": filename or codename or public_id,
-                })
+                }
+                metadata = (
+                    execution_metadata.get(public_id)
+                    or execution_metadata.get(codename)
+                    or execution_metadata.get(filename)
+                )
+                if metadata:
+                    item.update(metadata)
+                collected.append(item)
 
     return collected
 

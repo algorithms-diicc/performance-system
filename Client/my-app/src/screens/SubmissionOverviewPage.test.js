@@ -41,6 +41,7 @@ const ownerSubmission = {
     academicTerm: 1,
   },
   title: "Comparación de algoritmos de ordenamiento",
+  language: "C++",
   originalFilename: "algoritmos.zip",
   archiveSha256: ARCHIVE_SHA,
   createdAt: "2026-08-17T12:00:00Z",
@@ -72,6 +73,8 @@ const completedExecution = {
   resultAvailable: true,
   failure: null,
   benchmark: "LCS",
+  sourceLanguage: "C++",
+  compiler: "g++",
 };
 
 const ownerPermissions = {
@@ -210,6 +213,7 @@ describe("SubmissionOverviewPage", () => {
         formatSubmissionDateTime(ownerSubmission.createdAt)
       )
     ).toBeInTheDocument();
+    expect(within(information).getByText("C++")).toBeInTheDocument();
     expect(within(information).getByTitle(ARCHIVE_SHA)).toHaveTextContent(
       `${"b".repeat(12)}…${"b".repeat(8)}`
     );
@@ -225,6 +229,7 @@ describe("SubmissionOverviewPage", () => {
     const executionCard = filenameHeading.closest("article");
 
     expect(filenameHeading).toBeInTheDocument();
+    expect(within(executionCard).getByText("C++ · g++")).toBeInTheDocument();
     expect(
       within(executionCard).getByText("Fuente de esta ejecución")
     ).toBeInTheDocument();
@@ -279,6 +284,39 @@ describe("SubmissionOverviewPage", () => {
     expect(mockNavigate).toHaveBeenCalledWith(
       "/code/opaque-codename-10"
     );
+  });
+
+  test("shows persisted mixed language and each execution toolchain", async () => {
+    const cExecution = comparisonExecution(1, {
+      originalFilename: "main.c",
+      sourceLanguage: "C",
+      compiler: "gcc",
+    });
+    const cppExecution = comparisonExecution(2, {
+      originalFilename: "main.cpp",
+      sourceLanguage: "C++",
+      compiler: "g++",
+    });
+
+    await renderLoadedPage({
+      submission: {
+        ...ownerSubmission,
+        language: "C/C++",
+      },
+      executions: [cExecution, cppExecution],
+    });
+
+    const information = screen.getByRole("region", {
+      name: "Información del experimento",
+    });
+    expect(within(information).getByText("C/C++")).toBeInTheDocument();
+
+    const cCard = screen.getByRole("heading", { name: "main.c" })
+      .closest("article");
+    const cppCard = screen.getByRole("heading", { name: "main.cpp" })
+      .closest("article");
+    expect(within(cCard).getByText("C · gcc")).toBeInTheDocument();
+    expect(within(cppCard).getByText("C++ · g++")).toBeInTheDocument();
   });
 
   test.each([
@@ -930,7 +968,7 @@ describe("SubmissionOverviewPage", () => {
 
     expect(
       screen.getByText(
-        "Cada archivo .cpp del experimento genera una ejecución independiente y conserva sus propios resultados."
+        "Cada fuente .c o .cpp del experimento genera una ejecución independiente y conserva sus propios resultados."
       )
     ).toBeInTheDocument();
   });

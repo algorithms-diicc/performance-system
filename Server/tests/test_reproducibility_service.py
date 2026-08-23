@@ -202,6 +202,7 @@ class ReproducibilityServiceTests(unittest.TestCase):
                 "perfEventParanoid": "-1",
             },
         )
+        self.assertNotIn("toolchain", environment)
 
         measurements = manifest["artifacts"]["measurements"]
         self.assertTrue(measurements["available"])
@@ -259,9 +260,24 @@ class ReproducibilityServiceTests(unittest.TestCase):
             "compiler": "g++",
             "compiler_flags": "-O3",
         }
-        snapshot = self._snapshot(
-            dict(self.row, execution_config=execution_config)
+        hardware_snapshot = {
+            **self.row["hardware_snapshot"],
+            "toolchain": {
+                "compiler": {
+                    "family": "GNU",
+                    "name": "g++",
+                    "version": "g++ (Ubuntu 9.4.0) 9.4.0",
+                    "path": "/usr/bin/g++",
+                    "private": "must-not-leak",
+                }
+            },
+        }
+        row = dict(
+            self.row,
+            execution_config=execution_config,
+            hardware_snapshot=hardware_snapshot,
         )
+        snapshot = self._snapshot(row)
 
         self.assertEqual(snapshot.manifest["schemaVersion"], "1.0")
         self.assertEqual(snapshot.manifest["source"]["language"], "C++")
@@ -278,10 +294,43 @@ class ReproducibilityServiceTests(unittest.TestCase):
             "-O3",
         )
         self.assertEqual(
+            snapshot.manifest["environmentObserved"]["toolchain"],
+            {
+                "compiler": {
+                    "family": "GNU",
+                    "name": "g++",
+                    "version": "g++ (Ubuntu 9.4.0) 9.4.0",
+                }
+            },
+        )
+        self.assertNotIn(
+            "/usr/bin/g++",
+            json.dumps(snapshot.manifest),
+        )
+        self.assertEqual(
             snapshot.manifest_bytes,
-            self._snapshot(
-                dict(self.row, execution_config=execution_config)
-            ).manifest_bytes,
+            self._snapshot(row).manifest_bytes,
+        )
+
+    def test_invalid_observed_toolchain_is_not_exported(self):
+        hardware_snapshot = {
+            **self.row["hardware_snapshot"],
+            "toolchain": {
+                "compiler": {
+                    "family": "private-family",
+                    "name": "clang",
+                    "version": "/private/compiler/version",
+                }
+            },
+        }
+
+        snapshot = self._snapshot(
+            dict(self.row, hardware_snapshot=hardware_snapshot)
+        )
+
+        self.assertNotIn(
+            "toolchain",
+            snapshot.manifest["environmentObserved"],
         )
 
     def test_v2_c_manifest_and_bundle_preserve_c_extension(self):

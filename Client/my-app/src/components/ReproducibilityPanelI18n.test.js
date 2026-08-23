@@ -40,6 +40,8 @@ const manifest = {
   },
   source: {
     filename: "nested/std_sort.cpp",
+    language: "C++",
+    metadataProvenance: "explicit",
     available: true,
     sha256: "b".repeat(64),
     sizeBytes: 2048,
@@ -47,6 +49,7 @@ const manifest = {
   configuration: {
     inputSize: 5000,
     samples: 30,
+    compiler: "g++",
     compilerFlags: "-O3 -std=c++17",
     measurement: {
       points: 10,
@@ -68,6 +71,13 @@ const manifest = {
       version: "perf version 6.8",
       requestedScope: "process",
       perfEventParanoid: "-1",
+    },
+    toolchain: {
+      compiler: {
+        family: "GNU",
+        name: "g++",
+        version: "g++ 9.4.0",
+      },
     },
   },
   artifacts: {
@@ -188,7 +198,7 @@ describe("ReproducibilityPanel i18n", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Download source .cpp",
+        name: "Download source",
       })
     ).toBeInTheDocument();
     expect(screen.getByText("Completed")).toBeInTheDocument();
@@ -263,7 +273,7 @@ describe("ReproducibilityPanel i18n", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", {
-        name: "Descargar fuente .cpp",
+        name: "Descargar fuente",
       })
     ).toBeInTheDocument();
     expect(screen.getByText("Completada")).toBeInTheDocument();

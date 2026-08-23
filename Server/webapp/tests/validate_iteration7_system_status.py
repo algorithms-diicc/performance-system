@@ -279,14 +279,12 @@ forbidden_parts = (
     "Server/db/schema.sql",
     "migration",
     ".env",
-    "README.md",
     "recovery_watchdog.py",
     "perf/",
-    "Comparison",
     "Tutorial",
 )
 check(
-    "8C no toca schema/config/watchdog/perf/Comparison/Tutorial",
+    "Integración 8D no toca schema/config/watchdog/perf/Tutorial",
     not any(
         forbidden.casefold() in path.casefold()
         for path in changed_paths

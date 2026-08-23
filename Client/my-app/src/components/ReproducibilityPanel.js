@@ -88,6 +88,36 @@ const displayValue = (
   return String(value);
 };
 
+export const sourceDownloadFilename = (
+  filename,
+  language
+) => {
+  const persisted = String(filename || "").trim();
+  if (persisted) return safeFilename(persisted);
+  if (language === "C") return "source.c";
+  if (language === "C++") return "source.cpp";
+  return "source.txt";
+};
+
+const metadataProvenanceLabel = (
+  value,
+  t
+) => {
+  if (value === "explicit") {
+    return resolveText(
+      t,
+      "reproducibilityPanel.metadataProvenance.explicit"
+    );
+  }
+  if (value === "inferred_legacy_cpp") {
+    return resolveText(
+      t,
+      "reproducibilityPanel.metadataProvenance.inferredLegacyCpp"
+    );
+  }
+  return value;
+};
+
 export const executionStateLabel = (
   value,
   t
@@ -446,6 +476,7 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
   const environment = manifest?.environmentObserved || {};
   const cpu = environment.cpu || {};
   const measurementBackend = environment.measurementBackend || {};
+  const observedCompiler = environment.toolchain?.compiler || {};
   const measurements = manifest?.artifacts?.measurements || {};
   const archive = manifest?.submission?.archive || trace?.submission?.archive || {};
 
@@ -465,6 +496,13 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
   const publicId = execution.publicId || trace?.execution?.publicId;
   const visibleCodename = execution.codename || trace?.execution?.codename || codename;
   const sourceFilename = source.filename || trace?.execution?.source?.filename;
+  const sourceLanguage = source.language || trace?.execution?.source?.language;
+  const metadataProvenance =
+    source.metadataProvenance ||
+    trace?.execution?.source?.metadataProvenance;
+  const configuredCompiler =
+    configuration.compiler ||
+    trace?.execution?.source?.compiler;
   const visibleSourceFilename = sourceFilename || null;
   const rawNavigationSubmissionId =
     manifest?.submission?.id ?? trace?.submission?.id;
@@ -702,6 +740,14 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                 value={executionStateLabel(execution.state, t)}
               />
               <DataItem
+                label={t("reproducibilityPanel.fields.sourceLanguage")}
+                value={sourceLanguage}
+              />
+              <DataItem
+                label={t("reproducibilityPanel.fields.metadataProvenance")}
+                value={metadataProvenanceLabel(metadataProvenance, t)}
+              />
+              <DataItem
                 label={t("reproducibilityPanel.fields.created")}
                 value={formatDateTime(
                   execution.createdAt,
@@ -767,6 +813,11 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                   <DataItem
                     label={t("reproducibilityPanel.fields.samples")}
                     value={configuration.samples}
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.configuredCompiler")}
+                    value={configuredCompiler}
+                    code
                   />
                   <DataItem
                     label={t("reproducibilityPanel.fields.compilerFlags")}
@@ -837,6 +888,15 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                     label={t("reproducibilityPanel.fields.requestedScope")}
                     value={measurementBackend.requestedScope}
                   />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.observedCompiler")}
+                    value={observedCompiler.name}
+                    code
+                  />
+                  <DataItem
+                    label={t("reproducibilityPanel.fields.observedCompilerVersion")}
+                    value={observedCompiler.version}
+                  />
                   <DataItem label="perf_event_paranoid" value={measurementBackend.perfEventParanoid} />
                 </dl>
               </article>
@@ -887,9 +947,10 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                 handleDownload({
                   key: "source",
                   path: "source/download",
-                  filename: sourceFilename
-                    ? safeFilename(sourceFilename)
-                    : "fuente.cpp",
+                  filename: sourceDownloadFilename(
+                    sourceFilename,
+                    sourceLanguage
+                  ),
                   resourceKey: "source",
                 })
               }

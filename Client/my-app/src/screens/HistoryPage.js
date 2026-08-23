@@ -788,6 +788,21 @@ const HistoryPage = () => {
                         <div>
                           <span>
                             {t(
+                              "history.language"
+                            )}
+                          </span>
+                          <strong>
+                            {["C", "C++", "C/C++"].includes(item?.language)
+                              ? item.language
+                              : t(
+                                  "history.languageUnavailable"
+                                )}
+                          </strong>
+                        </div>
+
+                        <div>
+                          <span>
+                            {t(
                               "history.benchmark"
                             )}
                           </span>

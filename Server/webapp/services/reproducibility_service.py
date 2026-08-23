@@ -11,6 +11,8 @@ from typing import Optional
 import zipfile
 
 from ...source_contract import (
+    COMPILER_C,
+    COMPILER_CPP,
     SOURCE_CONTRACT_VERSION,
     is_supported_source_filename,
 )
@@ -122,11 +124,45 @@ def _measurement_configuration(execution_config):
     }
 
 
+def _observed_toolchain(hardware_snapshot):
+    snapshot = _mapping(hardware_snapshot)
+    toolchain = _mapping(snapshot.get("toolchain"))
+    compiler = _mapping(toolchain.get("compiler"))
+    name = compiler.get("name")
+    if name not in (COMPILER_C, COMPILER_CPP):
+        return None
+
+    family = compiler.get("family")
+    if family != "GNU":
+        family = None
+
+    version = compiler.get("version")
+    if isinstance(version, str):
+        version = " ".join(version.split()).strip()
+        if (
+            not version
+            or len(version) > 256
+            or "/" in version
+            or "\\" in version
+        ):
+            version = None
+    else:
+        version = None
+
+    return {
+        "compiler": {
+            "family": family,
+            "name": name,
+            "version": version,
+        }
+    }
+
+
 def _observed_environment(hardware_snapshot):
     snapshot = _mapping(hardware_snapshot)
     node = _mapping(snapshot.get("node"))
     measurement = _mapping(snapshot.get("measurement"))
-    return {
+    environment = {
         "source": "execution.hardware_snapshot",
         "cpu": {
             "vendor": _scalar(node.get("cpu_vendor")),
@@ -145,6 +181,10 @@ def _observed_environment(hardware_snapshot):
             ),
         },
     }
+    toolchain = _observed_toolchain(snapshot)
+    if toolchain is not None:
+        environment["toolchain"] = toolchain
+    return environment
 
 
 def serialize_manifest_bytes(manifest):

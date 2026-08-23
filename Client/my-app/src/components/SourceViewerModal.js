@@ -27,7 +27,7 @@ const emptyViewerState = () => ({
 
 const safeFilename = (
   value,
-  fallback = "fuente.cpp"
+  fallback = "source.txt"
 ) => {
   const normalized = String(value || "").replace(/\\/g, "/");
   return (

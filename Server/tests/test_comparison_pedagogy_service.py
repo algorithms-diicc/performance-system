@@ -2,7 +2,7 @@ import copy
 import json
 import unittest
 
-from Server.tests.test_comparison_service import build_fixture
+from Server.tests.test_comparison_service import build_fixture, set_v2_source
 from Server.webapp.services.comparison_service import build_comparison
 
 
@@ -107,6 +107,20 @@ class ComparisonPedagogyServiceTests(unittest.TestCase):
             for item in pedagogy["limitations"]["issues"]
         }
         self.assertIn("PARTIAL_INPUT_OVERLAP", codes)
+
+    def test_source_toolchain_difference_is_preserved_as_a_limitation(self):
+        contexts, results = build_fixture()
+        set_v2_source(contexts[0], "impl1.c", "C", "gcc")
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "LIMITED")
+        codes = {
+            item["code"]
+            for item in payload["pedagogy"]["limitations"]["issues"]
+        }
+        self.assertIn("SOURCE_TOOLCHAIN_DIFFERS", codes)
+        self.assertIn("DurationTime", payload["pedagogy"]["metrics"])
 
     def test_excluded_target_metric_is_exposed_by_reason_code(self):
         contexts, results = build_fixture()

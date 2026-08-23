@@ -63,12 +63,28 @@ def comparison_fixture(status="LIMITED"):
             {
                 "publicId": "public-a",
                 "codename": "aLCS",
-                "sourceFilename": "a.cpp",
+                "sourceFilename": "a.c",
+                "sourceLanguage": "C",
+                "compiler": "gcc",
+                "hardwareObserved": {
+                    "toolchain": {
+                        "compiler": "gcc",
+                        "version": "gcc 9.4.0",
+                    }
+                },
             },
             {
                 "publicId": "public-b",
                 "codename": "bLCS",
                 "sourceFilename": "b.cpp",
+                "sourceLanguage": "C++",
+                "compiler": "g++",
+                "hardwareObserved": {
+                    "toolchain": {
+                        "compiler": "g++",
+                        "version": "g++ 9.4.0",
+                    }
+                },
             },
         ],
         "metrics": (
@@ -253,6 +269,26 @@ class ComparisonAIServiceTests(unittest.TestCase):
         self.assertEqual(
             set(context["metrics"].keys()),
             {"DurationTime", "IPC"},
+        )
+        self.assertEqual(
+            context["implementations"][0]["source_language"],
+            "C",
+        )
+        self.assertEqual(
+            context["implementations"][0]["compiler"],
+            "gcc",
+        )
+        self.assertEqual(
+            context["implementations"][0]["compiler_version"],
+            "gcc 9.4.0",
+        )
+        self.assertEqual(
+            context["implementations"][1]["source_language"],
+            "C++",
+        )
+        self.assertEqual(
+            context["implementations"][1]["compiler"],
+            "g++",
         )
 
     def test_request_has_own_comparative_schema_and_prompt(self):

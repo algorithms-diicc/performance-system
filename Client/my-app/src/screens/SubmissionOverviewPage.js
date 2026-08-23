@@ -60,6 +60,7 @@ import {
   getEligibleExecutions,
   initialComparisonSelection,
   isComparisonEligibleExecution,
+  localizedCandidateReason,
   MAX_COMPARISON_EXECUTIONS,
   orderSelectedExecutions,
   toggleComparisonSelection,
@@ -1038,6 +1039,18 @@ const SubmissionOverviewPage = ({ currentUser }) => {
 
           <dl className="submission-overview__information-grid">
             <InformationItem
+              icon={FileCode2}
+              label={t(
+                "submissionOverview.labels.language"
+              )}
+            >
+              {submission.language ||
+                t(
+                  "submissionOverview.fallbacks.unavailable"
+                )}
+            </InformationItem>
+
+            <InformationItem
               icon={FileArchive}
               label={t(
                 "submissionOverview.labels.originalArchive"
@@ -1558,36 +1571,44 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                 </p>
               ) : (
                 <ul className="submission-overview__reference-list">
-                  {referenceState.items.map((candidate) => (
-                    <li key={candidate.codename}>
-                      <div>
-                        <strong>
-                          {candidate.sourceFilename ||
-                            candidate.submissionTitle ||
-                            candidate.codename}
-                        </strong>
-                        <span>
-                          {t(referenceStatusKey(candidate.status))}
-                        </span>
-                        {candidate.reason && <p>{candidate.reason}</p>}
-                      </div>
-                      <button
-                        type="button"
-                        className="submission-overview__button submission-overview__button--secondary"
-                        disabled={candidate.selectable !== true}
-                        onClick={() =>
-                          navigate(
-                            buildComparisonPath([
-                              referenceState.execution.codename,
-                              candidate.codename,
-                            ])
-                          )
-                        }
-                      >
-                        {t("submissionOverview.reference.compare")}
-                      </button>
-                    </li>
-                  ))}
+                  {referenceState.items.map((candidate) => {
+                    const candidateReason =
+                      localizedCandidateReason(
+                        candidate,
+                        t
+                      );
+
+                    return (
+                      <li key={candidate.codename}>
+                        <div>
+                          <strong>
+                            {candidate.sourceFilename ||
+                              candidate.submissionTitle ||
+                              candidate.codename}
+                          </strong>
+                          <span>
+                            {t(referenceStatusKey(candidate.status))}
+                          </span>
+                          {candidateReason && <p>{candidateReason}</p>}
+                        </div>
+                        <button
+                          type="button"
+                          className="submission-overview__button submission-overview__button--secondary"
+                          disabled={candidate.selectable !== true}
+                          onClick={() =>
+                            navigate(
+                              buildComparisonPath([
+                                referenceState.execution.codename,
+                                candidate.codename,
+                              ])
+                            )
+                          }
+                        >
+                          {t("submissionOverview.reference.compare")}
+                        </button>
+                      </li>
+                    );
+                  })}
                 </ul>
               )}
             </div>
@@ -1622,6 +1643,16 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                 );
                 const comparisonAtLimit =
                   comparisonSelection.length >= MAX_COMPARISON_EXECUTIONS;
+                const sourceIdentity = [
+                  ["C", "C++"].includes(execution?.sourceLanguage)
+                    ? execution.sourceLanguage
+                    : "",
+                  ["gcc", "g++"].includes(execution?.compiler)
+                    ? execution.compiler
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
 
                 return (
                   <article
@@ -1689,6 +1720,11 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                             )}
                           </span>
                           <h3>{displayName}</h3>
+                          {sourceIdentity && (
+                            <span className="submission-overview__codename">
+                              {sourceIdentity}
+                            </span>
+                          )}
                           {execution.codename && (
                             <span className="submission-overview__codename">
                               {t(

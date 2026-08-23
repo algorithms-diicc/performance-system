@@ -84,6 +84,13 @@ def export_row(
                 "perf_version": perf_version,
                 "requested_perf_scope": "process",
             },
+            "toolchain": {
+                "compiler": {
+                    "family": "GNU",
+                    "name": "g++",
+                    "version": "GNU 9.4.0",
+                }
+            },
             "env": {"TOKEN": "private"},
         },
         "created_at": datetime(2026, 8, 18, 12, index, tzinfo=timezone.utc),
@@ -125,6 +132,25 @@ def structured_results(index, sizes=(100, 200, 300)):
             ],
         }
     return {"metrics": metrics, "private": "/internal/results"}
+
+
+def set_v2_source(row, filename, language, compiler):
+    row["execution_config"].update(
+        {
+            "source_contract_version": 2,
+            "original_filename": filename,
+            "source_language": language,
+            "compiler": compiler,
+            "compiler_flags": "-O3",
+        }
+    )
+    row["hardware_snapshot"]["toolchain"] = {
+        "compiler": {
+            "family": "GNU",
+            "name": compiler,
+            "version": "GNU 9.4.0",
+        }
+    }
 
 
 def fixture_maps():
@@ -422,6 +448,72 @@ class ComparisonCandidatesRouteTests(unittest.TestCase):
         self.assertIsNone(item["reason"])
         self.assertNotIn("metrics", item)
         self.assertEqual(calls["results"].call_count, 3)
+
+    def test_c_candidate_for_c_selection_is_compatible_and_selectable(self):
+        access, exports, results = fixture_maps()
+        for codename in ("execAlpha", "execBeta", "candCompatible"):
+            index = exports[codename]["execution_id"] - 900
+            set_v2_source(
+                exports[codename],
+                "impl{}.c".format(index),
+                "C",
+                "gcc",
+            )
+
+        response, _ = self._post(
+            {"executions": ["execAlpha", "execBeta"]},
+            access_rows=access,
+            export_rows=exports,
+            results=results,
+        )
+
+        item = response.get_json()["items"][0]
+        self.assertEqual(item["status"], "COMPATIBLE")
+        self.assertTrue(item["selectable"])
+        self.assertEqual(item["sourceLanguage"], "C")
+        self.assertEqual(item["compiler"], "gcc")
+
+    def test_cpp_candidate_for_c_selection_is_limited_and_selectable(self):
+        access, exports, results = fixture_maps()
+        for codename in ("execAlpha", "execBeta"):
+            index = exports[codename]["execution_id"] - 900
+            set_v2_source(
+                exports[codename],
+                "impl{}.c".format(index),
+                "C",
+                "gcc",
+            )
+
+        response, _ = self._post(
+            {"executions": ["execAlpha", "execBeta"]},
+            access_rows=access,
+            export_rows=exports,
+            results=results,
+        )
+
+        item = response.get_json()["items"][0]
+        self.assertEqual(item["status"], "LIMITED")
+        self.assertTrue(item["selectable"])
+        self.assertEqual(item["sourceLanguage"], "C++")
+        self.assertEqual(item["compiler"], "g++")
+        self.assertIn("lenguaje", item["reason"].casefold())
+
+    def test_invalid_source_metadata_candidate_is_not_selectable(self):
+        access, exports, results = fixture_maps()
+        set_v2_source(exports["candCompatible"], "impl5.c", "C", "gcc")
+        exports["candCompatible"]["execution_config"]["compiler"] = "g++"
+
+        response, _ = self._post(
+            {"executions": ["execAlpha", "execBeta"]},
+            access_rows=access,
+            export_rows=exports,
+            results=results,
+        )
+
+        item = response.get_json()["items"][0]
+        self.assertEqual(item["status"], "INCOMPATIBLE")
+        self.assertFalse(item["selectable"])
+        self.assertIn("verificar", item["reason"].casefold())
 
     def test_limited_candidate_is_selectable_with_public_reason(self):
         response, _ = self._post(

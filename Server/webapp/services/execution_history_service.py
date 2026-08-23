@@ -10,6 +10,7 @@ Compatibilidad temporal:
 - Esos campos se DERIVAN de execution_state; no de executions.status.
 """
 
+from ...source_contract import SourceContractError, resolve_source_metadata
 from .execution_query_service import build_public_failure_payload
 
 CANONICAL_STATES = frozenset({
@@ -88,6 +89,28 @@ def _hardware_label(row):
     return _clean_text(node.get("cpu_model"))
 
 
+def _source_identity(row):
+    execution_config = row.get("execution_config")
+    if not isinstance(execution_config, dict):
+        execution_config = {}
+    try:
+        metadata = resolve_source_metadata(
+            execution_config,
+            filename=row.get("original_filename"),
+        )
+    except SourceContractError:
+        return {
+            "sourceLanguage": None,
+            "compiler": None,
+            "metadataProvenance": None,
+        }
+    return {
+        "sourceLanguage": metadata.source_language,
+        "compiler": metadata.compiler,
+        "metadataProvenance": metadata.metadata_provenance,
+    }
+
+
 def serialize_execution_history_row(row):
     """
     Contrato de historial para una execution.
@@ -120,6 +143,7 @@ def serialize_execution_history_row(row):
         "durationMs": _duration_ms(row),
         "hardwareProfile": _hardware_label(row),
         "resultAvailable": bool(row.get("result_available")),
+        **_source_identity(row),
         "failure": build_failure_payload(row),
     }
 

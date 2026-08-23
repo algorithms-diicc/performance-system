@@ -94,7 +94,7 @@ describe("SourceViewerModal", () => {
     ).toBeInTheDocument();
     expect(axios.get).toHaveBeenCalledTimes(1);
     expect(
-      screen.queryByRole("button", { name: "Descargar .cpp" })
+      screen.queryByRole("button", { name: "Descargar fuente" })
     ).not.toBeInTheDocument();
   });
 
@@ -109,7 +109,7 @@ describe("SourceViewerModal", () => {
     );
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "Descargar .cpp" })
+      await screen.findByRole("button", { name: "Descargar fuente" })
     );
 
     await waitFor(() =>
@@ -154,7 +154,7 @@ describe("SourceViewerModal", () => {
     expect(container.querySelector("pre code")).toBeNull();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Descargar .cpp" })
+      screen.getByRole("button", { name: "Descargar fuente" })
     );
 
     await waitFor(() =>

@@ -48,6 +48,8 @@ const executions = [
     benchmark: "SIZE",
     profile: "BALANCED",
     compilerFlags: "-O3",
+    sourceLanguage: "C++",
+    compiler: "g++",
   },
   {
     publicId: "public-b",
@@ -58,6 +60,8 @@ const executions = [
     benchmark: "SIZE",
     profile: "BALANCED",
     compilerFlags: "-O3",
+    sourceLanguage: "C++",
+    compiler: "g++",
   },
 ];
 
@@ -66,6 +70,8 @@ const series = executions.map(
     publicId: execution.publicId,
     codename: execution.codename,
     sourceFilename: execution.sourceFilename,
+    sourceLanguage: execution.sourceLanguage,
+    compiler: execution.compiler,
     points: [
       point(
         100,
@@ -92,6 +98,10 @@ const compatiblePayload = {
       measurementBackend: { status: "MATCH" },
       profile: { status: "MATCH" },
       protocol: { status: "MATCH" },
+      sourceToolchain: {
+        status: "MATCH",
+        versionStatus: "MATCH",
+      },
       compilerFlags: { status: "MATCH" },
       inputSizes: { status: "MATCH" },
       metrics: { status: "MATCH" },
@@ -126,8 +136,15 @@ const LanguageControl = () => {
 const renderEnglishPage = ({
   path = VALID_PATH,
   payload = compatiblePayload,
+  candidates = { items: [] },
 } = {}) => {
-  axios.post.mockResolvedValue({ data: payload });
+  axios.post.mockImplementation((url) =>
+    Promise.resolve({
+      data: String(url).endsWith("/candidates")
+        ? candidates
+        : payload,
+    })
+  );
 
   return render(
     <I18nProvider initialLanguage="en">
@@ -196,7 +213,7 @@ describe("ComparisonPage i18n", () => {
     ).toBeInTheDocument();
 
     expect(
-      screen.getAllByText("alpha.cpp").length
+      screen.getAllByText("alpha.cpp · C++ · g++").length
     ).toBeGreaterThanOrEqual(1);
 
     expect(
@@ -342,5 +359,62 @@ describe("ComparisonPage i18n", () => {
     expect(
       screen.getByText("Observations")
     ).toBeInTheDocument();
+  });
+
+  test("localizes historical candidate reasons instead of rendering raw backend Spanish", async () => {
+    const rawReason =
+      "Las ejecuciones usan lenguajes o compiladores diferentes.";
+
+    renderEnglishPage({
+      candidates: {
+        items: [
+          {
+            publicId: "public-candidate-c",
+            codename: "candidate-c",
+            submissionId: 84,
+            submissionTitle: "Entrega histórica",
+            sourceFilename: "candidate.c",
+            createdAt: "2026-08-18T12:00:00Z",
+            benchmark: "SIZE",
+            profile: "BALANCED",
+            sourceLanguage: "C",
+            compiler: "gcc",
+            status: "LIMITED",
+            selectable: true,
+            compatibility: {
+              status: "LIMITED",
+              blockers: [],
+              warnings: [
+                {
+                  code: "SOURCE_TOOLCHAIN_DIFFERS",
+                  message: rawReason,
+                },
+              ],
+              commonInputSizes: [100, 200],
+              commonMetrics: ["DurationTime"],
+            },
+            reason: rawReason,
+          },
+        ],
+      },
+    });
+
+    await screen.findByRole("heading", {
+      name: "Implementation comparison",
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Add historical execution",
+      })
+    );
+
+    expect(
+      await screen.findByText(
+        "The executions use different languages or compilers; interpret the metrics as a comparison between implementations under different toolchains."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(rawReason)
+    ).not.toBeInTheDocument();
   });
 });

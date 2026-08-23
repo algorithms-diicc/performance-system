@@ -4,6 +4,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -28,6 +29,7 @@ const item = {
   },
   aggregateState: "PARTIAL",
   aggregateStateLabel: "Parcial",
+  language: "C/C++",
   activityAt: "2026-08-18T14:30:00Z",
   executionsCount: 2,
   benchmarks: ["SIZE"],
@@ -97,10 +99,65 @@ describe("HistoryPage", () => {
       })
     ).toBeInTheDocument();
     expect(screen.getByText("insertion.cpp · merge.cpp")).toBeInTheDocument();
+    expect(screen.getByText("C/C++", { selector: "strong" })).toBeInTheDocument();
 
     expect(
       screen.getByRole("link", { name: /Ver experimento/i })
     ).toHaveAttribute("href", "/submissions/42");
+  });
+
+  test("shows C, C++ and mixed identities without altering source filenames", async () => {
+    requestJson.mockImplementation((url) => {
+      if (url === "/api/submissions/history-filter-options") {
+        return Promise.resolve({ courses: [] });
+      }
+      if (url.startsWith("/api/submissions?")) {
+        return Promise.resolve(
+          historyResponse({
+            total: 3,
+            items: [
+              {
+                ...item,
+                id: 101,
+                title: "Entrega C",
+                language: "C",
+                sourceFilenames: ["main.c"],
+              },
+              {
+                ...item,
+                id: 102,
+                title: "Entrega C++",
+                language: "C++",
+                sourceFilenames: ["main.cpp"],
+              },
+              {
+                ...item,
+                id: 103,
+                title: "Entrega mixta",
+                language: "C/C++",
+                sourceFilenames: ["left.c", "right.cpp"],
+              },
+            ],
+          })
+        );
+      }
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+
+    renderHistory();
+
+    const cases = [
+      ["Entrega C", "C", "main.c"],
+      ["Entrega C++", "C++", "main.cpp"],
+      ["Entrega mixta", "C/C++", "left.c · right.cpp"],
+    ];
+    for (const [title, language, filenames] of cases) {
+      const card = (await screen.findByRole("heading", { name: title }))
+        .closest("article");
+      expect(within(card).getByText(language, { selector: "strong" }))
+        .toBeInTheDocument();
+      expect(within(card).getByText(filenames)).toBeInTheDocument();
+    }
   });
 
   test("requests the canonical paginated Submission endpoint", async () => {
@@ -243,7 +300,7 @@ describe("HistoryPage", () => {
       name: "Comparación de ordenamiento",
     });
     expect(
-      screen.getByText("Título, archivo ZIP, archivo .cpp o nota")
+      screen.getByText("Título, archivo ZIP, fuente .c/.cpp o nota")
     ).toBeInTheDocument();
 
     fireEvent.click(

@@ -157,6 +157,50 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             payload["originalFilename"],
             "solucion.cpp",
         )
+        self.assertEqual(payload["sourceLanguage"], "C++")
+        self.assertEqual(payload["compiler"], "g++")
+        self.assertEqual(
+            payload["metadataProvenance"],
+            "inferred_legacy_cpp",
+        )
+
+    def test_serializer_exposes_v2_c_source_identity(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 65,
+                "execution_state": "COMPLETED",
+                "original_filename": "nested/solution.c",
+                "execution_config": {
+                    "source_contract_version": 2,
+                    "source_language": "C",
+                    "compiler": "gcc",
+                    "compiler_flags": "-O3",
+                },
+            }
+        )
+
+        self.assertEqual(payload["sourceLanguage"], "C")
+        self.assertEqual(payload["compiler"], "gcc")
+        self.assertEqual(payload["metadataProvenance"], "explicit")
+
+    def test_serializer_rejects_inconsistent_v2_source_identity(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 66,
+                "execution_state": "COMPLETED",
+                "original_filename": "solution.c",
+                "execution_config": {
+                    "source_contract_version": 2,
+                    "source_language": "C++",
+                    "compiler": "g++",
+                    "compiler_flags": "-O3",
+                },
+            }
+        )
+
+        self.assertIsNone(payload["sourceLanguage"])
+        self.assertIsNone(payload["compiler"])
+        self.assertIsNone(payload["metadataProvenance"])
 
     def test_serializer_falls_back_to_codename_for_original_filename(self):
         payload = serialize_execution_history_row(

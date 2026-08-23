@@ -382,4 +382,56 @@ describe("SubmissionOverviewPage i18n", () => {
       screen.getByText("perf")
     ).toBeInTheDocument();
   });
+
+  test("localizes reference candidate reasons instead of rendering raw backend Spanish", async () => {
+    const rawReason =
+      "Las ejecuciones usan lenguajes o compiladores diferentes.";
+    axios.post.mockResolvedValueOnce({
+      data: {
+        items: [
+          {
+            codename: "reference-candidate-c",
+            sourceFilename: "candidate.c",
+            status: "LIMITED",
+            selectable: true,
+            compatibility: {
+              status: "LIMITED",
+              blockers: [],
+              warnings: [
+                {
+                  code: "SOURCE_TOOLCHAIN_DIFFERS",
+                  message: rawReason,
+                },
+              ],
+              commonInputSizes: [100, 200],
+              commonMetrics: ["DurationTime"],
+            },
+            reason: rawReason,
+          },
+        ],
+      },
+    });
+
+    renderEnglishPage();
+    await screen.findByRole("heading", {
+      name: "Experiment information",
+    });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Compare with reference",
+      })
+    );
+
+    const panel = await screen.findByRole("region", {
+      name: "Compatible references for comparison",
+    });
+    expect(
+      within(panel).getByText(
+        "The executions use different languages or compilers; interpret the metrics as a comparison between implementations under different toolchains."
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(panel).queryByText(rawReason)
+    ).not.toBeInTheDocument();
+  });
 });

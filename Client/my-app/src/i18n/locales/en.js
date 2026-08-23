@@ -147,8 +147,8 @@ const en = {
     filtersHint: "Filters are applied to your full history before results are paginated.",
     clearFilters: "Clear filters",
     search: "Search",
-    searchHint: "Title, ZIP file, .cpp file, or note",
-    searchPlaceholder: "E.g. sorting, sorting.zip, merge.cpp, baseline reference",
+    searchHint: "Title, ZIP file, .c/.cpp source, or note",
+    searchPlaceholder: "E.g. sorting, sorting.zip, merge.c, baseline reference",
     referencesOnly: "References only",
     status: "Status",
     filterByStatus: "Filter by status",
@@ -182,6 +182,8 @@ const en = {
     zipUnavailable: "ZIP unavailable",
     lastActivity: "Last activity",
     implementations: "Implementations",
+    language: "Language",
+    languageUnavailable: "Not reported",
     sources: "Sources",
     sourcesUnavailable: "Sources unavailable",
     moreSources: "+{{count}} more",
@@ -330,8 +332,8 @@ const en = {
         "Recommended max: {{max}} MB. The ZIP must contain at least one .c or .cpp file.",
       inspecting: "Analyzing contents…",
       cppFiles: {
-        one: "{{count}} .cpp file",
-        other: "{{count}} .cpp files",
+        one: "{{count}} C/C++ source",
+        other: "{{count}} C/C++ sources",
       },
       sourceSummary: {
         one: "{{count}} source · {{c}} C · {{cpp}} C++",
@@ -511,7 +513,7 @@ const en = {
         tooLarge:
           "The recommended maximum size is {{max}} MB. The current file is {{size}}.",
         noCpp:
-          "The .zip contains no .cpp files. Review its contents before uploading it again.",
+          "The .zip contains no .c or .cpp sources. Review its contents before uploading it again.",
         noSource:
           "The ZIP must contain at least one .c or .cpp file.",
         unreadable:
@@ -804,7 +806,7 @@ const en = {
   sourceViewer: {
     unavailable: "Unavailable",
     fallbackSource: "Historical source",
-    fallbackDownloadFilename: "source.cpp",
+    fallbackDownloadFilename: "source.txt",
     marker: "Source for this execution",
     readOnly: "Read-only historical view",
     closeAria: "Close code viewer",
@@ -830,7 +832,7 @@ const en = {
     },
     close: "Close",
     download: {
-      action: "Download .cpp",
+      action: "Download source",
       downloading: "Downloading…",
       success: "Source downloaded successfully.",
     },
@@ -850,6 +852,7 @@ const en = {
       originalArchive: "Original archive",
       created: "Created",
       course: "Course",
+      language: "Language",
       implementations: "Implementations",
       benchmark: "Benchmark",
       duration: "Duration",
@@ -952,9 +955,9 @@ const en = {
       eyebrow: "Source code",
       title: "Implementations",
       description:
-        "Each C++ file keeps its own execution and independent results.",
+        "Each C/C++ source keeps its own execution and independent results.",
       hierarchy:
-        "Each .cpp file in the experiment creates an independent execution and keeps its own results.",
+        "Each .c or .cpp source in the experiment creates an independent execution and keeps its own results.",
     },
     reference: {
       regionAria: "Compatible references for comparison",
@@ -1096,6 +1099,7 @@ const en = {
       measurementBackend: "Backend",
       profile: "Profile",
       protocol: "Protocol",
+      sourceToolchain: "Language and compiler",
       compilerFlags: "Compiler flags",
       sourceProvenance: "Provenance",
       inputSizes: "Input sizes",
@@ -1427,6 +1431,14 @@ const en = {
           "The complete measurement protocol could not be verified.",
         PROTOCOL_MISMATCH:
           "The executions use different measurement protocols.",
+        SOURCE_TOOLCHAIN_UNVERIFIED:
+          "The language and compiler could not be verified for every execution.",
+        SOURCE_TOOLCHAIN_DIFFERS:
+          "The executions use different languages or compilers; interpret the metrics as a comparison between implementations under different toolchains.",
+        COMPILER_VERSION_UNVERIFIED:
+          "The observed compiler version could not be verified for every execution.",
+        COMPILER_VERSION_DIFFERS:
+          "The observed compiler versions differ.",
         COMPILER_FLAGS_UNVERIFIED:
           "The compiler flags could not be verified.",
         COMPILER_FLAGS_MISMATCH:
@@ -1678,12 +1690,15 @@ const en = {
     fields: {
       technicalId: "Technical ID",
       state: "State",
+      sourceLanguage: "Source language",
+      metadataProvenance: "Metadata provenance",
       created: "Created",
       finished: "Finished",
       size: "Size",
       profile: "Profile",
       inputSize: "Input size",
       samples: "Samples",
+      configuredCompiler: "Configured compiler",
       compilerFlags: "Compiler flags",
       points: "Points",
       samplesPerPoint: "Samples per point",
@@ -1697,6 +1712,12 @@ const en = {
       backend: "Backend",
       version: "Version",
       requestedScope: "Requested scope",
+      observedCompiler: "Observed compiler",
+      observedCompilerVersion: "Observed version",
+    },
+    metadataProvenance: {
+      explicit: "Explicit (v2 contract)",
+      inferredLegacyCpp: "Inferred (legacy C++)",
     },
     copy: {
       idAction: "Copy ID",
@@ -1721,7 +1742,7 @@ const en = {
       aria: "Reproducibility actions",
       viewCode: "View code",
       downloading: "Downloading…",
-      downloadSource: "Download source .cpp",
+      downloadSource: "Download source",
       downloadManifest: "Download JSON manifest",
       downloadCsv: "Download CSV",
       downloadBundle: "Download reproducibility bundle",

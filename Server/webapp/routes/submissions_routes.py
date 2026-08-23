@@ -522,6 +522,7 @@ def list_my_submissions():
               s.id,
               s.course_id,
               s.title,
+              s.language,
               s.original_filename,
               s.note,
               s.is_pinned,
@@ -811,6 +812,7 @@ def get_submission_detail(submission_id: int):
                   s.id,
                   s.course_id,
                   s.title,
+                  s.language,
                   s.original_filename,
                   s.code_hash AS archive_sha256,
                   s.note,
@@ -938,6 +940,7 @@ def get_submission_detail(submission_id: int):
                 else None
             ),
             "title": srow["title"],
+            "language": srow.get("language"),
             **_serialize_submission_metadata(
                 srow,
                 include_private=can_view_private_metadata,
@@ -1106,6 +1109,7 @@ def get_submission_executions(submission_id: int):
               e.finished_at,
               e.duration_ms,
               e.result_available,
+              e.execution_config,
               e.execution_config->>'original_filename' AS original_filename,
               s.title AS submission_title,
               hp.name AS hardware_name

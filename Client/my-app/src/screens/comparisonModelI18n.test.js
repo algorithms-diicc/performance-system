@@ -8,6 +8,7 @@ import {
   formatHistoricalCandidateDate,
   historicalCandidatePresentation,
   humanMetricLabel,
+  localizedCandidateReason,
   parseExecutionQuery,
 } from "./comparisonModel";
 
@@ -72,8 +73,25 @@ describe("comparisonModel i18n presentation", () => {
     ).toBe("Compiler flags");
 
     expect(
+      comparisonDimensionLabel(
+        "sourceToolchain",
+        tEn
+      )
+    ).toBe("Language and compiler");
+
+    expect(
       comparisonDimensionPresentation(
         "PARTIAL",
+        tEn
+      )
+    ).toEqual({
+      label: "Limited",
+      tone: "warning",
+    });
+
+    expect(
+      comparisonDimensionPresentation(
+        "DIFFERS",
         tEn
       )
     ).toEqual({
@@ -93,6 +111,77 @@ describe("comparisonModel i18n presentation", () => {
     ).toBe(
       "The execution is still in progress."
     );
+  });
+
+  test("localizes candidate reason codes with backend priority and preserves unknown fallback", () => {
+    expect(
+      localizedCandidateReason(
+        {
+          status: "LIMITED",
+          reason:
+            "Las ejecuciones usan toolchains distintos.",
+          compatibility: {
+            blockers: [],
+            warnings: [
+              {
+                code: "SOURCE_TOOLCHAIN_DIFFERS",
+                message:
+                  "Las ejecuciones usan toolchains distintos.",
+              },
+            ],
+          },
+        },
+        tEn
+      )
+    ).toBe(
+      "The executions use different languages or compilers; interpret the metrics as a comparison between implementations under different toolchains."
+    );
+
+    expect(
+      localizedCandidateReason(
+        {
+          status: "INCOMPATIBLE",
+          reason: "El hardware es distinto.",
+          compatibility: {
+            blockers: [
+              {
+                code: "HARDWARE_MISMATCH",
+                message: "El hardware es distinto.",
+              },
+            ],
+            warnings: [
+              {
+                code: "SOURCE_TOOLCHAIN_DIFFERS",
+                message:
+                  "Las ejecuciones usan toolchains distintos.",
+              },
+            ],
+          },
+        },
+        tEn
+      )
+    ).toBe(
+      "The executions were measured on different observed hardware."
+    );
+
+    expect(
+      localizedCandidateReason(
+        {
+          status: "LIMITED",
+          reason: "Stable backend fallback.",
+          compatibility: {
+            blockers: [],
+            warnings: [
+              {
+                code: "UNKNOWN_FUTURE_CODE",
+                message: "Backend detail.",
+              },
+            ],
+          },
+        },
+        tEn
+      )
+    ).toBe("Stable backend fallback.");
   });
 
   test("localizes metric pedagogy without changing scientific selection logic", () => {

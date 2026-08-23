@@ -77,6 +77,7 @@ export const COMPARISON_DIMENSIONS = Object.freeze([
   ["measurementBackend", "Backend"],
   ["profile", "Perfil"],
   ["protocol", "Protocolo"],
+  ["sourceToolchain", "Lenguaje y compilador"],
   ["compilerFlags", "Flags del compilador"],
   ["sourceProvenance", "Procedencia"],
   ["inputSizes", "Tamaños de entrada"],
@@ -212,6 +213,14 @@ export const buildComparisonSummaryCards = (
           String(
             item?.sourceFilename || ""
           ).trim() || null,
+        sourceLanguage:
+          ["C", "C++"].includes(item?.sourceLanguage)
+            ? item.sourceLanguage
+            : null,
+        compiler:
+          ["gcc", "g++"].includes(item?.compiler)
+            ? item.compiler
+            : null,
         value:
           points[points.length - 1].value,
         points,
@@ -371,6 +380,64 @@ export const historicalCandidatePresentation = (
       fallback.label
     ),
   };
+};
+
+export const localizedCandidateReason = (
+  candidate,
+  t
+) => {
+  const fallbackReason =
+    typeof candidate?.reason === "string"
+      ? candidate.reason.trim()
+      : "";
+  const compatibility =
+    candidate?.compatibility &&
+    typeof candidate.compatibility === "object"
+      ? candidate.compatibility
+      : {};
+  const status = String(
+    candidate?.status || compatibility.status || ""
+  )
+    .trim()
+    .toUpperCase();
+  const blockers = Array.isArray(compatibility.blockers)
+    ? compatibility.blockers
+    : [];
+  const warnings = Array.isArray(compatibility.warnings)
+    ? compatibility.warnings
+    : [];
+  const collections =
+    status === "INCOMPATIBLE"
+      ? [blockers, warnings]
+      : [warnings, blockers];
+
+  for (const collection of collections) {
+    for (const issue of collection) {
+      if (!issue || typeof issue !== "object") continue;
+
+      const code = String(issue.code || "")
+        .trim()
+        .toUpperCase();
+      const backendMessage =
+        typeof issue.message === "string"
+          ? issue.message.trim()
+          : "";
+      if (!code && !backendMessage) continue;
+
+      if (code && typeof t === "function") {
+        const key =
+          `comparisonPage.auditDetails.issueMessages.${code}`;
+        const translated = t(key);
+        if (translated && translated !== key) {
+          return translated;
+        }
+      }
+
+      return fallbackReason;
+    }
+  }
+
+  return fallbackReason;
 };
 
 export const filterHistoricalCandidates = (items, showIncompatible) =>
@@ -802,14 +869,26 @@ export const buildUniqueSeriesLabels = (
   t
 ) => {
   const baseLabels = (Array.isArray(series) ? series : []).map(
-    (item, index) =>
-      String(item?.sourceFilename || "").trim() ||
-      resolveText(
+    (item, index) => {
+      const filename =
+        String(item?.sourceFilename || "").trim() ||
+        resolveText(
         t,
         "comparisonModel.seriesFallback",
         `Implementación ${index + 1}`,
         { index: index + 1 }
-      )
+        );
+      const language = ["C", "C++"].includes(item?.sourceLanguage)
+        ? item.sourceLanguage
+        : "";
+      const compiler = ["gcc", "g++"].includes(item?.compiler)
+        ? item.compiler
+        : "";
+
+      return [filename, language, compiler]
+        .filter(Boolean)
+        .join(" · ");
+    }
   );
   const totals = baseLabels.reduce((counts, label) => {
     counts.set(label, (counts.get(label) || 0) + 1);
@@ -1030,7 +1109,7 @@ export const comparisonDimensionPresentation = (
       tone: "success",
     };
   }
-  if (["PARTIAL", "LIMITED"].includes(normalized)) {
+  if (["PARTIAL", "LIMITED", "DIFFERS"].includes(normalized)) {
     return {
       label: resolveText(
         t,

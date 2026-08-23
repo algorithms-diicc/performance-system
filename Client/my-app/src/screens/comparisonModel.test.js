@@ -5,6 +5,7 @@ import {
   buildComparisonTraces,
   buildUniqueSeriesLabels,
   canAddHistoricalCandidate,
+  comparisonDimensionPresentation,
   defaultComparisonMetric,
   filterHistoricalCandidates,
   filterPointsByInputRange,
@@ -274,6 +275,32 @@ describe("comparisonModel metrics and traces", () => {
         { sourceFilename: null },
       ])
     ).toEqual(["sort.cpp · 1", "sort.cpp · 2", "Implementación 3"]);
+  });
+
+  test("adds a compact source toolchain identity to series labels", () => {
+    expect(
+      buildUniqueSeriesLabels([
+        {
+          sourceFilename: "sort.c",
+          sourceLanguage: "C",
+          compiler: "gcc",
+        },
+        {
+          sourceFilename: "sort.cpp",
+          sourceLanguage: "C++",
+          compiler: "g++",
+        },
+      ])
+    ).toEqual([
+      "sort.c · C · gcc",
+      "sort.cpp · C++ · g++",
+    ]);
+    expect(
+      comparisonDimensionPresentation("DIFFERS")
+    ).toMatchObject({
+      label: "Con limitación",
+      tone: "warning",
+    });
   });
 
   test("normalizes a range to exact domain values", () => {

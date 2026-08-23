@@ -15,6 +15,10 @@ const baseDimensions = {
   measurementBackend: { status: "MATCH" },
   profile: { status: "MATCH" },
   protocol: { status: "MATCH" },
+  sourceToolchain: {
+    status: "MATCH",
+    versionStatus: "MATCH",
+  },
   compilerFlags: { status: "MATCH" },
   sourceProvenance: { status: "VERIFIED" },
   inputSizes: { status: "MATCH" },
@@ -224,5 +228,40 @@ describe("ComparisonAuditPanel", () => {
         name: "Comparability audit",
       })
     ).toBeInTheDocument();
+  });
+
+  test("humanizes a C versus C++ warning without exposing the backend message", () => {
+    renderAudit({
+      language: "en",
+      open: true,
+      compatibility: {
+        status: "LIMITED",
+        dimensions: {
+          ...baseDimensions,
+          sourceToolchain: {
+            status: "DIFFERS",
+            verified: true,
+            versionStatus: "MATCH",
+          },
+        },
+        warnings: [
+          {
+            code: "SOURCE_TOOLCHAIN_DIFFERS",
+            dimension: "sourceToolchain",
+            message: "MENSAJE BACKEND NO MOSTRAR",
+          },
+        ],
+      },
+    });
+
+    expect(
+      screen.getAllByText("Language and compiler").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText(/different languages or compilers/)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("MENSAJE BACKEND NO MOSTRAR")
+    ).not.toBeInTheDocument();
   });
 });

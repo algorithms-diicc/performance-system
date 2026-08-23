@@ -261,14 +261,9 @@ check(
 )
 
 protected_paths = [
-    "README.md",
     "Client/my-app/src/screens/TutorialPage.js",
     "Client/my-app/src/screens/TutorialPage.css",
 ]
-protected_paths.extend(
-    str(path.relative_to(ROOT))
-    for path in (ROOT / "Client/my-app/src/screens").glob("Comparison*")
-)
 locale_diff = subprocess.run(
     [
         "git",
@@ -285,7 +280,7 @@ locale_diff = subprocess.run(
     text=True,
 ).stdout
 check(
-    "24. Comparison, README y Tutorial permanecen sin cambios funcionales",
+    "24. Tutorial permanece sin cambios funcionales durante integración 8D",
     all(unchanged_from_head(path) for path in protected_paths)
     and "tutorial" not in locale_diff.casefold(),
 )

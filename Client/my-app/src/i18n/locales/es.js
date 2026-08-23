@@ -146,8 +146,8 @@ const es = {
     filtersHint: "Los filtros se aplican sobre todo tu historial, antes de paginar los resultados.",
     clearFilters: "Limpiar filtros",
     search: "Buscar",
-    searchHint: "Título, archivo ZIP, archivo .cpp o nota",
-    searchPlaceholder: "Ej. ordenamiento, sorting.zip, merge.cpp, referencia base",
+    searchHint: "Título, archivo ZIP, fuente .c/.cpp o nota",
+    searchPlaceholder: "Ej. ordenamiento, sorting.zip, merge.c, referencia base",
     referencesOnly: "Solo referencias",
     status: "Estado",
     filterByStatus: "Filtrar por estado",
@@ -181,6 +181,8 @@ const es = {
     zipUnavailable: "ZIP no disponible",
     lastActivity: "Última actividad",
     implementations: "Implementaciones",
+    language: "Lenguaje",
+    languageUnavailable: "No informado",
     sources: "Fuentes",
     sourcesUnavailable: "Fuentes no disponibles",
     moreSources: "+{{count}} más",
@@ -329,8 +331,8 @@ const es = {
         "Máx recomendado: {{max}} MB. El ZIP debe contener al menos un archivo .c o .cpp.",
       inspecting: "Analizando contenido…",
       cppFiles: {
-        one: "{{count}} archivo .cpp",
-        other: "{{count}} archivos .cpp",
+        one: "{{count}} fuente C/C++",
+        other: "{{count}} fuentes C/C++",
       },
       sourceSummary: {
         one: "{{count}} fuente · {{c}} C · {{cpp}} C++",
@@ -510,7 +512,7 @@ const es = {
         tooLarge:
           "El tamaño máximo recomendado es de {{max}} MB. El archivo actual pesa {{size}}.",
         noCpp:
-          "El .zip no contiene archivos .cpp. Revisa el contenido antes de volver a subirlo.",
+          "El .zip no contiene fuentes .c o .cpp. Revisa el contenido antes de volver a subirlo.",
         noSource:
           "El ZIP debe contener al menos un archivo .c o .cpp.",
         unreadable:
@@ -805,7 +807,7 @@ const es = {
   sourceViewer: {
     unavailable: "No disponible",
     fallbackSource: "Fuente histórica",
-    fallbackDownloadFilename: "fuente.cpp",
+    fallbackDownloadFilename: "source.txt",
     marker: "Fuente de esta ejecución",
     readOnly: "Vista histórica de solo lectura",
     closeAria: "Cerrar visor de código",
@@ -831,7 +833,7 @@ const es = {
     },
     close: "Cerrar",
     download: {
-      action: "Descargar .cpp",
+      action: "Descargar fuente",
       downloading: "Descargando…",
       success: "Fuente descargada correctamente.",
     },
@@ -851,6 +853,7 @@ const es = {
       originalArchive: "Archivo original",
       created: "Creado",
       course: "Curso",
+      language: "Lenguaje",
       implementations: "Implementaciones",
       benchmark: "Benchmark",
       duration: "Duración",
@@ -953,9 +956,9 @@ const es = {
       eyebrow: "Código fuente",
       title: "Implementaciones",
       description:
-        "Cada archivo C++ conserva su propia ejecución y resultados independientes.",
+        "Cada fuente C/C++ conserva su propia ejecución y resultados independientes.",
       hierarchy:
-        "Cada archivo .cpp del experimento genera una ejecución independiente y conserva sus propios resultados.",
+        "Cada fuente .c o .cpp del experimento genera una ejecución independiente y conserva sus propios resultados.",
     },
     reference: {
       regionAria: "Referencias compatibles para comparar",
@@ -1097,6 +1100,7 @@ const es = {
       measurementBackend: "Backend",
       profile: "Perfil",
       protocol: "Protocolo",
+      sourceToolchain: "Lenguaje y compilador",
       compilerFlags: "Flags del compilador",
       sourceProvenance: "Procedencia",
       inputSizes: "Tamaños de entrada",
@@ -1429,6 +1433,14 @@ const es = {
           "No fue posible verificar el protocolo completo de medición.",
         PROTOCOL_MISMATCH:
           "Las ejecuciones usan protocolos de medición diferentes.",
+        SOURCE_TOOLCHAIN_UNVERIFIED:
+          "No fue posible verificar el lenguaje y compilador de todas las ejecuciones.",
+        SOURCE_TOOLCHAIN_DIFFERS:
+          "Las ejecuciones usan lenguajes o compiladores diferentes; interpreta las métricas como una comparación entre implementaciones bajo toolchains distintos.",
+        COMPILER_VERSION_UNVERIFIED:
+          "No fue posible verificar la versión observada del compilador en todas las ejecuciones.",
+        COMPILER_VERSION_DIFFERS:
+          "Las versiones observadas de los compiladores son diferentes.",
         COMPILER_FLAGS_UNVERIFIED:
           "No fue posible verificar los flags del compilador.",
         COMPILER_FLAGS_MISMATCH:
@@ -1681,12 +1693,15 @@ const es = {
     fields: {
       technicalId: "ID técnico",
       state: "Estado",
+      sourceLanguage: "Lenguaje de fuente",
+      metadataProvenance: "Procedencia de metadata",
       created: "Creada",
       finished: "Finalizada",
       size: "Tamaño",
       profile: "Perfil",
       inputSize: "Tamaño de entrada",
       samples: "Muestras",
+      configuredCompiler: "Compilador configurado",
       compilerFlags: "Flags del compilador",
       points: "Puntos",
       samplesPerPoint: "Muestras por punto",
@@ -1700,6 +1715,12 @@ const es = {
       backend: "Backend",
       version: "Versión",
       requestedScope: "Ámbito solicitado",
+      observedCompiler: "Compilador observado",
+      observedCompilerVersion: "Versión observada",
+    },
+    metadataProvenance: {
+      explicit: "Explícita (contrato v2)",
+      inferredLegacyCpp: "Inferida (C++ legacy)",
     },
     copy: {
       idAction: "Copiar ID",
@@ -1724,7 +1745,7 @@ const es = {
       aria: "Acciones de reproducibilidad",
       viewCode: "Ver código",
       downloading: "Descargando…",
-      downloadSource: "Descargar fuente .cpp",
+      downloadSource: "Descargar fuente",
       downloadManifest: "Descargar manifest JSON",
       downloadCsv: "Descargar CSV",
       downloadBundle: "Descargar paquete reproducible",

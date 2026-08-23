@@ -4,6 +4,12 @@ import math
 from pathlib import PurePosixPath
 import re
 
+from ...source_contract import (
+    COMPILER_C,
+    COMPILER_CPP,
+    SourceContractError,
+    resolve_source_metadata,
+)
 from .comparison_pedagogy_service import build_comparison_pedagogy
 
 
@@ -29,10 +35,11 @@ DIMENSION_ORDER = {
     "measurementBackend": 2,
     "profile": 3,
     "protocol": 4,
-    "compilerFlags": 5,
-    "sourceProvenance": 6,
-    "inputSizes": 7,
-    "metrics": 8,
+    "sourceToolchain": 5,
+    "compilerFlags": 6,
+    "sourceProvenance": 7,
+    "inputSizes": 8,
+    "metrics": 9,
 }
 WHITESPACE_RE = re.compile(r"\s+")
 
@@ -74,6 +81,11 @@ def build_comparison(execution_contexts, results_payloads):
     )
     dimensions["profile"] = _profile_gate(normalized, blockers)
     dimensions["protocol"] = _protocol_gate(normalized, blockers)
+    dimensions["sourceToolchain"] = _source_toolchain_gate(
+        normalized,
+        blockers,
+        warnings,
+    )
     dimensions["compilerFlags"] = _compiler_flags_gate(
         normalized,
         blockers,
@@ -236,6 +248,36 @@ def _safe_basename(value):
     return name
 
 
+def _safe_compiler_version(value):
+    text = _normalized_text(value)
+    if (
+        text is None
+        or len(text) > 256
+        or "\x00" in text
+        or "/" in text
+        or "\\" in text
+    ):
+        return None
+    return text
+
+
+def _observed_toolchain(hardware_snapshot):
+    toolchain = _mapping(_mapping(hardware_snapshot).get("toolchain"))
+    compiler_data = _mapping(toolchain.get("compiler"))
+    compiler = _normalized_text(compiler_data.get("name"))
+    if compiler not in (COMPILER_C, COMPILER_CPP):
+        return {
+            "compiler": None,
+            "version": None,
+        }
+    return {
+        "compiler": compiler,
+        "version": _safe_compiler_version(
+            compiler_data.get("version")
+        ),
+    }
+
+
 def _protocol_scalar(source_key, value):
     if source_key in {"points", "samples_per_point", "warmup_rounds"}:
         return _nonnegative_int(value)
@@ -261,6 +303,7 @@ def _normalize_execution_context(context):
     hardware_snapshot = _mapping(context.get("hardware_snapshot"))
     node = _mapping(hardware_snapshot.get("node"))
     measurement_observed = _mapping(hardware_snapshot.get("measurement"))
+    toolchain_observed = _observed_toolchain(hardware_snapshot)
 
     cpu = {
         "vendor": _normalized_text(node.get("cpu_vendor")),
@@ -285,9 +328,38 @@ def _normalize_execution_context(context):
         for source_key, target_key in REQUIRED_PROTOCOL_FIELDS
     }
     samples = _positive_int(context.get("samples"))
-    flags = _compiler_flags(execution_config.get("compiler_flags"))
     source_filename = _safe_basename(
         execution_config.get("original_filename")
+        or context.get("source_filename")
+    )
+    source_metadata = None
+    try:
+        source_metadata = resolve_source_metadata(
+            execution_config,
+            filename=source_filename,
+        )
+    except SourceContractError:
+        pass
+
+    flags = _compiler_flags(
+        source_metadata.compiler_flags
+        if source_metadata is not None
+        else execution_config.get("compiler_flags")
+    )
+    source_language = (
+        source_metadata.source_language
+        if source_metadata is not None
+        else None
+    )
+    compiler = (
+        source_metadata.compiler
+        if source_metadata is not None
+        else None
+    )
+    metadata_provenance = (
+        source_metadata.metadata_provenance
+        if source_metadata is not None
+        else None
     )
 
     codename = _normalized_text(context.get("codename"))
@@ -303,10 +375,14 @@ def _normalize_execution_context(context):
         "benchmark": _normalized_text(context.get("benchmark")),
         "profile": _normalized_text(context.get("execution_profile")),
         "samples": samples,
+        "sourceLanguage": source_language,
+        "compiler": compiler,
         "compilerFlags": flags,
+        "metadataProvenance": metadata_provenance,
         "hardwareObserved": {
             "cpu": dict(cpu),
             "measurementBackend": dict(backend),
+            "toolchain": dict(toolchain_observed),
         },
         "protocol": dict(protocol),
     }
@@ -316,9 +392,13 @@ def _normalize_execution_context(context):
         "benchmark": public["benchmark"],
         "profile": public["profile"],
         "samples": samples,
+        "sourceLanguage": source_language,
+        "compiler": compiler,
+        "metadataProvenance": metadata_provenance,
         "compilerFlags": flags,
         "cpu": cpu,
         "backend": backend,
+        "toolchainObserved": toolchain_observed,
         "protocol": protocol,
         "public": public,
     }
@@ -532,6 +612,67 @@ def _protocol_gate(contexts, blockers):
             "Las ejecuciones usan protocolos de medición diferentes.",
         )
     return _dimension_status(comparable, missing=missing, mismatch=mismatch)
+
+
+def _source_toolchain_gate(contexts, blockers, warnings):
+    values = [
+        (item["sourceLanguage"], item["compiler"])
+        if item["sourceLanguage"] is not None
+        and item["compiler"] is not None
+        else None
+        for item in contexts
+    ]
+    missing = any(value is None for value in values)
+    differs = not missing and len(set(values)) > 1
+
+    if missing:
+        _add_issue(
+            blockers,
+            "SOURCE_TOOLCHAIN_UNVERIFIED",
+            "sourceToolchain",
+            "No fue posible verificar el lenguaje y compilador de todas las ejecuciones.",
+        )
+    elif differs:
+        _add_issue(
+            warnings,
+            "SOURCE_TOOLCHAIN_DIFFERS",
+            "sourceToolchain",
+            "Las ejecuciones usan lenguajes o compiladores diferentes; interpreta las diferencias de rendimiento como una comparación entre implementaciones bajo toolchains distintos.",
+        )
+
+    versions = [
+        _comparison_text(item["toolchainObserved"]["version"])
+        for item in contexts
+    ]
+    if any(version is None for version in versions):
+        version_status = "UNVERIFIED"
+        _add_issue(
+            warnings,
+            "COMPILER_VERSION_UNVERIFIED",
+            "sourceToolchain",
+            "No fue posible verificar la versión observada del compilador en todas las ejecuciones.",
+        )
+    elif len(set(versions)) > 1:
+        version_status = "DIFFERS"
+        _add_issue(
+            warnings,
+            "COMPILER_VERSION_DIFFERS",
+            "sourceToolchain",
+            "Las versiones observadas de los compiladores son diferentes.",
+        )
+    else:
+        version_status = "MATCH"
+
+    dimension = {
+        "status": (
+            "UNVERIFIED"
+            if missing
+            else "DIFFERS" if differs else "MATCH"
+        ),
+        "verified": not missing,
+        "versionStatus": version_status,
+    }
+    return dimension
 
 
 def _compiler_flags_gate(contexts, blockers):
@@ -815,6 +956,8 @@ def _build_metrics(
                     "publicId": item["public"]["publicId"],
                     "codename": item["public"]["codename"],
                     "sourceFilename": item["public"]["sourceFilename"],
+                    "sourceLanguage": item["public"]["sourceLanguage"],
+                    "compiler": item["public"]["compiler"],
                     "points": [
                         _public_point(point_map[input_size], input_size)
                         for input_size in metric_sizes

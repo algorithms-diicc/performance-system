@@ -56,6 +56,14 @@ def make_context(codename, index):
                 "requested_perf_scope": "process",
                 "private": "/private/backend",
             },
+            "toolchain": {
+                "compiler": {
+                    "family": "GNU",
+                    "name": "g++",
+                    "version": "GNU 9.4.0",
+                    "private": "/private/compiler",
+                }
+            },
             "env": {"HOME": "/private/home"},
         },
         "result_available": True,
@@ -132,6 +140,26 @@ def build_fixture(count=2, sizes=None):
     return contexts, results
 
 
+def set_v2_source(context, filename, language, compiler):
+    context["execution_config"].update(
+        {
+            "source_contract_version": 2,
+            "original_filename": filename,
+            "source_language": language,
+            "compiler": compiler,
+            "compiler_flags": "-O3",
+        }
+    )
+    context["source_filename"] = filename
+    context["hardware_snapshot"]["toolchain"] = {
+        "compiler": {
+            "family": "GNU",
+            "name": compiler,
+            "version": "GNU 9.4.0",
+        }
+    }
+
+
 def issue_codes(payload, collection):
     return [
         item["code"]
@@ -149,6 +177,110 @@ class ComparisonServiceTests(unittest.TestCase):
         self.assertEqual(payload["compatibility"]["status"], "COMPATIBLE")
         self.assertEqual(payload["compatibility"]["blockers"], [])
         self.assertEqual(payload["compatibility"]["warnings"], [])
+        self.assertEqual(
+            payload["compatibility"]["dimensions"]["sourceToolchain"],
+            {
+                "status": "MATCH",
+                "verified": True,
+                "versionStatus": "MATCH",
+            },
+        )
+
+    def test_c_executions_with_same_toolchain_are_compatible(self):
+        contexts, results = build_fixture()
+        for index, context in enumerate(contexts, start=1):
+            set_v2_source(context, "impl{}.c".format(index), "C", "gcc")
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "COMPATIBLE")
+        self.assertEqual(
+            payload["compatibility"]["dimensions"]["sourceToolchain"]["status"],
+            "MATCH",
+        )
+
+    def test_c_vs_cpp_is_limited_and_keeps_metrics_visible(self):
+        contexts, results = build_fixture()
+        set_v2_source(contexts[0], "impl1.c", "C", "gcc")
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "LIMITED")
+        self.assertIn(
+            "SOURCE_TOOLCHAIN_DIFFERS",
+            issue_codes(payload, "warnings"),
+        )
+        self.assertNotIn(
+            "SOURCE_TOOLCHAIN_DIFFERS",
+            issue_codes(payload, "blockers"),
+        )
+        self.assertIn("DurationTime", payload["metrics"])
+        self.assertEqual(
+            payload["compatibility"]["dimensions"]["sourceToolchain"]["status"],
+            "DIFFERS",
+        )
+
+    def test_c_vs_cpp_with_real_hardware_blocker_is_incompatible(self):
+        contexts, results = build_fixture()
+        set_v2_source(contexts[0], "impl1.c", "C", "gcc")
+        contexts[1]["hardware_snapshot"]["node"]["cpu_model"] = "Other CPU"
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "INCOMPATIBLE")
+        self.assertIn("HARDWARE_MISMATCH", issue_codes(payload, "blockers"))
+        self.assertEqual(payload["metrics"], {})
+
+    def test_legacy_cpp_and_v2_cpp_remain_compatible(self):
+        contexts, results = build_fixture()
+        set_v2_source(contexts[1], "impl2.cpp", "C++", "g++")
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "COMPATIBLE")
+        self.assertEqual(
+            [item["metadataProvenance"] for item in payload["executions"]],
+            ["inferred_legacy_cpp", "explicit"],
+        )
+
+    def test_invalid_source_metadata_is_a_blocker(self):
+        contexts, results = build_fixture()
+        set_v2_source(contexts[0], "impl1.c", "C", "gcc")
+        contexts[0]["execution_config"]["compiler"] = "g++"
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "INCOMPATIBLE")
+        self.assertIn(
+            "SOURCE_TOOLCHAIN_UNVERIFIED",
+            issue_codes(payload, "blockers"),
+        )
+
+    def test_observed_compiler_version_difference_is_limited(self):
+        contexts, results = build_fixture()
+        contexts[1]["hardware_snapshot"]["toolchain"]["compiler"][
+            "version"
+        ] = "GNU 10.2.0"
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "LIMITED")
+        self.assertIn(
+            "COMPILER_VERSION_DIFFERS",
+            issue_codes(payload, "warnings"),
+        )
+
+    def test_missing_observed_compiler_version_is_limited(self):
+        contexts, results = build_fixture()
+        del contexts[1]["hardware_snapshot"]["toolchain"]
+
+        payload = build_comparison(contexts, results)
+
+        self.assertEqual(payload["compatibility"]["status"], "LIMITED")
+        self.assertIn(
+            "COMPILER_VERSION_UNVERIFIED",
+            issue_codes(payload, "warnings"),
+        )
 
     def test_three_compatible_executions_are_supported(self):
         _, _, payload = self._build(3)
@@ -337,6 +469,7 @@ class ComparisonServiceTests(unittest.TestCase):
 
     def test_missing_compiler_flags_is_unverified(self):
         contexts, results = build_fixture()
+        set_v2_source(contexts[1], "impl2.cpp", "C++", "g++")
         contexts[1]["execution_config"]["compiler_flags"] = "   "
         payload = build_comparison(contexts, results)
         self.assertIn("COMPILER_FLAGS_UNVERIFIED", issue_codes(payload, "blockers"))
@@ -506,6 +639,16 @@ class ComparisonServiceTests(unittest.TestCase):
     def test_source_filename_is_a_safe_basename_from_execution_config(self):
         _, _, payload = self._build(2)
         self.assertEqual(payload["executions"][0]["sourceFilename"], "impl1.cpp")
+        self.assertEqual(payload["executions"][0]["sourceLanguage"], "C++")
+        self.assertEqual(payload["executions"][0]["compiler"], "g++")
+        self.assertEqual(
+            payload["executions"][0]["metadataProvenance"],
+            "inferred_legacy_cpp",
+        )
+        self.assertEqual(
+            payload["executions"][0]["hardwareObserved"]["toolchain"],
+            {"compiler": "g++", "version": "GNU 9.4.0"},
+        )
         self.assertEqual(
             payload["metrics"]["DurationTime"]["series"][0]["sourceFilename"],
             "impl1.cpp",

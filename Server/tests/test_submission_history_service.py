@@ -20,6 +20,7 @@ def aggregate_row(**overrides):
         "cancelled_executions": 0,
         "benchmarks": [],
         "source_filenames": [],
+        "language": None,
         "created_at": datetime(
             2026,
             8,
@@ -161,6 +162,35 @@ class SubmissionHistoryServiceTests(unittest.TestCase):
         self.assertEqual(
             projection["activityAt"],
             row["created_at"].isoformat(),
+        )
+
+    def test_projection_exposes_only_canonical_submission_languages(self):
+        cases = (
+            ("C", "C"),
+            ("C++", "C++"),
+            ("C/C++", "C/C++"),
+            ("Python", None),
+        )
+
+        for persisted, expected in cases:
+            with self.subTest(language=persisted):
+                projection = build_submission_history_projection(
+                    aggregate_row(language=persisted)
+                )
+                self.assertEqual(projection["language"], expected)
+
+    def test_projection_preserves_c_and_cpp_source_extensions(self):
+        projection = build_submission_history_projection(
+            aggregate_row(
+                language="C/C++",
+                source_filenames=["main.c", "main.cpp"],
+            )
+        )
+
+        self.assertEqual(projection["language"], "C/C++")
+        self.assertEqual(
+            projection["sourceFilenames"],
+            ["main.c", "main.cpp"],
         )
 
 

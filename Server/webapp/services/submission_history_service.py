@@ -110,6 +110,11 @@ def _iso(value):
     return value.isoformat() if value is not None else None
 
 
+def _submission_language(value):
+    language = str(value or "").strip()
+    return language if language in {"C", "C++", "C/C++"} else None
+
+
 def build_submission_history_projection(row):
     """Serializa la parte canónica que necesita la lista de historial."""
     aggregate_state = derive_submission_aggregate_state(row)
@@ -135,6 +140,7 @@ def build_submission_history_projection(row):
     activity_at = row.get("activity_at") or row.get("created_at")
 
     return {
+        "language": _submission_language(row.get("language")),
         "aggregateState": aggregate_state,
         "aggregateStateLabel": aggregate_state_label(aggregate_state),
         "activityAt": _iso(activity_at),

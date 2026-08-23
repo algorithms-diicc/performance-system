@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   BarChart3,
   CheckCircle2,
-  ChevronDown,
   History,
   Info,
   Plus,
@@ -50,6 +49,7 @@ import {
   formatHistoricalCandidateDate,
   historicalCandidatePresentation,
   humanMetricLabel,
+  localizedCandidateReason,
   normalizeInputRange,
   orderCommonMetrics,
   parseExecutionQuery,
@@ -1217,10 +1217,32 @@ const ComparisonPage = ({ currentUser }) => {
                         "comparisonPage.history.candidateFallback",
                         { index: index + 1 }
                       );
+                    const sourceLanguage = ["C", "C++"].includes(
+                      candidate?.sourceLanguage
+                    )
+                      ? candidate.sourceLanguage
+                      : "";
+                    const compiler = ["gcc", "g++"].includes(
+                      candidate?.compiler
+                    )
+                      ? candidate.compiler
+                      : "";
+                    const candidateLabel = [
+                      filename,
+                      sourceLanguage,
+                      compiler,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ");
                     const experimentId = candidate?.submissionId;
                     const experimentTitle = String(
                       candidate?.submissionTitle || ""
                     ).trim();
+                    const candidateReason =
+                      localizedCandidateReason(
+                        candidate,
+                        t
+                      );
 
                     return (
                       <article
@@ -1228,7 +1250,7 @@ const ComparisonPage = ({ currentUser }) => {
                         key={candidate?.publicId || candidate?.codename || index}
                       >
                         <div className="comparison-page__candidate-header">
-                          <h3>{filename}</h3>
+                          <h3>{candidateLabel}</h3>
                           <span
                             className={`comparison-page__candidate-status comparison-page__candidate-status--${presentation.tone}`}
                           >
@@ -1300,9 +1322,9 @@ const ComparisonPage = ({ currentUser }) => {
                             </dd>
                           </div>
                         </dl>
-                        {candidate?.reason && (
+                        {candidateReason && (
                           <p className="comparison-page__candidate-reason">
-                            {candidate.reason}
+                            {candidateReason}
                           </p>
                         )}
                         <button

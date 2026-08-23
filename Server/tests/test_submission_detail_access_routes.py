@@ -29,6 +29,7 @@ def detail_row(**overrides):
         "id": 7,
         "course_id": 10,
         "title": "Experimento",
+        "language": "C/C++",
         "original_filename": "algoritmos.zip",
         "archive_sha256": "a" * 64,
         "note": "Referencia privada",
@@ -323,6 +324,7 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
         submission = response.get_json()["submission"]
         self.assertEqual(submission["archiveSha256"], "a" * 64)
         self.assertEqual(submission["originalFilename"], "algoritmos.zip")
+        self.assertEqual(submission["language"], "C/C++")
 
     def test_detail_handles_historical_null_archive_hash(self):
         response, _conn = self._get_detail(
@@ -389,6 +391,17 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
         response, _conn = self._get_executions(OWNER)
 
         self.assertEqual(response.get_json()["items"][0]["benchmark"], "LCS")
+
+    def test_legacy_cpp_execution_exposes_public_source_identity(self):
+        response, _conn = self._get_executions(OWNER)
+
+        item = response.get_json()["items"][0]
+        self.assertEqual(item["sourceLanguage"], "C++")
+        self.assertEqual(item["compiler"], "g++")
+        self.assertEqual(
+            item["metadataProvenance"],
+            "inferred_legacy_cpp",
+        )
 
     def test_execution_keeps_duration_and_result_available(self):
         response, _conn = self._get_executions(OWNER)

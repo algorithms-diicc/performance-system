@@ -61,6 +61,8 @@ def _candidate_identity(context):
         "createdAt": _created_at(context.get("created_at")),
         "benchmark": _text(context.get("benchmark")),
         "profile": _text(context.get("execution_profile")),
+        "sourceLanguage": None,
+        "compiler": None,
     }
 
 
@@ -142,6 +144,8 @@ def build_historical_candidate(
         "sourceFilename",
         "benchmark",
         "profile",
+        "sourceLanguage",
+        "compiler",
     ):
         if key in public_execution:
             item[key] = public_execution.get(key)

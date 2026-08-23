@@ -53,6 +53,11 @@ const dimensions = {
   measurementBackend: { status: "MATCH", verified: true },
   profile: { status: "MATCH", verified: true },
   protocol: { status: "MATCH", verified: true },
+  sourceToolchain: {
+    status: "MATCH",
+    verified: true,
+    versionStatus: "MATCH",
+  },
   compilerFlags: { status: "MATCH", verified: true },
   sourceProvenance: { status: "VERIFIED", verified: true },
   inputSizes: { status: "MATCH", verified: true },
@@ -69,6 +74,8 @@ const executions = [
     benchmark: "SIZE",
     profile: "BALANCED",
     compilerFlags: "-O3",
+    sourceLanguage: "C++",
+    compiler: "g++",
   },
   {
     publicId: "public-b",
@@ -79,6 +86,8 @@ const executions = [
     benchmark: "SIZE",
     profile: "BALANCED",
     compilerFlags: "-O3",
+    sourceLanguage: "C++",
+    compiler: "g++",
   },
 ];
 
@@ -87,6 +96,8 @@ const series = (multiplier = 1) =>
     publicId: execution.publicId,
     codename: execution.codename,
     sourceFilename: execution.sourceFilename,
+    sourceLanguage: execution.sourceLanguage,
+    compiler: execution.compiler,
     points: [
       point(100, (index + 1) * multiplier * 10, (index + 1) * multiplier * 11),
       point(200, (index + 1) * multiplier * 20, (index + 1) * multiplier * 22),
@@ -139,6 +150,8 @@ const candidate = (status, codename, overrides = {}) => ({
   createdAt: "2026-08-18T12:00:00Z",
   benchmark: "SIZE",
   profile: "BALANCED",
+  sourceLanguage: "C++",
+  compiler: "g++",
   status,
   selectable: ["COMPATIBLE", "LIMITED"].includes(status),
   compatibility: {
@@ -451,6 +464,79 @@ describe("ComparisonPage", () => {
         "comparison-plot"
       ).length
     ).toBeGreaterThan(0);
+  });
+
+  test("C versus C++ remains LIMITED with metrics and compact identities", async () => {
+    const mixedExecutions = [
+      {
+        ...executions[0],
+        sourceFilename: "std_sort.c",
+        sourceLanguage: "C",
+        compiler: "gcc",
+      },
+      executions[1],
+    ];
+    const mixedMetrics = Object.fromEntries(
+      Object.entries(compatiblePayload.metrics).map(
+        ([metric, payload]) => [
+          metric,
+          {
+            ...payload,
+            series: payload.series.map((item, index) =>
+              index === 0
+                ? {
+                    ...item,
+                    sourceFilename: "std_sort.c",
+                    sourceLanguage: "C",
+                    compiler: "gcc",
+                  }
+                : item
+            ),
+          },
+        ]
+      )
+    );
+
+    await renderResolved({
+      ...compatiblePayload,
+      executions: mixedExecutions,
+      metrics: mixedMetrics,
+      compatibility: {
+        ...compatiblePayload.compatibility,
+        status: "LIMITED",
+        dimensions: {
+          ...dimensions,
+          sourceToolchain: {
+            status: "DIFFERS",
+            verified: true,
+            versionStatus: "MATCH",
+          },
+        },
+        warnings: [
+          {
+            code: "SOURCE_TOOLCHAIN_DIFFERS",
+            dimension: "sourceToolchain",
+            message: "RAW BACKEND MESSAGE",
+          },
+        ],
+      },
+    });
+
+    expect(
+      screen.getByRole("heading", {
+        name: "std_sort.c · C · gcc",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", {
+        name: "insertion_sort.cpp · C++ · g++",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/lenguajes o compiladores diferentes/)
+    ).toBeInTheDocument();
+    expect(screen.queryByText("RAW BACKEND MESSAGE")).not.toBeInTheDocument();
+    expect(screen.getAllByTestId("comparison-plot").length).toBeGreaterThan(0);
   });
 
   test("metric-only LIMITED is presented as valid partial coverage and keeps audit collapsed", async () => {
@@ -887,8 +973,8 @@ describe("ComparisonPage", () => {
     await renderResolved();
 
     expect(lastPlotProps().data.map((trace) => trace.name)).toEqual([
-      "std_sort.cpp",
-      "insertion_sort.cpp",
+      "std_sort.cpp · C++ · g++",
+      "insertion_sort.cpp · C++ · g++",
     ]);
   });
 
@@ -1155,7 +1241,7 @@ describe("ComparisonPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "historical-compatible.cpp",
+        name: "historical-compatible.cpp · C++ · g++",
       })
     ).toBeInTheDocument();
     expect(candidateAttempts).toBe(2);
@@ -1169,14 +1255,18 @@ describe("ComparisonPage", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "historical-compatible.cpp",
+        name: "historical-compatible.cpp · C++ · g++",
       })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "historical-limited.cpp" })
+      screen.getByRole("heading", {
+        name: "historical-limited.cpp · C++ · g++",
+      })
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("heading", { name: "historical-incompatible.cpp" })
+      screen.queryByRole("heading", {
+        name: "historical-incompatible.cpp · C++ · g++",
+      })
     ).not.toBeInTheDocument();
   });
 
@@ -1188,16 +1278,20 @@ describe("ComparisonPage", () => {
     fireEvent.click(await screen.findByLabelText("Mostrar incompatibles"));
 
     expect(
-      screen.getByRole("heading", { name: "historical-incompatible.cpp" })
+      screen.getByRole("heading", {
+        name: "historical-incompatible.cpp · C++ · g++",
+      })
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: "historical-unavailable.cpp" })
+      screen.getByRole("heading", {
+        name: "historical-unavailable.cpp · C++ · g++",
+      })
     ).toBeInTheDocument();
   });
 
   test.each([
-    ["historical-compatible.cpp", "historical-compatible"],
-    ["historical-limited.cpp", "historical-limited"],
+    ["historical-compatible.cpp · C++ · g++", "historical-compatible"],
+    ["historical-limited.cpp · C++ · g++", "historical-limited"],
   ])("selectable candidate %s appends to the query", async (heading, codename) => {
     await renderWithCandidates();
     fireEvent.click(
@@ -1230,8 +1324,8 @@ describe("ComparisonPage", () => {
     fireEvent.click(await screen.findByLabelText("Mostrar incompatibles"));
 
     for (const heading of [
-      "historical-incompatible.cpp",
-      "historical-unavailable.cpp",
+      "historical-incompatible.cpp · C++ · g++",
+      "historical-unavailable.cpp · C++ · g++",
     ]) {
       const card = screen.getByRole("heading", { name: heading }).closest("article");
       expect(
@@ -1306,7 +1400,9 @@ describe("ComparisonPage", () => {
       });
 
       fireEvent.click(
-        screen.getByRole("button", { name: "Quitar insertion_sort.cpp" })
+        screen.getByRole("button", {
+          name: "Quitar insertion_sort.cpp · C++ · g++",
+        })
       );
 
       const remaining = ["execution-a", ...extra.map((item) => item.codename)];
