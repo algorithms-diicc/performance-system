@@ -232,7 +232,7 @@ describe("Submission navigation primitives i18n", () => {
 
     expect(
       screen.getByRole("button", {
-        name: /Download \.cpp/i,
+        name: /Download source/i,
       })
     ).toBeInTheDocument();
   });

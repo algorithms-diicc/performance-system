@@ -272,6 +272,7 @@ Las migraciones disponibles se encuentran en `Server/db/migrations/`:
 001_core04_execution_persistence.sql
 002_core07_teacher_courses.sql
 003_core07_submission_course_context.sql
+004_submission_metadata.sql
 ```
 
 Antes de aplicar migraciones sobre una base existente debe realizarse un respaldo y ejecutarlas en orden.
@@ -330,6 +331,31 @@ pip install -r requirements.txt
 ```
 
 El entorno utilizado durante la validación fue Python 3.8.10.
+
+---
+
+## Preparación de datasets e inputs
+
+Desde la raíz del proyecto, el comando general es:
+
+```bash
+python3 Server/input/init_inputs.py
+```
+
+Si no se indica una modalidad exclusiva, el script prepara ambos grupos de
+entradas: descarga y descomprime `english.50MB` cuando es necesario para LCS,
+y utiliza `generate_num.py` para generar los inputs numéricos.
+
+También se puede preparar únicamente uno de los grupos:
+
+```bash
+python3 Server/input/init_inputs.py --lcs-only
+python3 Server/input/init_inputs.py --numeric-only
+python3 Server/input/init_inputs.py --numeric-only --numeric-size <N>
+```
+
+La opción `--numeric-size` controla la cantidad de números utilizada por el
+generador para cada input numérico.
 
 ---
 

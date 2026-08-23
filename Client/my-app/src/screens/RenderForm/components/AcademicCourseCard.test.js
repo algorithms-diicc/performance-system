@@ -99,7 +99,7 @@ describe("AcademicCourseCard onboarding", () => {
     );
 
     const selector = screen.getByRole("combobox", {
-      name: "Curso de esta entrega",
+      name: "Curso de este experimento",
     });
 
     expect(selector).toHaveValue("12");

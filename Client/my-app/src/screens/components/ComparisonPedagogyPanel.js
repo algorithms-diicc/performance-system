@@ -12,6 +12,8 @@ const TARGET_ORDER = [
   "EnergyPkg",
 ];
 
+const EMPTY_SERIES = [];
+
 const finiteNumber = (value) =>
   typeof value === "number" && Number.isFinite(value)
     ? value
@@ -75,7 +77,7 @@ function ComparisonPedagogyCard({ item, scopeInputSizes }) {
 
   const observationSeries = Array.isArray(item?.observation?.series)
     ? item.observation.series
-    : [];
+    : EMPTY_SERIES;
   const trendSeries = Array.isArray(item?.trend?.series)
     ? item.trend.series
     : [];
