@@ -38,7 +38,7 @@ const es = {
   login: {
     logoAlt: "Logo Performance System",
     brandSubtitle:
-      "Plataforma para medir y analizar el rendimiento de código C++ usando métricas de hardware reales.",
+      "Plataforma para medir y analizar el rendimiento de código C y C++ usando métricas de hardware reales.",
     highlights: {
       analysisLead: "Análisis de rendimiento para",
       benchmarks: "LCS, CAMM y SIZE",

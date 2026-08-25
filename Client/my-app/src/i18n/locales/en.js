@@ -38,7 +38,7 @@ const en = {
   login: {
     logoAlt: "Performance System logo",
     brandSubtitle:
-      "A platform for measuring and analyzing C++ code performance using real hardware metrics.",
+      "A platform for measuring and analyzing C and C++ code performance using real hardware metrics.",
     highlights: {
       analysisLead: "Performance analysis for",
       benchmarks: "LCS, CAMM and SIZE",
