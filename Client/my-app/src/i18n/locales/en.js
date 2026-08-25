@@ -73,6 +73,7 @@ const en = {
       fullNamePlaceholder: "First name Last name",
       institutionalEmail: "UdeC institutional email",
       professorEmail: "Responsible professor's email",
+      professorEmailPlaceholder: "profesor@inf.udec.cl",
       course: "Course / Subject",
       coursePlaceholder: "E.g. INF-253 Data Structures",
       comment: "Comment",
@@ -88,13 +89,13 @@ const en = {
       professorRequired:
         "Enter the responsible professor's email.",
       professorInvalid:
-        "The professor's email does not appear to be valid.",
+        "Enter a valid UdeC institutional email for the professor.",
     },
     request: {
       submit: "Submit access request",
       submitting: "Submitting request...",
       success:
-        "Request submitted successfully. Once your account is approved, you can sign in using 'Continue with Google' with the same @udec.cl email.",
+        "Request submitted successfully. You will receive an email when it is approved. Then you can sign in with 'Continue with Google' using this same institutional email.",
       pending:
         "An access request is already pending for this email.",
       emailRejected:
@@ -111,7 +112,7 @@ const en = {
     footer: {
       lead:
         "Having trouble accessing the system? Contact the course instructor or the laboratory administrator",
-      example: "(e.g. josefuentes@inf.udec.cl).",
+      example: "(jfuentess@inf.udec.cl).",
     },
     auth: {
       generic:
@@ -3690,6 +3691,12 @@ const en = {
     },
     resolution: {
       resolved: "Resolved",
+      emailSent:
+        "Access request approved and notification email sent.",
+      emailFailed:
+        "Access request approved. The notification email could not be sent.",
+      emailDisabled:
+        "Access request approved. Email delivery is not enabled in this environment.",
     },
     pagination: {
       requests: {

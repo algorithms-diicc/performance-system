@@ -155,7 +155,8 @@ const listCalls = () =>
 
 
 const arrangeResolvedListAfter = (
-  actionPath
+  actionPath,
+  actionPayload = null
 ) => {
   let listRequest = 0;
 
@@ -175,7 +176,23 @@ const arrangeResolvedListAfter = (
       }
 
       if (url === actionPath) {
-        return Promise.resolve({});
+        return Promise.resolve(
+          actionPayload
+          || (
+            actionPath.endsWith(
+              "/approve"
+            )
+              ? {
+                  notification: {
+                    email: {
+                      sent: true,
+                      status: "SENT",
+                    },
+                  },
+                }
+              : {}
+          )
+        );
       }
 
       return Promise.resolve({});
@@ -423,9 +440,104 @@ describe(
           ).toHaveTextContent("0")
         );
         expect(listCalls()).toBe(2);
+        expect(
+          screen.getByText(
+            "Access request approved and notification email sent.",
+            {
+              selector:
+                ".admin-access-resolution-feedback",
+            }
+          )
+        ).toBeInTheDocument();
         expect(window.confirm).not.toHaveBeenCalled();
         expect(window.prompt).not.toHaveBeenCalled();
         expect(window.alert).not.toHaveBeenCalled();
+
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "switch-es",
+            }
+          )
+        );
+
+        expect(
+          screen.getByText(
+            "Solicitud aprobada y correo de notificación enviado.",
+            {
+              selector:
+                ".admin-access-resolution-feedback",
+            }
+          )
+        ).toBeInTheDocument();
+      }
+    );
+
+
+    test.each([
+      [
+        "FAILED",
+        "Access request approved. The notification email could not be sent.",
+      ],
+      [
+        "DISABLED",
+        "Access request approved. Email delivery is not enabled in this environment.",
+      ],
+    ])(
+      "keeps approval successful and warns for email status %s",
+      async (
+        emailStatus,
+        expectedMessage
+      ) => {
+        arrangeResolvedListAfter(
+          "/api/admin/access-requests/10/approve",
+          {
+            notification: {
+              email: {
+                sent: false,
+                status:
+                  emailStatus,
+              },
+            },
+          }
+        );
+        renderEnglish();
+
+        await screen.findByText(
+          "ada@example.com"
+        );
+        fireEvent.click(
+          screen.getByRole(
+            "button",
+            {
+              name: "Approve",
+            }
+          )
+        );
+        fireEvent.click(
+          within(
+            screen.getByRole(
+              "dialog"
+            )
+          ).getByRole(
+            "button",
+            {
+              name: "Approve",
+            }
+          )
+        );
+
+        expect(
+          await screen.findByRole(
+            "alert"
+          )
+        ).toHaveTextContent(
+          expectedMessage
+        );
+        expect(window.alert)
+          .not.toHaveBeenCalled();
       }
     );
 

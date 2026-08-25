@@ -73,6 +73,7 @@ const es = {
       fullNamePlaceholder: "Nombre Apellido",
       institutionalEmail: "Correo institucional UdeC",
       professorEmail: "Correo del profesor responsable",
+      professorEmailPlaceholder: "profesor@inf.udec.cl",
       course: "Curso / Asignatura",
       coursePlaceholder: "Ej: INF-253 Estructuras de Datos",
       comment: "Comentario",
@@ -88,13 +89,13 @@ const es = {
       professorRequired:
         "Debe indicar el correo del profesor responsable.",
       professorInvalid:
-        "El correo del profesor no parece ser válido.",
+        "Ingresa un correo institucional UdeC válido para el profesor.",
     },
     request: {
       submit: "Enviar solicitud de acceso",
       submitting: "Enviando solicitud...",
       success:
-        "Solicitud enviada correctamente. Cuando tu cuenta sea aprobada, podrás ingresar usando 'Continuar con Google' con el mismo correo @udec.cl.",
+        "Solicitud enviada correctamente. Recibirás un correo cuando sea aprobada. Después podrás ingresar con 'Continuar con Google' usando este mismo correo institucional.",
       pending:
         "Ya existe una solicitud pendiente para este correo.",
       emailRejected:
@@ -110,7 +111,7 @@ const es = {
     footer: {
       lead:
         "¿Problemas para acceder? Contacta al docente responsable del ramo o al administrador del laboratorio",
-      example: "(ej: josefuentes@inf.udec.cl).",
+      example: "(jfuentess@inf.udec.cl).",
     },
     auth: {
       generic:
@@ -3692,6 +3693,12 @@ const es = {
     },
     resolution: {
       resolved: "Resuelta",
+      emailSent:
+        "Solicitud aprobada y correo de notificación enviado.",
+      emailFailed:
+        "Solicitud aprobada. No fue posible enviar el correo de notificación.",
+      emailDisabled:
+        "Solicitud aprobada. El envío de correo no está habilitado en este entorno.",
     },
     pagination: {
       requests: {

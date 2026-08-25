@@ -88,6 +88,45 @@ function countKey(
 }
 
 
+function approvalFeedback(
+  response
+) {
+  const email =
+    response?.notification
+      ?.email;
+  const status =
+    String(
+      email?.status
+      || "FAILED"
+    ).toUpperCase();
+
+  if (
+    status === "SENT"
+    && email?.sent === true
+  ) {
+    return {
+      tone: "success",
+      key:
+        "adminAccessRequests.resolution.emailSent",
+    };
+  }
+
+  if (status === "DISABLED") {
+    return {
+      tone: "warning",
+      key:
+        "adminAccessRequests.resolution.emailDisabled",
+    };
+  }
+
+  return {
+    tone: "warning",
+    key:
+      "adminAccessRequests.resolution.emailFailed",
+  };
+}
+
+
 function formatInteger(
   value,
   locale
@@ -188,6 +227,11 @@ export default function AdminAccessRequests() {
   const [
     resolveError,
     setResolveError,
+  ] = useState(null);
+
+  const [
+    resolutionFeedback,
+    setResolutionFeedback,
   ] = useState(null);
 
 
@@ -358,6 +402,7 @@ export default function AdminAccessRequests() {
       });
       setRejectionReason("");
       setResolveError(null);
+      setResolutionFeedback(null);
     };
 
 
@@ -399,7 +444,7 @@ export default function AdminAccessRequests() {
         setResolving(true);
         setResolveError(null);
 
-        await api(
+        const response = await api(
           `/api/admin/access-requests/${item.id}/${mode}`,
           {
             method: "POST",
@@ -409,6 +454,12 @@ export default function AdminAccessRequests() {
               ),
           }
         );
+
+        if (mode === "approve") {
+          setResolutionFeedback(
+            approvalFeedback(response)
+          );
+        }
 
         setDecision(null);
         setRejectionReason("");
@@ -457,6 +508,24 @@ export default function AdminAccessRequests() {
               )}
             </span>
           </header>
+
+
+          {resolutionFeedback && (
+            <div
+              className={`admin-access-resolution-feedback admin-access-resolution-feedback--${resolutionFeedback.tone}`}
+              role={
+                resolutionFeedback.tone
+                  === "warning"
+                  ? "alert"
+                  : "status"
+              }
+              aria-live="polite"
+            >
+              {t(
+                resolutionFeedback.key
+              )}
+            </div>
+          )}
 
 
           <section

@@ -3,6 +3,11 @@ import { useSearchParams } from "react-router-dom";
 import { requestJson } from "../common/requestErrorModel";
 import LanguageSwitcher from "../components/LanguageSwitcher";
 import { useI18n } from "../i18n";
+import {
+  canApplicantRequestAccess,
+  isUdecProfessorEmail,
+  normalizeAccessRequestEmail,
+} from "./accessRequestEmailModel";
 import "./Login.css";
 
 const AUTH_MESSAGE_KEYS = {
@@ -105,15 +110,20 @@ const Login = () => {
       errors.fullName = "login.validation.fullNameRequired";
     }
 
-    if (!requestEmail.trim()) {
+    const normalizedRequestEmail =
+      normalizeAccessRequestEmail(requestEmail);
+    const normalizedProfessorEmail =
+      normalizeAccessRequestEmail(professorEmail);
+
+    if (!normalizedRequestEmail) {
       errors.requestEmail = "login.validation.emailRequired";
-    } else if (!requestEmail.endsWith("@udec.cl")) {
+    } else if (!canApplicantRequestAccess(normalizedRequestEmail)) {
       errors.requestEmail = "login.validation.emailDomain";
     }
 
-    if (!professorEmail.trim()) {
+    if (!normalizedProfessorEmail) {
       errors.professorEmail = "login.validation.professorRequired";
-    } else if (!professorEmail.includes("@")) {
+    } else if (!isUdecProfessorEmail(normalizedProfessorEmail)) {
       errors.professorEmail = "login.validation.professorInvalid";
     }
 
@@ -142,8 +152,8 @@ const Login = () => {
           },
           body: JSON.stringify({
             full_name: fullName,
-            email: requestEmail,
-            professor_email: professorEmail,
+            email: normalizeAccessRequestEmail(requestEmail),
+            professor_email: normalizeAccessRequestEmail(professorEmail),
             course_code: courseCode,
             message,
           }),
@@ -390,7 +400,9 @@ const Login = () => {
                 className={`login-input ${
                   requestErrors.professorEmail ? "login-input--error" : ""
                 }`}
-                placeholder="josefuentes@inf.udec.cl"
+                placeholder={t(
+                  "login.fields.professorEmailPlaceholder"
+                )}
               />
               {requestErrors.professorEmail && (
                 <span className="login-error-text">

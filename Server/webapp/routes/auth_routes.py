@@ -38,6 +38,18 @@ auth_bp = Blueprint("auth", __name__)
 EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
+def _is_udec_institutional_email(value):
+    normalized = str(value or "").strip().lower()
+    if not EMAIL_RE.fullmatch(normalized):
+        return False
+
+    domain = normalized.rsplit("@", 1)[1]
+    if not all(domain.split(".")):
+        return False
+
+    return domain == "udec.cl" or domain.endswith(".udec.cl")
+
+
 def _request_object():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
@@ -352,9 +364,12 @@ def public_create_access_request():
             "Debe indicar un correo institucional válido.",
             extra={"field": "email"},
         )
-    if not EMAIL_RE.fullmatch(professor_email):
+    if not _is_udec_institutional_email(professor_email):
         raise ValidationError(
-            "Debe indicar un correo válido para el profesor responsable.",
+            (
+                "Debe indicar un correo institucional UdeC válido "
+                "para el profesor responsable."
+            ),
             extra={"field": "professor_email"},
         )
 

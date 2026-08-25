@@ -3,6 +3,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
@@ -51,6 +52,28 @@ describe("Login i18n", () => {
         name: /^Idioma$/i,
       })
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByLabelText(
+        "Correo del profesor responsable"
+      )
+    ).toHaveAttribute(
+      "placeholder",
+      "profesor@inf.udec.cl"
+    );
+    expect(
+      document.querySelector(
+        ".login-footer-text"
+      )
+    ).toHaveTextContent(
+      "jfuentess@inf.udec.cl"
+    );
+    expect(document.body).not.toHaveTextContent(
+      [
+        "josefuentes",
+        "inf.udec.cl",
+      ].join("@")
+    );
 
     expect(
       document.querySelector(
@@ -165,5 +188,69 @@ describe("Login i18n", () => {
     expect(
       screen.queryByText("MENSAJE_BACKEND_EN_ES")
     ).not.toBeInTheDocument();
+  });
+
+  test("normalizes mixed-case emails and explains approval email delivery", async () => {
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({
+        id: 10,
+        status: "PENDING",
+      }),
+    });
+    renderLogin();
+
+    fireEvent.change(
+      screen.getByLabelText("Nombre completo"),
+      {
+        target: {
+          value: "Ada Lovelace",
+        },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Correo institucional UdeC"
+      ),
+      {
+        target: {
+          value: "  Alumno@UDEC.CL  ",
+        },
+      }
+    );
+    fireEvent.change(
+      screen.getByLabelText(
+        "Correo del profesor responsable"
+      ),
+      {
+        target: {
+          value: "  Profesor@INF.UDEC.CL  ",
+        },
+      }
+    );
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Enviar solicitud de acceso",
+      })
+    );
+
+    await waitFor(() =>
+      expect(global.fetch).toHaveBeenCalledTimes(1)
+    );
+    const [, options] = global.fetch.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual(
+      expect.objectContaining({
+        email: "alumno@udec.cl",
+        professor_email:
+          "profesor@inf.udec.cl",
+      })
+    );
+    expect(
+      await screen.findByText(
+        /Recibirás un correo cuando sea aprobada/i
+      )
+    ).toBeInTheDocument();
   });
 });

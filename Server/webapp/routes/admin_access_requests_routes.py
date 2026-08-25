@@ -1,5 +1,7 @@
 # server/webapp/routes/admin_access_requests_routes.py
 
+import logging
+
 from flask import Blueprint, request, jsonify, g
 
 from ..utils.auth_decorators import login_required, admin_required
@@ -10,6 +12,10 @@ from ..utils.api_errors import (
     ValidationError,
 )
 from ..utils.db_utils import db_cursor
+from ..services import mail_service
+
+
+LOGGER = logging.getLogger(__name__)
 
 admin_access_requests_bp = Blueprint(
     "admin_access_requests",
@@ -236,7 +242,10 @@ def approve_access_request(req_id: int):
     Respuesta (200):
       {
         "request": { ... },
-        "user": { ... }
+        "user": { ... },
+        "notification": {
+          "email": {"sent": false, "status": "DISABLED"}
+        }
       }
     """
     admin_user = g.current_user
@@ -310,6 +319,24 @@ def approve_access_request(req_id: int):
             (admin_user["id"], "approve_access_request", description),
         )
 
+    # db_cursor confirma la aprobación antes de intentar el correo.
+    try:
+        email_notification = mail_service.send_access_approval_email(
+            recipient_name=user_row["full_name"],
+            recipient_email=user_row["email"],
+        )
+    except Exception as exc:
+        # Defensa adicional: una falla inesperada de notificación nunca debe
+        # convertir una aprobación confirmada en un error de la operación.
+        LOGGER.warning(
+            "Falló la notificación posterior a la aprobación (tipo=%s).",
+            type(exc).__name__,
+        )
+        email_notification = {
+            "sent": False,
+            "status": mail_service.EMAIL_STATUS_FAILED,
+        }
+
     # Adaptar respuesta
     request_json = {
         "id": updated_req["id"],
@@ -342,7 +369,15 @@ def approve_access_request(req_id: int):
         else None,
     }
 
-    return jsonify({"request": request_json, "user": user_json}), 200
+    return jsonify(
+        {
+            "request": request_json,
+            "user": user_json,
+            "notification": {
+                "email": email_notification,
+            },
+        }
+    ), 200
 
 
 # ============================================
