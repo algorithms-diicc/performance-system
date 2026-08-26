@@ -106,6 +106,27 @@ export const canAccessTeacherArea = (user) =>
   isAdminUser(user) ||
   isTeacherUser(user);
 
+export const isStudentUser = (user) => {
+  if (!user || typeof user !== "object") {
+    return false;
+  }
+
+  const roleName = getRoleName(user);
+
+  if (
+    roleName === "student" ||
+    roleName === "estudiante"
+  ) {
+    return true;
+  }
+
+  return (
+    !roleName &&
+    !isAdminUser(user) &&
+    !isTeacherUser(user)
+  );
+};
+
 export const roleLabel = (user) => {
   if (isAdminUser(user)) {
     return "Administrador";

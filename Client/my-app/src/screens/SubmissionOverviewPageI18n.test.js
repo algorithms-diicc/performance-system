@@ -36,6 +36,11 @@ const submission = {
     academicYear: 2026,
     academicTerm: 1,
   },
+  protocolId: 5,
+  protocol: {
+    id: 5,
+    title: "LCS laboratorio",
+  },
   title: "Experimento del estudiante",
   originalFilename: "algoritmos.zip",
   archiveSha256: "b".repeat(64),
@@ -176,6 +181,16 @@ describe("SubmissionOverviewPage i18n", () => {
         "CC4102 · Diseño y Análisis de Algoritmos"
       )
     ).toHaveLength(2);
+
+    expect(
+      screen.getByText("Protocol")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("LCS laboratorio")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Protocol #5")
+    ).toBeInTheDocument();
 
     const executionCard = screen
       .getByRole("heading", {

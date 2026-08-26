@@ -8,6 +8,7 @@ def submission_row(**overrides):
         "id": 7,
         "user_id": 3,
         "course_id": None,
+        "protocol_id": None,
         "title": "Experimento",
         "language": "C++",
         "file_path": "uploads/internal-uuid.zip",
@@ -53,6 +54,7 @@ class SubmissionRepositoryTests(unittest.TestCase):
         conn = FakeConnection([
             submission_row(
                 note="Caso de referencia",
+                protocol_id=11,
                 is_pinned=True,
             )
         ])
@@ -63,6 +65,7 @@ class SubmissionRepositoryTests(unittest.TestCase):
             language="C++",
             file_path="uploads/internal-uuid.zip",
             code_hash="a" * 64,
+            protocol_id=11,
             status="QUEUED",
             conn=conn,
             original_filename="algoritmos.zip",
@@ -74,9 +77,12 @@ class SubmissionRepositoryTests(unittest.TestCase):
         self.assertIn("original_filename", sql)
         self.assertIn("note", sql)
         self.assertIn("is_pinned", sql)
-        self.assertEqual(params[5], "algoritmos.zip")
-        self.assertEqual(params[7], "Caso de referencia")
-        self.assertIs(params[8], True)
+        self.assertIn("protocol_id", sql)
+        self.assertEqual(params[2], 11)
+        self.assertEqual(params[6], "algoritmos.zip")
+        self.assertEqual(params[8], "Caso de referencia")
+        self.assertIs(params[9], True)
+        self.assertEqual(result["protocol_id"], 11)
         self.assertEqual(result["original_filename"], "algoritmos.zip")
         self.assertEqual(result["note"], "Caso de referencia")
         self.assertIs(result["is_pinned"], True)

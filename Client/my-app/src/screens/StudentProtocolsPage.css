@@ -1,0 +1,122 @@
+.student-protocol-page {
+  min-height: calc(100vh - 64px);
+  padding: 2rem 1rem 3rem;
+}
+
+.student-protocol-inner {
+  width: min(1120px, 100%);
+  margin: 0 auto;
+}
+
+.student-protocol-header {
+  margin-bottom: 1.5rem;
+}
+
+.student-protocol-eyebrow,
+.student-protocol-course {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.student-protocol-header h1 {
+  margin: 0.35rem 0 0.55rem;
+}
+
+.student-protocol-header p {
+  max-width: 760px;
+  margin: 0;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.student-protocol-grid {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.student-protocol-card,
+.student-protocol-empty {
+  padding: 1.1rem;
+  border: 1px solid
+    var(
+      --border-color,
+      rgba(148, 163, 184, 0.24)
+    );
+  border-radius: 14px;
+  background:
+    var(
+      --surface-subtle,
+      rgba(15, 23, 42, 0.2)
+    );
+}
+
+.student-protocol-card h2 {
+  margin: 0.35rem 0 0.65rem;
+}
+
+.student-protocol-objective,
+.student-protocol-instructions p {
+  white-space: pre-wrap;
+}
+
+.student-protocol-meta {
+  display: grid;
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.student-protocol-meta dt {
+  color: var(--text-secondary, #9ca3af);
+  font-size: 0.78rem;
+}
+
+.student-protocol-meta dd {
+  margin: 0.2rem 0 0;
+  font-weight: 600;
+}
+
+.student-protocol-instructions {
+  margin: 0.8rem 0;
+}
+
+.student-protocol-instructions summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.student-protocol-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.student-protocol-primary,
+.student-protocol-secondary {
+  text-decoration: none;
+}
+
+.student-protocol-empty p {
+  color: var(--text-secondary, #9ca3af);
+}
+
+@media (max-width: 760px) {
+  .student-protocol-grid,
+  .student-protocol-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .student-protocol-actions {
+    justify-content: stretch;
+  }
+
+  .student-protocol-actions .btn {
+    width: 100%;
+    text-align: center;
+  }
+}

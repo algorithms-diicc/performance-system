@@ -58,6 +58,7 @@ from .routes.admin_system_status_routes import admin_system_status_bp
 from .routes.results_routes import results_bp
 from .routes.execution_status_routes import execution_status_bp
 from .routes.teacher_courses_routes import teacher_courses_bp
+from .routes.experimental_protocol_routes import experimental_protocols_bp
 from .routes.trace_routes import trace_bp
 from .routes.export_routes import export_bp
 from .routes.comparison_routes import comparisons_bp
@@ -246,6 +247,7 @@ app.register_blueprint(admin_system_status_bp)
 app.register_blueprint(results_bp)
 app.register_blueprint(execution_status_bp)
 app.register_blueprint(teacher_courses_bp)
+app.register_blueprint(experimental_protocols_bp)
 app.register_blueprint(trace_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(comparisons_bp)
@@ -418,6 +420,11 @@ def cap_code():
         or request.form.get("courseId")
         or None
     )
+    protocol_id = (
+        request.form.get("protocol_id")
+        or request.form.get("protocolId")
+        or None
+    )
 
     title = (request.form.get("title") or "").strip()
     if not title:
@@ -455,6 +462,7 @@ def cap_code():
             original_filename=stored_upload.original_filename,
             note=note,
             course_id=course_id,
+            protocol_id=protocol_id,
         )
 
     except (UploadValidationError, InvalidExecutionRequest) as exc:

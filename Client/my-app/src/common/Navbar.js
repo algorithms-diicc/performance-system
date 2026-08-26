@@ -14,6 +14,7 @@ import {
 import {
   Plus,
   History,
+  ClipboardList,
   CircleHelp,
   Sun,
   Moon,
@@ -28,6 +29,7 @@ import {
 import {
   canAccessTeacherArea,
   isAdminUser,
+  isStudentUser,
 } from "./userAccessModel";
 
 import LanguageSwitcher from "../components/LanguageSwitcher";
@@ -151,6 +153,9 @@ function Navbar({
   const canSupervise =
     canAccessTeacherArea(user);
 
+  const isStudent =
+    isStudentUser(user);
+
 
   const displayName =
     user?.full_name
@@ -263,13 +268,25 @@ function Navbar({
         icon: History,
         end: false,
       },
-      {
-        path: "/tutorial",
-        label: t("nav.tutorial"),
-        icon: CircleHelp,
-        end: false,
-      },
     ];
+
+
+    if (isStudent) {
+      items.push({
+        path: "/protocols",
+        label: t("nav.protocols"),
+        icon: ClipboardList,
+        end: false,
+      });
+    }
+
+
+    items.push({
+      path: "/tutorial",
+      label: t("nav.tutorial"),
+      icon: CircleHelp,
+      end: false,
+    });
 
 
     if (canSupervise) {
@@ -298,7 +315,12 @@ function Navbar({
 
     return items;
 
-  }, [canSupervise, isAdmin, t]);
+  }, [
+    canSupervise,
+    isAdmin,
+    isStudent,
+    t,
+  ]);
 
 
   /* ==========================================================

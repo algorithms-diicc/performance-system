@@ -34,6 +34,13 @@ import {
   resolveCourseQuerySelection,
 } from "./courseOnboardingModel";
 import {
+  buildProtocolConfiguration,
+  parseProtocolId,
+} from "./protocolOnboardingModel";
+import {
+  appendProtocolId,
+} from "./protocolSubmissionModel";
+import {
   resolveResultsDestination,
 } from "../submissionOverviewModel";
 
@@ -288,6 +295,9 @@ function RenderFormPage({ currentUser }) {
   const [courseContextReloadToken, setCourseContextReloadToken] =
     useState(0);
 
+  const [activeProtocol, setActiveProtocol] =
+    useState(null);
+
   // ======= Análisis de .zip (hook dedicado) =======
   const {
     file,
@@ -444,11 +454,12 @@ function RenderFormPage({ currentUser }) {
     }
 
     // Precedencia canónica:
-    // execution > repeat > reuse > course.
+    // execution > repeat > reuse > protocol > course.
     if (
       parseExecutionPublicIds(location.search).length > 0 ||
       parseRepeatSubmissionId(location.search) ||
-      parseReusePublicId(location.search)
+      parseReusePublicId(location.search) ||
+      parseProtocolId(location.search)
     ) {
       return;
     }
@@ -594,7 +605,9 @@ function RenderFormPage({ currentUser }) {
       if (
         parseExecutionPublicIds(initialSearchRef.current).length > 0 ||
         parseRepeatSubmissionId(initialSearchRef.current) ||
-        parseReusePublicId(initialSearchRef.current) || parseStarterConfiguration(initialSearchRef.current)
+        parseReusePublicId(initialSearchRef.current) ||
+        parseProtocolId(initialSearchRef.current) ||
+        parseStarterConfiguration(initialSearchRef.current)
       ) {
         return;
       }
@@ -681,9 +694,15 @@ function RenderFormPage({ currentUser }) {
   }, []);
 
   useEffect(() => {
-    if (parseExecutionPublicIds(location.search).length || parseRepeatSubmissionId(location.search) || parseReusePublicId(location.search)) return;
+    if (
+      parseExecutionPublicIds(location.search).length ||
+      parseRepeatSubmissionId(location.search) ||
+      parseReusePublicId(location.search) ||
+      parseProtocolId(location.search)
+    ) return;
     const starter = parseStarterConfiguration(location.search);
     if (!starter) return;
+    setActiveProtocol(null);
     setSelectedTaskType(starter.selectedTaskType); setInputSize(starter.inputSize); setSamples(starter.samples); setDataType(starter.dataType); setExecutionProfile(starter.executionProfile);
     setRepeatFeedback({ key: "renderForm.page.starter.loaded", params: { benchmark: starter.selectedTaskType.toUpperCase() } });
   }, [location.search]);
@@ -960,6 +979,167 @@ function RenderFormPage({ currentUser }) {
     location.search,
   ]);
 
+
+  // ======= Handoff E: análisis preparado desde protocolo =======
+  useEffect(() => {
+    if (
+      parseExecutionPublicIds(location.search).length > 0 ||
+      parseRepeatSubmissionId(location.search) ||
+      parseReusePublicId(location.search)
+    ) {
+      setActiveProtocol(null);
+      return undefined;
+    }
+
+    const protocolId =
+      parseProtocolId(
+        location.search
+      );
+
+    if (!protocolId) {
+      return undefined;
+    }
+
+    if (
+      courseContextLoading ||
+      courseContextError
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadProtocol = async () => {
+      try {
+        setSubmissionError("");
+        setRepeatFeedback(null);
+        setActiveProtocol(null);
+
+        const response =
+          await axios.get(
+            `${serverURL}api/student/protocols/${encodeURIComponent(
+              protocolId
+            )}`,
+            {
+              withCredentials: true,
+              headers: {
+                "Cache-Control":
+                  "no-cache",
+                Pragma:
+                  "no-cache",
+              },
+            }
+          );
+
+        if (cancelled) {
+          return;
+        }
+
+        const protocol =
+          buildProtocolConfiguration(
+            response.data?.protocol,
+            activeCourses
+          );
+
+        if (!protocol) {
+          setSubmissionError(
+            messageState(
+              "protocolOnboarding.errors.invalid"
+            )
+          );
+          return;
+        }
+
+        // Un protocolo preconfigura el experimento, pero nunca adjunta
+        // ni reutiliza automáticamente un ZIP anterior.
+        resetZipAnalysis();
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+
+        setTitleState(
+          manualSubmissionTitle("")
+        );
+        setNote("");
+        setSelectedTaskType(
+          protocol.selectedTaskType
+        );
+        setInputSize(
+          protocol.inputSize
+        );
+        setSamples(
+          protocol.samples
+        );
+        setDataType(
+          protocol.dataType
+        );
+        setExecutionProfile(
+          protocol.executionProfile
+        );
+        setSelectedCourseId(
+          String(protocol.courseId)
+        );
+        setParamErrors({
+          inputSize: "",
+          samples: "",
+        });
+        setDraftRestored(false);
+        setExecutionSnapshot(null);
+        setFileList([]);
+        setShowOverview(false);
+        setIsSubmitting(false);
+        setActiveProtocol({
+          id: protocol.id,
+          courseId:
+            protocol.courseId,
+          title:
+            protocol.title,
+        });
+        setRepeatFeedback({
+          key:
+            "protocolOnboarding.loaded",
+          params: {
+            title:
+              protocol.title,
+          },
+        });
+      } catch (error) {
+        if (cancelled) {
+          return;
+        }
+
+        const status =
+          error?.response?.status;
+
+        const key =
+          status === 401
+            ? "protocolOnboarding.errors.session"
+            : status === 403
+            ? "protocolOnboarding.errors.forbidden"
+            : status === 404
+            ? "protocolOnboarding.errors.notFound"
+            : "protocolOnboarding.errors.generic";
+
+        setActiveProtocol(null);
+        setSubmissionError(
+          messageState(key)
+        );
+      }
+    };
+
+    loadProtocol();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    activeCourses,
+    courseContextError,
+    courseContextLoading,
+    location.search,
+    resetZipAnalysis,
+  ]);
+
   // Cuando todos los archivos llegan a un estado terminal,
   // se detiene el modo de ejecución.
   useEffect(() => {
@@ -976,7 +1156,8 @@ function RenderFormPage({ currentUser }) {
       if (
         parseExecutionPublicIds(location.search).length > 0 ||
         parseRepeatSubmissionId(location.search) ||
-        parseReusePublicId(location.search)
+        parseReusePublicId(location.search) ||
+        parseProtocolId(location.search)
       ) {
         return;
       }
@@ -1138,6 +1319,42 @@ function RenderFormPage({ currentUser }) {
     setDataType(type);
   };
 
+  const handleCourseChange = (
+    courseId
+  ) => {
+    const nextCourseId =
+      String(courseId || "");
+
+    if (
+      activeProtocol &&
+      nextCourseId !==
+        String(
+          activeProtocol.courseId
+        )
+    ) {
+      setActiveProtocol(null);
+      setRepeatFeedback({
+        key:
+          "protocolOnboarding.detached",
+      });
+
+      if (location.search) {
+        navigate(
+          {
+            pathname:
+              location.pathname,
+            search: "",
+          },
+          { replace: true }
+        );
+      }
+    }
+
+    setSelectedCourseId(
+      nextCourseId
+    );
+  };
+
   // ======= Perfil de medición ↔ samples =======
   const handleExecutionProfileChange = (profileId) => {
     setExecutionProfile(profileId);
@@ -1175,6 +1392,7 @@ function RenderFormPage({ currentUser }) {
     setDataType("");
     setExecutionProfile("equilibrado");
     setDraftRestored(false);
+    setActiveProtocol(null);
 
     setFileList([]);
     setIsSubmitting(false);
@@ -1270,6 +1488,11 @@ function RenderFormPage({ currentUser }) {
         selectedCourseId
       );
     }
+
+    appendProtocolId(
+      bodyFormData,
+      activeProtocol
+    );
 
     if (location.search) {
       navigate(
@@ -1816,7 +2039,7 @@ function RenderFormPage({ currentUser }) {
               error={courseContextErrorText}
               selectedCourseId={selectedCourseId}
               selectionRequired={courseSelectionRequired}
-              onCourseChange={setSelectedCourseId}
+              onCourseChange={handleCourseChange}
               onRetry={() =>
                 setCourseContextReloadToken(
                   (value) => value + 1

@@ -1,0 +1,126 @@
+.teacher-protocols-panel {
+  display: grid;
+  gap: 1rem;
+}
+
+.teacher-protocols-note,
+.teacher-protocols-empty p {
+  margin: 0;
+  color: var(--text-secondary, #9ca3af);
+}
+
+.teacher-protocol-form,
+.teacher-protocol-card,
+.teacher-protocols-empty {
+  padding: 1rem;
+  border: 1px solid var(--border-color, rgba(148, 163, 184, 0.24));
+  border-radius: 12px;
+  background: var(--surface-subtle, rgba(15, 23, 42, 0.2));
+}
+
+.teacher-protocol-form,
+.teacher-protocol-list {
+  display: grid;
+  gap: 1rem;
+}
+
+.teacher-protocol-form-heading,
+.teacher-protocol-card-header,
+.teacher-protocol-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.teacher-protocol-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.teacher-protocol-field {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.teacher-protocol-field > span {
+  font-weight: 600;
+}
+
+.teacher-protocol-field small,
+.teacher-protocol-meta dt {
+  color: var(--text-secondary, #9ca3af);
+  font-weight: 400;
+}
+
+.teacher-protocol-span-2 {
+  grid-column: 1 / -1;
+}
+
+.teacher-protocol-card h3 {
+  margin: 0.35rem 0 0;
+}
+
+.teacher-protocol-objective,
+.teacher-protocol-instructions p {
+  white-space: pre-wrap;
+}
+
+.teacher-protocol-state {
+  display: inline-flex;
+  padding: 0.15rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.teacher-protocol-state--published {
+  background: rgba(34, 197, 94, 0.14);
+}
+
+.teacher-protocol-state--draft {
+  background: rgba(234, 179, 8, 0.14);
+}
+
+.teacher-protocol-state--inactive {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.teacher-protocol-meta {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.teacher-protocol-meta dd {
+  margin: 0.2rem 0 0;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.teacher-protocol-instructions {
+  margin-top: 0.9rem;
+}
+
+.teacher-protocol-instructions summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .teacher-protocol-form-grid,
+  .teacher-protocol-meta {
+    grid-template-columns: 1fr;
+  }
+
+  .teacher-protocol-span-2 {
+    grid-column: auto;
+  }
+
+  .teacher-protocol-actions {
+    width: 100%;
+  }
+}

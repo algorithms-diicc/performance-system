@@ -1,5 +1,5 @@
 -- Performance System
--- Esquema base actualizado después de PRE-EVAL-004
+-- Esquema base actualizado hasta HANDOFF E / migración 006
 -- PostgreSQL 12+
 --
 -- Este archivo representa el estado objetivo actual para una instalación NUEVA.
@@ -189,6 +189,96 @@ CREATE INDEX idx_course_memberships_user_active
 
 
 -- =========================================================================
+-- PROTOCOLOS EXPERIMENTALES DE CURSO
+-- =========================================================================
+
+CREATE TABLE experimental_protocols (
+    id SERIAL PRIMARY KEY,
+    course_id INT NOT NULL
+        REFERENCES courses (id)
+        ON DELETE CASCADE,
+
+    title VARCHAR(150) NOT NULL,
+    objective TEXT NOT NULL,
+    instructions TEXT,
+
+    benchmark VARCHAR(16) NOT NULL,
+    input_size INTEGER NOT NULL,
+    execution_profile VARCHAR(20) NOT NULL,
+    samples INTEGER NOT NULL,
+    data_type VARCHAR(16),
+
+    is_published BOOLEAN NOT NULL DEFAULT FALSE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_by_user_id INT
+        REFERENCES users (id)
+        ON DELETE SET NULL,
+    updated_by_user_id INT
+        REFERENCES users (id)
+        ON DELETE SET NULL,
+
+    published_at TIMESTAMP,
+    deactivated_at TIMESTAMP,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_experimental_protocol_title
+        CHECK (BTRIM(title) <> ''),
+
+    CONSTRAINT chk_experimental_protocol_objective
+        CHECK (BTRIM(objective) <> ''),
+
+    CONSTRAINT chk_experimental_protocol_benchmark
+        CHECK (benchmark IN ('LCS', 'CAMM', 'SIZE')),
+
+    CONSTRAINT chk_experimental_protocol_input_size
+        CHECK (input_size > 0),
+
+    CONSTRAINT chk_experimental_protocol_profile
+        CHECK (
+            execution_profile IN (
+                'QUICK',
+                'BALANCED',
+                'EXHAUSTIVE',
+                'CUSTOM'
+            )
+        ),
+
+    CONSTRAINT chk_experimental_protocol_samples
+        CHECK (samples BETWEEN 1 AND 100),
+
+    CONSTRAINT chk_experimental_protocol_profile_samples
+        CHECK (
+            (execution_profile = 'QUICK' AND samples = 10)
+            OR (execution_profile = 'BALANCED' AND samples = 30)
+            OR (execution_profile = 'EXHAUSTIVE' AND samples = 50)
+            OR (execution_profile = 'CUSTOM')
+        ),
+
+    CONSTRAINT chk_experimental_protocol_data_type
+        CHECK (
+            (
+                benchmark = 'CAMM'
+                AND data_type IN ('CAMMR', 'CAMMSO', 'CAMMS')
+            )
+            OR (
+                benchmark <> 'CAMM'
+                AND data_type IS NULL
+            )
+        )
+);
+
+CREATE INDEX idx_experimental_protocols_course
+    ON experimental_protocols (
+        course_id,
+        is_active,
+        is_published,
+        updated_at DESC
+    );
+
+
+-- =========================================================================
 -- HARDWARE
 -- =========================================================================
 
@@ -210,6 +300,7 @@ CREATE TABLE submissions (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     course_id INT REFERENCES courses (id) ON DELETE SET NULL,
+    protocol_id INT,
     title VARCHAR(100),
     language VARCHAR(50),
     file_path VARCHAR(255),
@@ -217,13 +308,21 @@ CREATE TABLE submissions (
     code_hash VARCHAR(64),
     note VARCHAR(500),
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
+    archived_at TIMESTAMP,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50)
+    status VARCHAR(50),
+
+    CONSTRAINT fk_submissions_protocol_id
+        FOREIGN KEY (protocol_id)
+        REFERENCES experimental_protocols (id)
+        ON DELETE SET NULL
 );
 
 CREATE INDEX idx_submissions_user_id ON submissions (user_id);
 
 CREATE INDEX idx_submissions_course_id ON submissions (course_id);
+
+CREATE INDEX idx_submissions_protocol_id ON submissions (protocol_id);
 
 CREATE INDEX idx_submissions_status ON submissions (status);
 
@@ -415,5 +514,13 @@ VALUES
     (
         'pre_eval_004_submission_metadata',
         'Nombre original del ZIP, nota opcional y marcador de referencia en submissions'
+    ),
+    (
+        'pre_eval_005_submission_archiving',
+        'Archivado reversible de submissions para organización del historial'
+    ),
+    (
+        'handoff_e_006_experimental_protocols',
+        'Protocolos experimentales por curso y procedencia opcional mediante submissions.protocol_id'
     )
 ON CONFLICT (version) DO NOTHING;

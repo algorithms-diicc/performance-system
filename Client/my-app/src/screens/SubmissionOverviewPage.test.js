@@ -40,6 +40,11 @@ const ownerSubmission = {
     academicYear: 2026,
     academicTerm: 1,
   },
+  protocolId: 5,
+  protocol: {
+    id: 5,
+    title: "LCS laboratorio",
+  },
   title: "Comparación de algoritmos de ordenamiento",
   language: "C++",
   originalFilename: "algoritmos.zip",
@@ -210,6 +215,16 @@ describe("SubmissionOverviewPage", () => {
     ).toBeInTheDocument();
     expect(
       within(information).getByText(
+        "LCS laboratorio"
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(information).getByText(
+        "Protocolo #5"
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(information).getByText(
         formatSubmissionDateTime(ownerSubmission.createdAt)
       )
     ).toBeInTheDocument();
@@ -290,6 +305,31 @@ describe("SubmissionOverviewPage", () => {
       "/code/opaque-codename-10"
     );
   });
+
+  test("does not invent protocol provenance for a legacy experiment", async () => {
+    await renderLoadedPage({
+      submission: {
+        ...ownerSubmission,
+        protocolId: null,
+        protocol: null,
+      },
+    });
+
+    const information =
+      screen.getByRole(
+        "region",
+        {
+          name:
+            "Información del experimento",
+        }
+      );
+
+    expect(
+      within(information)
+        .queryByText("Protocolo")
+    ).not.toBeInTheDocument();
+  });
+
 
   test("shows persisted mixed language and each execution toolchain", async () => {
     const cExecution = comparisonExecution(1, {

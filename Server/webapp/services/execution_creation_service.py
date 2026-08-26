@@ -34,6 +34,10 @@ from .upload_service import (
     UploadValidationError,
     normalize_original_zip_filename,
 )
+from .experimental_protocol_service import (
+    ProtocolUnavailable,
+    resolve_submission_protocol,
+)
 from ...db_connection import get_connection
 
 
@@ -458,6 +462,7 @@ def create_submission_bundle(
     samples,
     source_specs,
     course_id=None,
+    protocol_id=None,
     original_filename=None,
     note=None,
     compiler_flags="-O3",
@@ -532,11 +537,26 @@ def create_submission_bundle(
     db = conn or get_connection()
 
     try:
-        resolved_course_id = resolve_submission_course(
-            user_id=user_id,
-            requested_course_id=course_id,
-            conn=db,
-        )
+        try:
+            resolved_protocol = resolve_submission_protocol(
+                user_id=user_id,
+                requested_protocol_id=protocol_id,
+                requested_course_id=course_id,
+                conn=db,
+            )
+        except ProtocolUnavailable as exc:
+            raise InvalidExecutionRequest(str(exc))
+
+        if resolved_protocol is not None:
+            resolved_protocol_id = resolved_protocol["protocol_id"]
+            resolved_course_id = resolved_protocol["course_id"]
+        else:
+            resolved_protocol_id = None
+            resolved_course_id = resolve_submission_course(
+                user_id=user_id,
+                requested_course_id=course_id,
+                conn=db,
+            )
 
         submission = submission_repo.create_submission(
             user_id=user_id,
@@ -547,6 +567,7 @@ def create_submission_bundle(
             code_hash=archive_sha256,
             note=note,
             course_id=resolved_course_id,
+            protocol_id=resolved_protocol_id,
             status="QUEUED",
             conn=db,
         )

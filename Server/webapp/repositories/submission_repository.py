@@ -25,6 +25,7 @@ def create_submission(
     file_path,
     code_hash,
     course_id=None,
+    protocol_id=None,
     status="QUEUED",
     conn=None,
     original_filename=None,
@@ -47,6 +48,7 @@ def create_submission(
                 INSERT INTO submissions (
                     user_id,
                     course_id,
+                    protocol_id,
                     title,
                     language,
                     file_path,
@@ -58,13 +60,14 @@ def create_submission(
                     status
                 )
                 VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                     CURRENT_TIMESTAMP, %s
                 )
                 RETURNING
                     id,
                     user_id,
                     course_id,
+                    protocol_id,
                     title,
                     language,
                     file_path,
@@ -79,6 +82,7 @@ def create_submission(
                 (
                     user_id,
                     course_id,
+                    protocol_id,
                     title,
                     language,
                     file_path,
@@ -118,6 +122,7 @@ def get_submission(submission_id, conn=None):
                     id,
                     user_id,
                     course_id,
+                    protocol_id,
                     title,
                     language,
                     file_path,

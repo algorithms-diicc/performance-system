@@ -30,6 +30,9 @@ import TeacherCourseAnalytics
 import TeacherCourseAttention
   from "./TeacherCourseAttention";
 
+import TeacherProtocolsPanel
+  from "./TeacherProtocolsPanel";
+
 import {
   coursePeriod,
   formatDateTime,
@@ -1603,6 +1606,14 @@ export default function TeacherCourseDetail({
         <TeacherCourseAnalytics
           courseId={courseId}
           reloadToken={reloadToken}
+        />
+
+
+        <TeacherProtocolsPanel
+          courseId={courseId}
+          courseActive={
+            Boolean(course.isActive)
+          }
         />
 
 

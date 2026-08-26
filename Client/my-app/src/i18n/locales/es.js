@@ -15,9 +15,102 @@ const es = {
   nav: {
     newAnalysis: "Nuevo análisis",
     history: "Historial",
+    protocols: "Protocolos",
     tutorial: "Cómo funciona",
     supervision: "Supervisión",
     administration: "Administración",
+  },
+  protocols: {
+    states: {
+      draft: "Borrador",
+      published: "Publicado",
+      inactive: "Inactivo",
+    },
+    actions: {
+      create: "Crear protocolo",
+      edit: "Editar",
+      close: "Cerrar",
+      save: "Guardar",
+      saving: "Guardando…",
+      publish: "Publicar",
+      deactivate: "Desactivar",
+      retry: "Reintentar",
+    },
+    fields: {
+      title: "Título",
+      objective: "Objetivo",
+      instructions: "Instrucciones",
+      optional: "(opcional)",
+      benchmark: "Benchmark",
+      inputSize: "Tamaño máximo",
+      profile: "Perfil de medición",
+      samples: "Repeticiones",
+      distribution: "Distribución CAMM",
+    },
+    profiles: {
+      quick: "Rápido",
+      balanced: "Equilibrado",
+      exhaustive: "Exhaustivo",
+      custom: "Personalizado",
+    },
+    teacher: {
+      title: "Protocolos experimentales",
+      description:
+        "Define configuraciones experimentales reutilizables para orientar los análisis de este curso.",
+      createTitle: "Nuevo protocolo",
+      editTitle: "Editar protocolo",
+      loading: "Cargando protocolos",
+      loadErrorTitle: "No pudimos cargar los protocolos",
+      emptyTitle: "Este curso aún no tiene protocolos.",
+      emptyText:
+        "Crea un borrador y publícalo cuando quieras hacerlo visible para los estudiantes.",
+      listAria: "Protocolos experimentales del curso",
+      instructions: "Ver instrucciones",
+      courseInactive:
+        "El curso está inactivo. Puedes revisar o editar protocolos existentes, pero no crear ni publicar nuevos protocolos.",
+      errors: {
+        load: "No fue posible cargar los protocolos del curso.",
+        save: "No fue posible guardar el protocolo.",
+        action: "No fue posible actualizar el estado del protocolo.",
+      },
+    },
+    student: {
+      eyebrow: "Contexto académico",
+      title: "Protocolos",
+      description:
+        "Revisa las configuraciones experimentales publicadas en tus cursos activos y prepara un análisis a partir de ellas.",
+      loading: "Cargando protocolos",
+      loadErrorTitle: "No pudimos cargar tus protocolos",
+      emptyTitle: "No tienes protocolos publicados.",
+      emptyText:
+        "Cuando un profesor publique un protocolo en uno de tus cursos activos, aparecerá aquí.",
+      personalAnalysis: "Iniciar análisis personal",
+      listAria: "Protocolos disponibles",
+      courseFallback: "Curso",
+      instructions: "Ver instrucciones",
+      prepareAnalysis: "Preparar análisis",
+      errors: {
+        load: "No fue posible cargar tus protocolos disponibles.",
+      },
+    },
+  },
+  protocolOnboarding: {
+    loaded:
+      "Protocolo preparado: {{title}}. La configuración queda editable; adjunta tu ZIP para continuar.",
+    detached:
+      "Cambiaste el curso. El análisis ya no quedará asociado al protocolo original.",
+    errors: {
+      invalid:
+        "El protocolo no contiene una configuración válida para este análisis.",
+      session:
+        "Tu sesión expiró mientras se cargaba el protocolo.",
+      forbidden:
+        "Este protocolo no está disponible para tu cuenta.",
+      notFound:
+        "El protocolo ya no está disponible.",
+      generic:
+        "No fue posible preparar el análisis desde este protocolo.",
+    },
   },
   roles: {
     admin: "Administrador",
@@ -909,6 +1002,8 @@ const es = {
       originalArchive: "Archivo original",
       created: "Creado",
       course: "Curso",
+      protocol: "Protocolo",
+      protocolRecord: "Protocolo #{{id}}",
       language: "Lenguaje",
       implementations: "Implementaciones",
       benchmark: "Benchmark",

@@ -14,10 +14,12 @@ import Navbar from "./common/Navbar";
 import {
   canAccessTeacherArea,
   isAdminUser,
+  isStudentUser,
 } from "./common/userAccessModel";
 import TutorialPage from "./screens/TutorialPage";
 import ProfilePage from "./screens/ProfilePage";
 import HistoryPage from "./screens/HistoryPage";
+import StudentProtocolsPage from "./screens/StudentProtocolsPage";
 import SystemStatePage from "./screens/SystemStatePage";
 import SubmissionOverviewPage from "./screens/SubmissionOverviewPage";
 import ComparisonPage from "./screens/ComparisonPage";
@@ -235,6 +237,9 @@ const AppInner = () => {
   const canSupervise =
     canAccessTeacherArea(currentUser);
 
+  const isStudent =
+    isStudentUser(currentUser);
+
 
   /* ==========================================================
      ROUTES
@@ -355,6 +360,29 @@ const AppInner = () => {
             isAuthenticated
               ? (
                 <HistoryPage />
+              )
+              : (
+                <Navigate
+                  to="/login"
+                  replace
+                />
+              )
+          }
+        />
+
+
+        {/* ====================================================
+            PROTOCOLOS DEL ESTUDIANTE
+            ==================================================== */}
+
+        <Route
+          path="/protocols"
+          element={
+            isAuthenticated
+              ? (
+                isStudent
+                  ? <StudentProtocolsPage />
+                  : <Navigate to="/403" replace />
               )
               : (
                 <Navigate

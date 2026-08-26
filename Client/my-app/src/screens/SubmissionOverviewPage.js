@@ -16,6 +16,7 @@ import {
   CalendarDays,
   CheckCircle2,
   Clock3,
+  ClipboardList,
   Copy,
   Download,
   Eye,
@@ -1160,6 +1161,30 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                 <small>{academicPeriod}</small>
               )}
             </InformationItem>
+
+            {submission.protocol?.id && (
+              <InformationItem
+                icon={ClipboardList}
+                label={t(
+                  "submissionOverview.labels.protocol"
+                )}
+              >
+                <span>
+                  {submission.protocol.title ||
+                    t(
+                      "submissionOverview.fallbacks.unavailable"
+                    )}
+                </span>
+                <small>
+                  {t(
+                    "submissionOverview.labels.protocolRecord",
+                    {
+                      id: submission.protocol.id,
+                    }
+                  )}
+                </small>
+              </InformationItem>
+            )}
 
             <InformationItem
               icon={Fingerprint}

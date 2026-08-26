@@ -16,6 +16,22 @@ const RECORDS = [
   },
 ];
 
+const MULTI_FILES = [
+  "exec-a",
+  "exec-b",
+];
+
+const MULTI_RECORDS = [
+  {
+    publicId: "public-a",
+    codename: "exec-a",
+  },
+  {
+    publicId: "public-b",
+    codename: "exec-b",
+  },
+];
+
 function PollingHarness() {
   const { executionFiles } = useExecutionPolling(
     FILES,
@@ -38,11 +54,8 @@ function PollingHarness() {
 function MultiPollingHarness() {
   const { executionFiles, allTerminal, hasFailure, hasCancelled } =
     useExecutionPolling(
-      ["exec-a", "exec-b"],
-      [
-        { publicId: "public-a", codename: "exec-a" },
-        { publicId: "public-b", codename: "exec-b" },
-      ],
+      MULTI_FILES,
+      MULTI_RECORDS,
       5
     );
 
@@ -96,25 +109,42 @@ describe("useExecutionPolling queue snapshot", () => {
   });
 
   test("a cancelled execution does not stop polling its running sibling", async () => {
-    axios.get.mockImplementation((url) =>
-      Promise.resolve({
+    let publicBRequests = 0;
+
+    axios.get.mockImplementation((url) => {
+      const isCancelled =
+        String(url).includes("public-a");
+
+      if (!isCancelled) {
+        publicBRequests += 1;
+      }
+
+      return Promise.resolve({
         data: {
-          execution: String(url).includes("public-a")
+          execution: isCancelled
             ? {
                 publicId: "public-a",
                 codename: "exec-a",
                 state: "CANCELLED",
                 terminal: true,
               }
-            : {
+            : publicBRequests === 1
+            ? {
                 publicId: "public-b",
                 codename: "exec-b",
                 state: "RUNNING",
                 terminal: false,
+              }
+            : {
+                publicId: "public-b",
+                codename: "exec-b",
+                state: "COMPLETED",
+                terminal: true,
+                resultAvailable: true,
               },
         },
-      })
-    );
+      });
+    });
 
     render(
       <I18nProvider initialLanguage="en">
@@ -123,14 +153,13 @@ describe("useExecutionPolling queue snapshot", () => {
     );
 
     await waitFor(() => {
+      expect(publicBRequests).toBeGreaterThanOrEqual(2);
       expect(screen.getByTestId("multi-states")).toHaveTextContent(
-        "CANCELLED,RUNNING"
+        "CANCELLED,COMPLETED"
       );
-      expect(screen.getByTestId("multi-terminal")).toHaveTextContent("false");
+      expect(screen.getByTestId("multi-terminal")).toHaveTextContent("true");
       expect(screen.getByTestId("multi-failure")).toHaveTextContent("false");
       expect(screen.getByTestId("multi-cancelled")).toHaveTextContent("true");
     });
-
-    await waitFor(() => expect(axios.get.mock.calls.length).toBeGreaterThanOrEqual(4));
   });
 });

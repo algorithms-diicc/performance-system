@@ -15,9 +15,102 @@ const en = {
   nav: {
     newAnalysis: "New analysis",
     history: "History",
+    protocols: "Protocols",
     tutorial: "How it works",
     supervision: "Supervision",
     administration: "Administration",
+  },
+  protocols: {
+    states: {
+      draft: "Draft",
+      published: "Published",
+      inactive: "Inactive",
+    },
+    actions: {
+      create: "Create protocol",
+      edit: "Edit",
+      close: "Close",
+      save: "Save",
+      saving: "Saving…",
+      publish: "Publish",
+      deactivate: "Deactivate",
+      retry: "Retry",
+    },
+    fields: {
+      title: "Title",
+      objective: "Objective",
+      instructions: "Instructions",
+      optional: "(optional)",
+      benchmark: "Benchmark",
+      inputSize: "Maximum size",
+      profile: "Measurement profile",
+      samples: "Repetitions",
+      distribution: "CAMM distribution",
+    },
+    profiles: {
+      quick: "Quick",
+      balanced: "Balanced",
+      exhaustive: "Exhaustive",
+      custom: "Custom",
+    },
+    teacher: {
+      title: "Experimental protocols",
+      description:
+        "Define reusable experimental configurations to guide analyses in this course.",
+      createTitle: "New protocol",
+      editTitle: "Edit protocol",
+      loading: "Loading protocols",
+      loadErrorTitle: "We could not load the protocols",
+      emptyTitle: "This course has no protocols yet.",
+      emptyText:
+        "Create a draft and publish it when you want students to see it.",
+      listAria: "Course experimental protocols",
+      instructions: "View instructions",
+      courseInactive:
+        "The course is inactive. You can review or edit existing protocols, but you cannot create or publish new ones.",
+      errors: {
+        load: "The course protocols could not be loaded.",
+        save: "The protocol could not be saved.",
+        action: "The protocol state could not be updated.",
+      },
+    },
+    student: {
+      eyebrow: "Academic context",
+      title: "Protocols",
+      description:
+        "Review experimental configurations published in your active courses and prepare an analysis from them.",
+      loading: "Loading protocols",
+      loadErrorTitle: "We could not load your protocols",
+      emptyTitle: "You have no published protocols.",
+      emptyText:
+        "When a teacher publishes a protocol in one of your active courses, it will appear here.",
+      personalAnalysis: "Start personal analysis",
+      listAria: "Available protocols",
+      courseFallback: "Course",
+      instructions: "View instructions",
+      prepareAnalysis: "Prepare analysis",
+      errors: {
+        load: "Your available protocols could not be loaded.",
+      },
+    },
+  },
+  protocolOnboarding: {
+    loaded:
+      "Protocol prepared: {{title}}. The configuration remains editable; attach your ZIP to continue.",
+    detached:
+      "You changed the course. The analysis will no longer be associated with the original protocol.",
+    errors: {
+      invalid:
+        "The protocol does not contain a valid configuration for this analysis.",
+      session:
+        "Your session expired while the protocol was loading.",
+      forbidden:
+        "This protocol is not available to your account.",
+      notFound:
+        "The protocol is no longer available.",
+      generic:
+        "The analysis could not be prepared from this protocol.",
+    },
   },
   roles: {
     admin: "Administrator",
@@ -906,6 +999,8 @@ const en = {
       originalArchive: "Original archive",
       created: "Created",
       course: "Course",
+      protocol: "Protocol",
+      protocolRecord: "Protocol #{{id}}",
       language: "Language",
       implementations: "Implementations",
       benchmark: "Benchmark",

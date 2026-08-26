@@ -841,6 +841,7 @@ def get_submission_detail(submission_id: int):
                 SELECT
                   s.id,
                   s.course_id,
+                  s.protocol_id,
                   s.title,
                   s.language,
                   s.original_filename,
@@ -853,10 +854,13 @@ def get_submission_detail(submission_id: int):
                   c.code AS course_code,
                   c.name AS course_name,
                   c.academic_year AS course_year,
-                  c.academic_term AS course_term
+                  c.academic_term AS course_term,
+                  p.title AS protocol_title
                 FROM submissions s
                 LEFT JOIN courses c
                   ON c.id = s.course_id
+                LEFT JOIN experimental_protocols p
+                  ON p.id = s.protocol_id
                 WHERE s.id = %s;
                 """,
                 (submission_id,),
@@ -968,6 +972,15 @@ def get_submission_detail(submission_id: int):
                     "academicTerm": srow.get("course_term"),
                 }
                 if srow.get("course_id") is not None
+                else None
+            ),
+            "protocolId": srow.get("protocol_id"),
+            "protocol": (
+                {
+                    "id": srow.get("protocol_id"),
+                    "title": srow.get("protocol_title"),
+                }
+                if srow.get("protocol_id") is not None
                 else None
             ),
             "title": srow["title"],

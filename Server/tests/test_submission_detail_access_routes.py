@@ -28,6 +28,8 @@ def detail_row(**overrides):
     row = {
         "id": 7,
         "course_id": 10,
+        "protocol_id": 5,
+        "protocol_title": "LCS laboratorio",
         "title": "Experimento",
         "language": "C/C++",
         "original_filename": "algoritmos.zip",
@@ -326,6 +328,38 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
         self.assertEqual(submission["archiveSha256"], "a" * 64)
         self.assertEqual(submission["originalFilename"], "algoritmos.zip")
         self.assertEqual(submission["language"], "C/C++")
+
+    def test_detail_serializes_protocol_provenance_for_historical_record(self):
+        response, _conn = self._get_detail(
+            OWNER,
+            detail_overrides={
+                "protocol_id": 5,
+                "protocol_title": "LCS laboratorio",
+            },
+        )
+
+        submission = response.get_json()["submission"]
+        self.assertEqual(submission["protocolId"], 5)
+        self.assertEqual(
+            submission["protocol"],
+            {
+                "id": 5,
+                "title": "LCS laboratorio",
+            },
+        )
+
+    def test_detail_handles_submission_without_protocol(self):
+        response, _conn = self._get_detail(
+            OWNER,
+            detail_overrides={
+                "protocol_id": None,
+                "protocol_title": None,
+            },
+        )
+
+        submission = response.get_json()["submission"]
+        self.assertIsNone(submission["protocolId"])
+        self.assertIsNone(submission["protocol"])
 
     def test_detail_handles_historical_null_archive_hash(self):
         response, _conn = self._get_detail(
