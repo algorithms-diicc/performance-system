@@ -72,6 +72,7 @@ def create_submission(
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status;
                 """,
@@ -124,6 +125,7 @@ def get_submission(submission_id, conn=None):
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status
                 FROM submissions
@@ -168,6 +170,7 @@ def update_submission_status(submission_id, status, conn=None):
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status;
                 """,
@@ -218,6 +221,7 @@ def update_submission_note(submission_id, note, conn=None):
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status;
                 """,
@@ -268,6 +272,7 @@ def set_submission_pinned(submission_id, is_pinned, conn=None):
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status;
                 """,
@@ -324,6 +329,7 @@ def update_submission_metadata(submission_id, note, is_pinned, conn=None):
                     code_hash,
                     note,
                     is_pinned,
+                    archived_at,
                     created_at,
                     status;
                 """,
@@ -346,6 +352,47 @@ def update_submission_metadata(submission_id, note, is_pinned, conn=None):
             db.rollback()
         raise
 
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def set_submission_archived(submission_id, archived, conn=None):
+    """Actualiza únicamente el archivado reversible de una submission."""
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE submissions
+                SET archived_at = CASE
+                      WHEN %s THEN COALESCE(archived_at, CURRENT_TIMESTAMP)
+                      ELSE NULL
+                    END
+                WHERE id = %s
+                RETURNING
+                    id, user_id, course_id, title, language, file_path,
+                    original_filename, code_hash, note, is_pinned,
+                    archived_at, created_at, status;
+                """,
+                (archived, submission_id),
+            )
+            row = cur.fetchone()
+
+        if row is None:
+            raise SubmissionNotFound(
+                "Submission id={} was not found.".format(submission_id)
+            )
+
+        if owns_connection:
+            db.commit()
+        return dict(row)
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
     finally:
         if owns_connection:
             db.close()

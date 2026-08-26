@@ -137,6 +137,25 @@ class SubmissionRepositoryTests(unittest.TestCase):
         self.assertEqual(result["note"], "Referencia")
         self.assertIs(result["is_pinned"], True)
 
+    def test_archive_update_only_sets_archived_at(self):
+        conn = FakeConnection([submission_row()])
+        submission_repository.set_submission_archived(7, True, conn=conn)
+        sql, _params = conn.executed[0]
+        update_sql = " ".join(sql.split())
+        self.assertIn("SET archived_at = CASE", update_sql)
+        self.assertNotIn("SET note", update_sql)
+        self.assertNotIn("is_pinned = %s", update_sql)
+
+    def test_note_and_pin_returns_include_archived_at(self):
+        for operation, args in (
+            (submission_repository.update_submission_note, (7, "nota")),
+            (submission_repository.set_submission_pinned, (7, True)),
+        ):
+            with self.subTest(operation=operation.__name__):
+                conn = FakeConnection([submission_row()])
+                operation(*args, conn=conn)
+                self.assertIn("archived_at", conn.executed[0][0])
+
 
 if __name__ == "__main__":
     unittest.main()

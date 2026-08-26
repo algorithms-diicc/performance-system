@@ -45,7 +45,7 @@ from ..services.submission_access_service import (
 
 submissions_bp = Blueprint("submissions", __name__, url_prefix="/api")
 
-MUTABLE_SUBMISSION_METADATA_FIELDS = frozenset({"note", "isPinned"})
+MUTABLE_SUBMISSION_METADATA_FIELDS = frozenset({"note", "isPinned", "archived"})
 
 HISTORY_STATUS_FILTERS = frozenset({
     "EMPTY",
@@ -72,6 +72,7 @@ def _parse_submission_history_filters():
     ).strip().upper()
     raw_course = str(request.args.get("course_id") or "").strip()
     raw_reference = str(request.args.get("reference") or "").strip()
+    raw_archived = str(request.args.get("archived") or "").strip()
     query = str(request.args.get("q") or "").strip()
 
     if raw_status and raw_status not in HISTORY_STATUS_FILTERS:
@@ -120,12 +121,18 @@ def _parse_submission_history_filters():
             "El parámetro 'reference' debe ser '1' o '0'."
         )
 
+    if raw_archived not in {"", "0", "1"}:
+        raise BadRequestError(
+            "El parámetro 'archived' debe ser '1' o '0'."
+        )
+
     return {
         "status": raw_status or None,
         "benchmark": raw_benchmark or None,
         "courseMode": course_mode,
         "courseId": course_id,
         "referenceOnly": raw_reference == "1",
+        "archivedOnly": raw_archived == "1",
         "query": query or None,
     }
 
@@ -133,6 +140,12 @@ def _parse_submission_history_filters():
 def _build_submission_history_cte(user_id, filters):
     where_parts = ["s.user_id = %s"]
     params = [user_id]
+
+    where_parts.append(
+        "s.archived_at IS NOT NULL"
+        if filters.get("archivedOnly")
+        else "s.archived_at IS NULL"
+    )
 
     course_mode = filters.get("courseMode")
 
@@ -201,6 +214,7 @@ def _build_submission_history_cte(user_id, filters):
       SELECT
         s.id,
         s.created_at,
+        s.archived_at,
 
         COUNT(e.id) AS executions_count,
 
@@ -267,7 +281,8 @@ def _build_submission_history_cte(user_id, filters):
 
       GROUP BY
         s.id,
-        s.created_at
+        s.created_at,
+        s.archived_at
     ),
 
     history_rows AS (
@@ -331,6 +346,11 @@ def _serialize_submission_metadata(row, include_private=True):
     """Serializa procedencia y, cuando corresponde, metadata privada."""
     payload = {
         "originalFilename": row.get("original_filename"),
+        "archivedAt": (
+            row["archived_at"].isoformat()
+            if row.get("archived_at")
+            else None
+        ),
     }
     if include_private:
         payload.update(
@@ -390,6 +410,15 @@ def _parse_submission_metadata_patch():
                 extra={"field": "isPinned"},
             )
         updates["is_pinned"] = raw_is_pinned
+
+    if "archived" in data:
+        raw_archived = data["archived"]
+        if not isinstance(raw_archived, bool):
+            raise ValidationError(
+                "archived debe ser un booleano JSON.",
+                extra={"field": "archived"},
+            )
+        updates["archived"] = raw_archived
 
     return updates
 
@@ -526,6 +555,7 @@ def list_my_submissions():
               s.original_filename,
               s.note,
               s.is_pinned,
+              s.archived_at,
               s.status AS legacy_status,
               s.created_at,
 
@@ -817,6 +847,7 @@ def get_submission_detail(submission_id: int):
                   s.code_hash AS archive_sha256,
                   s.note,
                   s.is_pinned,
+                  s.archived_at,
                   s.status AS legacy_status,
                   s.created_at,
                   c.code AS course_code,
@@ -999,7 +1030,21 @@ def update_submission_metadata(submission_id: int):
             )
 
         try:
-            if "note" in updates and "is_pinned" in updates:
+            if "archived" in updates:
+                updated = submission_repository.set_submission_archived(
+                    submission_id,
+                    archived=updates["archived"],
+                    conn=conn,
+                )
+                if "note" in updates:
+                    updated = submission_repository.update_submission_note(
+                        submission_id, updates["note"], conn=conn
+                    )
+                if "is_pinned" in updates:
+                    updated = submission_repository.set_submission_pinned(
+                        submission_id, updates["is_pinned"], conn=conn
+                    )
+            elif "note" in updates and "is_pinned" in updates:
                 updated = submission_repository.update_submission_metadata(
                     submission_id,
                     note=updates["note"],

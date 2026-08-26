@@ -699,7 +699,7 @@ describe("SubmissionOverviewPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("Referencia inicial")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Marcar como referencia" })
+      screen.getByRole("button", { name: "Marcar como referencia de comparación" })
     ).toHaveAttribute("aria-pressed", "false");
 
     fireEvent.click(screen.getByRole("button", { name: "Editar" }));
@@ -786,11 +786,11 @@ describe("SubmissionOverviewPage", () => {
     await renderLoadedPage();
 
     fireEvent.click(
-      screen.getByRole("button", { name: "Marcar como referencia" })
+      screen.getByRole("button", { name: "Marcar como referencia de comparación" })
     );
 
     const pinnedButton = await screen.findByRole("button", {
-      name: "Referencia",
+      name: "Referencia de comparación",
     });
     expect(pinnedButton).toHaveAttribute("aria-pressed", "true");
     expect(axios.patch).toHaveBeenLastCalledWith(
@@ -802,7 +802,7 @@ describe("SubmissionOverviewPage", () => {
     fireEvent.click(pinnedButton);
 
     const unpinnedButton = await screen.findByRole("button", {
-      name: "Marcar como referencia",
+      name: "Marcar como referencia de comparación",
     });
     expect(unpinnedButton).toHaveAttribute("aria-pressed", "false");
     expect(axios.patch).toHaveBeenLastCalledWith(
@@ -1460,5 +1460,11 @@ describe("SubmissionOverviewPage", () => {
       within(firstCard).getByRole("button", { name: "Ver resultado" })
     );
     expect(mockNavigate).toHaveBeenCalledWith("/code/comparison-codename-1");
+  });
+
+  test("shows comparison-reference helper and owner archive action", async () => {
+    await renderLoadedPage();
+    expect(screen.getByText("Destaca este experimento para que sus ejecuciones completadas puedan utilizarse como referencias en comparaciones posteriores.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Archivar" })).toBeInTheDocument();
   });
 });

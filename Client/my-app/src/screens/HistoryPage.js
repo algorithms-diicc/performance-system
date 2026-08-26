@@ -7,6 +7,7 @@ import React, {
 import { Link } from "react-router-dom";
 import {
   Archive,
+  ArchiveRestore,
   ArrowLeft,
   ArrowRight,
   CalendarDays,
@@ -38,6 +39,7 @@ const INITIAL_FILTERS = Object.freeze({
   courseId: "",
   query: "",
   referenceOnly: false,
+  archivedOnly: false,
 });
 
 const HISTORY_FILTER_OPTIONS_URL =
@@ -54,6 +56,7 @@ const buildHistoryUrl = (page, filters) => {
   if (filters.courseId) params.set("course_id", filters.courseId);
   if (filters.query) params.set("q", filters.query);
   if (filters.referenceOnly) params.set("reference", "1");
+  if (filters.archivedOnly) params.set("archived", "1");
 
   return `/api/submissions?${params.toString()}`;
 };
@@ -164,6 +167,11 @@ const HistoryPage = () => {
   const [filters, setFilters] = useState(INITIAL_FILTERS);
   const [queryDraft, setQueryDraft] = useState("");
   const [courseOptions, setCourseOptions] = useState([]);
+  const [archiveSavingId, setArchiveSavingId] = useState(null);
+  const [archiveFeedback, setArchiveFeedback] = useState({
+    submissionId: null,
+    message: "",
+  });
 
   const loadHistory = useCallback(async () => {
     setIsLoading(true);
@@ -292,6 +300,38 @@ const HistoryPage = () => {
     setPage((current) =>
       Math.min(totalPages, current + 1)
     );
+  };
+
+  const handleSetArchived = async (item, archived) => {
+    if (!item?.id || archiveSavingId !== null) return;
+    setArchiveSavingId(item.id);
+    setArchiveFeedback({ submissionId: null, message: "" });
+
+    try {
+      await requestJson(
+        `/api/submissions/${encodeURIComponent(item.id)}`,
+        {
+          method: "PATCH",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archived }),
+        },
+        { fallback: t("history.errors.archive") }
+      );
+
+      if (items.length === 1 && page > 1) {
+        setPage((current) => Math.max(1, current - 1));
+      } else {
+        await loadHistory();
+      }
+    } catch (mutationError) {
+      setArchiveFeedback({
+        submissionId: item.id,
+        message: mutationError?.message || t("history.errors.archive"),
+      });
+    } finally {
+      setArchiveSavingId(null);
+    }
   };
 
   return (
@@ -517,6 +557,19 @@ const HistoryPage = () => {
               />
               <span>{t("history.referencesOnly")}</span>
             </label>
+            <label className="history-reference-filter">
+              <input
+                type="checkbox"
+                checked={filters.archivedOnly}
+                onChange={(event) =>
+                  updateFilter("archivedOnly", event.target.checked)
+                }
+              />
+              <span>{t("history.archivedOnly")}</span>
+            </label>
+            <small className="history-archive-hint">
+              {t("history.archiveHint")}
+            </small>
           </section>
 
           <section
@@ -704,6 +757,11 @@ const HistoryPage = () => {
                               )}
                             </span>
                           )}
+                          {item.archivedAt && (
+                            <span className="history-status history-status--neutral">
+                              {t("history.archived")}
+                            </span>
+                          )}
 
                           <span
                             className={[
@@ -846,6 +904,25 @@ const HistoryPage = () => {
                       </div>
 
                       <div className="history-card__actions">
+                        <button
+                          type="button"
+                          className="history-button history-button--secondary"
+                          onClick={() =>
+                            handleSetArchived(item, !item.archivedAt)
+                          }
+                          disabled={archiveSavingId === item.id}
+                        >
+                          {item.archivedAt ? (
+                            <ArchiveRestore size={16} aria-hidden="true" />
+                          ) : (
+                            <Archive size={16} aria-hidden="true" />
+                          )}
+                          {archiveSavingId === item.id
+                            ? t("history.updating")
+                            : item.archivedAt
+                            ? t("history.restore")
+                            : t("history.archive")}
+                        </button>
                         <Link
                           to={`/submissions/${encodeURIComponent(
                             item.id
@@ -861,6 +938,11 @@ const HistoryPage = () => {
                           />
                         </Link>
                       </div>
+                      {archiveFeedback.submissionId === item.id && (
+                        <p className="history-archive-feedback" role="alert">
+                          {archiveFeedback.message}
+                        </p>
+                      )}
                     </article>
                   );
                 })}

@@ -542,4 +542,27 @@ describe("HistoryPage", () => {
 
     expect(historyAttempts).toBe(2);
   });
+
+  test("archives filters and lifecycle actions use the authoritative contract", async () => {
+    const archivedItem = { ...item, id: 43, title: "Archivado", archivedAt: "2026-08-20T10:00:00Z" };
+    requestJson.mockImplementation((url, options) => {
+      if (url === "/api/submissions/history-filter-options") return Promise.resolve({ courses: [] });
+      if (url === "/api/submissions/42") {
+        expect(options).toMatchObject({ method: "PATCH", body: JSON.stringify({ archived: true }) });
+        return Promise.resolve({ id: 42, archivedAt: "2026-08-20T10:00:00Z" });
+      }
+      if (url.startsWith("/api/submissions?")) return Promise.resolve(historyResponse({ items: [item, archivedItem], total: 2 }));
+      return Promise.reject(new Error(`Unexpected request: ${url}`));
+    });
+    renderHistory();
+    await screen.findByText("Comparación de ordenamiento");
+    expect(requestJson.mock.calls[0][0]).not.toContain("archived=1");
+    expect(screen.getByRole("button", { name: "Archivar" })).toBeInTheDocument();
+    expect(screen.getAllByText("Archivado").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Restaurar" })).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Solo archivados"));
+    await waitFor(() => expect(requestJson).toHaveBeenCalledWith(expect.stringContaining("archived=1"), expect.anything(), expect.anything()));
+    fireEvent.click(screen.getByLabelText("Solo referencias"));
+    await waitFor(() => expect(requestJson.mock.calls.some(([url]) => url.includes("archived=1") && url.includes("reference=1"))).toBe(true));
+  });
 });

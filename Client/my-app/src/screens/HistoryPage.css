@@ -407,6 +407,9 @@
 }
 
 .history-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ps-space-2);
   margin-top: var(--ps-space-5);
   display: flex;
   justify-content: flex-end;

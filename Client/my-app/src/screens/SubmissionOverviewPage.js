@@ -32,7 +32,7 @@ import {
   RefreshCw,
   Save,
   Server,
-  Star,
+  Pin,
   X,
   XCircle,
 } from "lucide-react";
@@ -298,6 +298,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
   const [noteDraft, setNoteDraft] = useState("");
   const [noteSaving, setNoteSaving] = useState(false);
   const [pinSaving, setPinSaving] = useState(false);
+  const [recordArchiveSaving, setRecordArchiveSaving] = useState(false);
   const [metadataError, setMetadataError] = useState(null);
   const [metadataFeedback, setMetadataFeedback] =
     useState("");
@@ -752,6 +753,28 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     }
   };
 
+  const handleSetRecordArchived = async (archived) => {
+    if (!permissions.canEditMetadata || recordArchiveSaving) return;
+    setRecordArchiveSaving(true);
+    setMetadataError(null);
+    setMetadataFeedback("");
+
+    try {
+      await patchMetadata({ archived });
+      setMetadataFeedback(
+        archived
+          ? "submissionOverview.feedback.archived"
+          : "submissionOverview.feedback.restored"
+      );
+    } catch (error) {
+      setMetadataError(
+        metadataErrorState(error, "submissionOverview.errors.archiveUpdate")
+      );
+    } finally {
+      setRecordArchiveSaving(false);
+    }
+  };
+
   const handleCopySha = async () => {
     const archiveSha256 = String(
       submission?.archiveSha256 || ""
@@ -914,6 +937,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
   const isPinned = hasOwn(submission, "isPinned")
     ? Boolean(submission.isPinned)
     : false;
+  const isArchived = Boolean(submission.archivedAt);
   const archiveTrace = archiveContext.trace;
   const canDownloadArchive = Boolean(
     archiveTrace?.permissions?.canDownloadArchive === true
@@ -1188,6 +1212,12 @@ const SubmissionOverviewPage = ({ currentUser }) => {
           </dl>
         </section>
 
+        {isArchived && (
+          <p className="submission-overview__archive-state" role="status">
+            {t("submissionOverview.personal.archived")}
+          </p>
+        )}
+
         {showPrivateMetadata && (
           <section
             className="submission-overview__card submission-overview__personal"
@@ -1208,40 +1238,57 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               </div>
 
               {permissions.canEditMetadata && (
-                <button
-                  type="button"
-                  className={[
-                    "submission-overview__reference-action",
-                    isPinned
-                      ? "submission-overview__reference-action--active"
-                      : "",
-                  ]
-                    .filter(Boolean)
-                    .join(" ")}
-                  onClick={handleTogglePinned}
-                  disabled={pinSaving}
-                  aria-pressed={isPinned}
-                >
-                  <Star
-                    size={17}
-                    strokeWidth={1.9}
-                    fill={isPinned ? "currentColor" : "none"}
-                    aria-hidden="true"
-                  />
-                  {pinSaving
-                    ? t(
-                        "submissionOverview.personal.updating"
-                      )
-                    : isPinned
-                    ? t(
-                        "submissionOverview.personal.reference"
-                      )
-                    : t(
-                        "submissionOverview.personal.markReference"
-                      )}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    className={[
+                      "submission-overview__reference-action",
+                      isPinned
+                        ? "submission-overview__reference-action--active"
+                        : "",
+                    ]
+                      .filter(Boolean)
+                      .join(" ")}
+                    onClick={handleTogglePinned}
+                    disabled={pinSaving}
+                    aria-pressed={isPinned}
+                  >
+                    <Pin
+                      size={17}
+                      strokeWidth={1.9}
+                      aria-hidden="true"
+                    />
+                    {pinSaving
+                      ? t(
+                          "submissionOverview.personal.updating"
+                        )
+                      : isPinned
+                      ? t(
+                          "submissionOverview.personal.reference"
+                        )
+                      : t(
+                          "submissionOverview.personal.markReference"
+                        )}
+                  </button>
+                  <button
+                    type="button"
+                    className="submission-overview__text-action"
+                    onClick={() => handleSetRecordArchived(!isArchived)}
+                    disabled={recordArchiveSaving}
+                  >
+                    {recordArchiveSaving
+                      ? t("submissionOverview.personal.updating")
+                      : isArchived
+                      ? t("submissionOverview.personal.restore")
+                      : t("submissionOverview.personal.archive")}
+                  </button>
+                </>
               )}
             </div>
+
+            <p className="submission-overview__personal-reference-hint">
+              {t("submissionOverview.personal.referenceHint")}
+            </p>
 
             <div className="submission-overview__note">
               {isEditingNote && permissions.canEditMetadata ? (
@@ -2042,7 +2089,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                                 handleOpenReferenceCandidates(execution)
                               }
                             >
-                              <Star
+                              <Pin
                                 size={16}
                                 strokeWidth={2}
                                 aria-hidden="true"
