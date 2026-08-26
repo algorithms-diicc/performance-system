@@ -12,6 +12,8 @@ const translations = {
     "Course responsibility transferred",
   "adminAuditLog.actionLabels.cloneCourse":
     "Course cloned",
+  "adminAuditLog.actionLabels.publishExperimentalProtocol":
+    "Experimental protocol published",
   "adminAuditLog.actionLabels.changeUserRole":
     "User role changed",
   "adminAuditLog.actionLabels.unknown":
@@ -47,6 +49,10 @@ describe(
           "remove_course_student",
           "restore_course_student",
           "rerun_submission",
+          "create_experimental_protocol",
+          "update_experimental_protocol",
+          "publish_experimental_protocol",
+          "deactivate_experimental_protocol",
           "change_user_role",
         ]);
 
@@ -89,6 +95,14 @@ describe(
             t
           )
         ).toBe("Course cloned");
+        expect(
+          adminAuditActionLabel(
+            "publish_experimental_protocol",
+            t
+          )
+        ).toBe(
+          "Experimental protocol published"
+        );
         expect(
           adminAuditActionLabel(
             "change_user_role",

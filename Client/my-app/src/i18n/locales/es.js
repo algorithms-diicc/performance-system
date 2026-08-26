@@ -3990,6 +3990,14 @@ const es = {
         "Estudiante restaurado en el curso",
       rerunSubmission:
         "Reejecución de experimento solicitada",
+      createExperimentalProtocol:
+        "Protocolo experimental creado",
+      updateExperimentalProtocol:
+        "Protocolo experimental actualizado",
+      publishExperimentalProtocol:
+        "Protocolo experimental publicado",
+      deactivateExperimentalProtocol:
+        "Protocolo experimental desactivado",
       changeUserRole:
         "Rol de usuario modificado",
       unknown:

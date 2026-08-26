@@ -373,6 +373,10 @@ def publish_teacher_protocol(course_id, protocol_id):
                 require_active=True,
             )
             current = _load_protocol(cur, course_id, protocol_id)
+            became_available = not (
+                bool(current.get("is_published"))
+                and bool(current.get("is_active"))
+            )
             cur.execute(
                 """
                 UPDATE experimental_protocols
@@ -398,13 +402,14 @@ def publish_teacher_protocol(course_id, protocol_id):
             row["academic_year"] = current["academic_year"]
             row["academic_term"] = current["academic_term"]
 
-            notify_protocol_published(
-                cur,
-                protocol_id=protocol_id,
-                course_id=course_id,
-                actor_user_id=g.current_user["id"],
-                published_at=row["published_at"],
-            )
+            if became_available:
+                notify_protocol_published(
+                    cur,
+                    protocol_id=protocol_id,
+                    course_id=course_id,
+                    actor_user_id=g.current_user["id"],
+                    published_at=row["published_at"],
+                )
 
             _audit(
                 cur,

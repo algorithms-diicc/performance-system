@@ -50,6 +50,26 @@ export const ADMIN_AUDIT_ACTIONS = Object.freeze([
       "adminAuditLog.actionLabels.rerunSubmission",
   },
   {
+    code: "create_experimental_protocol",
+    labelKey:
+      "adminAuditLog.actionLabels.createExperimentalProtocol",
+  },
+  {
+    code: "update_experimental_protocol",
+    labelKey:
+      "adminAuditLog.actionLabels.updateExperimentalProtocol",
+  },
+  {
+    code: "publish_experimental_protocol",
+    labelKey:
+      "adminAuditLog.actionLabels.publishExperimentalProtocol",
+  },
+  {
+    code: "deactivate_experimental_protocol",
+    labelKey:
+      "adminAuditLog.actionLabels.deactivateExperimentalProtocol",
+  },
+  {
     code: "change_user_role",
     labelKey:
       "adminAuditLog.actionLabels.changeUserRole",

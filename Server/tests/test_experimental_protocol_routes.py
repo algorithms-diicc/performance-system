@@ -410,6 +410,47 @@ class ExperimentalProtocolRoutesTests(unittest.TestCase):
             notification_sql[0],
         )
 
+    def test_publish_already_available_protocol_does_not_duplicate_notification(self):
+        current = protocol_row(
+            is_published=True,
+            is_active=True,
+        )
+        published = protocol_row(
+            is_published=True,
+            is_active=True,
+        )
+
+        response, conn = self._request(
+            TEACHER,
+            "POST",
+            "/api/teacher/courses/10/protocols/7/publish",
+            responses=[
+                course_row(),
+                current,
+                published,
+                None,
+            ],
+        )
+
+        self.assertEqual(
+            response.status_code,
+            200,
+        )
+        self.assertEqual(
+            conn.commits,
+            1,
+        )
+
+        notification_sql = [
+            " ".join(sql.split())
+            for sql, _params in conn.executed
+            if "INSERT INTO notifications" in sql
+        ]
+        self.assertEqual(
+            notification_sql,
+            [],
+        )
+
     def test_deactivate_hides_protocol_without_delete(self):
         current = protocol_row(
             is_published=True,
