@@ -182,6 +182,7 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
         user,
         *,
         access_overrides=None,
+        execution_overrides=None,
         missing=False,
     ):
         if missing:
@@ -190,7 +191,7 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
             responses = [
                 access_row(**(access_overrides or {})),
                 {"total": 1},
-                [execution_row()],
+                [execution_row(**(execution_overrides or {}))],
             ]
         conn = ScriptedConnection(responses)
         response = self._request(
@@ -409,6 +410,29 @@ class SubmissionDetailAccessRoutesTests(unittest.TestCase):
         item = response.get_json()["items"][0]
         self.assertEqual(item["durationMs"], 1750)
         self.assertIs(item["resultAvailable"], False)
+
+    def test_cancel_capability_is_owner_or_admin_and_only_while_queued(self):
+        owner_response, _ = self._get_executions(
+            OWNER,
+            execution_overrides={"execution_state": "QUEUED"},
+        )
+        admin_response, _ = self._get_executions(
+            ADMIN,
+            execution_overrides={"execution_state": "QUEUED"},
+        )
+        teacher_response, _ = self._get_executions(
+            ASSIGNED_TEACHER,
+            execution_overrides={"execution_state": "QUEUED"},
+        )
+        running_response, _ = self._get_executions(
+            OWNER,
+            execution_overrides={"execution_state": "RUNNING"},
+        )
+
+        self.assertTrue(owner_response.get_json()["items"][0]["canCancel"])
+        self.assertTrue(admin_response.get_json()["items"][0]["canCancel"])
+        self.assertFalse(teacher_response.get_json()["items"][0]["canCancel"])
+        self.assertFalse(running_response.get_json()["items"][0]["canCancel"])
 
     def test_execution_keeps_failure_contract(self):
         response, _conn = self._get_executions(OWNER)

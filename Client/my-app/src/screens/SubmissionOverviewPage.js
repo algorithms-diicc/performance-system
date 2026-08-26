@@ -331,6 +331,8 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     kind: "idle",
     messageKey: "",
   });
+  const [executionCancellationState, setExecutionCancellationState] =
+    useState({});
 
   const encodedSubmissionId = encodeURIComponent(
     String(submissionId || "")
@@ -425,6 +427,58 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     },
     [submissionEndpoint]
   );
+
+  const handleCancelExecution = async (execution) => {
+    const publicId = String(execution?.publicId || "").trim();
+    const state = String(execution?.state || "").toUpperCase();
+
+    if (
+      !publicId ||
+      state !== "QUEUED" ||
+      execution?.canCancel !== true ||
+      executionCancellationState[publicId]?.pending === true
+    ) {
+      return;
+    }
+
+    setExecutionCancellationState((current) => ({
+      ...current,
+      [publicId]: { pending: true, messageKey: "" },
+    }));
+
+    try {
+      await axios.post(
+        `${serverURL}api/executions/${encodeURIComponent(publicId)}/cancel`,
+        null,
+        { withCredentials: true }
+      );
+      await loadSubmission();
+      setExecutionCancellationState((current) => {
+        const next = { ...current };
+        delete next[publicId];
+        return next;
+      });
+    } catch (error) {
+      const status = error?.response?.status;
+      const messageKey =
+        status === 409
+          ? "submissionOverview.cancellation.stateChanged"
+          : !error?.response
+          ? "submissionOverview.cancellation.network"
+          : status === 401
+          ? "submissionOverview.cancellation.session"
+          : "submissionOverview.cancellation.error";
+
+      if (status === 409) {
+        await loadSubmission();
+      }
+
+      setExecutionCancellationState((current) => ({
+        ...current,
+        [publicId]: { pending: false, messageKey },
+      }));
+    }
+  };
 
   const orderedExecutions = useMemo(
     () => sortSubmissionExecutions(executions),
@@ -1886,6 +1940,53 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                       </span>
 
                       <div className="submission-overview__execution-actions">
+                        {(() => {
+                            const request =
+                              executionCancellationState[
+                                execution.publicId
+                              ] || {};
+                            const canCancel =
+                              execution.canCancel === true &&
+                              execution.state === "QUEUED";
+
+                            if (!canCancel && !request.messageKey) {
+                              return null;
+                            }
+
+                            return (
+                              <div className="submission-overview__execution-cancel">
+                                {canCancel && (
+                                  <button
+                                    type="button"
+                                    className="submission-overview__button submission-overview__button--secondary"
+                                    onClick={() =>
+                                      handleCancelExecution(execution)
+                                    }
+                                    disabled={request.pending === true}
+                                  >
+                                    <Ban
+                                      size={16}
+                                      strokeWidth={2}
+                                      aria-hidden="true"
+                                    />
+                                    {request.pending === true
+                                      ? t(
+                                          "submissionOverview.cancellation.pending"
+                                        )
+                                      : t(
+                                          "submissionOverview.cancellation.action"
+                                        )}
+                                  </button>
+                                )}
+                                {request.messageKey && (
+                                  <span role="alert">
+                                    {t(request.messageKey)}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })()}
+
                         {execution.codename && (
                           <button
                             type="button"

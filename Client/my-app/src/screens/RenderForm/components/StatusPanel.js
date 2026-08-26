@@ -23,7 +23,6 @@ import { useI18n } from "../../../i18n";
 const PROGRESS_STEP_IDS = [
   "accepted",
   "queued",
-  "preparing",
   "running",
   "processing",
   "completed",
@@ -39,6 +38,15 @@ const TECHNICAL_EVENT_ICONS = {
   cancelled: Circle,
 };
 
+const EXECUTION_STATE_ICONS = {
+  QUEUED: Clock3,
+  RUNNING: Activity,
+  PROCESSING: Settings2,
+  COMPLETED: CheckCircle2,
+  FAILED: AlertTriangle,
+  CANCELLED: Circle,
+};
+
 function StatusPanel({
   fileList,
   messages,
@@ -47,6 +55,8 @@ function StatusPanel({
   allDone,
   allTerminal,
   hasError,
+  hasFailure,
+  hasCancelled,
   submissionError,
   firstErrorMessage,
   pollingRequestError,
@@ -58,6 +68,8 @@ function StatusPanel({
   onPrepareNewAnalysis,
   onPrepareRetry,
   onRetryPolling,
+  cancellationState = {},
+  onCancelExecution,
 }) {
   const { t } = useI18n();
   const [showTechnicalDetails, setShowTechnicalDetails] =
@@ -72,12 +84,16 @@ function StatusPanel({
       (execution) => execution?.resultsReady === true
     );
 
+  const failurePresent =
+    hasFailure === true || hasError === true;
+
   const mode = getPanelMode({
     hasExecution,
     isSubmitting,
     allDone,
     allTerminal,
-    hasError,
+    hasFailure: failurePresent,
+    hasCancelled,
     hasCompletedResults,
     submissionError,
     pollingRequestError,
@@ -85,7 +101,7 @@ function StatusPanel({
 
   const progressIndex = useMemo(
     () =>
-      getAggregateProgressIndex({
+      getSingleExecutionProgressIndex({
         fileList,
         messages,
         executionFiles,
@@ -139,6 +155,8 @@ function StatusPanel({
             setShowTechnicalDetails((prev) => !prev)
           }
           onPrepareNewAnalysis={onPrepareNewAnalysis}
+          cancellationState={cancellationState}
+          onCancelExecution={onCancelExecution}
         />
       )}
 
@@ -152,6 +170,7 @@ function StatusPanel({
           }
           onGoToResults={onGoToResults}
           onReset={onReset}
+          executionFiles={executionFiles}
         />
       )}
 
@@ -164,6 +183,21 @@ function StatusPanel({
             setShowTechnicalDetails((prev) => !prev)
           }
           onGoToResults={onGoToResults}
+          onReset={onReset}
+          executionFiles={executionFiles}
+          hasFailure={failurePresent}
+        />
+      )}
+
+      {mode === "cancelled" && (
+        <CancelledPanel
+          {...shared}
+          messages={messages}
+          executionFiles={executionFiles}
+          showTechnicalDetails={showTechnicalDetails}
+          onToggleTechnical={() =>
+            setShowTechnicalDetails((prev) => !prev)
+          }
           onReset={onReset}
         />
       )}
@@ -180,6 +214,7 @@ function StatusPanel({
           onPrepareRetry={onPrepareRetry}
           retryRequestOnly={Boolean(pollingRequestError)}
           onRetryRequest={onRetryPolling}
+          executionFiles={executionFiles}
         />
       )}
     </aside>
@@ -321,8 +356,13 @@ function RunningPanel({
   showTechnicalDetails,
   onToggleTechnical,
   onPrepareNewAnalysis,
+  cancellationState,
+  onCancelExecution,
   t,
 }) {
+  const multipleExecutions =
+    Array.isArray(executionFiles) && executionFiles.length >= 2;
+
   return (
     <>
       <PanelHeader
@@ -346,12 +386,30 @@ function RunningPanel({
 
       <CompactExecutionSummary summary={summary} t={t} />
 
-      <QueuePositions executionFiles={executionFiles} t={t} />
+      {multipleExecutions ? (
+        <ExecutionStatusList
+          executionFiles={executionFiles}
+          cancellationState={cancellationState}
+          onCancelExecution={onCancelExecution}
+          t={t}
+        />
+      ) : (
+        <>
+          <QueuePositions executionFiles={executionFiles} t={t} />
 
-      <ProgressStepper
-        progressIndex={progressIndex}
-        t={t}
-      />
+          <ProgressStepper
+            progressIndex={progressIndex}
+            t={t}
+          />
+
+          <SingleExecutionCancellation
+            executionFiles={executionFiles}
+            cancellationState={cancellationState}
+            onCancelExecution={onCancelExecution}
+            t={t}
+          />
+        </>
+      )}
 
       <TechnicalDetails
         messages={messages}
@@ -385,6 +443,7 @@ function RunningPanel({
 function CompletedPanel({
   summary,
   messages,
+  executionFiles,
   showTechnicalDetails,
   onToggleTechnical,
   onGoToResults,
@@ -425,6 +484,11 @@ function CompletedPanel({
 
       <CompactExecutionSummary summary={summary} t={t} />
 
+      <TerminalExecutionStatusList
+        executionFiles={executionFiles}
+        t={t}
+      />
+
       <div className="rf-status-actions">
         <button
           type="button"
@@ -458,6 +522,8 @@ function CompletedPanel({
 function PartialPanel({
   summary,
   messages,
+  executionFiles,
+  hasFailure,
   showTechnicalDetails,
   onToggleTechnical,
   onGoToResults,
@@ -470,7 +536,9 @@ function PartialPanel({
         kicker={t("renderForm.workflow.partial.kicker")}
         title={t("renderForm.workflow.partial.title")}
         description={t(
-          "renderForm.workflow.partial.description"
+          hasFailure
+            ? "renderForm.workflow.partial.description"
+            : "renderForm.workflow.partial.cancelledDescription"
         )}
         icon={<AlertTriangle size={20} />}
         chip={{
@@ -484,15 +552,28 @@ function PartialPanel({
 
         <div>
           <strong>
-            {t("renderForm.workflow.partial.calloutTitle")}
+            {t(
+              hasFailure
+                ? "renderForm.workflow.partial.calloutTitle"
+                : "renderForm.workflow.partial.cancelledCalloutTitle"
+            )}
           </strong>
           <p>
-            {t("renderForm.workflow.partial.calloutText")}
+            {t(
+              hasFailure
+                ? "renderForm.workflow.partial.calloutText"
+                : "renderForm.workflow.partial.cancelledCalloutText"
+            )}
           </p>
         </div>
       </div>
 
       <CompactExecutionSummary summary={summary} t={t} />
+
+      <TerminalExecutionStatusList
+        executionFiles={executionFiles}
+        t={t}
+      />
 
       <div className="rf-status-actions">
         <button
@@ -524,10 +605,63 @@ function PartialPanel({
   );
 }
 
+function CancelledPanel({
+  summary,
+  messages,
+  executionFiles,
+  showTechnicalDetails,
+  onToggleTechnical,
+  onReset,
+  t,
+}) {
+  return (
+    <>
+      <PanelHeader
+        kicker={t("renderForm.workflow.cancelled.kicker")}
+        title={t("renderForm.workflow.cancelled.title")}
+        description={t(
+          "renderForm.workflow.cancelled.description"
+        )}
+        icon={<Circle size={20} />}
+        chip={{
+          label: t("renderForm.workflow.cancelled.chip"),
+          className: "status-chip",
+        }}
+      />
+
+      <CompactExecutionSummary summary={summary} t={t} />
+
+      <TerminalExecutionStatusList
+        executionFiles={executionFiles}
+        t={t}
+      />
+
+      <div className="rf-status-actions">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onReset}
+        >
+          <RotateCcw size={15} />
+          {t("renderForm.workflow.cancelled.newAnalysis")}
+        </button>
+      </div>
+
+      <TechnicalDetails
+        messages={messages}
+        open={showTechnicalDetails}
+        onToggle={onToggleTechnical}
+        t={t}
+      />
+    </>
+  );
+}
+
 function ErrorPanel({
   summary,
   message,
   messages,
+  executionFiles,
   showTechnicalDetails,
   onToggleTechnical,
   onPrepareRetry,
@@ -562,6 +696,11 @@ function ErrorPanel({
       </div>
 
       <CompactExecutionSummary summary={summary} t={t} />
+
+      <TerminalExecutionStatusList
+        executionFiles={executionFiles}
+        t={t}
+      />
 
       <div className="rf-status-actions">
         <button
@@ -785,8 +924,9 @@ function QueuePositions({ executionFiles, t }) {
     ? executionFiles.filter(
         (execution) =>
           execution?.state === "QUEUED" &&
-          Number.isInteger(execution?.queueAhead) &&
-          execution.queueAhead >= 0
+          (Number.isInteger(execution?.queuePosition) ||
+            (Number.isInteger(execution?.queueAhead) &&
+              execution.queueAhead >= 0))
       )
     : [];
 
@@ -809,11 +949,7 @@ function QueuePositions({ executionFiles, t }) {
               {execution.originalName || execution.codename}
             </span>
             <strong>
-              {execution.queueAhead === 0
-                ? t("renderForm.workflow.queue.next")
-                : t("renderForm.workflow.queue.ahead", {
-                    count: execution.queueAhead,
-                  })}
+              {queuePositionText(execution, t)}
             </strong>
           </li>
         ))}
@@ -821,6 +957,190 @@ function QueuePositions({ executionFiles, t }) {
 
       <p>{t("renderForm.workflow.queue.explanation")}</p>
     </section>
+  );
+}
+
+function executionStateKey(state) {
+  const normalized = String(state || "").toUpperCase();
+  const keys = {
+    QUEUED: "queued",
+    RUNNING: "running",
+    PROCESSING: "processing",
+    COMPLETED: "completed",
+    FAILED: "failed",
+    CANCELLED: "cancelled",
+  };
+
+  return `renderForm.workflow.executionStates.${
+    keys[normalized] || "unknown"
+  }`;
+}
+
+function queuePositionText(execution, t) {
+  if (String(execution?.state || "").toUpperCase() !== "QUEUED") {
+    return "";
+  }
+
+  const explicitPosition = Number(execution?.queuePosition);
+  const queueAhead = Number(execution?.queueAhead);
+  const position =
+    Number.isInteger(explicitPosition) && explicitPosition >= 1
+      ? explicitPosition
+      : Number.isInteger(queueAhead) && queueAhead >= 0
+      ? queueAhead + 1
+      : null;
+
+  if (position === 1) {
+    return t("renderForm.workflow.executionQueue.next");
+  }
+
+  if (position && position > 1) {
+    return t("renderForm.workflow.executionQueue.position", {
+      position,
+    });
+  }
+
+  return "";
+}
+
+function ExecutionCancelAction({
+  execution,
+  cancellationState,
+  onCancelExecution,
+  t,
+}) {
+  const publicId = execution?.publicId;
+  const state = String(execution?.state || "").toUpperCase();
+  const request = publicId
+    ? cancellationState?.[publicId] || {}
+    : {};
+  const canCancel = Boolean(
+    publicId &&
+      state === "QUEUED" &&
+      execution?.canCancel === true &&
+      typeof onCancelExecution === "function"
+  );
+
+  if (!canCancel && !request.messageKey) {
+    return null;
+  }
+
+  const name = execution?.originalName || execution?.codename || "";
+
+  return (
+    <div className="rf-execution-cancellation">
+      {canCancel && (
+        <button
+          type="button"
+          className="secondary-button rf-execution-cancel-button"
+          disabled={request.pending === true}
+          onClick={() => onCancelExecution(execution)}
+          aria-label={t(
+            "renderForm.workflow.cancellation.actionFor",
+            { name }
+          )}
+        >
+          {request.pending === true
+            ? t("renderForm.workflow.cancellation.pending")
+            : t("renderForm.workflow.cancellation.action")}
+        </button>
+      )}
+
+      {request.messageKey && (
+        <span className="rf-execution-cancel-feedback" role="alert">
+          {t(request.messageKey)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function ExecutionStatusList({
+  executionFiles,
+  cancellationState = {},
+  onCancelExecution,
+  t,
+}) {
+  if (!Array.isArray(executionFiles) || executionFiles.length === 0) {
+    return null;
+  }
+
+  return (
+    <section
+      className="rf-execution-status-list"
+      aria-label={t("renderForm.workflow.executionList.title")}
+    >
+      <strong className="rf-execution-status-list-title">
+        {t("renderForm.workflow.executionList.title")}
+      </strong>
+
+      <ul>
+        {executionFiles.map((execution) => {
+          const state = String(execution?.state || "").toUpperCase();
+          const StateIcon = EXECUTION_STATE_ICONS[state] || Circle;
+          const queueText = queuePositionText(execution, t);
+
+          return (
+            <li
+              key={execution.publicId || execution.codename}
+              className={`rf-execution-status-row rf-execution-status-row-${
+                state.toLowerCase() || "unknown"
+              }`}
+            >
+              <StateIcon size={16} aria-hidden="true" />
+
+              <span className="rf-execution-status-name">
+                {execution.originalName || execution.codename}
+              </span>
+
+              <span className="rf-execution-status-value">
+                <strong>{t(executionStateKey(state))}</strong>
+                {queueText && <small>{queueText}</small>}
+              </span>
+
+              <ExecutionCancelAction
+                execution={execution}
+                cancellationState={cancellationState}
+                onCancelExecution={onCancelExecution}
+                t={t}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </section>
+  );
+}
+
+function SingleExecutionCancellation(props) {
+  const execution = Array.isArray(props.executionFiles)
+    ? props.executionFiles[0]
+    : null;
+
+  if (!execution) return null;
+
+  return (
+    <div className="rf-single-execution-cancellation">
+      <ExecutionCancelAction
+        execution={execution}
+        cancellationState={props.cancellationState}
+        onCancelExecution={props.onCancelExecution}
+        t={props.t}
+      />
+    </div>
+  );
+}
+
+function TerminalExecutionStatusList({ executionFiles, t }) {
+  if (!Array.isArray(executionFiles) || executionFiles.length < 2) {
+    return null;
+  }
+
+  return (
+    <ExecutionStatusList
+      executionFiles={executionFiles}
+      t={t}
+    />
   );
 }
 
@@ -930,7 +1250,8 @@ function getPanelMode({
   isSubmitting,
   allDone,
   allTerminal,
-  hasError,
+  hasFailure,
+  hasCancelled,
   hasCompletedResults,
   submissionError,
   pollingRequestError,
@@ -953,20 +1274,24 @@ function getPanelMode({
 
   if (
     allTerminal &&
-    hasError &&
+    (hasFailure || hasCancelled) &&
     hasCompletedResults
   ) {
     return "partial";
   }
 
-  if (allTerminal && hasError) {
+  if (allTerminal && hasFailure) {
     return "error";
+  }
+
+  if (allTerminal && hasCancelled) {
+    return "cancelled";
   }
 
   return "running";
 }
 
-function getAggregateProgressIndex({
+function getSingleExecutionProgressIndex({
   fileList,
   messages,
   executionFiles,
@@ -979,7 +1304,7 @@ function getAggregateProgressIndex({
 
   if (
     !Array.isArray(fileList) ||
-    fileList.length === 0
+    fileList.length !== 1
   ) {
     return isSubmitting ? 0 : 0;
   }
@@ -992,31 +1317,24 @@ function getAggregateProgressIndex({
       ? executionFiles
       : [];
 
-  const indexes = fileList.map((code) => {
-    const group = groups.find(
-      (item) => item.codename === code
-    );
+  const code = fileList[0];
+  const group = groups.find(
+    (item) => item.codename === code
+  );
+  const file = files.find(
+    (item) => item.codename === code
+  );
 
-    const file = files.find(
-      (item) => item.codename === code
-    );
-
-    return getFileProgressIndex({
-      group,
-      file,
-    });
-  });
-
-  return Math.min(...indexes);
+  return getFileProgressIndex({ group, file });
 }
 
 function getFileProgressIndex({ group, file }) {
   if (file?.resultsReady) {
-    return 5;
+    return 4;
   }
 
   const status = String(
-    file?.status || group?.status || ""
+    file?.state || file?.status || group?.state || group?.status || ""
   ).toUpperCase();
 
   const eventKeys = new Set(
@@ -1026,18 +1344,24 @@ function getFileProgressIndex({ group, file }) {
   );
 
   if (
+    status === "COMPLETED"
+  ) {
+    return 4;
+  }
+
+  if (
     status === "DONE" ||
     status === "PROCESSING" ||
     eventKeys.has("processing")
   ) {
-    return 4;
+    return 3;
   }
 
   if (
     status === "RUNNING" ||
     eventKeys.has("running")
   ) {
-    return 3;
+    return 2;
   }
 
   if (
@@ -1114,7 +1438,8 @@ function resolveTechnicalEventText(entry, t) {
 
 function classifyTechnicalEvent(entry) {
   if (entry?.key === "completed") return "success";
-  if (["failed", "cancelled"].includes(entry?.key)) return "error";
+  if (entry?.key === "failed") return "error";
+  if (entry?.key === "cancelled") return "cancelled";
   return "info";
 }
 

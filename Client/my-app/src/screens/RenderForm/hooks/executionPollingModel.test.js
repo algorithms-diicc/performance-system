@@ -4,6 +4,7 @@ import {
   indexExecutionRecords,
   normalizeExecutionSnapshot,
   normalizeQueueAhead,
+  normalizeQueuePosition,
 } from "./executionPollingModel";
 
 describe("executionPollingModel", () => {
@@ -41,6 +42,14 @@ describe("executionPollingModel", () => {
     });
     expect(item.terminal).toBe(false);
     expect(item.resultsReady).toBe(false);
+  });
+
+  test("CANCELLED is terminal but not a failure", () => {
+    const item = normalizeExecutionSnapshot({ state: "CANCELLED" });
+    expect(item.terminal).toBe(true);
+    expect(item.hasFailure).toBe(false);
+    expect(item.hasCancelled).toBe(true);
+    expect(item.hasError).toBe(false);
   });
 
   test("PROCESSING produces semantic events without UI phrases", () => {
@@ -100,6 +109,36 @@ describe("executionPollingModel", () => {
     ).toBeNull();
   });
 
+  test.each([
+    ["QUEUED", 1, 0, 1],
+    ["QUEUED", 3, 0, 3],
+    ["QUEUED", null, 2, 3],
+    ["QUEUED", 0, 2, 3],
+    ["RUNNING", 1, 0, null],
+  ])(
+    "normalizes queuePosition for %s",
+    (state, position, queueAhead, expected) => {
+      expect(
+        normalizeQueuePosition(position, queueAhead, state)
+      ).toBe(expected);
+    }
+  );
+
+  test("snapshot exposes cancellation only for a queued authoritative record", () => {
+    expect(
+      normalizeExecutionSnapshot({
+        state: "QUEUED",
+        canCancel: true,
+      }).canCancel
+    ).toBe(true);
+    expect(
+      normalizeExecutionSnapshot({
+        state: "RUNNING",
+        canCancel: true,
+      }).canCancel
+    ).toBe(false);
+  });
+
   test("aggregate allDone only when all completed", () => {
     const aggregate = aggregatePollingState([
       { resultsReady: true, terminal: true, hasError: false },
@@ -123,6 +162,35 @@ describe("executionPollingModel", () => {
     expect(aggregate.allTerminal).toBe(true);
     expect(aggregate.hasError).toBe(true);
     expect(aggregate.firstErrorMessage).toBe("Falló");
+  });
+
+  test("aggregate distinguishes cancelled from real failure", () => {
+    const allCancelled = aggregatePollingState([
+      { resultsReady: false, terminal: true, hasCancelled: true },
+      { resultsReady: false, terminal: true, hasCancelled: true },
+    ]);
+    expect(allCancelled.allTerminal).toBe(true);
+    expect(allCancelled.hasFailure).toBe(false);
+    expect(allCancelled.hasCancelled).toBe(true);
+
+    const mixed = aggregatePollingState([
+      { resultsReady: true, terminal: true },
+      { resultsReady: false, terminal: true, hasCancelled: true },
+      { resultsReady: false, terminal: true, hasFailure: true },
+    ]);
+    expect(mixed.allDone).toBe(false);
+    expect(mixed.hasFailure).toBe(true);
+    expect(mixed.hasCancelled).toBe(true);
+  });
+
+  test("a cancelled sibling does not make an active group terminal", () => {
+    const aggregate = aggregatePollingState([
+      { resultsReady: false, terminal: true, hasCancelled: true },
+      { resultsReady: false, terminal: false },
+    ]);
+    expect(aggregate.allTerminal).toBe(false);
+    expect(aggregate.hasFailure).toBe(false);
+    expect(aggregate.hasCancelled).toBe(true);
   });
 
   test("execution records are indexed by codename", () => {

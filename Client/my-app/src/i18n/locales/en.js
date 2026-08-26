@@ -567,7 +567,7 @@ const en = {
         kicker: "Running",
         title: "Analyzing your code",
         description:
-          "The experiment is progressing through the measurement stages.",
+          "The code is being prepared and measurements are running on the node.",
         chip: "In progress",
         prepareAnother: "Prepare another analysis",
         hint:
@@ -584,6 +584,32 @@ const en = {
         },
         explanation:
           "Measurements are dispatched in FIFO order. The position can change as other executions finish or are claimed.",
+      },
+      executionQueue: {
+        next: "Next",
+        position: "Position {{position}}",
+      },
+      executionList: {
+        title: "Status by implementation",
+      },
+      executionStates: {
+        queued: "Queued",
+        running: "Running analysis",
+        processing: "Processing results",
+        completed: "Results available",
+        failed: "Error",
+        cancelled: "Cancelled",
+        unknown: "Status unavailable",
+      },
+      cancellation: {
+        action: "Cancel execution",
+        actionFor: "Cancel execution for {{name}}",
+        pending: "Cancelling…",
+        stateChanged:
+          "The execution changed state before it could be cancelled.",
+        network: "Could not connect to cancel the execution.",
+        session: "Your session cannot cancel this execution.",
+        error: "Could not cancel the execution. Try again.",
       },
       events: {
         accepted: "Request accepted.",
@@ -615,7 +641,20 @@ const en = {
         calloutTitle: "Results are available",
         calloutText:
           "You can review completed executions without repeating those that already finished successfully. The experiment will also show which implementation failed.",
+        cancelledDescription:
+          "Some implementations produced results while others were cancelled before starting.",
+        cancelledCalloutTitle: "Results are available",
+        cancelledCalloutText:
+          "You can review the available results. Cancelled implementations did not produce results.",
         viewResults: "View available results",
+        newAnalysis: "New analysis",
+      },
+      cancelled: {
+        kicker: "Cancelled",
+        title: "Analysis cancelled",
+        description:
+          "The executions were cancelled before measurement began.",
+        chip: "Cancelled",
         newAnalysis: "New analysis",
       },
       error: {
@@ -649,13 +688,10 @@ const en = {
           label: "Queued",
           description: "The code is waiting for its execution turn.",
         },
-        preparing: {
-          label: "Preparing execution",
-          description: "The code and measurement environment are being prepared.",
-        },
         running: {
-          label: "Running measurements",
-          description: "The benchmark is performing the measurements.",
+          label: "Running analysis",
+          description:
+            "The code is being prepared and measurements are running on the node.",
         },
         processing: {
           label: "Processing results",
@@ -1016,6 +1052,15 @@ const en = {
         "The server did not provide additional failure details.",
       stage: "Stage",
       code: "Code",
+    },
+    cancellation: {
+      action: "Cancel execution",
+      pending: "Cancelling…",
+      stateChanged:
+        "The execution changed state before it could be cancelled.",
+      network: "Could not connect to cancel the execution.",
+      session: "Your session cannot cancel this execution.",
+      error: "Could not cancel the execution. Try again.",
     },
     actions: {
       retry: "Retry",

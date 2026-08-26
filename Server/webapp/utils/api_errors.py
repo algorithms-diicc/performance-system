@@ -90,6 +90,15 @@ class NotFoundError(APIError):
         )
 
 
+class ConflictError(APIError):
+    def __init__(self, message="El recurso cambió de estado."):
+        super().__init__(
+            message,
+            status_code=409,
+            code="CONFLICT",
+        )
+
+
 def handle_api_errors(fn):
     """
     Decorador genérico para manejar errores de forma consistente en endpoints.

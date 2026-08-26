@@ -1072,7 +1072,15 @@ def get_submission_executions(submission_id: int):
 
     conn = get_connection()
     try:
-        _assert_current_user_can_view_submission(submission_id, conn)
+        access_row = _assert_current_user_can_view_submission(
+            submission_id,
+            conn,
+        )
+        role_name = str(_current_role_name() or "").strip().casefold()
+        actor_can_cancel = (
+            is_submission_owner(access_row, g.current_user["id"])
+            or role_name == "admin"
+        )
 
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
             base_sql = """
@@ -1127,7 +1135,13 @@ def get_submission_executions(submission_id: int):
         return jsonify(
             {
                 "items": [
-                    serialize_execution_history_row(row)
+                    {
+                        **serialize_execution_history_row(row),
+                        "canCancel": (
+                            actor_can_cancel
+                            and row.get("execution_state") == "QUEUED"
+                        ),
+                    }
                     for row in rows
                 ],
                 "page": page,

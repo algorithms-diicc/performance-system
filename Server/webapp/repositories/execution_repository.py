@@ -228,6 +228,44 @@ def get_execution(public_id, conn=None, for_update=False):
             db.close()
 
 
+def get_execution_cancellation_row(public_id, conn=None):
+    """Bloquea una execution y carga la identidad de su propietario."""
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                SELECT
+                    e.id,
+                    e.public_id::text AS public_id,
+                    e.submission_id,
+                    e.codename,
+                    e.execution_state,
+                    e.state_version,
+                    e.failure_stage,
+                    e.error_code,
+                    e.error_message,
+                    e.result_available,
+                    e.result_path,
+                    s.user_id AS owner_user_id
+                FROM executions e
+                JOIN submissions s ON s.id = e.submission_id
+                WHERE e.public_id = %s::uuid
+                FOR UPDATE OF e;
+                """,
+                (str(public_id),),
+            )
+            row = cur.fetchone()
+
+        return dict(row) if row is not None else None
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
 
 def get_execution_by_codename(codename, conn=None):
     """

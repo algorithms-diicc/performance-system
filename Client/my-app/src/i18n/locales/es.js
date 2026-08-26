@@ -567,7 +567,7 @@ const es = {
         kicker: "En ejecución",
         title: "Analizando tu código",
         description:
-          "El experimento está avanzando por las distintas etapas de medición.",
+          "Se prepara el código y se realizan las mediciones en el nodo.",
         chip: "En curso",
         prepareAnother: "Preparar otro análisis",
         hint:
@@ -584,6 +584,34 @@ const es = {
         },
         explanation:
           "Las mediciones se despachan en orden FIFO. La posición puede cambiar cuando otras ejecuciones terminan o son reclamadas.",
+      },
+      executionQueue: {
+        next: "Siguiente",
+        position: "Posición {{position}}",
+      },
+      executionList: {
+        title: "Estado por implementación",
+      },
+      executionStates: {
+        queued: "En cola",
+        running: "Ejecutando análisis",
+        processing: "Procesando resultados",
+        completed: "Resultados disponibles",
+        failed: "Error",
+        cancelled: "Cancelada",
+        unknown: "Estado no disponible",
+      },
+      cancellation: {
+        action: "Cancelar ejecución",
+        actionFor: "Cancelar ejecución de {{name}}",
+        pending: "Cancelando…",
+        stateChanged:
+          "La ejecución cambió de estado antes de poder cancelarse.",
+        network:
+          "No fue posible conectar para cancelar la ejecución.",
+        session:
+          "Tu sesión no permite cancelar esta ejecución.",
+        error: "No fue posible cancelar la ejecución. Inténtalo nuevamente.",
       },
       events: {
         accepted: "Solicitud aceptada.",
@@ -615,7 +643,20 @@ const es = {
         calloutTitle: "Hay resultados disponibles",
         calloutText:
           "Puedes revisar las ejecuciones completadas sin repetir las que ya finalizaron correctamente. El experimento mostrará también qué implementación falló.",
+        cancelledDescription:
+          "Algunas implementaciones entregaron resultados y otras fueron canceladas antes de comenzar.",
+        cancelledCalloutTitle: "Hay resultados disponibles",
+        cancelledCalloutText:
+          "Puedes revisar los resultados ya disponibles. Las implementaciones canceladas no generaron resultados.",
         viewResults: "Ver resultados disponibles",
+        newAnalysis: "Nuevo análisis",
+      },
+      cancelled: {
+        kicker: "Cancelado",
+        title: "Análisis cancelado",
+        description:
+          "Las ejecuciones fueron canceladas antes de comenzar la medición.",
+        chip: "Cancelado",
         newAnalysis: "Nuevo análisis",
       },
       error: {
@@ -649,13 +690,10 @@ const es = {
           label: "En cola",
           description: "El código espera su turno de ejecución.",
         },
-        preparing: {
-          label: "Preparando ejecución",
-          description: "Se prepara el código y el entorno de medición.",
-        },
         running: {
-          label: "Ejecutando mediciones",
-          description: "El benchmark está realizando las mediciones.",
+          label: "Ejecutando análisis",
+          description:
+            "Se prepara el código y se realizan las mediciones en el nodo.",
         },
         processing: {
           label: "Procesando resultados",
@@ -1017,6 +1055,16 @@ const es = {
         "El servidor no entregó más detalle del fallo.",
       stage: "Etapa",
       code: "Código",
+    },
+    cancellation: {
+      action: "Cancelar ejecución",
+      pending: "Cancelando…",
+      stateChanged:
+        "La ejecución cambió de estado antes de poder cancelarse.",
+      network:
+        "No fue posible conectar para cancelar la ejecución.",
+      session: "Tu sesión no permite cancelar esta ejecución.",
+      error: "No fue posible cancelar la ejecución. Inténtalo nuevamente.",
     },
     actions: {
       retry: "Reintentar",

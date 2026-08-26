@@ -3375,6 +3375,136 @@
   line-height: 1.45;
 }
 
+/* ============================================================
+   PER-EXECUTION LIVE STATUS
+   ============================================================ */
+
+.rf-page .rf-execution-status-list {
+  margin: 0 var(--ps-space-5) var(--ps-space-4);
+  padding: var(--ps-space-3) var(--ps-space-4);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-subtle);
+}
+
+.rf-page .rf-execution-status-list-title {
+  display: block;
+  margin-bottom: var(--ps-space-2);
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+}
+
+.rf-page .rf-execution-status-list ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.rf-page .rf-execution-status-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(8rem, auto) auto;
+  align-items: center;
+  gap: var(--ps-space-2);
+  padding: var(--ps-space-2) 0;
+  border-top: 1px solid var(--ps-divider);
+  color: var(--ps-text-muted);
+  font-size: 0.72rem;
+}
+
+.rf-page .rf-execution-status-row:first-child {
+  border-top: 0;
+}
+
+.rf-page .rf-execution-status-row-running,
+.rf-page .rf-execution-status-row-processing {
+  color: var(--ps-primary);
+}
+
+.rf-page .rf-execution-status-row-completed {
+  color: var(--ps-success);
+}
+
+.rf-page .rf-execution-status-row-failed {
+  color: var(--ps-danger);
+}
+
+.rf-page .rf-execution-status-name {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--ps-text);
+  font-weight: 650;
+}
+
+.rf-page .rf-execution-status-value {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  color: var(--ps-text-secondary);
+  text-align: right;
+}
+
+.rf-page .rf-execution-status-value strong {
+  color: inherit;
+  font-size: 0.7rem;
+}
+
+.rf-page .rf-execution-status-value small {
+  margin-top: 0.1rem;
+  color: var(--ps-text-muted);
+  font-size: 0.65rem;
+}
+
+.rf-page .rf-execution-cancellation {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ps-space-1);
+}
+
+.rf-page .rf-execution-cancel-button {
+  min-height: 32px;
+  padding: 0.35rem 0.55rem;
+  font-size: 0.68rem;
+}
+
+.rf-page .rf-execution-cancel-feedback {
+  max-width: 15rem;
+  color: var(--ps-text-muted);
+  font-size: 0.64rem;
+  line-height: 1.35;
+  text-align: right;
+}
+
+.rf-page .rf-single-execution-cancellation {
+  margin: 0 var(--ps-space-5) var(--ps-space-4);
+}
+
+.rf-page .rf-single-execution-cancellation .rf-execution-cancellation {
+  align-items: flex-start;
+}
+
+.rf-page .rf-single-execution-cancellation .rf-execution-cancel-feedback {
+  max-width: none;
+  text-align: left;
+}
+
+@media (max-width: 540px) {
+  .rf-page .rf-execution-status-row {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .rf-page .rf-execution-status-value {
+    grid-column: 2 / -1;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .rf-page .rf-execution-cancellation {
+    grid-column: 2 / -1;
+    align-items: flex-start;
+  }
+}
+
 
 /* ============================================================
    TECHNICAL DETAILS
@@ -3541,6 +3671,10 @@
 .rf-page .rf-technical-entry-error {
   color:
     var(--ps-danger);
+}
+
+.rf-page .rf-technical-entry-cancelled {
+  color: var(--ps-text-muted);
 }
 
 

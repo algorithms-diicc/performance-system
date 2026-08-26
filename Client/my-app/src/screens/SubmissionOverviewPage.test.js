@@ -496,6 +496,201 @@ describe("SubmissionOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("uses authoritative canCancel instead of metadata permission and refreshes after cancellation", async () => {
+    let cancelled = false;
+    const queuedExecution = {
+      ...completedExecution,
+      state: "QUEUED",
+      resultAvailable: false,
+      durationMs: null,
+      canCancel: true,
+    };
+    axios.get.mockImplementation((url) => {
+      const requestURL = String(url);
+      if (requestURL.endsWith("/executions")) {
+        return Promise.resolve({
+          data: {
+            items: [
+              cancelled
+                ? { ...queuedExecution, state: "CANCELLED", canCancel: false }
+                : queuedExecution,
+            ],
+          },
+        });
+      }
+      if (requestURL.endsWith("/trace")) {
+        return Promise.resolve({ data: sourceTrace });
+      }
+      return Promise.resolve({
+        data: {
+          submission: ownerSubmission,
+          summary: {
+            ...completedSummary,
+            completedExecutions: 0,
+            queuedExecutions: cancelled ? 0 : 1,
+            cancelledExecutions: cancelled ? 1 : 0,
+          },
+          permissions: readOnlyPermissions,
+        },
+      });
+    });
+    axios.post.mockImplementation(() => {
+      cancelled = true;
+      return Promise.resolve({ data: { execution: { state: "CANCELLED" } } });
+    });
+
+    renderSubmissionPage(STUDENT_USER);
+    await screen.findByRole("heading", { name: "std_sort.cpp" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar ejecución" })
+    );
+
+    await waitFor(() =>
+      expect(axios.post).toHaveBeenCalledWith(
+        expect.stringMatching(/api\/executions\/public-execution-10\/cancel$/),
+        null,
+        { withCredentials: true }
+      )
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("button", { name: "Cancelar ejecución" })
+      ).not.toBeInTheDocument()
+    );
+    expect(screen.getAllByText("Cancelado").length).toBeGreaterThan(0);
+  });
+
+  test("preserves state-changed cancellation feedback after a 409 refresh", async () => {
+    let executionChanged = false;
+    const queuedExecution = {
+      ...completedExecution,
+      state: "QUEUED",
+      resultAvailable: false,
+      durationMs: null,
+      canCancel: true,
+    };
+    const runningExecution = {
+      ...queuedExecution,
+      state: "RUNNING",
+      canCancel: false,
+    };
+    axios.get.mockImplementation((url) => {
+      const requestURL = String(url);
+      if (requestURL.endsWith("/executions")) {
+        return Promise.resolve({
+          data: {
+            items: [
+              executionChanged ? runningExecution : queuedExecution,
+            ],
+          },
+        });
+      }
+      if (requestURL.endsWith("/trace")) {
+        return Promise.resolve({ data: sourceTrace });
+      }
+      return Promise.resolve({
+        data: {
+          submission: ownerSubmission,
+          summary: {
+            ...completedSummary,
+            completedExecutions: 0,
+            queuedExecutions: executionChanged ? 0 : 1,
+            runningExecutions: executionChanged ? 1 : 0,
+          },
+          permissions: readOnlyPermissions,
+        },
+      });
+    });
+    axios.post.mockImplementation(() => {
+      executionChanged = true;
+      return Promise.reject({ response: { status: 409 } });
+    });
+
+    renderSubmissionPage(STUDENT_USER);
+    await screen.findByRole("heading", { name: "std_sort.cpp" });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar ejecución" })
+    );
+
+    expect(
+      await screen.findByText(
+        "La ejecución cambió de estado antes de poder cancelarse."
+      )
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(
+        axios.get.mock.calls.filter(([url]) =>
+          String(url).endsWith("/executions")
+        )
+      ).toHaveLength(2)
+    );
+    expect(screen.getByText("En ejecución")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancelar ejecución" })
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Cancelado")).not.toBeInTheDocument();
+  });
+
+  test("does not show cancellation for a supervised Teacher when canCancel is false", async () => {
+    await renderLoadedPage({
+      currentUser: TEACHER_USER,
+      permissions: readOnlyPermissions,
+      summary: {
+        ...completedSummary,
+        completedExecutions: 0,
+        queuedExecutions: 1,
+      },
+      executions: [
+        {
+          ...completedExecution,
+          state: "QUEUED",
+          resultAvailable: false,
+          durationMs: null,
+          canCancel: false,
+        },
+      ],
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Cancelar ejecución" })
+    ).not.toBeInTheDocument();
+  });
+
+  test("a cancellation network error preserves the queued action", async () => {
+    axios.post.mockRejectedValue({});
+    await renderLoadedPage({
+      summary: {
+        ...completedSummary,
+        completedExecutions: 0,
+        queuedExecutions: 1,
+      },
+      executions: [
+        {
+          ...completedExecution,
+          state: "QUEUED",
+          resultAvailable: false,
+          durationMs: null,
+          canCancel: true,
+        },
+      ],
+    });
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancelar ejecución" })
+    );
+
+    expect(
+      await screen.findByText(
+        "No fue posible conectar para cancelar la ejecución."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancelar ejecución" })
+    ).toBeInTheDocument();
+  });
+
   test("owner sees note and reference and can start note editing", async () => {
     await renderLoadedPage();
 

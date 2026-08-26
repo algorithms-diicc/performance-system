@@ -286,7 +286,7 @@ describe("RenderForm workflow i18n", () => {
     expect(screen.queryByText(/Enviando test al slave/i)).not.toBeInTheDocument();
   });
 
-  test("shows per-execution FIFO positions for zero, one and many ahead", () => {
+  test("shows truthful compact per-execution states and queue positions", () => {
     renderStatus({
       fileList: ["exec-a", "exec-b", "exec-c"],
       isSubmitting: true,
@@ -297,6 +297,7 @@ describe("RenderForm workflow i18n", () => {
           originalName: "a.cpp",
           state: "QUEUED",
           queueAhead: 0,
+          queuePosition: 1,
           resultsReady: false,
         },
         {
@@ -305,6 +306,7 @@ describe("RenderForm workflow i18n", () => {
           originalName: "b.cpp",
           state: "QUEUED",
           queueAhead: 1,
+          queuePosition: 2,
           resultsReady: false,
         },
         {
@@ -313,18 +315,129 @@ describe("RenderForm workflow i18n", () => {
           originalName: "c.cpp",
           state: "QUEUED",
           queueAhead: 4,
+          queuePosition: 5,
           resultsReady: false,
         },
       ],
     });
 
-    expect(screen.getByText("Next in queue")).toBeInTheDocument();
-    expect(screen.getByText("1 execution ahead")).toBeInTheDocument();
-    expect(screen.getByText("4 executions ahead")).toBeInTheDocument();
-    expect(screen.getByText(/dispatched in FIFO order/i)).toBeInTheDocument();
+    expect(screen.getByText("Status by implementation")).toBeInTheDocument();
+    expect(screen.getByText("Next")).toBeInTheDocument();
+    expect(screen.getByText("Position 2")).toBeInTheDocument();
+    expect(screen.getByText("Position 5")).toBeInTheDocument();
     expect(
       screen.queryByText(/\bETA\b|estimated time|minutes remaining/i)
     ).not.toBeInTheDocument();
+  });
+
+  test("keeps ten implementations in compact per-execution status without a global stepper", () => {
+    const executionFiles = Array.from({ length: 10 }, (_, index) => {
+      const states = [
+        "QUEUED",
+        "RUNNING",
+        "PROCESSING",
+        "COMPLETED",
+        "CANCELLED",
+      ];
+      const state = states[index % states.length];
+
+      return {
+        publicId: `implementation-${index + 1}`,
+        codename: `implementation-${index + 1}`,
+        originalName: `implementation-${index + 1}.cpp`,
+        state,
+        queuePosition: state === "QUEUED" ? index + 1 : undefined,
+        canCancel: state === "QUEUED",
+        resultsReady: state === "COMPLETED",
+      };
+    });
+    const view = renderStatus({
+      fileList: executionFiles.map(({ codename }) => codename),
+      isSubmitting: true,
+      executionFiles,
+    });
+
+    executionFiles.forEach(({ originalName }) => {
+      expect(screen.getByText(originalName)).toBeInTheDocument();
+    });
+    expect(
+      screen.getByRole("region", { name: "Status by implementation" })
+    ).toBeInTheDocument();
+    expect(
+      view.container.querySelector(".rf-progress-stepper")
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Preparing execution/i)
+    ).not.toBeInTheDocument();
+  });
+
+  test("uses the five truthful single-execution stages without Preparing", () => {
+    renderStatus({
+      fileList: ["exec-a"],
+      executionFiles: [
+        {
+          codename: "exec-a",
+          state: "RUNNING",
+          resultsReady: false,
+        },
+      ],
+    });
+
+    expect(screen.getByText("Request registered")).toBeInTheDocument();
+    expect(screen.getByText("Queued")).toBeInTheDocument();
+    expect(screen.getByText("Running analysis")).toBeInTheDocument();
+    expect(screen.getByText("Processing results")).toBeInTheDocument();
+    expect(screen.getByText("Results available")).toBeInTheDocument();
+    expect(screen.queryByText(/Preparing execution/i)).not.toBeInTheDocument();
+  });
+
+  test("renders each mixed execution state and only exposes authoritative cancellation", () => {
+    const onCancelExecution = jest.fn();
+    renderStatus({
+      fileList: ["run", "queued", "done", "processing", "cancelled"],
+      executionFiles: [
+        { publicId: "run", codename: "run", originalName: "run.cpp", state: "RUNNING" },
+        { publicId: "queued", codename: "queued", originalName: "queued.cpp", state: "QUEUED", queuePosition: 1, canCancel: true },
+        { publicId: "done", codename: "done", originalName: "done.cpp", state: "COMPLETED", resultsReady: true },
+        { publicId: "processing", codename: "processing", originalName: "processing.cpp", state: "PROCESSING" },
+        { publicId: "cancelled", codename: "cancelled", originalName: "cancelled.cpp", state: "CANCELLED", terminal: true },
+      ],
+      onCancelExecution,
+    });
+
+    expect(screen.getByText("run.cpp")).toBeInTheDocument();
+    expect(screen.getByText("queued.cpp")).toBeInTheDocument();
+    expect(screen.getByText("done.cpp")).toBeInTheDocument();
+    expect(screen.getByText("processing.cpp")).toBeInTheDocument();
+    expect(screen.getByText("cancelled.cpp")).toBeInTheDocument();
+    expect(screen.getByText("Running analysis")).toBeInTheDocument();
+    expect(screen.getByText("Processing results")).toBeInTheDocument();
+    expect(screen.getByText("Cancelled")).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Cancel execution for queued.cpp" })
+    );
+    expect(onCancelExecution).toHaveBeenCalledWith(
+      expect.objectContaining({ publicId: "queued" })
+    );
+    expect(screen.getAllByRole("button", { name: /Cancel execution/i })).toHaveLength(1);
+  });
+
+  test("all-cancelled executions use a neutral terminal panel", () => {
+    renderStatus({
+      fileList: ["a", "b"],
+      executionFiles: [
+        { codename: "a", originalName: "a.cpp", state: "CANCELLED", terminal: true },
+        { codename: "b", originalName: "b.cpp", state: "CANCELLED", terminal: true },
+      ],
+      allTerminal: true,
+      hasCancelled: true,
+    });
+
+    expect(
+      screen.getByRole("heading", { name: "Analysis cancelled" })
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Retry status request")).not.toBeInTheDocument();
   });
 
   test("distinguishes recommended input values from the allowed hard range", () => {

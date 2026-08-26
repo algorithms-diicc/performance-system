@@ -66,6 +66,21 @@ export function normalizeQueueAhead(value, state) {
     : null;
 }
 
+export function normalizeQueuePosition(value, queueAhead, state) {
+  if (String(state || "").toUpperCase() !== "QUEUED") {
+    return null;
+  }
+
+  const numeric = Number(value);
+  if (Number.isInteger(numeric) && numeric >= 1) {
+    return numeric;
+  }
+
+  return Number.isInteger(queueAhead) && queueAhead >= 0
+    ? queueAhead + 1
+    : null;
+}
+
 export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
   const state = String(snapshot.state || "").toUpperCase();
   const terminal =
@@ -76,11 +91,16 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
   const resultsReady =
     state === "COMPLETED" && snapshot.resultAvailable === true;
 
-  const hasError =
-    state === "FAILED" || state === "CANCELLED";
+  const hasFailure = state === "FAILED";
+  const hasCancelled = state === "CANCELLED";
 
   const errorMessage =
     snapshot.failure?.message || "";
+
+  const queueAhead = normalizeQueueAhead(
+    snapshot.queueAhead,
+    state
+  );
 
   return {
     publicId: snapshot.publicId || fallback.publicId || "",
@@ -100,13 +120,22 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
     samples: snapshot.samples,
     events: buildEventsFromSnapshot(snapshot),
     resultsReady,
-    hasError,
+    hasError: hasFailure,
+    hasFailure,
+    hasCancelled,
     errorMessage,
     resultAvailable: snapshot.resultAvailable === true,
     resultsUrl: snapshot.resultsUrl || null,
     failure: snapshot.failure || null,
     queuedAt: snapshot.queuedAt || null,
-    queueAhead: normalizeQueueAhead(snapshot.queueAhead, state),
+    queueAhead,
+    queuePosition: normalizeQueuePosition(
+      snapshot.queuePosition,
+      queueAhead,
+      state
+    ),
+    canCancel:
+      state === "QUEUED" && snapshot.canCancel === true,
     startedAt: snapshot.startedAt || null,
     processingAt: snapshot.processingAt || null,
     finishedAt: snapshot.finishedAt || null,
@@ -119,17 +148,29 @@ export function aggregatePollingState(items = []) {
       allDone: false,
       allTerminal: false,
       hasError: false,
+      hasFailure: false,
+      hasCancelled: false,
       firstErrorMessage: "",
     };
   }
 
+  const hasFailure = items.some(
+    (item) => item.hasFailure === true || item.hasError === true
+  );
+
   return {
     allDone: items.every((item) => item.resultsReady === true),
     allTerminal: items.every((item) => item.terminal === true),
-    hasError: items.some((item) => item.hasError === true),
+    hasError: hasFailure,
+    hasFailure,
+    hasCancelled: items.some(
+      (item) => item.hasCancelled === true
+    ),
     firstErrorMessage:
       items.find(
-        (item) => item.hasError === true && item.errorMessage
+        (item) =>
+          (item.hasFailure === true || item.hasError === true) &&
+          item.errorMessage
       )?.errorMessage || "",
   };
 }

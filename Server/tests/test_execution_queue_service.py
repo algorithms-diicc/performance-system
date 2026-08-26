@@ -18,6 +18,9 @@ class FakeCursor:
     def fetchall(self):
         return list(self.rows)
 
+    def fetchone(self):
+        return self.rows[0] if self.rows else None
+
     def __enter__(self):
         return self
 
@@ -137,6 +140,28 @@ class ExecutionQueueRepositoryTests(unittest.TestCase):
                 for_update=False,
                 skip_locked=True,
             )
+
+    def test_cancellation_lookup_locks_only_the_target_execution(self):
+        conn = FakeConnection(
+            rows=[
+                {
+                    "id": 10,
+                    "public_id": "uuid-10",
+                    "owner_user_id": 5,
+                    "execution_state": "QUEUED",
+                }
+            ]
+        )
+
+        row = execution_repository.get_execution_cancellation_row(
+            "uuid-10",
+            conn=conn,
+        )
+
+        sql, params = conn.cursor_instance.executed[0]
+        self.assertIn("FOR UPDATE OF e", " ".join(sql.split()))
+        self.assertEqual(params, ("uuid-10",))
+        self.assertEqual(row["execution_state"], "QUEUED")
 
 
 class ExecutionQueueServiceTests(unittest.TestCase):

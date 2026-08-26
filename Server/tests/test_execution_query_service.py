@@ -51,12 +51,15 @@ class Tests(unittest.TestCase):
         p = build_execution_snapshot(row("QUEUED"), 5)
         self.assertFalse(p["terminal"])
         self.assertEqual(p["queueAhead"], 0)
+        self.assertEqual(p["queuePosition"], 1)
+        self.assertTrue(p["canCancel"])
 
     def test_queued_with_two_earlier_executions(self):
         r = row("QUEUED")
         r["queue_ahead"] = 2
         p = build_execution_snapshot(r, 5)
         self.assertEqual(p["queueAhead"], 2)
+        self.assertEqual(p["queuePosition"], 3)
 
     def test_running(self):
         r = row("RUNNING")
@@ -65,6 +68,8 @@ class Tests(unittest.TestCase):
         p = build_execution_snapshot(r, 5)
         self.assertEqual(p["stateVersion"], 1)
         self.assertIsNone(p["queueAhead"])
+        self.assertIsNone(p["queuePosition"])
+        self.assertFalse(p["canCancel"])
 
     def test_processing(self):
         r = row("PROCESSING")
@@ -127,6 +132,7 @@ class Tests(unittest.TestCase):
         p = build_execution_snapshot(row("CANCELLED"), 5)
         self.assertTrue(p["terminal"])
         self.assertIsNone(p["failure"])
+        self.assertFalse(p["canCancel"])
 
     def test_original_filename(self):
         p = build_execution_snapshot(row(), 5)

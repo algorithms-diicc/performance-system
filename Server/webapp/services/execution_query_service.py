@@ -116,6 +116,11 @@ def build_execution_snapshot(row, current_user_id):
             int(raw_queue_ahead) if raw_queue_ahead is not None else 0,
         )
 
+    can_cancel = (
+        state == "QUEUED"
+        and int(row.get("owner_user_id")) == int(current_user_id)
+    )
+
     return {
         "publicId": row.get("public_id"),
         "submissionId": row.get("submission_id"),
@@ -133,6 +138,9 @@ def build_execution_snapshot(row, current_user_id):
         "createdAt": _iso(row.get("created_at")),
         "queuedAt": _iso(row.get("queued_at")),
         "queueAhead": queue_ahead,
+        "queuePosition": (
+            queue_ahead + 1 if queue_ahead is not None else None
+        ),
         "startedAt": _iso(row.get("started_at")),
         "processingAt": _iso(row.get("processing_at")),
         "finishedAt": _iso(row.get("finished_at")),
@@ -145,6 +153,7 @@ def build_execution_snapshot(row, current_user_id):
             else None
         ),
         "failure": failure,
+        "canCancel": can_cancel,
     }
 
 def get_execution_snapshot_for_user(

@@ -273,6 +273,8 @@ function RenderFormPage({ currentUser }) {
   const [submissionError, setSubmissionError] = useState("");
   const [repeatFeedback, setRepeatFeedback] = useState(null);
   const [executionSnapshot, setExecutionSnapshot] = useState(null);
+  const [executionCancellationState, setExecutionCancellationState] =
+    useState({});
   const submitRequestLockRef = useRef(false);
 
   // ======= Contexto académico CORE-07F-5 =======
@@ -318,6 +320,8 @@ function RenderFormPage({ currentUser }) {
     allDone,
     allTerminal,
     hasError,
+    hasFailure,
+    hasCancelled,
     firstErrorMessage,
     requestError: pollingRequestError,
     retryPolling,
@@ -325,6 +329,28 @@ function RenderFormPage({ currentUser }) {
     fileList,
     executionSnapshot?.executions
   );
+
+  useEffect(() => {
+    setExecutionCancellationState((current) => {
+      let changed = false;
+      const next = { ...current };
+
+      executionFiles.forEach((execution) => {
+        const publicId = execution?.publicId;
+        const request = publicId ? current[publicId] : null;
+
+        if (
+          request?.pending === true &&
+          String(execution?.state || "").toUpperCase() !== "QUEUED"
+        ) {
+          delete next[publicId];
+          changed = true;
+        }
+      });
+
+      return changed ? next : current;
+    });
+  }, [executionFiles]);
 
   // ======= CORE-07F-5: cursos activos del estudiante =======
   useEffect(() => {
@@ -1146,6 +1172,7 @@ function RenderFormPage({ currentUser }) {
     setShowOverview(false);
     setSubmissionError("");
     setRepeatFeedback(null);
+    setExecutionCancellationState({});
     if (location.search) {
       navigate(
         { pathname: location.pathname, search: "" },
@@ -1256,6 +1283,7 @@ function RenderFormPage({ currentUser }) {
     setSubmissionError("");
     setIsSubmitting(true);
     setFileList([]);
+    setExecutionCancellationState({});
     setShowOverview(false);
 
     axios({
@@ -1357,6 +1385,54 @@ function RenderFormPage({ currentUser }) {
     setShowOverview(false);
   };
 
+  const handleCancelExecution = async (execution) => {
+    const publicId = String(execution?.publicId || "").trim();
+    const state = String(execution?.state || "").toUpperCase();
+
+    if (
+      !publicId ||
+      state !== "QUEUED" ||
+      execution?.canCancel !== true ||
+      executionCancellationState[publicId]?.pending === true
+    ) {
+      return;
+    }
+
+    setExecutionCancellationState((current) => ({
+      ...current,
+      [publicId]: { pending: true, messageKey: "" },
+    }));
+
+    try {
+      await axios.post(
+        `${serverURL}api/executions/${encodeURIComponent(publicId)}/cancel`,
+        null,
+        { withCredentials: true }
+      );
+
+      retryPolling();
+    } catch (error) {
+      const status = error?.response?.status;
+      const messageKey =
+        status === 409
+          ? "renderForm.workflow.cancellation.stateChanged"
+          : !error?.response
+          ? "renderForm.workflow.cancellation.network"
+          : status === 401
+          ? "renderForm.workflow.cancellation.session"
+          : "renderForm.workflow.cancellation.error";
+
+      setExecutionCancellationState((current) => ({
+        ...current,
+        [publicId]: { pending: false, messageKey },
+      }));
+
+      if (status === 409) {
+        retryPolling();
+      }
+    }
+  };
+
   /**
    * Limpia únicamente el estado de la ejecución anterior.
    * Conserva el formulario para que el estudiante pueda corregir
@@ -1365,6 +1441,7 @@ function RenderFormPage({ currentUser }) {
   const handlePrepareRetry = () => {
     setFileList([]);
     setSubmissionError("");
+    setExecutionCancellationState({});
     if (location.search) {
       navigate(
         { pathname: location.pathname, search: "" },
@@ -1799,6 +1876,8 @@ function RenderFormPage({ currentUser }) {
             allDone={allDone}
             allTerminal={allTerminal}
             hasError={hasError}
+            hasFailure={hasFailure}
+            hasCancelled={hasCancelled}
             submissionError={submissionErrorText}
             firstErrorMessage={firstErrorMessage}
             pollingRequestError={pollingRequestError}
@@ -1810,6 +1889,8 @@ function RenderFormPage({ currentUser }) {
             onPrepareNewAnalysis={handlePrepareNewAnalysis}
             onPrepareRetry={handlePrepareRetry}
             onRetryPolling={retryPolling}
+            cancellationState={executionCancellationState}
+            onCancelExecution={handleCancelExecution}
           />
         </div>
 

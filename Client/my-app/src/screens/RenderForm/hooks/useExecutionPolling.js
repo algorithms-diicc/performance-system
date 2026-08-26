@@ -19,7 +19,8 @@ function useExecutionPolling(
   const [executionFiles, setExecutionFiles] = useState([]);
   const [allDone, setAllDone] = useState(false);
   const [allTerminal, setAllTerminal] = useState(false);
-  const [hasError, setHasError] = useState(false);
+  const [hasFailure, setHasFailure] = useState(false);
+  const [hasCancelled, setHasCancelled] = useState(false);
   const [firstErrorMessage, setFirstErrorMessage] =
     useState("");
   const [requestError, setRequestError] = useState("");
@@ -31,7 +32,8 @@ function useExecutionPolling(
       setExecutionFiles([]);
       setAllDone(false);
       setAllTerminal(false);
-      setHasError(false);
+      setHasFailure(false);
+      setHasCancelled(false);
       setFirstErrorMessage("");
       setRequestError("");
       return;
@@ -50,7 +52,8 @@ function useExecutionPolling(
       setExecutionFiles([]);
       setAllDone(false);
       setAllTerminal(false);
-      setHasError(true);
+      setHasFailure(true);
+      setHasCancelled(false);
       setFirstErrorMessage(
         t("renderForm.workflow.polling.missingPersistentId")
       );
@@ -101,11 +104,15 @@ function useExecutionPolling(
             events: [],
             resultsReady: false,
             hasError: false,
+            hasFailure: false,
+            hasCancelled: false,
             errorMessage: "",
             resultAvailable: false,
             resultsUrl: null,
             failure: null,
             queueAhead: null,
+            queuePosition: null,
+            canCancel: false,
             unavailable: true,
             requestStatus: error?.response?.status || null,
             requestError: friendlyRequestError(
@@ -146,7 +153,8 @@ function useExecutionPolling(
 
         setAllDone(aggregate.allDone);
         setAllTerminal(aggregate.allTerminal);
-        setHasError(aggregate.hasError);
+        setHasFailure(aggregate.hasFailure);
+        setHasCancelled(aggregate.hasCancelled);
         setFirstErrorMessage(aggregate.firstErrorMessage);
 
         if (!aggregate.allTerminal && !cancelled) {
@@ -155,7 +163,8 @@ function useExecutionPolling(
       } else {
         setAllDone(false);
         setAllTerminal(false);
-        setHasError(false);
+        setHasFailure(false);
+        setHasCancelled(false);
         setFirstErrorMessage("");
         setRequestError(
           results.find((item) => item.unavailable)
@@ -190,7 +199,9 @@ function useExecutionPolling(
     executionFiles,
     allDone,
     allTerminal,
-    hasError,
+    hasError: hasFailure,
+    hasFailure,
+    hasCancelled,
     firstErrorMessage,
     requestError,
     retryPolling,

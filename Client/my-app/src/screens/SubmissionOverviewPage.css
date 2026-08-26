@@ -999,6 +999,21 @@
   gap: var(--ps-space-2);
 }
 
+.submission-overview__execution-cancel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--ps-space-1);
+}
+
+.submission-overview__execution-cancel > span {
+  max-width: 16rem;
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-xs);
+  line-height: var(--ps-line-height-normal);
+  text-align: right;
+}
+
 @media (max-width: 900px) {
   .submission-overview__information-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
