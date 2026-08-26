@@ -395,6 +395,21 @@ class ExperimentalProtocolRoutesTests(unittest.TestCase):
             update_sql,
         )
 
+        notification_sql = [
+            " ".join(sql.split())
+            for sql, _params in conn.executed
+            if "INSERT INTO notifications" in sql
+        ]
+        self.assertEqual(len(notification_sql), 1)
+        self.assertIn(
+            "cm.is_active = TRUE",
+            notification_sql[0],
+        )
+        self.assertIn(
+            "LOWER(r.name) = 'student'",
+            notification_sql[0],
+        )
+
     def test_deactivate_hides_protocol_without_delete(self):
         current = protocol_row(
             is_published=True,

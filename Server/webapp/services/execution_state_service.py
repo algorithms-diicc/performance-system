@@ -6,6 +6,7 @@ El repository sólo ejecuta SQL atómico.
 """
 
 from ..repositories import execution_repository
+from . import notification_service
 
 
 QUEUED = "QUEUED"
@@ -184,7 +185,7 @@ def transition_execution(
     if new_state == FAILED:
         result_available = False
 
-    return repository.transition_execution(
+    row = repository.transition_execution(
         public_id=public_id,
         expected_state=current_state,
         expected_version=current_version,
@@ -196,6 +197,27 @@ def transition_execution(
         result_path=result_path,
         conn=conn,
     )
+
+    if (
+        new_state == FAILED
+        and repository is execution_repository
+    ):
+        try:
+            notification_service.notify_execution_failed(
+                row,
+                conn=conn,
+            )
+        except Exception as exc:
+            # La bandeja interna es secundaria: nunca debe convertir una
+            # transición FAILED válida en un fallo del pipeline.
+            print(
+                "[NOTIFICATION] No se pudo registrar FAILED {}: {}".format(
+                    public_id,
+                    exc,
+                )
+            )
+
+    return row
 
 
 def mark_running(public_id, conn=None, repository=execution_repository):

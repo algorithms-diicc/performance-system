@@ -112,6 +112,73 @@ const en = {
         "The analysis could not be prepared from this protocol.",
     },
   },
+  notifications: {
+    eyebrow: "Activity",
+    title: "Notifications",
+    open: "Open notifications",
+    unreadCount: "{{count}} unread notifications",
+    loading: "Loading notifications…",
+    empty: "You have no notifications.",
+    error: "Notifications could not be loaded.",
+    retry: "Retry",
+    readAll: "Mark all as read",
+    kinds: {
+      executionFailed: {
+        title: "Execution failed",
+        description:
+          "{{experiment}} finished with an error ({{code}}).",
+      },
+      teacherFeedback: {
+        title: "New teacher feedback",
+        description:
+          "{{actor}} left feedback on {{experiment}}.",
+      },
+      protocolPublished: {
+        title: "New protocol available",
+        description:
+          "{{protocol}} was published in {{course}}.",
+      },
+      generic: {
+        title: "New activity",
+        description: "An update is available.",
+      },
+    },
+    fallbacks: {
+      experiment: "Experiment",
+      teacher: "Teacher",
+      protocol: "Protocol",
+      course: "Course",
+      error: "ERROR",
+    },
+  },
+  teacherFeedback: {
+    eyebrow: "Academic supervision",
+    title: "Teacher feedback",
+    description:
+      "Brief teacher comments about this experiment. This is not a grade or a conversation thread.",
+    loading: "Loading feedback…",
+    empty: "There is no teacher feedback for this experiment yet.",
+    timelineAria: "Teacher feedback history",
+    actions: {
+      retry: "Retry",
+      send: "Publish feedback",
+      sending: "Publishing…",
+    },
+    composer: {
+      label: "New feedback",
+      placeholder:
+        "Write a concrete observation about the experiment or its results.",
+      characters: "{{count}} / {{max}} characters",
+    },
+    errors: {
+      load: "Teacher feedback could not be loaded.",
+      send: "Teacher feedback could not be published.",
+    },
+    fallbacks: {
+      author: "Teacher",
+      date: "Date unavailable",
+    },
+  },
   roles: {
     admin: "Administrator",
     teacher: "Teacher",

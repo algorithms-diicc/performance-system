@@ -4,6 +4,9 @@ from flask import Blueprint, g, jsonify, request
 from psycopg2.extras import RealDictCursor
 
 from ...db_connection import get_connection
+from ..services.notification_service import (
+    notify_protocol_published,
+)
 from ..services.experimental_protocol_service import (
     InvalidProtocolConfiguration,
     normalize_protocol_configuration,
@@ -394,6 +397,15 @@ def publish_teacher_protocol(course_id, protocol_id):
             row["course_name"] = current["course_name"]
             row["academic_year"] = current["academic_year"]
             row["academic_term"] = current["academic_term"]
+
+            notify_protocol_published(
+                cur,
+                protocol_id=protocol_id,
+                course_id=course_id,
+                actor_user_id=g.current_user["id"],
+                published_at=row["published_at"],
+            )
+
             _audit(
                 cur,
                 "publish_experimental_protocol",

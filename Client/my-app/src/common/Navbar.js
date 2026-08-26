@@ -33,6 +33,7 @@ import {
 } from "./userAccessModel";
 
 import LanguageSwitcher from "../components/LanguageSwitcher";
+import NotificationsMenu from "./NotificationsMenu";
 import { useI18n } from "../i18n";
 
 import "./Navbar.css";
@@ -575,6 +576,8 @@ function Navbar({
             ==================================================== */}
 
         <div className="app-navbar-actions">
+
+          <NotificationsMenu />
 
           <LanguageSwitcher variant="navbar" />
 

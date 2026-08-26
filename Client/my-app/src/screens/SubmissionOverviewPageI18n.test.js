@@ -236,8 +236,9 @@ describe("SubmissionOverviewPage i18n", () => {
       name: "Experiment information",
     });
 
+    // Detail + executions + archive context + feedback.
     await waitFor(() =>
-      expect(axios.get).toHaveBeenCalledTimes(3)
+      expect(axios.get).toHaveBeenCalledTimes(4)
     );
 
     const requestCount = axios.get.mock.calls.length;

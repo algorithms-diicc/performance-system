@@ -1109,7 +1109,8 @@ describe("SubmissionOverviewPage", () => {
     expect(
       screen.getByRole("heading", { name: "merge_sort.cpp" })
     ).toBeInTheDocument();
-    await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(6));
+    // Detail + executions + archive context + feedback, twice after refresh.
+    await waitFor(() => expect(axios.get).toHaveBeenCalledTimes(8));
   });
 
   test("loading, request error and retry states remain actionable", async () => {

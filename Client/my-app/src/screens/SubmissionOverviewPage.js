@@ -42,6 +42,7 @@ import { serverURL } from "../common/Constants";
 import AcademicBreadcrumbs from "../components/AcademicBreadcrumbs";
 import InlineState from "../components/InlineState";
 import SourceViewerModal from "../components/SourceViewerModal";
+import TeacherFeedbackPanel from "./TeacherFeedbackPanel";
 import { useI18n } from "../i18n";
 import downloadAuthenticatedFile from "../utils/downloadAuthenticatedFile";
 import {
@@ -1454,6 +1455,12 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               )}
           </section>
         )}
+
+        <TeacherFeedbackPanel
+          currentUser={currentUser}
+          submissionId={submission.id}
+          courseId={submission.courseId}
+        />
 
         <section
           className="submission-overview__summary-section"

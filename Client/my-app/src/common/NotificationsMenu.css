@@ -1,0 +1,234 @@
+.notifications-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.notifications-menu__trigger {
+  position: relative;
+}
+
+.notifications-menu__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--ps-on-danger, #fff);
+  background: var(--ps-danger);
+  border: 2px solid var(--ps-surface);
+  border-radius: var(--ps-radius-pill);
+
+  font-size: 0.65rem;
+  font-weight: 750;
+  line-height: 1;
+}
+
+.notifications-menu__panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  z-index: var(--ps-z-dropdown);
+
+  width: min(420px, calc(100vw - 2rem));
+  max-height: min(620px, calc(100vh - 100px));
+
+  overflow: hidden;
+
+  color: var(--ps-text);
+  background: var(--ps-surface-elevated);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-lg);
+  box-shadow: var(--ps-shadow-lg);
+}
+
+.notifications-menu__header {
+  padding: var(--ps-space-4);
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ps-space-3);
+
+  border-bottom: 1px solid var(--ps-divider);
+}
+
+.notifications-menu__eyebrow {
+  display: block;
+  margin-bottom: 3px;
+
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.notifications-menu__header h2 {
+  margin: 0;
+  font-size: var(--ps-font-size-base);
+}
+
+.notifications-menu__read-all {
+  min-height: 34px;
+  padding: 0.4rem 0.65rem;
+
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ps-space-1);
+
+  color: var(--ps-primary);
+  background: transparent;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+
+  font-size: var(--ps-font-size-xs);
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notifications-menu__read-all:disabled {
+  color: var(--ps-text-muted);
+  cursor: default;
+  opacity: 0.65;
+}
+
+.notifications-menu__content {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.notifications-menu__state {
+  margin: 0;
+  padding: var(--ps-space-5);
+
+  color: var(--ps-text-muted);
+  text-align: center;
+  font-size: var(--ps-font-size-sm);
+}
+
+.notifications-menu__state--error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--ps-space-2);
+
+  color: var(--ps-danger);
+}
+
+.notifications-menu__state--error button {
+  color: var(--ps-primary);
+  background: transparent;
+  border: 0;
+  font: inherit;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.notifications-menu__item {
+  width: 100%;
+  padding: var(--ps-space-3) var(--ps-space-4);
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--ps-space-3);
+
+  color: var(--ps-text);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--ps-divider);
+
+  text-align: left;
+  cursor: pointer;
+
+  transition:
+    background-color var(--ps-transition-fast),
+    opacity var(--ps-transition-fast);
+}
+
+.notifications-menu__item:hover {
+  background: var(--ps-surface-subtle);
+}
+
+.notifications-menu__item--read {
+  opacity: 0.74;
+}
+
+.notifications-menu__item--unread {
+  background: var(--ps-primary-soft);
+}
+
+.notifications-menu__item-icon {
+  width: 34px;
+  height: 34px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  color: var(--ps-primary);
+  background: var(--ps-surface);
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-md);
+}
+
+.notifications-menu__item-copy {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.notifications-menu__item-copy strong {
+  font-size: var(--ps-font-size-sm);
+  line-height: 1.3;
+}
+
+.notifications-menu__item-copy span,
+.notifications-menu__item-copy small {
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.4;
+}
+
+.notifications-menu__item-copy small {
+  margin-top: 2px;
+
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.notifications-menu__dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+
+  background: var(--ps-primary);
+  border-radius: var(--ps-radius-pill);
+}
+
+@media (max-width: 640px) {
+  .notifications-menu {
+    position: static;
+  }
+
+  .notifications-menu__panel {
+    top: calc(100% + 2px);
+    right: var(--ps-content-padding-x);
+    left: var(--ps-content-padding-x);
+    width: auto;
+  }
+
+  .notifications-menu__read-all {
+    padding-inline: 0.45rem;
+  }
+}

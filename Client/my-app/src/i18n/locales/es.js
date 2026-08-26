@@ -112,6 +112,73 @@ const es = {
         "No fue posible preparar el análisis desde este protocolo.",
     },
   },
+  notifications: {
+    eyebrow: "Actividad",
+    title: "Notificaciones",
+    open: "Abrir notificaciones",
+    unreadCount: "{{count}} notificaciones sin leer",
+    loading: "Cargando notificaciones…",
+    empty: "No tienes notificaciones.",
+    error: "No fue posible cargar las notificaciones.",
+    retry: "Reintentar",
+    readAll: "Marcar todas como leídas",
+    kinds: {
+      executionFailed: {
+        title: "Ejecución fallida",
+        description:
+          "{{experiment}} terminó con error ({{code}}).",
+      },
+      teacherFeedback: {
+        title: "Nuevo feedback docente",
+        description:
+          "{{actor}} dejó feedback en {{experiment}}.",
+      },
+      protocolPublished: {
+        title: "Nuevo protocolo disponible",
+        description:
+          "{{protocol}} fue publicado en {{course}}.",
+      },
+      generic: {
+        title: "Nueva actividad",
+        description: "Hay una actualización disponible.",
+      },
+    },
+    fallbacks: {
+      experiment: "Experimento",
+      teacher: "Profesor",
+      protocol: "Protocolo",
+      course: "Curso",
+      error: "ERROR",
+    },
+  },
+  teacherFeedback: {
+    eyebrow: "Supervisión académica",
+    title: "Feedback docente",
+    description:
+      "Comentarios breves del profesor sobre este experimento. No corresponde a una calificación ni a una conversación.",
+    loading: "Cargando feedback…",
+    empty: "Aún no hay feedback docente para este experimento.",
+    timelineAria: "Historial de feedback docente",
+    actions: {
+      retry: "Reintentar",
+      send: "Publicar feedback",
+      sending: "Publicando…",
+    },
+    composer: {
+      label: "Nuevo feedback",
+      placeholder:
+        "Escribe una observación concreta sobre el experimento o sus resultados.",
+      characters: "{{count}} / {{max}} caracteres",
+    },
+    errors: {
+      load: "No fue posible cargar el feedback docente.",
+      send: "No fue posible publicar el feedback docente.",
+    },
+    fallbacks: {
+      author: "Docente",
+      date: "Fecha no disponible",
+    },
+  },
   roles: {
     admin: "Administrador",
     teacher: "Profesor",
