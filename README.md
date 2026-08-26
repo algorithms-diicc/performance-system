@@ -15,6 +15,8 @@ El proyecto corresponde a una evolución sucesiva de trabajos de memoria desarro
 - Autenticación institucional mediante Google OAuth.
 - Roles de usuario `Student`, `Teacher` y `Admin`.
 - Gestión de cursos y membresías de estudiantes.
+- Protocolos experimentales publicables por curso.
+- Feedback docente asociado a experimentos y bandeja interna de notificaciones.
 - Persistencia PostgreSQL de usuarios, sesiones, submissions, ejecuciones y contexto experimental.
 - Ejecución de programas C (`.c`) y C++ (`.cpp`) mediante un nodo medidor (`slave`).
 - Compilación canónica con `gcc` para C y `g++` para C++.
@@ -170,6 +172,7 @@ Las principales áreas configurables son:
 - Google OAuth;
 - dominios institucionales admitidos;
 - origen frontend y CORS;
+- correo transaccional SMTP para aprobaciones de acceso;
 - coordinador y puertos master/slave;
 - tiempos de compilación y ejecución;
 - dispatcher FIFO persistente;
@@ -193,6 +196,32 @@ SESSION_COOKIE_SECURE=1
 
 Los valores de `GOOGLE_REDIRECT_URI`, `FRONTEND_LOGIN_URL`, CORS y las credenciales OAuth deben corresponder al dominio definitivo del despliegue.
 
+### Correo de aprobación y credenciales externas
+
+El correo de aprobación de solicitudes `@udec.cl` es opcional y se encuentra deshabilitado por defecto. Para activarlo en el servidor deben configurarse, como mínimo:
+
+```env
+SMTP_ENABLED=1
+SMTP_HOST=...
+SMTP_PORT=587
+SMTP_SECURITY=starttls
+SMTP_FROM_EMAIL=...
+SMTP_FROM_NAME=Performance System
+FRONTEND_LOGIN_URL=https://<dominio>/login
+```
+
+`SMTP_USERNAME` y `SMTP_PASSWORD` deben configurarse juntos únicamente cuando el relay requiera autenticación. Los modos admitidos son `starttls`, `ssl` y `none`. Una falla SMTP no revierte una aprobación ya confirmada en PostgreSQL; el correo es una notificación posterior a la operación administrativa.
+
+La integración de IA usa `PERFORMANCE_AI_TRANSPORT=mock` por defecto. Para utilizar el transporte real:
+
+```env
+PERFORMANCE_AI_TRANSPORT=openai
+OPENAI_API_KEY=...
+# PERFORMANCE_AI_MODEL=...
+```
+
+Las credenciales de Google OAuth, SMTP y del transporte de IA pertenecen exclusivamente al entorno de despliegue. Si se reemplaza un cliente OAuth o se rota una credencial, debe actualizarse el `.env`/entorno del servicio, revisar las URI autorizadas en el proveedor correspondiente y reiniciar el backend. No deben conservarse secretos antiguos en Git, archivos de ejemplo, logs ni documentación.
+
 ---
 
 ## PostgreSQL
@@ -207,9 +236,9 @@ Server/db/schema.sql
 
 Este archivo representa el estado actual completo de la base de datos. **No debe ejecutarse repetidamente durante el arranque de la aplicación.**
 
-El esquema incluye las tablas correspondientes a usuarios y roles, identidades OAuth y sesiones, solicitudes de acceso, cursos y membresías, submissions, executions, métricas, perfiles de hardware, auditoría y versionado del esquema.
+El esquema incluye las tablas correspondientes a usuarios y roles, identidades OAuth y sesiones, solicitudes de acceso, cursos y membresías, protocolos experimentales, submissions, executions, métricas, perfiles de hardware, feedback docente, notificaciones, auditoría y versionado del esquema.
 
-Una instalación limpia crea 13 tablas.
+La cantidad concreta de tablas debe derivarse del `schema.sql` vigente y no se fija en este documento para evitar que la documentación quede desactualizada al agregar migraciones.
 
 ### Creación inicial
 
@@ -273,9 +302,12 @@ Las migraciones disponibles se encuentran en `Server/db/migrations/`:
 002_core07_teacher_courses.sql
 003_core07_submission_course_context.sql
 004_submission_metadata.sql
+005_submission_archiving.sql
+006_experimental_protocols.sql
+007_feedback_notifications.sql
 ```
 
-Antes de aplicar migraciones sobre una base existente debe realizarse un respaldo y ejecutarlas en orden.
+Antes de aplicar migraciones sobre una base existente debe realizarse un respaldo. Se debe consultar `schema_migrations` y aplicar únicamente las migraciones faltantes, siempre en orden numérico y con `ON_ERROR_STOP=1`. No se debe ejecutar `schema.sql` sobre una base ya desplegada.
 
 ---
 
@@ -526,6 +558,20 @@ El comando de producción anterior conserva **un único worker Gunicorn** porque
 El despliegue validado usa **una única instancia de `Server/slave.py` por nodo de medición**. No deben ejecutarse dos procesos slave sobre el mismo hardware: el protocolo Master/Slave legacy todavía puede entregar la misma tarea a más de una conexión disponible, lo que invalidaría la serialidad experimental del nodo.
 
 Para un servidor permanente se recomienda administrar backend, dispatcher, slave y watchdog mediante `systemd` u otro supervisor de procesos. Las unidades concretas deben configurarse con el usuario, rutas y política de red reales del servidor de destino; el repositorio no mantiene rutas institucionales hardcodeadas.
+
+### Actualización de un despliegue existente
+
+Una actualización de código no debe comenzar reiniciando servicios. El orden recomendado es:
+
+1. realizar respaldo de PostgreSQL y conservar una referencia del commit desplegado;
+2. actualizar el repositorio al commit objetivo;
+3. revisar `schema_migrations` y aplicar únicamente migraciones faltantes con un rol PostgreSQL que disponga de los privilegios necesarios;
+4. verificar que las migraciones quedaron registradas y que las nuevas tablas/columnas esperadas existen;
+5. reconstruir y sincronizar el frontend mediante `./scripts/build_frontend.sh`;
+6. reiniciar backend, dispatcher y watchdog, y reiniciar el nodo de medición únicamente si el cambio desplegado afecta su código o configuración;
+7. realizar un smoke test autenticado de OAuth, API, cola, ejecución y resultados.
+
+Los cambios de `.env` deben realizarse de forma explícita. No se recomienda ejecutar `source .env` de manera ciega: el archivo se consume como configuración de aplicación y no necesariamente constituye un script Bash válido.
 
 ---
 
