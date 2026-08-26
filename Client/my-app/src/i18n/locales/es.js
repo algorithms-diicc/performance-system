@@ -393,6 +393,12 @@ const es = {
     },
     benchmark: {
       sectionLabel: "Tipo de benchmark y parámetros",
+      contextHelp: {
+        title: "Guía rápida de benchmarks",
+        lcs: "Entrada de texto: usa el dataset de texto administrado por el sistema.",
+        camm: "Datos numéricos: genera entradas numéricas y permite elegir su distribución.",
+        size: "Tamaño parametrizado: entrega N como argumento entero; el programa administra sus datos a partir de ese valor.",
+      },
       sectionHelp:
         "Selecciona el tipo de entrada que mejor representa el algoritmo que quieres analizar. Performance System utilizará el benchmark asociado para generar los distintos puntos de medición.",
       maxInput: "Tamaño máximo de entrada",
@@ -758,6 +764,10 @@ const es = {
         loaded:
           "Experimento #{{id}} cargado para repetición. Revisa la configuración antes de ejecutar.",
       },
+      starter: {
+        loaded:
+          "Configuración inicial preparada para {{benchmark}}. Adjunta el ZIP del ejemplo o tu propio ZIP para continuar.",
+      },
       validations: {
         numberRequired: "Ingresa un valor numérico.",
         numberInvalid: "Ingresa un número válido.",
@@ -905,6 +915,7 @@ const es = {
       duration: "Duración",
       result: "Resultado",
       environment: "Entorno",
+      shaHelp: "SHA-256 del ZIP: huella utilizada para verificar que el archivo original no haya cambiado.",
     },
     aggregateStates: {
       inProgress: "En progreso",
@@ -1688,6 +1699,9 @@ const es = {
   },
 
   reproducibilityPanel: {
+    publicIdHelp: "Identifica de forma estable esta ejecución. Conocer el identificador no concede acceso al resultado.",
+    artifactShaHelp: "Las huellas SHA-256 permiten comprobar que los artefactos descargados coinciden con los registrados para esta ejecución.",
+    bundleHelp: "Este paquete incluye la fuente de esta ejecución, CombinedResults.csv y manifest.json con configuración y contexto experimental. Sirve para conservar y revisar la evidencia necesaria para repetir la misma configuración experimental.",
     common: {
       unavailable: "No disponible",
       yes: "Sí",
@@ -3954,6 +3968,7 @@ const es = {
           "Las URLs públicas se mantienen. Cada ZIP respeta el contrato de entrada y salida de su benchmark y muestra una modalidad admitida por el producto.",
         observeLabel: "Qué observar",
         download: "Descargar ejemplo {{benchmark}}",
+        prepare: "Preparar análisis",
         contractNote:
           "Cada archivo .c o .cpp es una implementación autónoma con su propio punto de entrada. Los ZIP no contienen headers, build systems ni fuentes no soportadas.",
         modes: {

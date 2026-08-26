@@ -82,6 +82,22 @@ describe("TutorialPage Iteration 9", () => {
       screen.getByRole("link", { name: "Descargar ejemplo CAMM" })
     ).toHaveAttribute("href", "/tutorial-codigos/camm_template.zip");
 
+    expect(
+      screen.getAllByRole("link", { name: /Preparar análisis/ })
+        .map((link) => link.getAttribute("href"))
+    ).toEqual([
+      "/?starter=lcs",
+      "/?starter=camm",
+      "/?starter=size",
+    ]);
+
+    const exampleCards = Array.from(
+      container.querySelectorAll(".tutorial-example-card")
+    );
+    expect(exampleCards.map((card) =>
+      within(card).getByText(/^(LCS|CAMM|SIZE)$/).textContent
+    )).toEqual(["LCS", "CAMM", "SIZE"]);
+
     expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
     expect(screen.queryByText(/^Memoria$/i)).not.toBeInTheDocument();
   });

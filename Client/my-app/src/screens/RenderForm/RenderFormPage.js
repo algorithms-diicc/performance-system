@@ -23,6 +23,7 @@ import {
   manualSubmissionTitle,
   normalizeDraftNote,
   resolveSubmissionTitle,
+  parseStarterConfiguration,
 } from "./formOnboardingModel";
 import { buildAnalysisRequirements } from "./analysisReadinessModel";
 import {
@@ -593,7 +594,7 @@ function RenderFormPage({ currentUser }) {
       if (
         parseExecutionPublicIds(initialSearchRef.current).length > 0 ||
         parseRepeatSubmissionId(initialSearchRef.current) ||
-        parseReusePublicId(initialSearchRef.current)
+        parseReusePublicId(initialSearchRef.current) || parseStarterConfiguration(initialSearchRef.current)
       ) {
         return;
       }
@@ -678,6 +679,14 @@ function RenderFormPage({ currentUser }) {
       console.error("Error al cargar configuración previa del test:", e);
     }
   }, []);
+
+  useEffect(() => {
+    if (parseExecutionPublicIds(location.search).length || parseRepeatSubmissionId(location.search) || parseReusePublicId(location.search)) return;
+    const starter = parseStarterConfiguration(location.search);
+    if (!starter) return;
+    setSelectedTaskType(starter.selectedTaskType); setInputSize(starter.inputSize); setSamples(starter.samples); setDataType(starter.dataType); setExecutionProfile(starter.executionProfile);
+    setRepeatFeedback({ key: "renderForm.page.starter.loaded", params: { benchmark: starter.selectedTaskType.toUpperCase() } });
+  }, [location.search]);
 
   // ======= Iteración 5: repetición segura de Experimento histórico =======
   useEffect(() => {

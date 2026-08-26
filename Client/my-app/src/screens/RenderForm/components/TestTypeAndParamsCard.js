@@ -2,6 +2,7 @@
 import React from "react";
 import {
   Binary,
+  CircleHelp,
   FileText,
   FlaskConical,
   Ruler,
@@ -105,11 +106,34 @@ function TestTypeAndParamsCard({
   return (
     <div className="rf-row">
       <section className="rf-panel">
-        <div className="form-label">
+        <div className="form-label benchmark-heading">
           <span className="label-icon" aria-hidden="true">
             <FlaskConical />
           </span>
-          {t("renderForm.benchmark.sectionLabel")}
+          <span>{t("renderForm.benchmark.sectionLabel")}</span>
+          <details className="benchmark-help-popover">
+            <summary
+              aria-label={t("renderForm.benchmark.contextHelp.title")}
+              title={t("renderForm.benchmark.contextHelp.title")}
+            >
+              <CircleHelp size={17} aria-hidden="true" />
+            </summary>
+            <div className="benchmark-help-popover__content">
+              <strong>{t("renderForm.benchmark.contextHelp.title")}</strong>
+              <div className="benchmark-help-popover__item">
+                <span className="benchmark-help-popover__code">LCS</span>
+                <span>{t("renderForm.benchmark.contextHelp.lcs")}</span>
+              </div>
+              <div className="benchmark-help-popover__item">
+                <span className="benchmark-help-popover__code">CAMM</span>
+                <span>{t("renderForm.benchmark.contextHelp.camm")}</span>
+              </div>
+              <div className="benchmark-help-popover__item">
+                <span className="benchmark-help-popover__code">SIZE</span>
+                <span>{t("renderForm.benchmark.contextHelp.size")}</span>
+              </div>
+            </div>
+          </details>
         </div>
 
         <p className="benchmark-section-help">

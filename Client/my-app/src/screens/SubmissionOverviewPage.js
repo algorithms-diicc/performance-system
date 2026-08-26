@@ -1199,6 +1199,9 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   </span>
                 )}
               </div>
+              <small>
+                {t("submissionOverview.labels.shaHelp")}
+              </small>
             </InformationItem>
 
             <InformationItem

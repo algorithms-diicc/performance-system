@@ -204,6 +204,88 @@
   margin-top: var(--ps-space-4);
 }
 
+.reproducibility-panel__helper {
+  margin: var(--ps-space-2) 0 0;
+  color: var(--ps-text-muted);
+  font-size: var(--ps-font-size-sm);
+  line-height: var(--ps-line-height-normal);
+}
+
+.reproducibility-panel__artifact-help {
+  position: relative;
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--ps-space-2);
+}
+
+.reproducibility-panel__help-popover {
+  position: relative;
+}
+
+.reproducibility-panel__help-popover > summary {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-pill);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text-secondary);
+  cursor: pointer;
+  list-style: none;
+  transition:
+    border-color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast),
+    color var(--ps-transition-fast),
+    box-shadow var(--ps-transition-fast);
+}
+
+.reproducibility-panel__help-popover > summary::-webkit-details-marker {
+  display: none;
+}
+
+.reproducibility-panel__help-popover > summary:hover,
+.reproducibility-panel__help-popover[open] > summary {
+  border-color: var(--ps-primary);
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+}
+
+.reproducibility-panel__help-popover > summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ps-focus-ring);
+}
+
+.reproducibility-panel__help-popover-content {
+  position: absolute;
+  z-index: 30;
+  right: 0;
+  bottom: calc(100% + var(--ps-space-2));
+  width: min(430px, calc(100vw - 3rem));
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border-strong);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-elevated, var(--ps-surface));
+  box-shadow: var(--ps-shadow-md);
+}
+
+.reproducibility-panel__help-popover-content .reproducibility-panel__helper {
+  margin: 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.55;
+}
+
+.reproducibility-panel__help-popover-content
+  .reproducibility-panel__helper
+  + .reproducibility-panel__helper {
+  margin-top: var(--ps-space-3);
+  padding-top: var(--ps-space-3);
+  border-top: 1px solid var(--ps-divider);
+}
+
 .reproducibility-panel__data-item {
   min-width: 0;
 }

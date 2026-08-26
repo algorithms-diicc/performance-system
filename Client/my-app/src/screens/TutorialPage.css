@@ -544,13 +544,20 @@
   color: var(--ps-text);
 }
 
+.tutorial-example-actions {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: auto;
+  padding-top: 0.15rem;
+}
+
 .tutorial-example-download {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.45rem;
   min-height: 40px;
-  margin-top: auto;
+  margin-top: 0;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--ps-primary);
   border-radius: var(--ps-radius-md, 12px);
@@ -562,6 +569,16 @@
 
 .tutorial-example-download:hover {
   background: var(--ps-primary-soft);
+}
+
+.tutorial-example-prepare {
+  background: color-mix(in srgb, var(--ps-primary) 12%, var(--ps-surface));
+}
+
+.tutorial-example-prepare:hover,
+.tutorial-example-prepare:focus-visible {
+  background: color-mix(in srgb, var(--ps-primary) 20%, var(--ps-surface));
+  outline: none;
 }
 
 .tutorial-evidence-principle {

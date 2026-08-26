@@ -4,6 +4,7 @@ import {
   Archive,
   CheckCircle2,
   ChevronDown,
+  CircleHelp,
   Clipboard,
   ClipboardCopy,
   Code2,
@@ -764,6 +765,9 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
                 )}
               />
             </dl>
+            <p className="reproducibility-panel__helper">
+              {t("reproducibilityPanel.publicIdHelp")}
+            </p>
 
             <div className="reproducibility-panel__copy-actions">
               <button
@@ -925,6 +929,25 @@ const ReproducibilityPanel = ({ codename, onContextChange }) => {
               available={archive.available === true}
               integrity={archive.integrity}
             />
+          </div>
+
+          <div className="reproducibility-panel__artifact-help">
+            <details className="reproducibility-panel__help-popover">
+              <summary
+                aria-label={t("reproducibilityPanel.artifactShaHelp")}
+                title={t("reproducibilityPanel.artifactShaHelp")}
+              >
+                <CircleHelp size={16} aria-hidden="true" />
+              </summary>
+              <div className="reproducibility-panel__help-popover-content">
+                <p className="reproducibility-panel__helper">
+                  {t("reproducibilityPanel.artifactShaHelp")}
+                </p>
+                <p className="reproducibility-panel__helper">
+                  {t("reproducibilityPanel.bundleHelp")}
+                </p>
+              </div>
+            </details>
           </div>
 
           <div

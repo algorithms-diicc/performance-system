@@ -394,6 +394,12 @@ const en = {
     },
     benchmark: {
       sectionLabel: "Benchmark type and parameters",
+      contextHelp: {
+        title: "Benchmark quick guide",
+        lcs: "Text input: uses the text dataset managed by the system.",
+        camm: "Numerical data: generates numerical inputs and lets you choose their distribution.",
+        size: "Parameterized size: passes N as an integer argument; the program manages its data from that value.",
+      },
       sectionHelp:
         "Select the input type that best represents the algorithm you want to analyze. Performance System will use the associated benchmark to generate the measurement points.",
       maxInput: "Maximum input size",
@@ -756,6 +762,10 @@ const en = {
         loaded:
           "Experiment #{{id}} was loaded for repetition. Review the configuration before running it.",
       },
+      starter: {
+        loaded:
+          "Initial configuration prepared for {{benchmark}}. Attach the example ZIP or your own ZIP to continue.",
+      },
       validations: {
         numberRequired: "Enter a numeric value.",
         numberInvalid: "Enter a valid number.",
@@ -902,6 +912,7 @@ const en = {
       duration: "Duration",
       result: "Result",
       environment: "Environment",
+      shaHelp: "ZIP SHA-256: fingerprint used to verify that the original file has not changed.",
     },
     aggregateStates: {
       inProgress: "In progress",
@@ -1682,6 +1693,9 @@ const en = {
   },
 
   reproducibilityPanel: {
+    publicIdHelp: "Stably identifies this execution. Knowing the identifier does not grant access to the result.",
+    artifactShaHelp: "SHA-256 fingerprints let you verify that downloaded artifacts match those recorded for this execution.",
+    bundleHelp: "This package includes this execution's source, CombinedResults.csv, and manifest.json with configuration and experimental context. It helps preserve and review the evidence needed to repeat the same experimental configuration.",
     common: {
       unavailable: "Unavailable",
       yes: "Yes",
@@ -3952,6 +3966,7 @@ const en = {
           "The public URLs remain unchanged. Each ZIP follows its benchmark input and output contract and demonstrates one mode supported by the product.",
         observeLabel: "What to observe",
         download: "Download {{benchmark}} example",
+        prepare: "Prepare analysis",
         contractNote:
           "Each .c or .cpp file is a standalone implementation with its own entry point. The ZIP files contain no headers, build systems, or unsupported sources.",
         modes: {

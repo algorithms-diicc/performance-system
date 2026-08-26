@@ -222,6 +222,11 @@ describe("SubmissionOverviewPage", () => {
         name: "Copiar SHA-256 completo",
       })
     ).toBeInTheDocument();
+    expect(
+      within(information).getByText(
+        "SHA-256 del ZIP: huella utilizada para verificar que el archivo original no haya cambiado."
+      )
+    ).toBeInTheDocument();
 
     const filenameHeading = screen.getByRole("heading", {
       name: "std_sort.cpp",

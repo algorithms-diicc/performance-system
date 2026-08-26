@@ -96,6 +96,17 @@ export function normalizeDraftNote(value) {
   return limitText(value, MAX_SUBMISSION_NOTE_CHARS);
 }
 
+const STARTER_CONFIGURATIONS = Object.freeze({
+  size: { selectedTaskType: "size", inputSize: 2500, executionProfile: "rapido", samples: 10, dataType: "" },
+  lcs: { selectedTaskType: "lcs", inputSize: 1000, executionProfile: "rapido", samples: 10, dataType: "" },
+  camm: { selectedTaskType: "camm", inputSize: 5000, executionProfile: "rapido", samples: 10, dataType: "cammr" },
+});
+
+export function parseStarterConfiguration(search = "") {
+  const value = new URLSearchParams(search).get("starter");
+  return STARTER_CONFIGURATIONS[String(value || "").toLowerCase()] || null;
+}
+
 /**
  * Evita tratar como restaurable el objeto default que genera el autosave.
  */

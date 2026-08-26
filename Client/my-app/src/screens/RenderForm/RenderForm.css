@@ -442,6 +442,99 @@
   height: 1.05rem;
 }
 
+.rf-page .benchmark-heading {
+  position: relative;
+}
+
+.rf-page .benchmark-help-popover {
+  position: relative;
+  margin-left: auto;
+  font-weight: 500;
+}
+
+.rf-page .benchmark-help-popover > summary {
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--ps-border);
+  border-radius: var(--ps-radius-pill);
+  background: var(--ps-surface-subtle);
+  color: var(--ps-text-secondary);
+  cursor: pointer;
+  list-style: none;
+  transition:
+    border-color var(--ps-transition-fast),
+    background-color var(--ps-transition-fast),
+    color var(--ps-transition-fast),
+    box-shadow var(--ps-transition-fast);
+}
+
+.rf-page .benchmark-help-popover > summary::-webkit-details-marker {
+  display: none;
+}
+
+.rf-page .benchmark-help-popover > summary:hover,
+.rf-page .benchmark-help-popover[open] > summary {
+  border-color: var(--ps-primary);
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+}
+
+.rf-page .benchmark-help-popover > summary:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--ps-focus-ring);
+}
+
+.rf-page .benchmark-help-popover__content {
+  position: absolute;
+  z-index: 30;
+  top: calc(100% + var(--ps-space-2));
+  right: 0;
+  width: min(380px, calc(100vw - 3rem));
+  padding: var(--ps-space-4);
+  border: 1px solid var(--ps-border-strong);
+  border-radius: var(--ps-radius-md);
+  background: var(--ps-surface-elevated, var(--ps-surface));
+  box-shadow: var(--ps-shadow-md);
+  color: var(--ps-text);
+}
+
+.rf-page .benchmark-help-popover__content > strong {
+  display: block;
+  margin-bottom: var(--ps-space-3);
+  font-size: var(--ps-font-size-sm);
+}
+
+.rf-page .benchmark-help-popover__item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: var(--ps-space-3);
+  padding: var(--ps-space-2) 0;
+  color: var(--ps-text-secondary);
+  font-size: var(--ps-font-size-xs);
+  line-height: 1.5;
+}
+
+.rf-page .benchmark-help-popover__item + .benchmark-help-popover__item {
+  border-top: 1px solid var(--ps-divider);
+}
+
+.rf-page .benchmark-help-popover__code {
+  min-width: 48px;
+  padding: 0.18rem 0.4rem;
+  border-radius: var(--ps-radius-pill);
+  background: var(--ps-primary-soft);
+  color: var(--ps-primary);
+  font-family: var(--ps-font-mono);
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-align: center;
+}
+
 
 /* ============================================================
    STANDARD INPUT

@@ -362,6 +362,20 @@ describe("ReproducibilityPanel", () => {
     expect(text).toContain(CSV_SHA);
     expect(text).toContain(ARCHIVE_SHA);
     expect(text).toContain("CombinedResults.csv");
+    const artifactHelp = document.querySelector(
+      ".reproducibility-panel__help-popover"
+    );
+    expect(artifactHelp).toBeInTheDocument();
+    expect(artifactHelp).not.toHaveAttribute("open");
+    expect(
+      artifactHelp.querySelector("summary svg")
+    ).toBeInTheDocument();
+    expect(text).toContain(
+      "Las huellas SHA-256 permiten comprobar que los artefactos descargados coinciden con los registrados para esta ejecución."
+    );
+    expect(text).toContain(
+      "Sirve para conservar y revisar la evidencia necesaria para repetir la misma configuración experimental."
+    );
     expect(text).toContain("Verificado");
     expect(text).not.toContain("/private/");
     expect(text).not.toContain("private-host");

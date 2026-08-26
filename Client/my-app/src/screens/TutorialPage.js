@@ -113,16 +113,6 @@ const SCREENSHOTS = {
 
 const STARTER_EXAMPLES = [
   {
-    benchmark: "SIZE",
-    mode: "mixed",
-    titleKey: `${COPY}.examples.size.title`,
-    descriptionKey: `${COPY}.examples.size.description`,
-    observeKey: `${COPY}.examples.size.observe`,
-    modeKey: `${COPY}.examples.modes.mixed`,
-    files: ["insertion_sort.c", "merge_sort.cpp"],
-    href: "/tutorial-codigos/size_template.zip",
-  },
-  {
     benchmark: "LCS",
     mode: "c",
     titleKey: `${COPY}.examples.lcs.title`,
@@ -131,6 +121,7 @@ const STARTER_EXAMPLES = [
     modeKey: `${COPY}.examples.modes.c`,
     files: ["longest_common_subsequence.c"],
     href: "/tutorial-codigos/lcs_template.zip",
+    starterHref: "/?starter=lcs",
   },
   {
     benchmark: "CAMM",
@@ -141,6 +132,18 @@ const STARTER_EXAMPLES = [
     modeKey: `${COPY}.examples.modes.cpp`,
     files: ["blocked_matrix_multiplication.cpp"],
     href: "/tutorial-codigos/camm_template.zip",
+    starterHref: "/?starter=camm",
+  },
+  {
+    benchmark: "SIZE",
+    mode: "mixed",
+    titleKey: `${COPY}.examples.size.title`,
+    descriptionKey: `${COPY}.examples.size.description`,
+    observeKey: `${COPY}.examples.size.observe`,
+    modeKey: `${COPY}.examples.modes.mixed`,
+    files: ["insertion_sort.c", "merge_sort.cpp"],
+    href: "/tutorial-codigos/size_template.zip",
+    starterHref: "/?starter=size",
   },
 ];
 
@@ -388,7 +391,20 @@ const TutorialPage = ({ currentUser = null }) => {
                   <p>{t(example.descriptionKey)}</p>
                   <div className="tutorial-example-files">{example.files.map((filename) => <code key={filename}>{filename}</code>)}</div>
                   <div className="tutorial-example-observe"><strong>{t(`${COPY}.examples.observeLabel`)}</strong><span>{t(example.observeKey)}</span></div>
-                  <a href={example.href} download className="tutorial-example-download"><Download size={16} aria-hidden="true" />{t(`${COPY}.examples.download`, { benchmark: example.benchmark })}</a>
+                  <div className="tutorial-example-actions">
+                    <a href={example.href} download className="tutorial-example-download">
+                      <Download size={16} aria-hidden="true" />
+                      {t(`${COPY}.examples.download`, { benchmark: example.benchmark })}
+                    </a>
+                    <a
+                      href={example.starterHref}
+                      className="tutorial-example-download tutorial-example-prepare"
+                      aria-label={`${t(`${COPY}.examples.prepare`)} ${example.benchmark}`}
+                    >
+                      <PlayCircle size={16} aria-hidden="true" />
+                      {t(`${COPY}.examples.prepare`)}
+                    </a>
+                  </div>
                 </article>
               ))}
             </div>
