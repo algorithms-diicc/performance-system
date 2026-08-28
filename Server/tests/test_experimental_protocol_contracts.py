@@ -89,6 +89,28 @@ class FakeExecutionRepository:
         }
 
 
+
+def _test_measurement_policy(
+    profile_key,
+    benchmark,
+    execution_profile,
+    conn=None,
+):
+    return {
+        "hardware_profile_id": 3,
+        "profile_key": profile_key,
+        "benchmark": benchmark,
+        "execution_profile": execution_profile,
+        "minimum_input": 100,
+        "default_input": 500,
+        "recommended_max_input": 750,
+        "hard_max_input": 1000,
+        "input_step": 100,
+        "operational_timeout_seconds": 960,
+        "is_active": True,
+    }
+
+
 class ExperimentalProtocolContractTests(unittest.TestCase):
     SHA = "a" * 64
 
@@ -208,6 +230,8 @@ class ExperimentalProtocolContractTests(unittest.TestCase):
             course_id=4,
             protocol_id=9,
             conn=FakeConnection(),
+            policy_resolver=_test_measurement_policy,
+            profile_key_resolver=lambda: "shenu-intel-i5-9400",
             submission_repo=submission_repo,
             execution_repo=FakeExecutionRepository(),
         )

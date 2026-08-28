@@ -30,6 +30,9 @@ import signal
 import sys
 import shlex
 import re
+import threading
+import urllib.parse
+import urllib.request
 
 try:
     from .utils.logger import log_admin, log_admin_stage
@@ -127,6 +130,308 @@ QUEUE_POLL_SECONDS = int(
 QUEUE_RECENT_SECONDS = int(
     os.getenv("QUEUE_RECENT_SECONDS", "300")
 )
+
+
+# ============================================================
+# MEASUREMENT NODE HEARTBEAT
+# ============================================================
+
+DEFAULT_MEASUREMENT_NODE_HEARTBEAT_SECONDS = 10
+DEFAULT_MEASUREMENT_NODE_HEARTBEAT_TIMEOUT_SECONDS = 5
+
+MEASUREMENT_NODE_KEY_RE = re.compile(
+    r"^[a-z0-9][a-z0-9_-]{0,63}$"
+)
+
+_measurement_node_heartbeat_lock = threading.Lock()
+_measurement_node_heartbeat_lease = None
+
+
+def _positive_integer(value, default):
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+
+    return parsed if parsed > 0 else default
+
+
+def measurement_node_heartbeat_configuration(
+    environment=None,
+):
+    """
+    Lee la identidad/credencial del nodo.
+
+    Sin ninguna variable configurada, el heartbeat queda deshabilitado
+    para conservar compatibilidad con entornos legacy/locales.
+
+    Una configuración parcial falla cerrada.
+    """
+    source = (
+        os.environ
+        if environment is None
+        else environment
+    )
+
+    node_key = str(
+        source.get("MEASUREMENT_NODE_KEY") or ""
+    ).strip().lower()
+
+    heartbeat_url = str(
+        source.get(
+            "MEASUREMENT_NODE_HEARTBEAT_URL"
+        ) or ""
+    ).strip()
+
+    heartbeat_token = str(
+        source.get(
+            "MEASUREMENT_NODE_HEARTBEAT_TOKEN"
+        ) or ""
+    ).strip()
+
+    configured_values = (
+        node_key,
+        heartbeat_url,
+        heartbeat_token,
+    )
+
+    if not any(configured_values):
+        return None
+
+    if not all(configured_values):
+        raise ValueError(
+            "MEASUREMENT_NODE_KEY, "
+            "MEASUREMENT_NODE_HEARTBEAT_URL y "
+            "MEASUREMENT_NODE_HEARTBEAT_TOKEN deben "
+            "configurarse en conjunto."
+        )
+
+    if not MEASUREMENT_NODE_KEY_RE.fullmatch(
+        node_key
+    ):
+        raise ValueError(
+            "MEASUREMENT_NODE_KEY tiene un formato inválido."
+        )
+
+    parsed_url = urllib.parse.urlparse(
+        heartbeat_url
+    )
+
+    if (
+        parsed_url.scheme not in {"http", "https"}
+        or not parsed_url.netloc
+    ):
+        raise ValueError(
+            "MEASUREMENT_NODE_HEARTBEAT_URL "
+            "debe ser una URL HTTP(S) absoluta."
+        )
+
+    if not re.fullmatch(
+        r"[0-9a-f]{64}",
+        heartbeat_token,
+    ):
+        raise ValueError(
+            "MEASUREMENT_NODE_HEARTBEAT_TOKEN "
+            "debe ser el token HMAC SHA-256 derivado."
+        )
+
+    return {
+        "node_key": node_key,
+        "url": heartbeat_url,
+        "token": heartbeat_token,
+        "interval_seconds": _positive_integer(
+            source.get(
+                "MEASUREMENT_NODE_HEARTBEAT_SECONDS"
+            ),
+            DEFAULT_MEASUREMENT_NODE_HEARTBEAT_SECONDS,
+        ),
+        "timeout_seconds": _positive_integer(
+            source.get(
+                "MEASUREMENT_NODE_HEARTBEAT_TIMEOUT_SECONDS"
+            ),
+            DEFAULT_MEASUREMENT_NODE_HEARTBEAT_TIMEOUT_SECONDS,
+        ),
+    }
+
+
+def send_measurement_node_heartbeat(
+    configuration=None,
+    opener=None,
+):
+    """
+    Envía un heartbeat autenticado a Performance.
+
+    No conoce el secreto maestro: sólo usa el bearer derivado
+    específicamente para este node_key.
+    """
+    config = (
+        measurement_node_heartbeat_configuration()
+        if configuration is None
+        else configuration
+    )
+
+    if config is None:
+        return False
+
+    body = json.dumps(
+        {
+            "nodeKey": config["node_key"],
+        }
+    ).encode("utf-8")
+
+    request = urllib.request.Request(
+        config["url"],
+        data=body,
+        headers={
+            "Authorization":
+                "Bearer {}".format(config["token"]),
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    open_request = (
+        urllib.request.urlopen
+        if opener is None
+        else opener
+    )
+
+    with open_request(
+        request,
+        timeout=config["timeout_seconds"],
+    ) as response:
+        status = getattr(
+            response,
+            "status",
+            response.getcode(),
+        )
+
+        payload = response.read()
+
+    if status < 200 or status >= 300:
+        raise RuntimeError(
+            "Measurement node heartbeat HTTP {}.".format(
+                status
+            )
+        )
+
+    try:
+        decoded = json.loads(
+            payload.decode("utf-8")
+        )
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        raise RuntimeError(
+            "Measurement node heartbeat devolvió "
+            "una respuesta inválida."
+        )
+
+    if (
+        not isinstance(decoded, dict)
+        or decoded.get("nodeKey")
+        != config["node_key"]
+    ):
+        raise RuntimeError(
+            "Measurement node heartbeat respondió "
+            "para una identidad distinta."
+        )
+
+    return True
+
+
+def _measurement_node_heartbeat_loop(
+    stop_event,
+    configuration,
+    sender=send_measurement_node_heartbeat,
+):
+    """
+    Renueva el liveness inmediatamente y después en cada intervalo.
+
+    Un fallo transitorio de red no termina el slave; simplemente deja
+    de renovar el heartbeat y Performance derivará OFFLINE si expira.
+    """
+    interval = configuration[
+        "interval_seconds"
+    ]
+
+    while not stop_event.is_set():
+        try:
+            sender(
+                configuration=configuration
+            )
+        except Exception as exc:
+            print(
+                "[⚠️ MeasurementNode heartbeat] {}".format(
+                    exc
+                )
+            )
+
+        if stop_event.wait(interval):
+            break
+
+
+def start_measurement_node_heartbeat(
+    configuration=None,
+    sender=send_measurement_node_heartbeat,
+):
+    """
+    Inicia como máximo un heartbeat de nodo por proceso slave.
+    """
+    global _measurement_node_heartbeat_lease
+
+    config = (
+        measurement_node_heartbeat_configuration()
+        if configuration is None
+        else configuration
+    )
+
+    if config is None:
+        return False
+
+    with _measurement_node_heartbeat_lock:
+        if (
+            _measurement_node_heartbeat_lease
+            and _measurement_node_heartbeat_lease[
+                "thread"
+            ].is_alive()
+        ):
+            return False
+
+        stop_event = threading.Event()
+
+        thread = threading.Thread(
+            target=_measurement_node_heartbeat_loop,
+            args=(
+                stop_event,
+                config,
+                sender,
+            ),
+            name="measurement-node-heartbeat",
+            daemon=True,
+        )
+
+        _measurement_node_heartbeat_lease = {
+            "stop_event": stop_event,
+            "thread": thread,
+            "node_key": config["node_key"],
+        }
+
+        thread.start()
+
+    return True
+
+
+def stop_measurement_node_heartbeat():
+    global _measurement_node_heartbeat_lease
+
+    with _measurement_node_heartbeat_lock:
+        lease = _measurement_node_heartbeat_lease
+        _measurement_node_heartbeat_lease = None
+
+    if not lease:
+        return False
+
+    lease["stop_event"].set()
+    return True
 
 
 # ============================================================
@@ -1549,6 +1854,27 @@ def main():
     print(
         "========================================"
     )
+
+    heartbeat_config = (
+        measurement_node_heartbeat_configuration()
+    )
+
+    if heartbeat_config is None:
+        print(
+            "[🔧 MeasurementNode] heartbeat disabled"
+        )
+    else:
+        print(
+            "[🔧 MeasurementNode] "
+            "{} | heartbeat={}s".format(
+                heartbeat_config["node_key"],
+                heartbeat_config["interval_seconds"],
+            )
+        )
+
+        start_measurement_node_heartbeat(
+            configuration=heartbeat_config
+        )
 
 
     while True:

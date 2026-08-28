@@ -64,6 +64,7 @@ from .routes.trace_routes import trace_bp
 from .routes.export_routes import export_bp
 from .routes.comparison_routes import comparisons_bp
 from .routes.measurement_policy_routes import measurement_policy_bp
+from .routes.measurement_node_heartbeat_routes import measurement_node_heartbeat_bp
 
 from .services.execution_creation_service import (
     InvalidExecutionRequest,
@@ -255,6 +256,7 @@ app.register_blueprint(trace_bp)
 app.register_blueprint(export_bp)
 app.register_blueprint(comparisons_bp)
 app.register_blueprint(measurement_policy_bp)
+app.register_blueprint(measurement_node_heartbeat_bp)
 
 # Cola legacy conservada sólo para compatibilidad/regresión de
 # `serve_next_inline()`. El runtime productivo de Iteración 9 usa

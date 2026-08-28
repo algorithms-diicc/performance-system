@@ -90,3 +90,138 @@ def list_measurement_nodes(conn=None):
     finally:
         if owns_connection:
             db.close()
+
+def upsert_measurement_node(
+    node_key,
+    display_name,
+    hardware_profile_id,
+    institutional_priority=0,
+    is_enabled=False,
+    is_validation_only=False,
+    is_draining=False,
+    conn=None,
+):
+    """
+    Crea o actualiza un MeasurementNode por su identidad estable node_key.
+
+    El heartbeat no se modifica durante el upsert: representa liveness
+    observado, no configuración administrativa.
+    """
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                INSERT INTO measurement_nodes (
+                    node_key,
+                    display_name,
+                    hardware_profile_id,
+                    institutional_priority,
+                    is_enabled,
+                    is_validation_only,
+                    is_draining,
+                    updated_at
+                )
+                VALUES (
+                    %s, %s, %s, %s,
+                    %s, %s, %s,
+                    CURRENT_TIMESTAMP
+                )
+                ON CONFLICT (node_key)
+                DO UPDATE SET
+                    display_name = EXCLUDED.display_name,
+                    hardware_profile_id =
+                        EXCLUDED.hardware_profile_id,
+                    institutional_priority =
+                        EXCLUDED.institutional_priority,
+                    is_enabled = EXCLUDED.is_enabled,
+                    is_validation_only =
+                        EXCLUDED.is_validation_only,
+                    is_draining = EXCLUDED.is_draining,
+                    updated_at = CURRENT_TIMESTAMP
+                RETURNING
+                    id,
+                    node_key,
+                    display_name,
+                    hardware_profile_id,
+                    institutional_priority,
+                    is_enabled,
+                    is_validation_only,
+                    is_draining,
+                    last_heartbeat_at,
+                    created_at,
+                    updated_at;
+                """,
+                (
+                    node_key,
+                    display_name,
+                    hardware_profile_id,
+                    institutional_priority,
+                    is_enabled,
+                    is_validation_only,
+                    is_draining,
+                ),
+            )
+            row = cur.fetchone()
+
+        if owns_connection:
+            db.commit()
+
+        return dict(row) if row is not None else None
+
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def touch_measurement_node_heartbeat(
+    node_key,
+    conn=None,
+):
+    """
+    Registra liveness observado para un MeasurementNode existente.
+
+    No habilita el nodo ni modifica draining/priority/profile.
+    """
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute(
+                """
+                UPDATE measurement_nodes
+                SET
+                    last_heartbeat_at = CURRENT_TIMESTAMP,
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE node_key = %s
+                RETURNING
+                    id,
+                    node_key,
+                    last_heartbeat_at,
+                    updated_at;
+                """,
+                (node_key,),
+            )
+            row = cur.fetchone()
+
+        if owns_connection:
+            db.commit()
+
+        return dict(row) if row is not None else None
+
+    except Exception:
+        if owns_connection:
+            db.rollback()
+        raise
+
+    finally:
+        if owns_connection:
+            db.close()
