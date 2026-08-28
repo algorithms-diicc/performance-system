@@ -65,6 +65,7 @@ def create_execution(
     hardware_profile_id=None,
     idempotency_key=None,
     conn=None,
+    measurement_node_id=None,
 ):
     """
     Crea una ejecución persistente en QUEUED.
@@ -84,6 +85,7 @@ def create_execution(
                 INSERT INTO executions (
                     submission_id,
                     hardware_profile_id,
+                    measurement_node_id,
                     public_id,
                     codename,
                     execution_state,
@@ -100,6 +102,7 @@ def create_execution(
                     state_version
                 )
                 VALUES (
+                    %s,
                     %s,
                     %s,
                     gen_random_uuid(),
@@ -122,6 +125,7 @@ def create_execution(
                     public_id::text AS public_id,
                     submission_id,
                     hardware_profile_id,
+                    measurement_node_id,
                     codename,
                     execution_state,
                     created_at,
@@ -140,6 +144,7 @@ def create_execution(
                 (
                     submission_id,
                     hardware_profile_id,
+                    measurement_node_id,
                     codename,
                     benchmark,
                     input_size,
@@ -182,6 +187,7 @@ def get_execution(public_id, conn=None, for_update=False):
                 e.public_id::text AS public_id,
                 e.submission_id,
                 e.hardware_profile_id,
+                e.measurement_node_id,
                 e.codename,
                 e.execution_state,
                 e.failure_stage,

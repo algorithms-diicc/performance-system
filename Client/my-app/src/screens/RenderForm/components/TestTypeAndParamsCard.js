@@ -147,12 +147,33 @@ function TestTypeAndParamsCard({
             const taskIcon = taskIcons?.[task.id];
             const limitsInput = getLimits(task.id, "inputSize");
             const limitsSamples = getLimits(task.id, "samples");
-            const recommendedInputValues =
-              inputSizePresets[task.id] || [];
             const recommendedInputMax =
-              recommendedInputValues.length > 0
-                ? Math.max(...recommendedInputValues)
-                : null;
+              limitsInput?.recommendedMax ?? null;
+
+            const recommendedInputValues = (
+              inputSizePresets[task.id] || []
+            ).filter((preset) => {
+              const numericPreset = Number(preset);
+
+              if (!Number.isFinite(numericPreset)) {
+                return false;
+              }
+
+              if (
+                limitsInput &&
+                (
+                  numericPreset < limitsInput.min ||
+                  numericPreset > limitsInput.max
+                )
+              ) {
+                return false;
+              }
+
+              return (
+                recommendedInputMax === null ||
+                numericPreset <= recommendedInputMax
+              );
+            });
             const numericInputSize = Number(inputSize);
             const exceedsRecommendedInput =
               inputSize !== "" &&

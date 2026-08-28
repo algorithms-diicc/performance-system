@@ -9,6 +9,10 @@ export const ANALYSIS_REQUIREMENT_KEYS = Object.freeze({
   COURSE_LOADING: "courseLoading",
   COURSE_UNAVAILABLE: "courseUnavailable",
   COURSE_REQUIRED: "courseRequired",
+  MEASUREMENT_POLICY_LOADING:
+    "measurementPolicyLoading",
+  MEASUREMENT_POLICY_UNAVAILABLE:
+    "measurementPolicyUnavailable",
 });
 
 function isValidNumber(value, limits) {
@@ -47,6 +51,8 @@ export function buildAnalysisRequirements({
   courseContextError,
   courseSelectionRequired,
   selectedCourseId,
+  measurementPolicyLoading,
+  measurementPolicyUnavailable,
 } = {}) {
   const requirements = [];
 
@@ -58,6 +64,16 @@ export function buildAnalysisRequirements({
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INSPECTING);
   } else if (!fileMeta || Number(fileMeta.sourceCount) < 1) {
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INVALID);
+  }
+
+  if (measurementPolicyLoading) {
+    requirements.push(
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_LOADING
+    );
+  } else if (measurementPolicyUnavailable) {
+    requirements.push(
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_UNAVAILABLE
+    );
   }
 
   if (!selectedTaskType) {

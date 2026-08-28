@@ -31,6 +31,8 @@ def create_submission(
     original_filename=None,
     note=None,
     is_pinned=False,
+    assigned_measurement_node_id=None,
+    measurement_node_mode=None,
 ):
     """
     Crea una submission.
@@ -56,11 +58,14 @@ def create_submission(
                     code_hash,
                     note,
                     is_pinned,
+                    assigned_measurement_node_id,
+                    measurement_node_mode,
                     created_at,
                     status
                 )
                 VALUES (
                     %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                    %s, %s,
                     CURRENT_TIMESTAMP, %s
                 )
                 RETURNING
@@ -76,6 +81,8 @@ def create_submission(
                     note,
                     is_pinned,
                     archived_at,
+                    assigned_measurement_node_id,
+                    measurement_node_mode,
                     created_at,
                     status;
                 """,
@@ -90,6 +97,8 @@ def create_submission(
                     code_hash,
                     note,
                     is_pinned,
+                    assigned_measurement_node_id,
+                    measurement_node_mode,
                     status,
                 ),
             )
@@ -131,6 +140,8 @@ def get_submission(submission_id, conn=None):
                     note,
                     is_pinned,
                     archived_at,
+                    assigned_measurement_node_id,
+                    measurement_node_mode,
                     created_at,
                     status
                 FROM submissions

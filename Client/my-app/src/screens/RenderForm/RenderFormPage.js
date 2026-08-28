@@ -28,8 +28,17 @@ import {
 import { buildAnalysisRequirements } from "./analysisReadinessModel";
 import {
   EXECUTION_PROFILE_SAMPLES,
+  inferExecutionProfileFromSamples,
   normalizeExecutionProfile,
 } from "./executionProfileModel";
+import {
+  buildMeasurementPolicyMatrix,
+  measurementPolicyInputLimits,
+  resolveMeasurementPolicy,
+} from "./measurementPolicyModel";
+import {
+  fetchMeasurementPolicies,
+} from "./measurementPolicyApi";
 import {
   resolveCourseQuerySelection,
 } from "./courseOnboardingModel";
@@ -67,15 +76,6 @@ import "./RenderForm.css";
  * Clave usada para guardar el borrador en localStorage.
  */
 const RENDER_FORM_DRAFT_KEY = "renderFormDraft_v2";
-
-/**
- * Parámetros por defecto por tipo de test
- */
-const defaultParams = {
-  lcs: { inputSize: 500, samples: 30 },
-  camm: { inputSize: 5000, samples: 30 },
-  size: { inputSize: 2500, samples: 30 },
-};
 
 /**
  * Presets rápidos que se muestran como chips
@@ -201,22 +201,14 @@ const numericalInputOptionsUI = numericalInputOptions.map((option) => {
 });
 
 /**
- * Límites por tipo de test para inputSize y samples.
+ * La cantidad de repeticiones conserva su protección global.
+ * Los límites de inputSize provienen exclusivamente de la policy.
  */
-const PARAM_LIMITS = {
-  lcs: {
-    inputSize: { min: 100, max: 50000, step: 100 },
-    samples: { min: 1, max: 100, step: 1 },
-  },
-  camm: {
-    inputSize: { min: 1000, max: 150000, step: 1000 },
-    samples: { min: 1, max: 100, step: 1 },
-  },
-  size: {
-    inputSize: { min: 100, max: 100000, step: 100 },
-    samples: { min: 1, max: 100, step: 1 },
-  },
-};
+const SAMPLE_LIMITS = Object.freeze({
+  min: 1,
+  max: 100,
+  step: 1,
+});
 
 const messageState = (key, params = {}) => ({
   key,
@@ -273,6 +265,12 @@ function RenderFormPage({ currentUser }) {
 
   const [dataType, setDataType] = useState("");
   const [executionProfile, setExecutionProfile] = useState("equilibrado");
+  const [measurementPolicyMatrix, setMeasurementPolicyMatrix] =
+    useState(null);
+  const [measurementPolicyLoading, setMeasurementPolicyLoading] =
+    useState(true);
+  const [measurementPolicyError, setMeasurementPolicyError] =
+    useState(false);
 
   const [fileList, setFileList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -362,6 +360,53 @@ function RenderFormPage({ currentUser }) {
       return changed ? next : current;
     });
   }, [executionFiles]);
+
+  // ======= Gate 5: políticas operacionales de medición =======
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadMeasurementPolicies = async () => {
+      try {
+        setMeasurementPolicyLoading(true);
+        setMeasurementPolicyError(false);
+
+        const payload = await fetchMeasurementPolicies();
+
+        if (cancelled) return;
+
+        const matrix =
+          buildMeasurementPolicyMatrix(payload);
+
+        if (!matrix) {
+          setMeasurementPolicyMatrix(null);
+          setMeasurementPolicyError(true);
+          return;
+        }
+
+        setMeasurementPolicyMatrix(matrix);
+      } catch (error) {
+        if (cancelled) return;
+
+        console.error(
+          "No fue posible cargar las políticas de medición:",
+          error
+        );
+
+        setMeasurementPolicyMatrix(null);
+        setMeasurementPolicyError(true);
+      } finally {
+        if (!cancelled) {
+          setMeasurementPolicyLoading(false);
+        }
+      }
+    };
+
+    loadMeasurementPolicies();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // ======= CORE-07F-5: cursos activos del estudiante =======
   useEffect(() => {
@@ -640,51 +685,34 @@ function RenderFormPage({ currentUser }) {
       setDataType(savedDataType);
       setExecutionProfile(restoredProfile);
 
-      if (savedTaskType && PARAM_LIMITS[savedTaskType]) {
-        const limitsInput = PARAM_LIMITS[savedTaskType].inputSize;
-        const limitsSamples = PARAM_LIMITS[savedTaskType].samples;
+      const clampSamples = (value) => {
+        if (
+          typeof value !== "number" ||
+          !Number.isFinite(value)
+        ) {
+          return SAMPLE_LIMITS.min;
+        }
 
-        const clampNumber = (value, min, max, fallback) => {
-          if (typeof value !== "number" || Number.isNaN(value)) {
-            return fallback;
-          }
-          return Math.min(max, Math.max(min, value));
-        };
+        return Math.min(
+          SAMPLE_LIMITS.max,
+          Math.max(SAMPLE_LIMITS.min, value)
+        );
+      };
 
-        const safeInputSize = clampNumber(
-          savedInputSize,
-          limitsInput.min,
-          limitsInput.max,
-          limitsInput.min
-        );
-        const safeSamples = clampNumber(
-          savedSamples,
-          limitsSamples.min,
-          limitsSamples.max,
-          limitsSamples.min
-        );
+      setInputSize(
+        typeof savedInputSize === "number" &&
+        Number.isFinite(savedInputSize)
+          ? savedInputSize
+          : savedTaskType
+          ? ""
+          : 1000
+      );
 
-        setInputSize(safeInputSize);
-        setSamples(
-          typeof fixedProfileSamples === "number"
-            ? fixedProfileSamples
-            : safeSamples
-        );
-      } else {
-        setInputSize(
-          typeof savedInputSize === "number" && !Number.isNaN(savedInputSize)
-            ? savedInputSize
-            : 1000
-        );
-        setSamples(
-          typeof fixedProfileSamples === "number"
-            ? fixedProfileSamples
-            : typeof savedSamples === "number" &&
-              !Number.isNaN(savedSamples)
-            ? savedSamples
-            : 30
-        );
-      }
+      setSamples(
+        typeof fixedProfileSamples === "number"
+          ? fixedProfileSamples
+          : clampSamples(savedSamples)
+      );
 
       setParamErrors({ inputSize: "", samples: "" });
       setDraftRestored(hasMeaningfulDraft(draft));
@@ -1201,10 +1229,80 @@ function RenderFormPage({ currentUser }) {
     location.search,
   ]);
 
+  // ======= Policy efectiva del formulario =======
+  // Debe reproducir exactamente la inferencia backend basada en samples.
+  const effectivePolicyProfile =
+    inferExecutionProfileFromSamples(samples);
+
+  const policyForTask = (taskId) =>
+    resolveMeasurementPolicy(
+      measurementPolicyMatrix,
+      taskId,
+      effectivePolicyProfile
+    );
+
+  const paramLimitsForTask = (taskId) => ({
+    inputSize: measurementPolicyInputLimits(
+      policyForTask(taskId)
+    ),
+    samples: SAMPLE_LIMITS,
+  });
+
+  const dynamicParamLimits = {
+    lcs: paramLimitsForTask("lcs"),
+    camm: paramLimitsForTask("camm"),
+    size: paramLimitsForTask("size"),
+  };
+
+  const currentMeasurementPolicy =
+    policyForTask(selectedTaskType);
+
+  const measurementPolicyUnavailable =
+    measurementPolicyError ||
+    (
+      !measurementPolicyLoading &&
+      (
+        !measurementPolicyMatrix ||
+        (
+          Boolean(selectedTaskType) &&
+          !currentMeasurementPolicy
+        )
+      )
+    );
+
+  // Un borrador antiguo puede no traer inputSize. Una vez disponible
+  // la policy se aplica su default; valores históricos explícitos se
+  // preservan para que la validación pueda mostrarlos si ya no son válidos.
+  useEffect(() => {
+    if (!currentMeasurementPolicy) {
+      return;
+    }
+
+    const numeric = Number(inputSize);
+
+    if (
+      inputSize === "" ||
+      inputSize === null ||
+      inputSize === undefined ||
+      !Number.isFinite(numeric)
+    ) {
+      setInputSize(
+        currentMeasurementPolicy.defaultInput
+      );
+    }
+  }, [
+    currentMeasurementPolicy,
+    inputSize,
+  ]);
+
   // ======= Helpers de validación de parámetros =======
   const getLimits = (field) => {
     if (!selectedTaskType) return null;
-    return PARAM_LIMITS[selectedTaskType]?.[field] || null;
+
+    return (
+      dynamicParamLimits[selectedTaskType]?.[field] ||
+      null
+    );
   };
 
   const validateParam = (field, rawValue) => {
@@ -1264,6 +1362,42 @@ function RenderFormPage({ currentUser }) {
     validateParam("inputSize", value);
   };
 
+  const alignInputWithPolicyForSamples = (
+    nextSamples
+  ) => {
+    if (!selectedTaskType) {
+      return;
+    }
+
+    const nextProfile =
+      inferExecutionProfileFromSamples(
+        nextSamples
+      );
+
+    const nextPolicy =
+      resolveMeasurementPolicy(
+        measurementPolicyMatrix,
+        selectedTaskType,
+        nextProfile
+      );
+
+    if (!nextPolicy) {
+      return;
+    }
+
+    const numericInput = Number(inputSize);
+
+    if (
+      Number.isFinite(numericInput) &&
+      (
+        numericInput < nextPolicy.minimumInput ||
+        numericInput > nextPolicy.hardMaxInput
+      )
+    ) {
+      setInputSize(nextPolicy.defaultInput);
+    }
+  };
+
   const handleSamplesChange = (e) => {
     if (executionProfile !== "personalizado") return;
 
@@ -1271,6 +1405,11 @@ function RenderFormPage({ currentUser }) {
     const value = raw === "" ? "" : Number(raw);
 
     setSamples(value);
+
+    if (value !== "") {
+      alignInputWithPolicyForSamples(value);
+    }
+
     validateParam("samples", raw);
   };
 
@@ -1280,6 +1419,7 @@ function RenderFormPage({ currentUser }) {
     const value = Number(e.target.value);
 
     setSamples(value);
+    alignInputWithPolicyForSamples(value);
     validateParam("samples", value);
   };
 
@@ -1291,22 +1431,29 @@ function RenderFormPage({ currentUser }) {
 
     setSelectedTaskType(taskId);
 
-    const params = defaultParams[taskId];
+    const nextPolicy =
+      resolveMeasurementPolicy(
+        measurementPolicyMatrix,
+        taskId,
+        effectivePolicyProfile
+      );
 
-    if (params) {
-      setInputSize(params.inputSize);
+    setInputSize(
+      nextPolicy
+        ? nextPolicy.defaultInput
+        : ""
+    );
 
-      const profileSamples =
-        EXECUTION_PROFILE_SAMPLES[executionProfile];
+    const profileSamples =
+      EXECUTION_PROFILE_SAMPLES[executionProfile];
 
-      if (typeof profileSamples === "number") {
-        setSamples(profileSamples);
-      } else if (
-        typeof samples !== "number" ||
-        Number.isNaN(samples)
-      ) {
-        setSamples(params.samples);
-      }
+    if (typeof profileSamples === "number") {
+      setSamples(profileSamples);
+    } else if (
+      typeof samples !== "number" ||
+      Number.isNaN(samples)
+    ) {
+      setSamples(SAMPLE_LIMITS.min);
     }
 
     setParamErrors({
@@ -1364,6 +1511,26 @@ function RenderFormPage({ currentUser }) {
 
     if (typeof suggestedSamples !== "number") {
       return;
+    }
+
+    const nextPolicy =
+      resolveMeasurementPolicy(
+        measurementPolicyMatrix,
+        selectedTaskType,
+        profileId
+      );
+
+    const numericInput = Number(inputSize);
+
+    if (
+      nextPolicy &&
+      Number.isFinite(numericInput) &&
+      (
+        numericInput < nextPolicy.minimumInput ||
+        numericInput > nextPolicy.hardMaxInput
+      )
+    ) {
+      setInputSize(nextPolicy.defaultInput);
     }
 
     const limits = getLimits("samples");
@@ -1927,13 +2094,15 @@ function RenderFormPage({ currentUser }) {
     selectedTaskType,
     inputSize,
     samples,
-    paramLimits: PARAM_LIMITS,
+    paramLimits: dynamicParamLimits,
     executionProfile,
     dataType,
     courseContextLoading,
     courseContextError,
     courseSelectionRequired,
     selectedCourseId,
+    measurementPolicyLoading,
+    measurementPolicyUnavailable,
   });
 
   const isSubmitDisabled =
@@ -2086,7 +2255,7 @@ function RenderFormPage({ currentUser }) {
               taskDescriptions={taskDescriptions}
               taskBadges={taskBadges}
               inputSizeHelp={inputSizeHelp}
-              paramLimits={PARAM_LIMITS}
+              paramLimits={dynamicParamLimits}
               executionProfile={executionProfile}
             />
 

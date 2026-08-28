@@ -1,5 +1,5 @@
 -- Performance System
--- Esquema base actualizado hasta HANDOFF F / migración 007
+-- Esquema base actualizado hasta Gate 2 / migración 008
 -- PostgreSQL 12+
 --
 -- Este archivo representa el estado objetivo actual para una instalación NUEVA.
@@ -8,8 +8,9 @@
 -- IMPORTANTE:
 -- - `executions.status` se conserva temporalmente como compatibilidad legacy.
 -- - `executions.execution_state` es el estado canónico nuevo.
--- - `metrics` y `hardware_profiles` se conservan por ahora con su diseño existente;
---   su integración funcional se realizará en checkpoints posteriores.
+-- - `metrics` conserva por ahora su diseño existente.
+-- - `hardware_profiles` ya incluye identidad/capacidades; su integración
+--   operacional y la selección multinodo se completan en gates posteriores.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
@@ -285,12 +286,162 @@ CREATE INDEX idx_experimental_protocols_course
 CREATE TABLE hardware_profiles (
     id SERIAL PRIMARY KEY,
     name VARCHAR(50) NOT NULL,
+    profile_key VARCHAR(64),
+    cpu_vendor VARCHAR(64),
     cpu_model VARCHAR(100),
+    architecture VARCHAR(64),
+    logical_cpus INTEGER,
     ram_gb INT,
+    capabilities JSONB NOT NULL DEFAULT '{}'::jsonb,
     description VARCHAR(255),
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT chk_hardware_profiles_profile_key
+        CHECK (
+            profile_key IS NULL
+            OR (
+                BTRIM(profile_key) <> ''
+                AND profile_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'
+            )
+        ),
+
+    CONSTRAINT chk_hardware_profiles_logical_cpus
+        CHECK (
+            logical_cpus IS NULL
+            OR logical_cpus > 0
+        ),
+
+    CONSTRAINT chk_hardware_profiles_capabilities_object
+        CHECK (
+            jsonb_typeof(capabilities) = 'object'
+        )
 );
+
+CREATE UNIQUE INDEX uq_hardware_profiles_profile_key
+    ON hardware_profiles (profile_key)
+    WHERE profile_key IS NOT NULL;
+
+
+CREATE TABLE hardware_profile_policies (
+    id SERIAL PRIMARY KEY,
+
+    hardware_profile_id INT NOT NULL
+        REFERENCES hardware_profiles (id)
+        ON DELETE RESTRICT,
+
+    benchmark VARCHAR(16) NOT NULL,
+    execution_profile VARCHAR(20) NOT NULL,
+
+    minimum_input INTEGER NOT NULL,
+    default_input INTEGER NOT NULL,
+    recommended_max_input INTEGER NOT NULL,
+    hard_max_input INTEGER NOT NULL,
+    input_step INTEGER NOT NULL,
+
+    operational_timeout_seconds INTEGER NOT NULL,
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_hardware_profile_policy
+        UNIQUE (
+            hardware_profile_id,
+            benchmark,
+            execution_profile
+        ),
+
+    CONSTRAINT chk_hardware_profile_policy_benchmark
+        CHECK (
+            benchmark IN ('LCS', 'CAMM', 'SIZE')
+        ),
+
+    CONSTRAINT chk_hardware_profile_policy_execution_profile
+        CHECK (
+            execution_profile IN (
+                'QUICK',
+                'BALANCED',
+                'EXHAUSTIVE',
+                'CUSTOM'
+            )
+        ),
+
+    CONSTRAINT chk_hardware_profile_policy_ranges
+        CHECK (
+            minimum_input > 0
+            AND default_input >= minimum_input
+            AND recommended_max_input >= default_input
+            AND hard_max_input >= recommended_max_input
+        ),
+
+    CONSTRAINT chk_hardware_profile_policy_step
+        CHECK (input_step > 0),
+
+    CONSTRAINT chk_hardware_profile_policy_timeout
+        CHECK (operational_timeout_seconds > 0)
+);
+
+CREATE INDEX idx_hardware_profile_policies_lookup
+    ON hardware_profile_policies (
+        hardware_profile_id,
+        benchmark,
+        execution_profile,
+        is_active
+    );
+
+
+CREATE TABLE measurement_nodes (
+    id SERIAL PRIMARY KEY,
+
+    node_key VARCHAR(64) NOT NULL,
+    display_name VARCHAR(100) NOT NULL,
+
+    hardware_profile_id INT NOT NULL
+        REFERENCES hardware_profiles (id)
+        ON DELETE RESTRICT,
+
+    institutional_priority INTEGER NOT NULL DEFAULT 0,
+
+    is_enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    is_validation_only BOOLEAN NOT NULL DEFAULT FALSE,
+    is_draining BOOLEAN NOT NULL DEFAULT FALSE,
+
+    last_heartbeat_at TIMESTAMP,
+
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT uq_measurement_nodes_node_key
+        UNIQUE (node_key),
+
+    CONSTRAINT chk_measurement_nodes_node_key
+        CHECK (
+            BTRIM(node_key) <> ''
+            AND node_key ~ '^[a-z0-9][a-z0-9_-]{0,63}$'
+        ),
+
+    CONSTRAINT chk_measurement_nodes_display_name
+        CHECK (BTRIM(display_name) <> ''),
+
+    CONSTRAINT chk_measurement_nodes_priority
+        CHECK (institutional_priority >= 0)
+);
+
+CREATE INDEX idx_measurement_nodes_selector
+    ON measurement_nodes (
+        is_enabled,
+        is_draining,
+        is_validation_only,
+        institutional_priority DESC,
+        id
+    );
+
+CREATE INDEX idx_measurement_nodes_last_heartbeat
+    ON measurement_nodes (last_heartbeat_at);
+
 
 -- =========================================================================
 -- SUBMISSIONS
@@ -309,13 +460,35 @@ CREATE TABLE submissions (
     note VARCHAR(500),
     is_pinned BOOLEAN NOT NULL DEFAULT FALSE,
     archived_at TIMESTAMP,
+
+    assigned_measurement_node_id INTEGER,
+    measurement_node_mode VARCHAR(16),
+
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50),
 
     CONSTRAINT fk_submissions_protocol_id
         FOREIGN KEY (protocol_id)
         REFERENCES experimental_protocols (id)
-        ON DELETE SET NULL
+        ON DELETE SET NULL,
+
+    CONSTRAINT fk_submissions_assigned_measurement_node
+        FOREIGN KEY (assigned_measurement_node_id)
+        REFERENCES measurement_nodes (id)
+        ON DELETE RESTRICT,
+
+    CONSTRAINT chk_submissions_measurement_node_assignment
+        CHECK (
+            (
+                measurement_node_mode IS NULL
+                AND assigned_measurement_node_id IS NULL
+            )
+            OR measurement_node_mode = 'AUTO'
+            OR (
+                measurement_node_mode = 'PINNED'
+                AND assigned_measurement_node_id IS NOT NULL
+            )
+        )
 );
 
 CREATE INDEX idx_submissions_user_id ON submissions (user_id);
@@ -323,6 +496,10 @@ CREATE INDEX idx_submissions_user_id ON submissions (user_id);
 CREATE INDEX idx_submissions_course_id ON submissions (course_id);
 
 CREATE INDEX idx_submissions_protocol_id ON submissions (protocol_id);
+
+CREATE INDEX idx_submissions_assigned_measurement_node
+    ON submissions (assigned_measurement_node_id)
+    WHERE assigned_measurement_node_id IS NOT NULL;
 
 CREATE INDEX idx_submissions_status ON submissions (status);
 
@@ -339,6 +516,7 @@ CREATE TABLE executions (
 -- Relaciones
 submission_id INT NOT NULL REFERENCES submissions (id) ON DELETE CASCADE,
 hardware_profile_id INT REFERENCES hardware_profiles (id) ON DELETE SET NULL,
+measurement_node_id INT REFERENCES measurement_nodes (id) ON DELETE RESTRICT,
 
 -- Compatibilidad legacy temporal
 status VARCHAR(50),
@@ -441,6 +619,10 @@ WHERE
 CREATE INDEX idx_executions_submission_id ON executions (submission_id);
 
 CREATE INDEX idx_executions_hardware_profile_id ON executions (hardware_profile_id);
+
+CREATE INDEX idx_executions_measurement_node_id
+    ON executions (measurement_node_id)
+    WHERE measurement_node_id IS NOT NULL;
 
 CREATE INDEX idx_executions_state_created_at ON executions (
     execution_state,
@@ -623,5 +805,9 @@ VALUES
     (
         'handoff_f_007_feedback_notifications',
         'Feedback docente por experimento y bandeja interna de notificaciones'
+    ),
+    (
+        'multinode_008_measurement_nodes_hardware_policies',
+        'Perfiles y políticas operacionales de hardware, nodos físicos y procedencia serial de ejecuciones'
     )
 ON CONFLICT (version) DO NOTHING;

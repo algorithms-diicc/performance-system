@@ -11,7 +11,7 @@ from Server.webapp.services.execution_creation_service import (
     create_submission_bundle,
     infer_execution_profile,
     normalize_benchmark,
-    validate_execution_limits,
+    validate_execution_policy_limits,
     validate_source_specs,
 )
 
@@ -62,8 +62,88 @@ class FakeExecutionRepository:
         }
 
 
+
+def _test_measurement_policy(
+    profile_key,
+    benchmark,
+    execution_profile,
+    conn=None,
+):
+    families = {
+        "CAMMR": "CAMM",
+        "CAMMS": "CAMM",
+        "CAMMSO": "CAMM",
+    }
+    family = families.get(benchmark, benchmark)
+
+    matrix = {
+        ("LCS", "QUICK"): (100, 500, 750, 1000, 100, 960),
+        ("LCS", "BALANCED"): (100, 500, 500, 750, 100, 1680),
+        ("LCS", "EXHAUSTIVE"): (100, 500, 500, 500, 100, 1320),
+        ("LCS", "CUSTOM"): (100, 500, 500, 500, 100, 2640),
+
+        ("CAMM", "QUICK"): (
+            1000, 5000, 100000, 130000, 1000, 360
+        ),
+        ("CAMM", "BALANCED"): (
+            1000, 5000, 75000, 100000, 1000, 780
+        ),
+        ("CAMM", "EXHAUSTIVE"): (
+            1000, 5000, 50000, 75000, 1000, 960
+        ),
+        ("CAMM", "CUSTOM"): (
+            1000, 5000, 50000, 50000, 1000, 1380
+        ),
+
+        ("SIZE", "QUICK"): (
+            100, 2500, 100000, 100000, 100, 120
+        ),
+        ("SIZE", "BALANCED"): (
+            100, 2500, 100000, 100000, 100, 240
+        ),
+        ("SIZE", "EXHAUSTIVE"): (
+            100, 2500, 100000, 100000, 100, 420
+        ),
+        ("SIZE", "CUSTOM"): (
+            100, 2500, 100000, 100000, 100, 780
+        ),
+    }
+
+    (
+        minimum,
+        default,
+        recommended,
+        hard_max,
+        step,
+        timeout,
+    ) = matrix[(family, execution_profile)]
+
+    return {
+        "hardware_profile_id": 3,
+        "profile_key": profile_key,
+        "benchmark": family,
+        "execution_profile": execution_profile,
+        "minimum_input": minimum,
+        "default_input": default,
+        "recommended_max_input": recommended,
+        "hard_max_input": hard_max,
+        "input_step": step,
+        "operational_timeout_seconds": timeout,
+        "is_active": True,
+    }
+
+
 class ExecutionCreationServiceTests(unittest.TestCase):
     SHA = "a" * 64
+
+    def setUp(self):
+        self.policy_patcher = patch(
+            "Server.webapp.services.execution_creation_service."
+            "resolve_hardware_profile_policy",
+            side_effect=_test_measurement_policy,
+        )
+        self.policy_resolver = self.policy_patcher.start()
+        self.addCleanup(self.policy_patcher.stop)
 
     def test_known_benchmark_is_normalized(self):
         self.assertEqual(normalize_benchmark("lcs"), "LCS")
@@ -123,19 +203,6 @@ class ExecutionCreationServiceTests(unittest.TestCase):
                 execution_repo=FakeExecutionRepository(),
                 conn=object(),
             )
-
-    def test_input_size_above_benchmark_limit_is_rejected(self):
-        with self.assertRaises(InvalidExecutionRequest):
-            validate_execution_limits("LCS", 50001, 30)
-
-    def test_samples_above_limit_are_rejected(self):
-        with self.assertRaises(InvalidExecutionRequest):
-            validate_execution_limits("LCS", 500, 101)
-
-    def test_frontend_limit_boundaries_are_accepted(self):
-        validate_execution_limits("LCS", 50000, 100)
-        validate_execution_limits("CAMM", 150000, 100)
-        validate_execution_limits("SIZE", 100000, 100)
 
     def test_invalid_sha256_is_rejected(self):
         with self.assertRaises(InvalidExecutionRequest):
@@ -348,6 +415,65 @@ class ExecutionCreationServiceTests(unittest.TestCase):
         "Server.webapp.services.execution_creation_service.resolve_submission_course",
         return_value=None,
     )
+    def test_execution_snapshot_persists_admission_policy(
+        self,
+        _resolve_course,
+    ):
+        erepo = FakeExecutionRepository()
+
+        create_submission_bundle(
+            user_id=5,
+            title="LCS policy snapshot",
+            archive_path="/srv/uploads/a.zip",
+            archive_sha256=self.SHA,
+            benchmark="LCS",
+            input_size=1000,
+            samples=10,
+            source_specs=[
+                {"original_filename": "main.cpp"}
+            ],
+            submission_repo=FakeSubmissionRepository(),
+            execution_repo=erepo,
+            conn=object(),
+        )
+
+        call = erepo.calls[0]
+        measurement = call["execution_config"]["measurement"]
+
+        self.assertEqual(
+            measurement["schema_version"],
+            "1.0",
+        )
+        self.assertEqual(
+            measurement["operational_timeout_seconds"],
+            960,
+        )
+
+        self.assertEqual(
+            measurement["admission_policy"],
+            {
+                "hardware_profile_key":
+                    "shenu-intel-i5-9400",
+                "benchmark": "LCS",
+                "execution_profile": "QUICK",
+                "minimum_input": 100,
+                "default_input": 500,
+                "recommended_max_input": 750,
+                "hard_max_input": 1000,
+                "input_step": 100,
+            },
+        )
+
+        # Gate 6-8 resolverán la asignación física.
+        self.assertIsNone(
+            call["hardware_profile_id"]
+        )
+
+
+    @patch(
+        "Server.webapp.services.execution_creation_service.resolve_submission_course",
+        return_value=None,
+    )
     def test_source_spec_metadata_cannot_override_cpp_contract(
         self,
         _resolve_course,
@@ -469,3 +595,211 @@ class ExecutionCreationServiceTests(unittest.TestCase):
             with self.subTest(override=override):
                 with self.assertRaises(InvalidExecutionRequest):
                     create_submission_bundle(**common, **override)
+
+
+    @patch(
+        "Server.webapp.services.execution_creation_service."
+        "resolve_submission_course",
+        return_value=None,
+    )
+    def test_bundle_uses_policy_hard_max_instead_of_legacy_limit(
+        self,
+        _resolve_course,
+    ):
+        with self.assertRaises(InvalidExecutionRequest):
+            create_submission_bundle(
+                user_id=5,
+                title="LCS policy limit",
+                archive_path="/tmp/test.zip",
+                archive_sha256=self.SHA,
+                benchmark="LCS",
+                input_size=1001,
+                samples=10,
+                source_specs=[
+                    {"original_filename": "main.cpp"}
+                ],
+                conn=object(),
+                submission_repo=FakeSubmissionRepository(),
+                execution_repo=FakeExecutionRepository(),
+            )
+
+    @patch(
+        "Server.webapp.services.execution_creation_service."
+        "resolve_submission_course",
+        return_value=None,
+    )
+    def test_bundle_accepts_above_recommended_until_policy_hard_max(
+        self,
+        _resolve_course,
+    ):
+        srepo = FakeSubmissionRepository()
+        erepo = FakeExecutionRepository()
+
+        bundle = create_submission_bundle(
+            user_id=5,
+            title="LCS advanced range",
+            archive_path="/tmp/test.zip",
+            archive_sha256=self.SHA,
+            benchmark="LCS",
+            input_size=1000,
+            samples=10,
+            source_specs=[
+                {"original_filename": "main.cpp"}
+            ],
+            conn=object(),
+            submission_repo=srepo,
+            execution_repo=erepo,
+        )
+
+        self.assertEqual(
+            len(bundle["executions"]),
+            1,
+        )
+        self.assertEqual(
+            erepo.calls[0]["input_size"],
+            1000,
+        )
+
+
+class ExecutionPolicyLimitTests(unittest.TestCase):
+    @staticmethod
+    def _policy(**overrides):
+        policy = {
+            "benchmark": "LCS",
+            "execution_profile": "QUICK",
+            "minimum_input": 100,
+            "default_input": 500,
+            "recommended_max_input": 750,
+            "hard_max_input": 1000,
+            "input_step": 100,
+            "operational_timeout_seconds": 960,
+            "is_active": True,
+        }
+        policy.update(overrides)
+        return policy
+
+    def test_policy_accepts_recommended_boundary(self):
+        result = validate_execution_policy_limits(
+            "LCS",
+            750,
+            10,
+            self._policy(),
+        )
+
+        self.assertFalse(result["above_recommended"])
+        self.assertEqual(
+            result["operational_timeout_seconds"],
+            960,
+        )
+
+    def test_above_recommended_is_allowed_until_hard_max(self):
+        result = validate_execution_policy_limits(
+            "LCS",
+            1000,
+            10,
+            self._policy(),
+        )
+
+        self.assertTrue(result["above_recommended"])
+        self.assertEqual(
+            result["hard_max_input"],
+            1000,
+        )
+
+    def test_above_hard_max_is_rejected(self):
+        with self.assertRaises(InvalidExecutionRequest):
+            validate_execution_policy_limits(
+                "LCS",
+                1001,
+                10,
+                self._policy(),
+            )
+
+    def test_policy_profile_must_match_samples(self):
+        with self.assertRaises(InvalidExecutionRequest):
+            validate_execution_policy_limits(
+                "LCS",
+                500,
+                30,
+                self._policy(),
+            )
+
+    def test_camm_variant_accepts_camm_family_policy(self):
+        result = validate_execution_policy_limits(
+            "CAMMSO",
+            100000,
+            30,
+            self._policy(
+                benchmark="CAMM",
+                execution_profile="BALANCED",
+                minimum_input=1000,
+                default_input=5000,
+                recommended_max_input=75000,
+                hard_max_input=100000,
+                input_step=1000,
+                operational_timeout_seconds=780,
+            ),
+        )
+
+        self.assertEqual(
+            result["benchmark"],
+            "CAMM",
+        )
+        self.assertEqual(
+            result["execution_profile"],
+            "BALANCED",
+        )
+        self.assertTrue(
+            result["above_recommended"]
+        )
+
+    def test_custom_profile_is_derived_from_nonpreset_samples(self):
+        result = validate_execution_policy_limits(
+            "SIZE",
+            100000,
+            17,
+            self._policy(
+                benchmark="SIZE",
+                execution_profile="CUSTOM",
+                minimum_input=100,
+                default_input=2500,
+                recommended_max_input=100000,
+                hard_max_input=100000,
+                input_step=100,
+                operational_timeout_seconds=780,
+            ),
+        )
+
+        self.assertEqual(
+            result["execution_profile"],
+            "CUSTOM",
+        )
+
+    def test_global_sample_ceiling_remains_enforced(self):
+        with self.assertRaises(InvalidExecutionRequest):
+            validate_execution_policy_limits(
+                "SIZE",
+                2500,
+                101,
+                self._policy(
+                    benchmark="SIZE",
+                    execution_profile="CUSTOM",
+                    minimum_input=100,
+                    default_input=2500,
+                    recommended_max_input=100000,
+                    hard_max_input=100000,
+                    input_step=100,
+                    operational_timeout_seconds=780,
+                ),
+            )
+
+    def test_inactive_policy_is_rejected(self):
+        with self.assertRaises(InvalidExecutionRequest):
+            validate_execution_policy_limits(
+                "LCS",
+                500,
+                10,
+                self._policy(
+                    is_active=False,
+                ),
+            )

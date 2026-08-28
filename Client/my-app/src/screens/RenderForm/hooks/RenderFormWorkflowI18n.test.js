@@ -97,6 +97,7 @@ function ParamsHarness() {
               min: 100,
               max: 100000,
               step: 100,
+              recommendedMax: 5000,
             },
             samples: {
               min: 1,

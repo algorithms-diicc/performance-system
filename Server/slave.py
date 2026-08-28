@@ -448,6 +448,28 @@ def build_measurement_environment(measurement):
     return env
 
 
+
+def resolve_measurement_timeout(measurement):
+    """
+    Resuelve el timeout operacional efectivo.
+
+    Ejecuciones legacy sin operational_timeout_seconds conservan
+    SLAVE_TIMEOUT/DEFAULT_TIMEOUT.
+    """
+    if not isinstance(measurement, dict) or not measurement:
+        return DEFAULT_TIMEOUT
+
+    value = measurement.get("operational_timeout_seconds")
+
+    if value in (None, ""):
+        return DEFAULT_TIMEOUT
+
+    return _measurement_positive_int(
+        value,
+        "operational_timeout_seconds",
+    )
+
+
 def build_compile_argv(source_file, executable, compiler):
     """Construye el único argv de compilación permitido por E-C01."""
     expected_extension = {
@@ -517,6 +539,10 @@ def run_benchmark(
     )
 
     measurement_env = build_measurement_environment(
+        measurement
+    )
+
+    execution_timeout = resolve_measurement_timeout(
         measurement
     )
 
@@ -697,7 +723,7 @@ def run_benchmark(
             stdout=sub.PIPE,
             stderr=sub.PIPE,
             text=True,
-            timeout=DEFAULT_TIMEOUT,
+            timeout=execution_timeout,
             cwd=SERVER_DIR,
             env=measurement_env,
         )
@@ -712,7 +738,7 @@ def run_benchmark(
         msg = (
             f"El test {test_type} "
             f"excedió el límite de "
-            f"{DEFAULT_TIMEOUT} segundos."
+            f"{execution_timeout} segundos."
         )
 
 

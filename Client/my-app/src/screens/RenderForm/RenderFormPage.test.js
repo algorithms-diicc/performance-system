@@ -70,7 +70,14 @@ jest.mock("./components/TestTypeAndParamsCard", () => {
     samples,
     dataType,
     onSamplesChange,
+    onInputSizeChange,
+    paramLimits,
   }) {
+    const inputLimits =
+      selectedTaskType
+        ? paramLimits?.[selectedTaskType]?.inputSize
+        : null;
+
     return ReactModule.createElement(
       ReactModule.Fragment,
       null,
@@ -96,6 +103,50 @@ jest.mock("./components/TestTypeAndParamsCard", () => {
         "span",
         { "data-testid": "samples" },
         String(samples ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-min" },
+        String(inputLimits?.min ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-default" },
+        String(inputLimits?.defaultValue ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-recommended-max" },
+        String(inputLimits?.recommendedMax ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-hard-max" },
+        String(inputLimits?.max ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-step" },
+        String(inputLimits?.step ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "policy-timeout" },
+        String(
+          inputLimits?.operationalTimeoutSeconds ??
+          ""
+        )
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onInputSizeChange({
+              target: { value: "1000" },
+            }),
+        },
+        "Entrada 1000"
       ),
       ReactModule.createElement(
         "button",
@@ -159,6 +210,7 @@ jest.mock("./components/StatusPanel", () => {
     isSubmitting,
     onPrepareNewAnalysis,
     submissionError,
+    requirements,
   }) {
     return ReactModule.createElement(
       ReactModule.Fragment,
@@ -172,6 +224,13 @@ jest.mock("./components/StatusPanel", () => {
         "button",
         { type: "button", onClick: onReset },
         "Limpiar configuración"
+      ),
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "requirements" },
+        Array.isArray(requirements)
+          ? requirements.join(",")
+          : ""
       ),
       submissionError
         ? ReactModule.createElement(
@@ -230,6 +289,136 @@ const courseResponse = {
   data: {
     items: [],
     selectionRequired: false,
+  },
+};
+
+
+const measurementPolicyItem = (
+  benchmark,
+  executionProfile,
+  {
+    minimumInput,
+    defaultInput,
+    recommendedMaxInput,
+    hardMaxInput,
+    inputStep,
+    operationalTimeoutSeconds,
+  }
+) => ({
+  benchmark,
+  executionProfile,
+  minimumInput,
+  defaultInput,
+  recommendedMaxInput,
+  hardMaxInput,
+  inputStep,
+  operationalTimeoutSeconds,
+});
+
+const measurementPolicyResponse = {
+  data: {
+    environment: { mode: "AUTO" },
+    total: 12,
+    items: [
+      measurementPolicyItem("LCS", "QUICK", {
+        minimumInput: 100,
+        defaultInput: 500,
+        recommendedMaxInput: 750,
+        hardMaxInput: 1000,
+        inputStep: 100,
+        operationalTimeoutSeconds: 960,
+      }),
+      measurementPolicyItem("LCS", "BALANCED", {
+        minimumInput: 100,
+        defaultInput: 500,
+        recommendedMaxInput: 500,
+        hardMaxInput: 750,
+        inputStep: 100,
+        operationalTimeoutSeconds: 1680,
+      }),
+      measurementPolicyItem("LCS", "EXHAUSTIVE", {
+        minimumInput: 100,
+        defaultInput: 500,
+        recommendedMaxInput: 500,
+        hardMaxInput: 500,
+        inputStep: 100,
+        operationalTimeoutSeconds: 1320,
+      }),
+      measurementPolicyItem("LCS", "CUSTOM", {
+        minimumInput: 100,
+        defaultInput: 500,
+        recommendedMaxInput: 500,
+        hardMaxInput: 500,
+        inputStep: 100,
+        operationalTimeoutSeconds: 2640,
+      }),
+
+      measurementPolicyItem("CAMM", "QUICK", {
+        minimumInput: 1000,
+        defaultInput: 5000,
+        recommendedMaxInput: 100000,
+        hardMaxInput: 130000,
+        inputStep: 1000,
+        operationalTimeoutSeconds: 360,
+      }),
+      measurementPolicyItem("CAMM", "BALANCED", {
+        minimumInput: 1000,
+        defaultInput: 5000,
+        recommendedMaxInput: 75000,
+        hardMaxInput: 100000,
+        inputStep: 1000,
+        operationalTimeoutSeconds: 780,
+      }),
+      measurementPolicyItem("CAMM", "EXHAUSTIVE", {
+        minimumInput: 1000,
+        defaultInput: 5000,
+        recommendedMaxInput: 50000,
+        hardMaxInput: 75000,
+        inputStep: 1000,
+        operationalTimeoutSeconds: 960,
+      }),
+      measurementPolicyItem("CAMM", "CUSTOM", {
+        minimumInput: 1000,
+        defaultInput: 5000,
+        recommendedMaxInput: 50000,
+        hardMaxInput: 50000,
+        inputStep: 1000,
+        operationalTimeoutSeconds: 1380,
+      }),
+
+      measurementPolicyItem("SIZE", "QUICK", {
+        minimumInput: 100,
+        defaultInput: 2500,
+        recommendedMaxInput: 100000,
+        hardMaxInput: 100000,
+        inputStep: 100,
+        operationalTimeoutSeconds: 120,
+      }),
+      measurementPolicyItem("SIZE", "BALANCED", {
+        minimumInput: 100,
+        defaultInput: 2500,
+        recommendedMaxInput: 100000,
+        hardMaxInput: 100000,
+        inputStep: 100,
+        operationalTimeoutSeconds: 240,
+      }),
+      measurementPolicyItem("SIZE", "EXHAUSTIVE", {
+        minimumInput: 100,
+        defaultInput: 2500,
+        recommendedMaxInput: 100000,
+        hardMaxInput: 100000,
+        inputStep: 100,
+        operationalTimeoutSeconds: 420,
+      }),
+      measurementPolicyItem("SIZE", "CUSTOM", {
+        minimumInput: 100,
+        defaultInput: 2500,
+        recommendedMaxInput: 100000,
+        hardMaxInput: 100000,
+        inputStep: 100,
+        operationalTimeoutSeconds: 780,
+      }),
+    ],
   },
 };
 
@@ -315,7 +504,29 @@ describe("RenderFormPage 6A onboarding", () => {
       value: jest.fn().mockResolvedValue(new ArrayBuffer(8)),
     });
 
-    axios.get.mockResolvedValue(courseResponse);
+    axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
+      if (
+        String(url).includes(
+          "api/student/courses"
+        )
+      ) {
+        return Promise.resolve(courseResponse);
+      }
+
+      return Promise.reject(
+        new Error(`Unexpected GET ${url}`)
+      );
+    });
     axios.mockReturnValue(new Promise(() => {}));
     JSZip.loadAsync.mockResolvedValue({
       forEach(callback) {
@@ -518,6 +729,16 @@ describe("RenderFormPage 6A onboarding", () => {
     );
 
     axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
       if (url.includes("api/student/courses")) {
         return Promise.resolve(courseResponse);
       }
@@ -567,6 +788,16 @@ describe("RenderFormPage 6A onboarding", () => {
     );
 
     axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
       if (url.includes("api/student/courses")) {
         return Promise.resolve({
           data: {
@@ -654,6 +885,16 @@ describe("RenderFormPage 6A onboarding", () => {
     );
 
     axios.get.mockImplementation((url, options) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
       if (url.includes("api/student/courses")) {
         return Promise.resolve({
           data: {
@@ -727,6 +968,16 @@ describe("RenderFormPage 6A onboarding", () => {
 
   test("repeat configuration inconsistency stays review-only and localized", async () => {
     axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
       if (url.includes("api/student/courses")) {
         return Promise.resolve(courseResponse);
       }
@@ -819,6 +1070,189 @@ describe("RenderFormPage 6A onboarding", () => {
     ).toHaveTextContent("personalizado");
     expect(screen.getByTestId("samples")).toHaveTextContent("40");
   });
+
+  test(
+    "measurement policies drive the LCS QUICK contract",
+    async () => {
+      await renderPage();
+
+      await waitFor(() => {
+        expect(
+          axios.get.mock.calls.some(
+            ([url]) =>
+              String(url).includes(
+                "api/measurement/policies"
+              )
+          )
+        ).toBe(true);
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Perfil rapido",
+        })
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("samples")
+        ).toHaveTextContent("10");
+      });
+
+      selectBenchmark();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("input-size")
+        ).toHaveTextContent("500");
+      });
+
+      expect(
+        screen.getByTestId("policy-min")
+      ).toHaveTextContent("100");
+
+      expect(
+        screen.getByTestId("policy-default")
+      ).toHaveTextContent("500");
+
+      expect(
+        screen.getByTestId(
+          "policy-recommended-max"
+        )
+      ).toHaveTextContent("750");
+
+      expect(
+        screen.getByTestId("policy-hard-max")
+      ).toHaveTextContent("1000");
+
+      expect(
+        screen.getByTestId("policy-step")
+      ).toHaveTextContent("100");
+
+      expect(
+        screen.getByTestId("policy-timeout")
+      ).toHaveTextContent("960");
+    }
+  );
+
+  test(
+    "changing LCS from QUICK to BALANCED applies the new effective contract",
+    async () => {
+      await renderPage();
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Perfil rapido",
+        })
+      );
+
+      selectBenchmark();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("policy-hard-max")
+        ).toHaveTextContent("1000");
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Entrada 1000",
+        })
+      );
+
+      expect(
+        screen.getByTestId("input-size")
+      ).toHaveTextContent("1000");
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Perfil equilibrado",
+        })
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("samples")
+        ).toHaveTextContent("30");
+      });
+
+      // 1000 deja de ser válido porque BALANCED tiene
+      // hardMax 750; la página vuelve al default 500.
+      expect(
+        screen.getByTestId("input-size")
+      ).toHaveTextContent("500");
+
+      expect(
+        screen.getByTestId(
+          "policy-recommended-max"
+        )
+      ).toHaveTextContent("500");
+
+      expect(
+        screen.getByTestId("policy-hard-max")
+      ).toHaveTextContent("750");
+
+      expect(
+        screen.getByTestId("policy-timeout")
+      ).toHaveTextContent("1680");
+    }
+  );
+
+  test(
+    "measurement policy API failure keeps the form fail-closed",
+    async () => {
+      const consoleSpy = jest
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+
+      axios.get.mockImplementation((url) => {
+        if (
+          String(url).includes(
+            "api/measurement/policies"
+          )
+        ) {
+          return Promise.reject(
+            new Error("policy unavailable")
+          );
+        }
+
+        if (
+          String(url).includes(
+            "api/student/courses"
+          )
+        ) {
+          return Promise.resolve(
+            courseResponse
+          );
+        }
+
+        return Promise.reject(
+          new Error(`Unexpected GET ${url}`)
+        );
+      });
+
+      try {
+        await renderPage();
+
+        await waitFor(() => {
+          expect(
+            screen.getByTestId("requirements")
+          ).toHaveTextContent(
+            "measurementPolicyUnavailable"
+          );
+        });
+
+        expect(
+          screen.getByRole("button", {
+            name: "Revisar y ejecutar",
+          })
+        ).toBeDisabled();
+      } finally {
+        consoleSpy.mockRestore();
+      }
+    }
+  );
+
 
   test("an accepted submission clears the saved draft", async () => {
     await renderPage();

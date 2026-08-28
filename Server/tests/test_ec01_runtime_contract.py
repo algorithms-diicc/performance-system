@@ -308,5 +308,156 @@ class ToolchainSnapshotTests(unittest.TestCase):
         self.assertIsNone(snapshot["toolchain"]["compiler"]["version"])
 
 
+
+class MeasurementTimeoutTests(unittest.TestCase):
+    @staticmethod
+    def _measurement(timeout=None):
+        measurement = {
+            "points": 10,
+            "warmup_rounds": 1,
+            "perf_scope": "process",
+            "single_event_fallback": True,
+        }
+        if timeout is not None:
+            measurement["operational_timeout_seconds"] = timeout
+        return measurement
+
+    def test_missing_measurement_uses_legacy_timeout(self):
+        self.assertEqual(
+            slave.resolve_measurement_timeout(None),
+            slave.DEFAULT_TIMEOUT,
+        )
+
+    def test_legacy_snapshot_without_timeout_uses_default(self):
+        self.assertEqual(
+            slave.resolve_measurement_timeout(
+                self._measurement()
+            ),
+            slave.DEFAULT_TIMEOUT,
+        )
+
+    def test_snapshot_timeout_is_used(self):
+        self.assertEqual(
+            slave.resolve_measurement_timeout(
+                self._measurement(321)
+            ),
+            321,
+        )
+
+    def test_non_positive_snapshot_timeout_is_rejected(self):
+        with self.assertRaises(ValueError):
+            slave.resolve_measurement_timeout(
+                self._measurement(0)
+            )
+
+    def test_run_benchmark_passes_snapshot_timeout_to_subprocess(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            source = os.path.join(
+                temp_dir,
+                "fixture.cpp",
+            )
+            executable = os.path.join(
+                temp_dir,
+                "fixture.out",
+            )
+
+            compile_success = SimpleNamespace(
+                returncode=0,
+                stdout="",
+                stderr="",
+            )
+
+            timeout_error = slave.sub.TimeoutExpired(
+                cmd=["bash", "measurescript5.sh"],
+                timeout=321,
+            )
+
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(
+                        slave,
+                        "SERVER_DIR",
+                        temp_dir,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        slave,
+                        "STATIC_DIR",
+                        os.path.join(
+                            temp_dir,
+                            "static",
+                        ),
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        slave,
+                        "executable_path",
+                        return_value=executable,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        slave,
+                        "cleanup_files",
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        slave,
+                        "log_admin_stage",
+                    )
+                )
+                log_admin_mock = stack.enter_context(
+                    patch.object(
+                        slave,
+                        "log_admin",
+                    )
+                )
+
+                run_mock = stack.enter_context(
+                    patch.object(
+                        slave.sub,
+                        "run",
+                        side_effect=[
+                            compile_success,
+                            timeout_error,
+                        ],
+                    )
+                )
+
+                result = slave.run_benchmark(
+                    test_type="SIZE",
+                    source_file=source,
+                    input_size=100000,
+                    samples=10,
+                    measure_script_name="measurescript5.sh",
+                    measure_args=[100000, 10],
+                    measurement=self._measurement(321),
+                    compiler="g++",
+                )
+
+            self.assertEqual(
+                result["error_code"],
+                200,
+            )
+
+            self.assertEqual(
+                len(run_mock.call_args_list),
+                2,
+            )
+
+            self.assertEqual(
+                run_mock.call_args_list[1].kwargs["timeout"],
+                321,
+            )
+
+            self.assertIn(
+                "321 segundos",
+                log_admin_mock.call_args.kwargs["error_msg"],
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

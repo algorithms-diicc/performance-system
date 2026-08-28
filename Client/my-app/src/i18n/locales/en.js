@@ -723,6 +723,10 @@ const en = {
           courseUnavailable:
             "Retry loading the academic context before continuing.",
           courseRequired: "Select the course for this experiment.",
+          measurementPolicyLoading:
+            "Wait while the measurement policy is loaded.",
+          measurementPolicyUnavailable:
+            "The measurement policy is unavailable. Reload the page or try again.",
         },
         review: "Review and run",
         clear: "Clear configuration",

@@ -38,6 +38,13 @@ from .experimental_protocol_service import (
     ProtocolUnavailable,
     resolve_submission_protocol,
 )
+from .hardware_profile_service import (
+    HardwareProfileError,
+    configured_measurement_profile_key,
+    normalize_policy_benchmark,
+    normalize_policy_execution_profile,
+    resolve_hardware_profile_policy,
+)
 from ...db_connection import get_connection
 
 
@@ -56,14 +63,6 @@ PROFILE_BY_SAMPLES = {
     50: "EXHAUSTIVE",
 }
 
-INPUT_LIMITS_BY_BENCHMARK = {
-    "LCS": (100, 50000),
-    "CAMM": (1000, 150000),
-    "CAMMR": (1000, 150000),
-    "CAMMS": (1000, 150000),
-    "CAMMSO": (1000, 150000),
-    "SIZE": (100, 100000),
-}
 MAX_SAMPLES = 100
 MAX_SUBMISSION_TITLE_CHARS = 255
 MAX_SUBMISSION_NOTE_CHARS = 500
@@ -80,9 +79,18 @@ DEFAULT_PERF_SCOPE = "process"
 DEFAULT_SINGLE_EVENT_FALLBACK = True
 
 
-def build_measurement_snapshot(samples):
-    # Snapshot reproducible del protocolo de medición.
-    return {
+def build_measurement_snapshot(
+    samples,
+    active_policy=None,
+    profile_key=None,
+):
+    """
+    Snapshot reproducible del protocolo de medición.
+
+    active_policy agrega evidencia de la política utilizada para admitir
+    la ejecución. No representa todavía asignación física de nodo.
+    """
+    snapshot = {
         "schema_version": "1.0",
         "points": DEFAULT_MEASUREMENT_POINTS,
         "samples_per_point": int(samples),
@@ -90,6 +98,45 @@ def build_measurement_snapshot(samples):
         "perf_scope": DEFAULT_PERF_SCOPE,
         "single_event_fallback": DEFAULT_SINGLE_EVENT_FALLBACK,
     }
+
+    if active_policy is None:
+        return snapshot
+
+    resolved_profile_key = str(
+        profile_key or ""
+    ).strip()
+
+    if not resolved_profile_key:
+        raise InvalidExecutionRequest(
+            "Measurement policy profile_key is required."
+        )
+
+    snapshot["operational_timeout_seconds"] = int(
+        active_policy["operational_timeout_seconds"]
+    )
+
+    snapshot["admission_policy"] = {
+        "hardware_profile_key": resolved_profile_key,
+        "benchmark": active_policy["benchmark"],
+        "execution_profile": active_policy["execution_profile"],
+        "minimum_input": int(
+            active_policy["minimum_input"]
+        ),
+        "default_input": int(
+            active_policy["default_input"]
+        ),
+        "recommended_max_input": int(
+            active_policy["recommended_max_input"]
+        ),
+        "hard_max_input": int(
+            active_policy["hard_max_input"]
+        ),
+        "input_step": int(
+            active_policy["input_step"]
+        ),
+    }
+
+    return snapshot
 
 
 class ExecutionCreationError(Exception):
@@ -155,24 +202,131 @@ def normalize_benchmark(value):
     return benchmark
 
 
-def validate_execution_limits(benchmark, input_size, samples):
-    minimum, maximum = INPUT_LIMITS_BY_BENCHMARK[benchmark]
-    if input_size < minimum or input_size > maximum:
-        raise InvalidExecutionRequest(
-            "input_size must be between {} and {} for {}.".format(
-                minimum,
-                maximum,
-                benchmark,
-            )
-        )
+def infer_execution_profile(samples):
+    return PROFILE_BY_SAMPLES.get(samples, "CUSTOM")
+
+
+
+def validate_execution_policy_limits(
+    benchmark,
+    input_size,
+    samples,
+    policy,
+):
+    """
+    Valida una solicitud contra una HardwareProfilePolicy ya resuelta.
+
+    recommended_max_input es advisory:
+    puede superarse sin invalidar la solicitud.
+
+    hard_max_input sí constituye el límite operacional obligatorio.
+
+    MAX_SAMPLES se mantiene como protección global independiente de la
+    política de hardware.
+    """
+    benchmark = normalize_benchmark(benchmark)
+    input_size = _positive_int(input_size, "input_size")
+    samples = _positive_int(samples, "samples")
+
     if samples > MAX_SAMPLES:
         raise InvalidExecutionRequest(
             "samples must be between 1 and {}.".format(MAX_SAMPLES)
         )
 
+    if not isinstance(policy, dict):
+        raise InvalidExecutionRequest(
+            "An active measurement policy is required."
+        )
 
-def infer_execution_profile(samples):
-    return PROFILE_BY_SAMPLES.get(samples, "CUSTOM")
+    execution_profile = infer_execution_profile(samples)
+
+    try:
+        expected_benchmark = normalize_policy_benchmark(
+            benchmark
+        )
+        expected_profile = (
+            normalize_policy_execution_profile(
+                execution_profile
+            )
+        )
+    except HardwareProfileError as exc:
+        raise InvalidExecutionRequest(str(exc))
+
+    policy_benchmark = str(
+        policy.get("benchmark") or ""
+    ).strip().upper()
+
+    policy_profile = str(
+        policy.get("execution_profile") or ""
+    ).strip().upper()
+
+    if policy_benchmark != expected_benchmark:
+        raise InvalidExecutionRequest(
+            "Measurement policy benchmark does not match "
+            "the requested benchmark."
+        )
+
+    if policy_profile != expected_profile:
+        raise InvalidExecutionRequest(
+            "Measurement policy execution_profile does not "
+            "match the requested samples."
+        )
+
+    try:
+        minimum = int(policy["minimum_input"])
+        default = int(policy["default_input"])
+        recommended = int(
+            policy["recommended_max_input"]
+        )
+        hard_max = int(policy["hard_max_input"])
+        input_step = int(policy["input_step"])
+        timeout = int(
+            policy["operational_timeout_seconds"]
+        )
+    except (KeyError, TypeError, ValueError):
+        raise InvalidExecutionRequest(
+            "Measurement policy is incomplete or invalid."
+        )
+
+    if not (
+        minimum > 0
+        and minimum <= default
+        and default <= recommended
+        and recommended <= hard_max
+        and input_step > 0
+        and timeout > 0
+    ):
+        raise InvalidExecutionRequest(
+            "Measurement policy contains invalid operational limits."
+        )
+
+    if policy.get("is_active") is False:
+        raise InvalidExecutionRequest(
+            "Measurement policy is not active."
+        )
+
+    if input_size < minimum or input_size > hard_max:
+        raise InvalidExecutionRequest(
+            "input_size must be between {} and {} for {} "
+            "under the active {} measurement policy.".format(
+                minimum,
+                hard_max,
+                benchmark,
+                execution_profile,
+            )
+        )
+
+    return {
+        "benchmark": expected_benchmark,
+        "execution_profile": execution_profile,
+        "minimum_input": minimum,
+        "default_input": default,
+        "recommended_max_input": recommended,
+        "hard_max_input": hard_max,
+        "input_step": input_step,
+        "operational_timeout_seconds": timeout,
+        "above_recommended": input_size > recommended,
+    }
 
 
 
@@ -468,6 +622,8 @@ def create_submission_bundle(
     compiler_flags="-O3",
     language=None,
     conn=None,
+    policy_resolver=None,
+    profile_key_resolver=None,
     submission_repo=submission_repository,
     execution_repo=execution_repository,
 ):
@@ -508,7 +664,6 @@ def create_submission_bundle(
     benchmark = normalize_benchmark(benchmark)
     input_size = _positive_int(input_size, "input_size")
     samples = _positive_int(samples, "samples")
-    validate_execution_limits(benchmark, input_size, samples)
     source_specs = validate_source_specs(source_specs)
     submission_language = derive_submission_language(source_specs)
     if (
@@ -536,7 +691,39 @@ def create_submission_bundle(
     owns_connection = conn is None
     db = conn or get_connection()
 
+    policy_resolver = (
+        policy_resolver
+        or resolve_hardware_profile_policy
+    )
+    profile_key_resolver = (
+        profile_key_resolver
+        or configured_measurement_profile_key
+    )
+
     try:
+        try:
+            profile_key = profile_key_resolver()
+
+            policy = policy_resolver(
+                profile_key,
+                benchmark,
+                execution_profile,
+                conn=db,
+            )
+
+            active_policy = validate_execution_policy_limits(
+                benchmark,
+                input_size,
+                samples,
+                policy,
+            )
+
+        except HardwareProfileError as exc:
+            raise InvalidExecutionRequest(
+                "The active measurement policy is unavailable: {}"
+                .format(exc)
+            )
+
         try:
             resolved_protocol = resolve_submission_protocol(
                 user_id=user_id,
@@ -588,7 +775,11 @@ def create_submission_bundle(
                 "source_index": spec["source_index"],
                 "archive_sha256": archive_sha256,
                 "course_id": resolved_course_id,
-                "measurement": build_measurement_snapshot(samples),
+                "measurement": build_measurement_snapshot(
+                    samples,
+                    active_policy=active_policy,
+                    profile_key=profile_key,
+                ),
             }
 
             row = execution_repo.create_execution(

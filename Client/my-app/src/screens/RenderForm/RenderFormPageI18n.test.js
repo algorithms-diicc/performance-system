@@ -38,6 +38,62 @@ const emptyCourses = {
   },
 };
 
+
+const policy = (
+  benchmark,
+  executionProfile,
+  minimumInput,
+  defaultInput,
+  recommendedMaxInput,
+  hardMaxInput,
+  inputStep,
+  operationalTimeoutSeconds
+) => ({
+  benchmark,
+  executionProfile,
+  minimumInput,
+  defaultInput,
+  recommendedMaxInput,
+  hardMaxInput,
+  inputStep,
+  operationalTimeoutSeconds,
+});
+
+const measurementPolicies = {
+  data: {
+    environment: { mode: "AUTO" },
+    total: 12,
+    items: [
+      policy("LCS", "QUICK",
+        100, 500, 750, 1000, 100, 960),
+      policy("LCS", "BALANCED",
+        100, 500, 500, 750, 100, 1680),
+      policy("LCS", "EXHAUSTIVE",
+        100, 500, 500, 500, 100, 1320),
+      policy("LCS", "CUSTOM",
+        100, 500, 500, 500, 100, 2640),
+
+      policy("CAMM", "QUICK",
+        1000, 5000, 100000, 130000, 1000, 360),
+      policy("CAMM", "BALANCED",
+        1000, 5000, 75000, 100000, 1000, 780),
+      policy("CAMM", "EXHAUSTIVE",
+        1000, 5000, 50000, 75000, 1000, 960),
+      policy("CAMM", "CUSTOM",
+        1000, 5000, 50000, 50000, 1000, 1380),
+
+      policy("SIZE", "QUICK",
+        100, 2500, 100000, 100000, 100, 120),
+      policy("SIZE", "BALANCED",
+        100, 2500, 100000, 100000, 100, 240),
+      policy("SIZE", "EXHAUSTIVE",
+        100, 2500, 100000, 100000, 100, 420),
+      policy("SIZE", "CUSTOM",
+        100, 2500, 100000, 100000, 100, 780),
+    ],
+  },
+};
+
 function LanguageControl() {
   const { setLanguage } = useI18n();
 
@@ -76,7 +132,31 @@ describe("RenderFormPage i18n", () => {
     window.localStorage.clear();
     window.alert = jest.fn();
 
-    axios.get.mockResolvedValue(emptyCourses);
+    axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicies
+        );
+      }
+
+      if (
+        String(url).includes(
+          "api/student/courses"
+        )
+      ) {
+        return Promise.resolve(
+          emptyCourses
+        );
+      }
+
+      return Promise.reject(
+        new Error(`Unexpected GET ${url}`)
+      );
+    });
   });
 
   test("localizes inline pre-submit requirements without browser dialogs", async () => {
@@ -136,6 +216,16 @@ describe("RenderFormPage i18n", () => {
 
   test("localizes a persistent-execution 404 without leaking the Spanish source message", async () => {
     axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicies
+        );
+      }
+
       if (url.includes("api/student/courses")) {
         return Promise.resolve(emptyCourses);
       }

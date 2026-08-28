@@ -27,6 +27,8 @@ const valid = {
   courseContextError: "",
   courseSelectionRequired: false,
   selectedCourseId: "",
+  measurementPolicyLoading: false,
+  measurementPolicyUnavailable: false,
 };
 
 describe("analysisReadinessModel", () => {
@@ -79,6 +81,16 @@ describe("analysisReadinessModel", () => {
       "missing CAMM distribution",
       { selectedTaskType: "camm", inputSize: 5000 },
       ANALYSIS_REQUIREMENT_KEYS.DATA_TYPE_REQUIRED,
+    ],
+    [
+      "measurement policy loading",
+      { measurementPolicyLoading: true },
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_LOADING,
+    ],
+    [
+      "measurement policy unavailable",
+      { measurementPolicyUnavailable: true },
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_UNAVAILABLE,
     ],
     [
       "academic context loading",

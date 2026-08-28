@@ -723,6 +723,10 @@ const es = {
           courseUnavailable:
             "Reintenta la carga del contexto académico antes de continuar.",
           courseRequired: "Selecciona el curso para este experimento.",
+          measurementPolicyLoading:
+            "Espera mientras se carga la política de medición.",
+          measurementPolicyUnavailable:
+            "La política de medición no está disponible. Recarga la página o inténtalo nuevamente.",
         },
         review: "Revisar y ejecutar",
         clear: "Limpiar configuración",
