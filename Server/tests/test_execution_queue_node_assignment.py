@@ -108,6 +108,7 @@ class ExecutionQueueNodeAssignmentTests(unittest.TestCase):
             return {
                 "measurement_node_id": 3,
                 "hardware_profile_id": 8,
+                "node_key": "shenu",
                 "measurement_node_mode": "AUTO",
                 "affinity_changed": True,
             }
@@ -132,6 +133,7 @@ class ExecutionQueueNodeAssignmentTests(unittest.TestCase):
         )
         self.assertEqual(claimed["measurement_node_id"], 3)
         self.assertEqual(claimed["hardware_profile_id"], 8)
+        self.assertEqual(claimed["measurement_node_key"], "shenu")
 
     def test_unavailable_head_stays_queued(self):
         events = []

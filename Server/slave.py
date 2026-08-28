@@ -6,6 +6,22 @@ try:
 except ImportError:
     from hardware_snapshot import collect_hardware_snapshot
 try:
+    from .measurement_node_transport import (
+        MeasurementNodeTransportError,
+        attach_result_identity,
+        is_not_selected_payload,
+        send_slave_hello,
+        validate_payload_assignment,
+    )
+except ImportError:
+    from measurement_node_transport import (
+        MeasurementNodeTransportError,
+        attach_result_identity,
+        is_not_selected_payload,
+        send_slave_hello,
+        validate_payload_assignment,
+    )
+try:
     from .source_contract import (
         CANONICAL_COMPILER_FLAGS,
         COMPILER_C,
@@ -1443,6 +1459,7 @@ def send_results(
     result_name,
     measurement=None,
     compiler=None,
+    measurement_node_key=None,
 ):
 
     try:
@@ -1474,17 +1491,20 @@ def send_results(
         return False
 
 
-    payload = {
-        "name": (
-            name_request
-            + "Results"
-        ),
-        "results": results,
-        "hardware_snapshot": collect_hardware_snapshot(
-            measurement=measurement,
-            compiler=compiler,
-        ),
-    }
+    payload = attach_result_identity(
+        {
+            "name": (
+                name_request
+                + "Results"
+            ),
+            "results": results,
+            "hardware_snapshot": collect_hardware_snapshot(
+                measurement=measurement,
+                compiler=compiler,
+            ),
+        },
+        measurement_node_key,
+    )
 
 
     try:
@@ -1539,11 +1559,16 @@ def send_json_result(
     error_dict,
     measurement=None,
     compiler=None,
+    measurement_node_key=None,
 ):
     error_dict = dict(error_dict)
     error_dict["hardware_snapshot"] = collect_hardware_snapshot(
         measurement=measurement,
         compiler=compiler,
+    )
+    error_dict = attach_result_identity(
+        error_dict,
+        measurement_node_key,
     )
 
     try:
@@ -1863,6 +1888,7 @@ def main():
         print(
             "[🔧 MeasurementNode] heartbeat disabled"
         )
+        transport_node_key = None
     else:
         print(
             "[🔧 MeasurementNode] "
@@ -1875,6 +1901,7 @@ def main():
         start_measurement_node_heartbeat(
             configuration=heartbeat_config
         )
+        transport_node_key = heartbeat_config["node_key"]
 
 
     while True:
@@ -1894,9 +1921,39 @@ def main():
                 MASTER_SEND_PORT
             ) as sock:
 
+                if transport_node_key is not None:
+                    send_slave_hello(
+                        sock,
+                        transport_node_key,
+                    )
+
                 payload_dict = (
                     receive_payload(sock)
                 )
+
+                if is_not_selected_payload(payload_dict):
+                    print(
+                        "[↪️ MeasurementNode] ejecución asignada a otro nodo."
+                    )
+                    time.sleep(QUEUE_POLL_SECONDS)
+                    continue
+
+                try:
+                    validate_payload_assignment(
+                        payload_dict,
+                        transport_node_key,
+                    )
+                except MeasurementNodeTransportError as exc:
+                    log_admin_stage(
+                        "TARGETING_ERROR",
+                        str(exc),
+                    )
+                    print(
+                        "[❌ Payload rechazado por targeting: {}]"
+                        .format(exc)
+                    )
+                    time.sleep(QUEUE_POLL_SECONDS)
+                    continue
 
 
         except json.JSONDecodeError as e:
@@ -2214,6 +2271,7 @@ def main():
                 result_name,
                 measurement=measurement,
                 compiler=source_metadata.compiler,
+                measurement_node_key=transport_node_key,
             )
 
 
@@ -2226,6 +2284,7 @@ def main():
                 result_name,
                 measurement=measurement,
                 compiler=source_metadata.compiler,
+                measurement_node_key=transport_node_key,
             )
 
 

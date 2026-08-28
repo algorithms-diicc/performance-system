@@ -63,6 +63,9 @@ def run_single_execution(
     compiler_flags=None,
     technical_extension=None,
     metadata_provenance=None,
+    measurement_node_id=None,
+    hardware_profile_id=None,
+    measurement_node_key=None,
     already_claimed=False,
     public_id=None,
     max_wait_seconds=None,
@@ -91,6 +94,13 @@ def run_single_execution(
             "public_id es obligatorio para una execution ya reclamada."
         )
 
+    if measurement_node_key is not None:
+        if measurement_node_id is None or hardware_profile_id is None:
+            raise ValueError(
+                "Targeted execution requires measurement_node_id and "
+                "hardware_profile_id."
+            )
+
     max_wait = (
         int(os.getenv("MASTER_EXECUTION_TIMEOUT_SECONDS", "2000"))
         if max_wait_seconds is None
@@ -102,10 +112,14 @@ def run_single_execution(
         codename,
     )
 
-    # El slave legacy detecta trabajo mediante una señal IN QUEUE reciente.
+    # El marker sigue siendo auxiliar; PostgreSQL conserva la verdad del claim.
+    queue_signal = "IN QUEUE"
+    if measurement_node_key is not None:
+        queue_signal = "IN QUEUE:{}".format(measurement_node_key)
+
     _write_status_signal(
         status_file_path,
-        "IN QUEUE",
+        queue_signal,
     )
     os.utime(status_file_path, None)
 
@@ -127,6 +141,15 @@ def run_single_execution(
             "technical_extension": technical_extension,
             "metadata_provenance": metadata_provenance,
         }
+
+    if measurement_node_key is not None:
+        runtime_metadata.update(
+            {
+                "measurement_node_id": measurement_node_id,
+                "hardware_profile_id": hardware_profile_id,
+                "measurement_node_key": measurement_node_key,
+            }
+        )
 
     try:
         slave_serve_func(

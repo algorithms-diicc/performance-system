@@ -31,6 +31,14 @@ from ..source_contract import (
     SourceContractError,
     validate_runtime_source_metadata,
 )
+from ..measurement_node_transport import (
+    MeasurementNodeTransportError,
+    build_assignment,
+    build_not_selected_payload,
+    normalize_node_key,
+    receive_slave_hello,
+    validate_result_identity,
+)
 
 
 # ============================================================
@@ -132,17 +140,23 @@ activeR = 0
 # ENVÍO DEL PROGRAMA AL SLAVE
 # ============================================================
 
-def send_manager(s, json_string, name):
-    """
-    Espera que uno o más slaves se conecten al puerto de envío
-    y les entrega el payload de ejecución.
-    """
+def send_manager(
+    s,
+    json_string,
+    name,
+    target_node_key=None,
+    max_wait_seconds=60,
+):
+    """Entrega el payload sólo al MeasurementNode asignado."""
 
     global activeS
 
+    target_node_key = normalize_node_key(
+        target_node_key,
+        required=False,
+    )
     s.settimeout(1.0)
 
-    max_wait_seconds = 60
     start_time = time.time()
     counter = 0
 
@@ -160,18 +174,48 @@ def send_manager(s, json_string, name):
                 f"{addr[0]}:{addr[1]}"
             )
 
+            if target_node_key is not None:
+                try:
+                    peer_node_key = receive_slave_hello(conn)
+                except (
+                    MeasurementNodeTransportError,
+                    OSError,
+                    socket.timeout,
+                ) as exc:
+                    print(
+                        "[⚠️ MASTER] Slave rechazado antes del payload: {}"
+                        .format(exc)
+                    )
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    continue
+
+                if peer_node_key != target_node_key:
+                    print(
+                        "[⚠️ MASTER] Slave {} no es el target {}."
+                        .format(peer_node_key, target_node_key)
+                    )
+                    try:
+                        conn.sendall(build_not_selected_payload())
+                    finally:
+                        conn.close()
+                    continue
+
+                send_program(conn, json_string)
+                counter = 1
+                break
+
             thread = th.Thread(
                 target=send_program,
                 args=(conn, json_string),
                 daemon=True,
             )
             thread.start()
-
             counter += 1
 
         except socket.timeout:
-            # Si al menos un slave recibió el programa,
-            # no es necesario continuar esperando.
             if counter > 0:
                 break
 
@@ -233,17 +277,18 @@ def send_program(conn, json_string):
 # RECEPCIÓN DE RESULTADOS DESDE EL SLAVE
 # ============================================================
 
-def recv_manager(s, name):
-    """
-    Espera resultados enviados por los slaves.
-    """
+def recv_manager(s, name, expected_node_key=None):
+    """Espera resultados y acepta sólo la identidad esperada si existe."""
 
     global activeR
 
+    expected_node_key = normalize_node_key(
+        expected_node_key,
+        required=False,
+    )
     counter = 0
     firsttime = True
 
-    # Espera amplia mientras el algoritmo está ejecutándose.
     s.settimeout(2000.0)
 
     print(
@@ -260,13 +305,23 @@ def recv_manager(s, name):
                 f"{addr[0]}:{addr[1]}"
             )
 
+            if expected_node_key is not None:
+                accepted = receive_data(
+                    conn,
+                    counter,
+                    expected_node_key=expected_node_key,
+                )
+                if accepted:
+                    counter += 1
+                    break
+                continue
+
             thread = th.Thread(
                 target=receive_data,
                 args=(conn, counter),
                 daemon=True,
             )
             thread.start()
-
             counter += 1
 
         except socket.timeout:
@@ -301,8 +356,6 @@ def recv_manager(s, name):
             )
             break
 
-        # Una vez recibido el primer resultado,
-        # esperamos solo unos segundos por posibles resultados extra.
         if firsttime:
             firsttime = False
             s.settimeout(5.0)
@@ -310,7 +363,7 @@ def recv_manager(s, name):
     activeR = counter
 
 
-def receive_data(conn, ident):
+def receive_data(conn, ident, expected_node_key=None):
     """
     Procesa resultados enviados por un slave.
 
@@ -329,7 +382,7 @@ def receive_data(conn, ident):
                 print(
                     f"[❌ RECEIVE ERROR] {e}"
                 )
-                return
+                return False
 
             if not data:
                 break
@@ -341,7 +394,7 @@ def receive_data(conn, ident):
                 "Received empty payload, "
                 "skipping JSON decoding."
             )
-            return
+            return False
 
         try:
             payloadDict = json.loads(
@@ -352,7 +405,17 @@ def receive_data(conn, ident):
             print(
                 f"❌ Error al decodificar JSON: {e}"
             )
-            return
+            return False
+
+        if not validate_result_identity(
+            payloadDict,
+            expected_node_key,
+        ):
+            print(
+                "[⚠️ MASTER] Resultado rechazado: identidad de nodo "
+                "no coincide con el target."
+            )
+            return False
 
         filename = payloadDict.get(
             "name",
@@ -427,7 +490,7 @@ def receive_data(conn, ident):
                 print(
                     f"[❌ CSV WRITE ERROR] {e}"
                 )
-                return
+                return False
 
             print(
                 f"[{ident}] ✅ Resultado CSV "
@@ -447,6 +510,8 @@ def receive_data(conn, ident):
                 print(
                     f"[❌ STATUS ERROR] {e}"
                 )
+
+            return True
 
         # ----------------------------------------------------
         # ERROR DEVUELTO POR EL SLAVE
@@ -488,12 +553,14 @@ def receive_data(conn, ident):
                 f"[{ident}] ⚠️ Error recibido: "
                 f"{translated_msg}"
             )
+            return True
 
         else:
             print(
                 "[⚠️ MASTER] Payload recibido sin "
                 "'results' ni 'error_code'."
             )
+            return False
 
 
 # ============================================================
@@ -617,8 +684,11 @@ def build_execution_payload(
     compiler_flags=None,
     technical_extension=None,
     metadata_provenance=None,
+    measurement_node_id=None,
+    hardware_profile_id=None,
+    measurement_node_key=None,
 ):
-    """Construye v1 legacy o v2 desde metadata cerrada del servidor."""
+    """Construye payload legacy/v2 y assignment targeted opcional."""
     payload = {
         "payload_version": 1,
         "name": name,
@@ -630,6 +700,13 @@ def build_execution_payload(
             measurement if isinstance(measurement, dict) else {}
         ),
     }
+
+    if measurement_node_key is not None:
+        payload["measurement_node"] = build_assignment(
+            measurement_node_id,
+            hardware_profile_id,
+            measurement_node_key,
+        )
 
     if source_contract_version is None:
         return payload
@@ -672,6 +749,9 @@ def slave_serve(
     compiler_flags=None,
     technical_extension=None,
     metadata_provenance=None,
+    measurement_node_id=None,
+    hardware_profile_id=None,
+    measurement_node_key=None,
 ):
     """
     Crea los sockets utilizados para comunicarse
@@ -872,6 +952,9 @@ def slave_serve(
             compiler_flags=compiler_flags,
             technical_extension=technical_extension,
             metadata_provenance=metadata_provenance,
+            measurement_node_id=measurement_node_id,
+            hardware_profile_id=hardware_profile_id,
+            measurement_node_key=measurement_node_key,
         )
 
         escribir_estado(
@@ -926,6 +1009,7 @@ def slave_serve(
                 s,
                 json_string,
                 name,
+                measurement_node_key,
             ),
             daemon=True,
         )
@@ -939,6 +1023,7 @@ def slave_serve(
             args=(
                 s2,
                 name,
+                measurement_node_key,
             ),
             daemon=True,
         )
@@ -947,6 +1032,12 @@ def slave_serve(
         recvmng.start()
 
         sendmng.join()
+
+        if activeS == 0:
+            try:
+                s2.close()
+            except Exception:
+                pass
 
         print(
             "[🔌 MASTER] "

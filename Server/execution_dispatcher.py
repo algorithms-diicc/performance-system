@@ -200,6 +200,15 @@ def run_dispatch_cycle(
             compiler_flags=source["compiler_flags"],
             technical_extension=source["technical_extension"],
             metadata_provenance=source["metadata_provenance"],
+            measurement_node_id=execution.get(
+                "measurement_node_id"
+            ),
+            hardware_profile_id=execution.get(
+                "hardware_profile_id"
+            ),
+            measurement_node_key=execution.get(
+                "measurement_node_key"
+            ),
             already_claimed=True,
             public_id=execution["public_id"],
         )

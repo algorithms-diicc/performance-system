@@ -84,6 +84,14 @@ def claim_next_queued_execution(
                     db.commit()
                 return None
 
+            node_key = str(
+                selection.get("node_key") or ""
+            ).strip().lower()
+            if not node_key:
+                raise RuntimeError(
+                    "Selected measurement node is missing node_key."
+                )
+
             if selection.get("affinity_changed"):
                 assignment_repository.set_submission_assignment(
                     submission["id"],
@@ -115,6 +123,7 @@ def claim_next_queued_execution(
             claimed["hardware_profile_id"] = selection[
                 "hardware_profile_id"
             ]
+            claimed["measurement_node_key"] = node_key
 
         if owns_connection:
             db.commit()
