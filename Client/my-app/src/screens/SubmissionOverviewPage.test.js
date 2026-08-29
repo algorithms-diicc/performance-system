@@ -1287,7 +1287,9 @@ describe("SubmissionOverviewPage", () => {
     );
 
     expect(
-      await screen.findByText(/Marca un Experimento como Referencia/i)
+      await screen.findByText(
+        "No hay referencias comparables disponibles para esta ejecución. Solo aparecerán experimentos marcados como referencia que tengan resultados compatibles."
+      )
     ).toBeInTheDocument();
   });
 
@@ -1320,7 +1322,7 @@ describe("SubmissionOverviewPage", () => {
     ).toBeInTheDocument();
   });
 
-  test("comparison entry is disabled when fewer than two executions are eligible", async () => {
+  test("comparison entry is not offered when fewer than two executions are eligible", async () => {
     await renderLoadedPage({
       executions: [
         comparisonExecution(1),
@@ -1333,11 +1335,13 @@ describe("SubmissionOverviewPage", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "Comparar implementaciones" })
-    ).toBeDisabled();
+      screen.queryByRole("button", {
+        name: "Comparar implementaciones",
+      })
+    ).not.toBeInTheDocument();
     expect(
       screen.getByText(
-        "Se necesitan al menos dos implementaciones completadas con resultados."
+        "Hay una implementación con resultados disponibles. Se necesita al menos una segunda implementación comparable para iniciar la comparación."
       )
     ).toBeInTheDocument();
   });
@@ -1523,4 +1527,146 @@ describe("SubmissionOverviewPage", () => {
     expect(screen.getByText("Destaca este experimento para que sus ejecuciones completadas puedan utilizarse como referencias en comparaciones posteriores.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Archivar" })).toBeInTheDocument();
   });
+
+  test("does not offer comparison or a new reference when no usable result exists", async () => {
+    const cancelledExecution = {
+      ...completedExecution,
+      state: "CANCELLED",
+      stateLabel: "Cancelado",
+      resultAvailable: false,
+      durationMs: null,
+    };
+
+    await renderLoadedPage({
+      summary: {
+        ...completedSummary,
+        completedExecutions: 0,
+        cancelledExecutions: 1,
+      },
+      executions: [cancelledExecution],
+    });
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Comparar implementaciones",
+      })
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Este experimento todavía no tiene implementaciones completadas con resultados disponibles para comparar."
+      )
+    ).toBeInTheDocument();
+
+    const referenceButton = screen.getByRole(
+      "button",
+      {
+        name:
+          "Marcar como referencia de comparación",
+      }
+    );
+
+    expect(referenceButton).toBeDisabled();
+    expect(
+      screen.getByText(
+        "Este experimento todavía no tiene ejecuciones completadas con resultados disponibles, por lo que aún no puede utilizarse como referencia de comparación."
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("one usable result enables reference but still does not offer comparison", async () => {
+    await renderLoadedPage();
+
+    expect(
+      screen.queryByRole("button", {
+        name: "Comparar implementaciones",
+      })
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Hay una implementación con resultados disponibles. Se necesita al menos una segunda implementación comparable para iniciar la comparación."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button", {
+        name:
+          "Marcar como referencia de comparación",
+      })
+    ).toBeEnabled();
+  });
+
+  test("an existing reference can always be removed even if results are no longer usable", async () => {
+    const cancelledExecution = {
+      ...completedExecution,
+      state: "CANCELLED",
+      stateLabel: "Cancelado",
+      resultAvailable: false,
+      durationMs: null,
+    };
+
+    await renderLoadedPage({
+      submission: {
+        ...ownerSubmission,
+        isPinned: true,
+      },
+      summary: {
+        ...completedSummary,
+        completedExecutions: 0,
+        cancelledExecutions: 1,
+      },
+      executions: [cancelledExecution],
+    });
+
+    const referenceButton = screen.getByRole(
+      "button",
+      {
+        name: "Referencia de comparación",
+      }
+    );
+
+    expect(referenceButton).toBeEnabled();
+    expect(referenceButton).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    expect(
+      screen.getByText(
+        /está marcado como referencia, pero actualmente no tiene ejecuciones completadas/i
+      )
+    ).toBeInTheDocument();
+  });
+
+  test("two usable results expose the primary comparison action", async () => {
+    await renderLoadedPage({
+      summary: {
+        ...completedSummary,
+        executionsCount: 2,
+        completedExecutions: 2,
+      },
+      executions: [
+        comparisonExecution(1),
+        comparisonExecution(2),
+      ],
+    });
+
+    const compareButton = screen.getByRole(
+      "button",
+      {
+        name: "Comparar implementaciones",
+      }
+    );
+
+    expect(compareButton).toBeEnabled();
+    expect(compareButton).toHaveClass(
+      "submission-overview__button--primary"
+    );
+    expect(
+      screen.queryByText(
+        /se necesita al menos una segunda implementación comparable/i
+      )
+    ).not.toBeInTheDocument();
+  });
+
 });

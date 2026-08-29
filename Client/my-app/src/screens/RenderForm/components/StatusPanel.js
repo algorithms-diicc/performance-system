@@ -1055,6 +1055,72 @@ function ExecutionCancelAction({
   );
 }
 
+const EXECUTION_PROGRESS_STATES = [
+  "QUEUED",
+  "RUNNING",
+  "PROCESSING",
+  "COMPLETED",
+];
+
+
+function ExecutionMiniStepper({
+  state,
+  name,
+  t,
+}) {
+  const normalized = String(state || "").toUpperCase();
+  const currentIndex =
+    EXECUTION_PROGRESS_STATES.indexOf(normalized);
+
+  if (currentIndex < 0) {
+    return (
+      <strong>{t(executionStateKey(normalized))}</strong>
+    );
+  }
+
+  return (
+    <ol
+      className={`rf-execution-mini-progress rf-execution-mini-progress-${normalized.toLowerCase()}`}
+      aria-label={t(
+        "renderForm.workflow.executionList.progressAria",
+        { name }
+      )}
+    >
+      {EXECUTION_PROGRESS_STATES.map(
+        (stepState, index) => {
+          const stepKind =
+            index < currentIndex
+              ? "done"
+              : index === currentIndex
+              ? "active"
+              : "pending";
+
+          return (
+            <li
+              key={stepState}
+              className={`rf-execution-mini-step rf-execution-mini-step-${stepKind}`}
+              aria-current={
+                stepKind === "active"
+                  ? "step"
+                  : undefined
+              }
+            >
+              <span
+                className="rf-execution-mini-marker"
+                aria-hidden="true"
+              />
+              <span className="rf-execution-mini-label">
+                {t(executionStateKey(stepState))}
+              </span>
+            </li>
+          );
+        }
+      )}
+    </ol>
+  );
+}
+
+
 function ExecutionStatusList({
   executionFiles,
   cancellationState = {},
@@ -1089,12 +1155,57 @@ function ExecutionStatusList({
             >
               <StateIcon size={16} aria-hidden="true" />
 
-              <span className="rf-execution-status-name">
-                {execution.originalName || execution.codename}
-              </span>
+              <div className="rf-execution-status-main">
+                <span
+                  className="rf-execution-status-name"
+                  title={
+                    execution.originalName ||
+                    execution.codename
+                  }
+                >
+                  {execution.originalName || execution.codename}
+                </span>
+
+                {(execution.measurementNode?.displayName ||
+                  execution.hardwareProfile) && (
+                  <span className="rf-execution-provenance">
+                    {execution.measurementNode?.displayName && (
+                      <span>
+                        {t(
+                          "renderForm.workflow.executionList.node",
+                          {
+                            node:
+                              execution.measurementNode
+                                .displayName,
+                          }
+                        )}
+                      </span>
+                    )}
+
+                    {execution.hardwareProfile && (
+                      <span>
+                        {t(
+                          "renderForm.workflow.executionList.registeredProfile",
+                          {
+                            profile:
+                              execution.hardwareProfile,
+                          }
+                        )}
+                      </span>
+                    )}
+                  </span>
+                )}
+              </div>
 
               <span className="rf-execution-status-value">
-                <strong>{t(executionStateKey(state))}</strong>
+                <ExecutionMiniStepper
+                  state={state}
+                  name={
+                    execution.originalName ||
+                    execution.codename
+                  }
+                  t={t}
+                />
                 {queueText && <small>{queueText}</small>}
               </span>
 

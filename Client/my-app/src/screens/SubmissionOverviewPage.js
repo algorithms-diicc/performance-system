@@ -493,6 +493,19 @@ const SubmissionOverviewPage = ({ currentUser }) => {
     [orderedExecutions]
   );
 
+  const canStartComparison =
+    eligibleComparisonExecutions.length >= 2;
+  const canMarkReference =
+    eligibleComparisonExecutions.length >= 1;
+
+  const comparisonAvailabilityKey =
+    orderedExecutions.length === 0 ||
+    canStartComparison
+      ? ""
+      : eligibleComparisonExecutions.length === 0
+      ? "submissionOverview.comparison.noneAvailable"
+      : "submissionOverview.comparison.needAnother";
+
   const aggregateState = useMemo(
     () => deriveSubmissionAggregateState(summary || {}),
     [summary]
@@ -1279,8 +1292,12 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                       .filter(Boolean)
                       .join(" ")}
                     onClick={handleTogglePinned}
-                    disabled={pinSaving}
+                    disabled={
+                      pinSaving ||
+                      (!isPinned && !canMarkReference)
+                    }
                     aria-pressed={isPinned}
+                    aria-describedby="submission-reference-hint"
                   >
                     <Pin
                       size={17}
@@ -1315,8 +1332,21 @@ const SubmissionOverviewPage = ({ currentUser }) => {
               )}
             </div>
 
-            <p className="submission-overview__personal-reference-hint">
-              {t("submissionOverview.personal.referenceHint")}
+            <p
+              id="submission-reference-hint"
+              className="submission-overview__personal-reference-hint"
+            >
+              {isPinned && !canMarkReference
+                ? t(
+                    "submissionOverview.personal.referencePinnedUnavailableHint"
+                  )
+                : canMarkReference
+                ? t(
+                    "submissionOverview.personal.referenceHint"
+                  )
+                : t(
+                    "submissionOverview.personal.referenceUnavailableHint"
+                  )}
             </p>
 
             <div className="submission-overview__note">
@@ -1559,37 +1589,39 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                   "submissionOverview.actions.refreshStates"
                 )}
               </button>
-              {!comparisonMode && (
-                <button
-                  type="button"
-                  className="submission-overview__button submission-overview__button--primary"
-                  onClick={handleStartComparison}
-                  disabled={eligibleComparisonExecutions.length < 2}
-                >
-                  <GitCompareArrows
-                    size={16}
-                    strokeWidth={2}
-                    aria-hidden="true"
-                  />
-                  {t(
-                    "submissionOverview.actions.compareImplementations"
-                  )}
-                </button>
-              )}
+              {!comparisonMode &&
+                canStartComparison && (
+                  <button
+                    type="button"
+                    className="submission-overview__button submission-overview__button--primary"
+                    onClick={handleStartComparison}
+                  >
+                    <GitCompareArrows
+                      size={16}
+                      strokeWidth={2}
+                      aria-hidden="true"
+                    />
+                    {t(
+                      "submissionOverview.actions.compareImplementations"
+                    )}
+                  </button>
+                )}
             </div>
           </div>
 
-          {eligibleComparisonExecutions.length < 2 &&
-            orderedExecutions.length > 0 && (
-              <p
-                className="submission-overview__comparison-unavailable"
-                role="status"
-              >
-                {t(
-                  "submissionOverview.comparison.needTwo"
-                )}
-              </p>
-            )}
+          {comparisonAvailabilityKey && (
+            <p
+              className="submission-overview__comparison-unavailable"
+              role="status"
+            >
+              <AlertTriangle
+                size={17}
+                strokeWidth={1.9}
+                aria-hidden="true"
+              />
+              {t(comparisonAvailabilityKey)}
+            </p>
+          )}
 
           {comparisonMode && (
             <div
@@ -1958,7 +1990,7 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                           <Server size={17} strokeWidth={1.9} aria-hidden="true" />
                           <dt>
                             {t(
-                              "submissionOverview.labels.environment"
+                              "submissionOverview.labels.registeredHardwareProfile"
                             )}
                           </dt>
                           <dd>{execution.hardwareProfile}</dd>

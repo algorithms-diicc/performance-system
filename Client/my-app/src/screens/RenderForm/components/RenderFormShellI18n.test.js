@@ -109,7 +109,7 @@ describe("RenderForm shell i18n", () => {
     );
 
     expect(
-      screen.getByText("Managed measurement environment")
+      screen.getByText("Multi-node measurement pool")
     ).toBeInTheDocument();
 
     expect(

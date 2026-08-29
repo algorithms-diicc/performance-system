@@ -65,6 +65,9 @@ function statusTone(value, kind = "status") {
   if (value === "UNAVAILABLE" || value === "OFFLINE") {
     return "unavailable";
   }
+  if (value === "DRAINING") {
+    return "draining";
+  }
   return "neutral";
 }
 
@@ -122,6 +125,36 @@ function boolLabel(value, t) {
   if (value === true) return t("adminSystemStatus.boolean.yes");
   if (value === false) return t("adminSystemStatus.boolean.no");
   return t("adminSystemStatus.unavailable");
+}
+
+
+function formatHeartbeatAge(
+  value,
+  unavailable
+) {
+  const numeric = Number(value);
+
+  if (!Number.isFinite(numeric) || numeric < 0) {
+    return unavailable;
+  }
+
+  const totalSeconds = Math.round(numeric);
+
+  if (totalSeconds < 60) {
+    return `${totalSeconds} s`;
+  }
+
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor(
+    (totalSeconds % 3600) / 60
+  );
+  const seconds = totalSeconds % 60;
+
+  if (hours > 0) {
+    return `${hours} h ${minutes} min`;
+  }
+
+  return `${minutes} min ${seconds} s`;
 }
 
 
@@ -453,6 +486,10 @@ export default function AdminSystemStatus() {
                     <article
                       className="admin-system-status__node-card"
                       key={nodeKey}
+                      aria-label={t(
+                        "adminSystemStatus.measurementNodes.cardAria",
+                        { name: nodeName }
+                      )}
                     >
                       <div className="admin-system-status__node-heading">
                         <div>
@@ -479,6 +516,18 @@ export default function AdminSystemStatus() {
                         />
                         <Field
                           label={t(
+                            "adminSystemStatus.measurementNodes.enabled"
+                          )}
+                          value={boolLabel(node?.enabled, t)}
+                        />
+                        <Field
+                          label={t(
+                            "adminSystemStatus.measurementNodes.draining"
+                          )}
+                          value={boolLabel(node?.draining, t)}
+                        />
+                        <Field
+                          label={t(
                             "adminSystemStatus.measurementNodes.validationOnly"
                           )}
                           value={boolLabel(node?.validationOnly, t)}
@@ -493,12 +542,10 @@ export default function AdminSystemStatus() {
                           label={t(
                             "adminSystemStatus.measurementNodes.heartbeatAgeSeconds"
                           )}
-                          value={
-                            node?.heartbeatAgeSeconds ?? unavailable
-                          }
-                          technical={
-                            node?.heartbeatAgeSeconds != null
-                          }
+                          value={formatHeartbeatAge(
+                            node?.heartbeatAgeSeconds,
+                            unavailable
+                          )}
                         />
                       </dl>
                     </article>

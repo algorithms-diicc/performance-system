@@ -18,6 +18,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  Server,
   UploadCloud,
   XCircle,
 } from "lucide-react";
@@ -711,6 +712,17 @@ const HistoryPage = () => {
                 {items.map((item) => {
                   const sources =
                     sourcePreview(item, t);
+                  const measurementNodes =
+                    normalizeStringList(
+                      item?.measurementNodes
+                    );
+                  const hardwareProfiles =
+                    normalizeStringList(
+                      item?.hardwareProfiles
+                    );
+                  const hasRegisteredProvenance =
+                    measurementNodes.length > 0 ||
+                    hardwareProfiles.length > 0;
                   const coursePeriod =
                     formatAcademicPeriod(
                       item.course,
@@ -841,6 +853,54 @@ const HistoryPage = () => {
                           </strong>
                         </div>
                       </div>
+
+                      {hasRegisteredProvenance && (
+                        <div
+                          className="history-card__provenance"
+                          role="group"
+                          aria-label={t(
+                            "history.registeredProvenance"
+                          )}
+                        >
+                          {measurementNodes.length > 0 && (
+                            <div>
+                              <Server
+                                size={17}
+                                aria-hidden="true"
+                              />
+                              <span>
+                                {t(
+                                  "history.measurementNode"
+                                )}
+                              </span>
+                              <strong>
+                                {measurementNodes.join(
+                                  " · "
+                                )}
+                              </strong>
+                            </div>
+                          )}
+
+                          {hardwareProfiles.length > 0 && (
+                            <div>
+                              <Server
+                                size={17}
+                                aria-hidden="true"
+                              />
+                              <span>
+                                {t(
+                                  "history.registeredHardwareProfile"
+                                )}
+                              </span>
+                              <strong>
+                                {hardwareProfiles.join(
+                                  " · "
+                                )}
+                              </strong>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       <div className="history-card__details">
                         <div>

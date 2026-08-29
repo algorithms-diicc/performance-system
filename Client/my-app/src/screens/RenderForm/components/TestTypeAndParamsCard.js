@@ -37,6 +37,93 @@ const profileIdFromValue = (value) => {
   return known[normalized] || normalized;
 };
 
+const policySliderStep = (limits) => {
+  const min = Number(limits?.min);
+  const max = Number(limits?.max);
+  const step = Number(limits?.step);
+
+  if (
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
+    !Number.isFinite(step) ||
+    step <= 0 ||
+    max < min
+  ) {
+    return "any";
+  }
+
+  const regularMax =
+    min + Math.floor((max - min) / step) * step;
+
+  return regularMax === max
+    ? step
+    : "any";
+};
+
+
+const normalizePolicySliderValue = (rawValue, limits) => {
+  const numeric = Number(rawValue);
+  const min = Number(limits?.min);
+  const max = Number(limits?.max);
+  const step = Number(limits?.step);
+
+  if (
+    !Number.isFinite(numeric) ||
+    !Number.isFinite(min) ||
+    !Number.isFinite(max) ||
+    !Number.isFinite(step) ||
+    step <= 0 ||
+    max < min
+  ) {
+    return rawValue;
+  }
+
+  const clamped = Math.min(max, Math.max(min, numeric));
+  const regularMax =
+    min + Math.floor((max - min) / step) * step;
+
+  if (regularMax < max) {
+    const hardMaxBoundary =
+      regularMax + (max - regularMax) / 2;
+
+    if (clamped >= hardMaxBoundary) {
+      return max;
+    }
+  }
+
+  const snapped =
+    min + Math.round((clamped - min) / step) * step;
+
+  return Math.min(
+    regularMax,
+    Math.max(min, snapped)
+  );
+};
+
+
+const formatOperationalTimeout = (seconds, t) => {
+  const numeric = Number(seconds);
+
+  if (!Number.isFinite(numeric) || numeric <= 0) {
+    return "—";
+  }
+
+  if (numeric % 60 === 0) {
+    return t(
+      "renderForm.benchmark.timeoutValueMinutes",
+      {
+        seconds: numeric,
+        minutes: numeric / 60,
+      }
+    );
+  }
+
+  return t(
+    "renderForm.benchmark.timeoutValueSeconds",
+    { seconds: numeric }
+  );
+};
+
 function TestTypeAndParamsCard({
   tasks,
   selectedTaskType,
@@ -150,7 +237,9 @@ function TestTypeAndParamsCard({
             const recommendedInputMax =
               limitsInput?.recommendedMax ?? null;
 
-            const recommendedInputValues = (
+            // Los chips son atajos sugeridos de configuración.
+            // No representan el rango recomendado de la policy.
+            const suggestedInputValues = (
               inputSizePresets[task.id] || []
             ).filter((preset) => {
               const numericPreset = Number(preset);
@@ -169,10 +258,7 @@ function TestTypeAndParamsCard({
                 return false;
               }
 
-              return (
-                recommendedInputMax === null ||
-                numericPreset <= recommendedInputMax
-              );
+              return true;
             });
             const numericInputSize = Number(inputSize);
             const exceedsRecommendedInput =
@@ -274,15 +360,98 @@ function TestTypeAndParamsCard({
                         </p>
 
                         {limitsInput && (
-                          <p className="param-range-contract">
-                            {t(
-                              "renderForm.benchmark.allowedRange",
-                              {
-                                min: limitsInput.min,
-                                max: limitsInput.max,
-                              }
-                            )}
-                          </p>
+                          <>
+                            <dl
+                              className="param-policy-contract"
+                              aria-label={t(
+                                "renderForm.benchmark.policyContractLabel"
+                              )}
+                            >
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.minimumInput"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-minimum-input">
+                                  {limitsInput.min}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.defaultInput"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-default-input">
+                                  {limitsInput.defaultValue ?? "—"}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.recommendedMaxInput"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-recommended-max-input">
+                                  {limitsInput.recommendedMax ?? "—"}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.hardMaxInput"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-hard-max-input">
+                                  {limitsInput.max}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.inputStep"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-input-step">
+                                  {limitsInput.step ?? "—"}
+                                </dd>
+                              </div>
+
+                              <div>
+                                <dt>
+                                  {t(
+                                    "renderForm.benchmark.operationalTimeout"
+                                  )}
+                                </dt>
+                                <dd data-testid="policy-operational-timeout">
+                                  {formatOperationalTimeout(
+                                    limitsInput.operationalTimeoutSeconds,
+                                    t
+                                  )}
+                                </dd>
+                              </div>
+                            </dl>
+
+                            <p className="param-policy-note">
+                              {t(
+                                "renderForm.benchmark.hardMaxHelp",
+                                {
+                                  hardMax: limitsInput.max,
+                                }
+                              )}
+                            </p>
+
+                            <p className="param-policy-note">
+                              {t(
+                                "renderForm.benchmark.timeoutHelp"
+                              )}
+                            </p>
+                          </>
                         )}
 
                         {limitsInput && (
@@ -292,14 +461,28 @@ function TestTypeAndParamsCard({
                               className="param-range"
                               min={limitsInput.min}
                               max={limitsInput.max}
-                              step={limitsInput.step}
+                              step={policySliderStep(
+                                limitsInput
+                              )}
                               value={
                                 typeof inputSize === "number" &&
                                 !Number.isNaN(inputSize)
                                   ? inputSize
                                   : limitsInput.min
                               }
-                              onChange={onInputSizeSliderChange}
+                              onChange={(event) => {
+                                const normalizedValue =
+                                  normalizePolicySliderValue(
+                                    event.target.value,
+                                    limitsInput
+                                  );
+
+                                onInputSizeSliderChange({
+                                  target: {
+                                    value: normalizedValue,
+                                  },
+                                });
+                              }}
                             />
                             <div className="param-range-labels">
                               <span>{limitsInput.min}</span>
@@ -308,7 +491,7 @@ function TestTypeAndParamsCard({
                           </div>
                         )}
 
-                        {recommendedInputValues.length > 0 && (
+                        {suggestedInputValues.length > 0 && (
                           <div className="param-suggestions-block">
                             <span className="param-suggestions-label">
                               {t(
@@ -317,7 +500,7 @@ function TestTypeAndParamsCard({
                             </span>
 
                             <div className="param-suggestions">
-                              {recommendedInputValues.map((preset) => (
+                              {suggestedInputValues.map((preset) => (
                                 <button
                                   key={preset}
                                   type="button"
@@ -351,6 +534,8 @@ function TestTypeAndParamsCard({
                                 {
                                   recommendedMax:
                                     recommendedInputMax,
+                                  hardMax:
+                                    limitsInput?.max,
                                 }
                               )}
                             </span>

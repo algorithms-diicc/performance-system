@@ -33,29 +33,125 @@ jest.mock("./components/AcademicCourseCard", () => {
 });
 jest.mock("./components/MeasurementAndProfileSection", () => {
   const ReactModule = require("react");
+
   return function MockMeasurement({
     executionProfile,
     onExecutionProfileChange,
+    measurementNodeMode,
+    measurementNodes,
+    selectedMeasurementNodeKey,
+    onMeasurementNodeModeChange,
+    onMeasurementNodeChange,
+    measurementNodesLoading,
+    measurementNodesError,
   }) {
     return ReactModule.createElement(
       ReactModule.Fragment,
       null,
       ReactModule.createElement(
         "span",
-        { "data-testid": "execution-profile" },
+        {
+          "data-testid":
+            "execution-profile",
+        },
         executionProfile || ""
       ),
-      ["rapido", "equilibrado", "exhaustivo", "personalizado"].map(
-        (profile) =>
-          ReactModule.createElement(
-            "button",
-            {
-              key: profile,
-              type: "button",
-              onClick: () => onExecutionProfileChange(profile),
-            },
-            `Perfil ${profile}`
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid":
+            "measurement-node-mode",
+        },
+        measurementNodeMode || ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid":
+            "measurement-node-key",
+        },
+        selectedMeasurementNodeKey ||
+          ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid":
+            "measurement-nodes-loading",
+        },
+        measurementNodesLoading
+          ? "loading"
+          : ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid":
+            "measurement-nodes-error",
+        },
+        measurementNodesError
+          ? "error"
+          : ""
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onMeasurementNodeModeChange(
+              "AUTO"
+            ),
+        },
+        "Modo AUTO"
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () =>
+            onMeasurementNodeModeChange(
+              "PINNED"
+            ),
+        },
+        "Modo PINNED"
+      ),
+      ...(Array.isArray(
+        measurementNodes
+      )
+        ? measurementNodes.map(
+            (node) =>
+              ReactModule.createElement(
+                "button",
+                {
+                  key: node.nodeKey,
+                  type: "button",
+                  onClick: () =>
+                    onMeasurementNodeChange(
+                      node.nodeKey
+                    ),
+                },
+                `Nodo ${node.nodeKey}`
+              )
           )
+        : []),
+      [
+        "rapido",
+        "equilibrado",
+        "exhaustivo",
+        "personalizado",
+      ].map((profile) =>
+        ReactModule.createElement(
+          "button",
+          {
+            key: profile,
+            type: "button",
+            onClick: () =>
+              onExecutionProfileChange(
+                profile
+              ),
+          },
+          `Perfil ${profile}`
+        )
       )
     );
   };
@@ -257,12 +353,70 @@ jest.mock("./components/StatusPanel", () => {
 
 jest.mock("./components/OverviewModal", () => {
   const ReactModule = require("react");
-  return function MockOverviewModal({ visible, onConfirm }) {
+
+  return function MockOverviewModal({
+    visible,
+    onConfirm,
+    measurementNodeMode,
+    measurementNodeLabel,
+    measurementHardwareProfileLabel,
+    inputLimits,
+  }) {
     if (!visible) return null;
+
     return ReactModule.createElement(
-      "button",
-      { type: "button", onClick: onConfirm },
-      "Confirmar y ejecutar"
+      ReactModule.Fragment,
+      null,
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-measurement-mode",
+        },
+        measurementNodeMode || ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-node-label",
+        },
+        measurementNodeLabel || ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-hardware-profile",
+        },
+        measurementHardwareProfileLabel || ""
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-recommended-max",
+        },
+        String(inputLimits?.recommendedMax ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-hard-max",
+        },
+        String(inputLimits?.max ?? "")
+      ),
+      ReactModule.createElement(
+        "span",
+        {
+          "data-testid": "overview-timeout",
+        },
+        String(inputLimits?.operationalTimeoutSeconds ?? "")
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: onConfirm,
+        },
+        "Confirmar y ejecutar"
+      )
     );
   };
 });
@@ -289,6 +443,30 @@ const courseResponse = {
   data: {
     items: [],
     selectionRequired: false,
+    autoSelectedCourseId: null,
+    personalAllowed: true,
+  },
+};
+
+
+const measurementNodeResponse = {
+  data: {
+    defaultMode: "AUTO",
+    total: 1,
+    items: [
+      {
+        nodeKey: "shenu",
+        displayName: "Shenu",
+        state: "AVAILABLE",
+        validationOnly: false,
+        hardwareProfile: {
+          profileKey:
+            "shenu-intel-i5-9400",
+          name:
+            "Shenu Intel i5-9400",
+        },
+      },
+    ],
   },
 };
 
@@ -422,6 +600,41 @@ const measurementPolicyResponse = {
   },
 };
 
+
+const pinnedMeasurementPolicyResponse = {
+  data: {
+    ...measurementPolicyResponse.data,
+    environment: {
+      mode: "PINNED",
+      node:
+        measurementNodeResponse
+          .data.items[0],
+    },
+    items:
+      measurementPolicyResponse
+        .data.items.map((item) => {
+          if (
+            item.benchmark === "LCS" &&
+            item.executionProfile ===
+              "BALANCED"
+          ) {
+            return {
+              ...item,
+              minimumInput: 100,
+              defaultInput: 400,
+              recommendedMaxInput: 450,
+              hardMaxInput: 600,
+              inputStep: 100,
+              operationalTimeoutSeconds:
+                900,
+            };
+          }
+
+          return item;
+        }),
+  },
+};
+
 const makeZip = (filename) => {
   const file = new File(["zip-content"], filename, {
     type: "application/zip",
@@ -517,7 +730,7 @@ describe("RenderFormPage 6A onboarding", () => {
 
       if (
         String(url).includes(
-          "api/student/courses"
+          "api/analysis/courses"
         )
       ) {
         return Promise.resolve(courseResponse);
@@ -534,6 +747,356 @@ describe("RenderFormPage 6A onboarding", () => {
       },
     });
   });
+
+
+  test("optional academic context honors a valid course query even with one course", async () => {
+    const optionalCourseResponse = {
+      data: {
+        items: [
+          {
+            id: 12,
+            code: "INF-221",
+            name: "Algoritmos",
+            academicYear: 2026,
+            academicTerm: 2,
+            teacher: {
+              fullName: "Ada Teacher",
+            },
+          },
+        ],
+        selectionRequired: false,
+        autoSelectedCourseId: null,
+        personalAllowed: true,
+      },
+    };
+
+    axios.get.mockImplementation((url) => {
+      if (
+        String(url).includes(
+          "api/measurement/policies"
+        )
+      ) {
+        return Promise.resolve(
+          measurementPolicyResponse
+        );
+      }
+
+      if (
+        String(url).includes(
+          "api/analysis/courses"
+        )
+      ) {
+        return Promise.resolve(
+          optionalCourseResponse
+        );
+      }
+
+      return Promise.reject(
+        new Error(`Unexpected GET ${url}`)
+      );
+    });
+
+    await renderPage(
+      "/new-analysis?course=12"
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("selected-course")
+      ).toHaveTextContent("12");
+    });
+  });
+
+  test(
+    "AUTO remains default and does not discover nodes eagerly",
+    async () => {
+      await renderPage();
+
+      expect(
+        screen.getByTestId(
+          "measurement-node-mode"
+        )
+      ).toHaveTextContent(
+        "AUTO"
+      );
+
+      expect(
+        axios.get.mock.calls.some(
+          ([url]) =>
+            String(url).includes(
+              "api/measurement/nodes"
+            )
+        )
+      ).toBe(false);
+    }
+  );
+
+  test(
+    "pre-submit review receives AUTO mode and effective policy",
+    async () => {
+      await renderPage();
+
+      selectBenchmark();
+      await selectZipFromInput(
+        "review-auto.zip"
+      );
+
+      const review =
+        screen.getByRole(
+          "button",
+          {
+            name:
+              "Revisar y ejecutar",
+          }
+        );
+
+      await waitFor(() =>
+        expect(
+          review
+        ).toBeEnabled()
+      );
+
+      fireEvent.click(review);
+
+      expect(
+        screen.getByTestId(
+          "overview-measurement-mode"
+        )
+      ).toHaveTextContent(
+        "AUTO"
+      );
+
+      expect(
+        screen.getByTestId(
+          "overview-recommended-max"
+        )
+      ).toHaveTextContent(
+        "500"
+      );
+
+      expect(
+        screen.getByTestId(
+          "overview-hard-max"
+        )
+      ).toHaveTextContent(
+        "750"
+      );
+
+      expect(
+        screen.getByTestId(
+          "overview-timeout"
+        )
+      ).toHaveTextContent(
+        "1680"
+      );
+    }
+  );
+
+  test(
+    "AUTO submit sends explicit mode without a node key",
+    async () => {
+      axios.mockResolvedValue({
+        data: {
+          submissionId: 81,
+          executions: [
+            {
+              publicId:
+                "00000000-0000-0000-0000-000000000081",
+              codename:
+                "autoLCS",
+            },
+          ],
+        },
+      });
+
+      await renderPage();
+      selectBenchmark();
+      await selectZipFromInput(
+        "auto.zip"
+      );
+
+      const form =
+        await submitThroughOverview();
+
+      expect(
+        form.get(
+          "measurement_node_mode"
+        )
+      ).toBe("AUTO");
+
+      expect(
+        form.get(
+          "measurement_node_key"
+        )
+      ).toBeNull();
+    }
+  );
+
+  test(
+    "PINNED discovers nodes lazily, reloads policy and submits only nodeKey",
+    async () => {
+      axios.get.mockImplementation(
+        (url) => {
+          const value =
+            String(url);
+
+          if (
+            value.includes(
+              "api/measurement/policies"
+            ) &&
+            value.includes(
+              "nodeKey=shenu"
+            )
+          ) {
+            return Promise.resolve(
+              pinnedMeasurementPolicyResponse
+            );
+          }
+
+          if (
+            value.includes(
+              "api/measurement/policies"
+            )
+          ) {
+            return Promise.resolve(
+              measurementPolicyResponse
+            );
+          }
+
+          if (
+            value.includes(
+              "api/measurement/nodes"
+            )
+          ) {
+            return Promise.resolve(
+              measurementNodeResponse
+            );
+          }
+
+          if (
+            value.includes(
+              "api/analysis/courses"
+            )
+          ) {
+            return Promise.resolve(
+              courseResponse
+            );
+          }
+
+          return Promise.reject(
+            new Error(
+              `Unexpected GET ${url}`
+            )
+          );
+        }
+      );
+
+      axios.mockResolvedValue({
+        data: {
+          submissionId: 82,
+          executions: [
+            {
+              publicId:
+                "00000000-0000-0000-0000-000000000082",
+              codename:
+                "pinnedLCS",
+            },
+          ],
+        },
+      });
+
+      await renderPage();
+
+      fireEvent.click(
+        screen.getByRole(
+          "button",
+          {
+            name:
+              "Modo PINNED",
+          }
+        )
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole(
+            "button",
+            {
+              name:
+                "Nodo shenu",
+            }
+          )
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole(
+          "button",
+          {
+            name:
+              "Nodo shenu",
+          }
+        )
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(
+            "measurement-node-key"
+          )
+        ).toHaveTextContent(
+          "shenu"
+        );
+      });
+
+      selectBenchmark();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId(
+            "policy-default"
+          )
+        ).toHaveTextContent(
+          "400"
+        );
+      });
+
+      expect(
+        screen.getByTestId(
+          "policy-hard-max"
+        )
+      ).toHaveTextContent(
+        "600"
+      );
+
+      await selectZipFromInput(
+        "pinned.zip"
+      );
+
+      const form =
+        await submitThroughOverview();
+
+      expect(
+        form.get(
+          "measurement_node_mode"
+        )
+      ).toBe("PINNED");
+
+      expect(
+        form.get(
+          "measurement_node_key"
+        )
+      ).toBe("shenu");
+
+      expect(
+        Array.from(
+          form.keys()
+        )
+      ).not.toContain(
+        "measurement_node_id"
+      );
+    }
+  );
 
   test("uses Lucide icons for structural upload affordances", async () => {
     const { container } = await renderPage();
@@ -739,7 +1302,7 @@ describe("RenderFormPage 6A onboarding", () => {
         );
       }
 
-      if (url.includes("api/student/courses")) {
+      if (url.includes("api/analysis/courses")) {
         return Promise.resolve(courseResponse);
       }
       return Promise.resolve({
@@ -798,7 +1361,7 @@ describe("RenderFormPage 6A onboarding", () => {
         );
       }
 
-      if (url.includes("api/student/courses")) {
+      if (url.includes("api/analysis/courses")) {
         return Promise.resolve({
           data: {
             items: [
@@ -895,7 +1458,7 @@ describe("RenderFormPage 6A onboarding", () => {
         );
       }
 
-      if (url.includes("api/student/courses")) {
+      if (url.includes("api/analysis/courses")) {
         return Promise.resolve({
           data: {
             items: [{ id: 12, code: "CC4102" }],
@@ -978,7 +1541,7 @@ describe("RenderFormPage 6A onboarding", () => {
         );
       }
 
-      if (url.includes("api/student/courses")) {
+      if (url.includes("api/analysis/courses")) {
         return Promise.resolve(courseResponse);
       }
       if (url.includes("/submissions/42/repeat")) {
@@ -1218,7 +1781,7 @@ describe("RenderFormPage 6A onboarding", () => {
 
         if (
           String(url).includes(
-            "api/student/courses"
+            "api/analysis/courses"
           )
         ) {
           return Promise.resolve(

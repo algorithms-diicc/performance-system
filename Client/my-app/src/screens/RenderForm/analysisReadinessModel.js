@@ -9,6 +9,8 @@ export const ANALYSIS_REQUIREMENT_KEYS = Object.freeze({
   COURSE_LOADING: "courseLoading",
   COURSE_UNAVAILABLE: "courseUnavailable",
   COURSE_REQUIRED: "courseRequired",
+  MEASUREMENT_NODE_REQUIRED:
+    "measurementNodeRequired",
   MEASUREMENT_POLICY_LOADING:
     "measurementPolicyLoading",
   MEASUREMENT_POLICY_UNAVAILABLE:
@@ -51,6 +53,8 @@ export function buildAnalysisRequirements({
   courseContextError,
   courseSelectionRequired,
   selectedCourseId,
+  measurementNodeMode,
+  measurementNodeKey,
   measurementPolicyLoading,
   measurementPolicyUnavailable,
 } = {}) {
@@ -64,6 +68,20 @@ export function buildAnalysisRequirements({
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INSPECTING);
   } else if (!fileMeta || Number(fileMeta.sourceCount) < 1) {
     requirements.push(ANALYSIS_REQUIREMENT_KEYS.ZIP_INVALID);
+  }
+
+  if (
+    String(
+      measurementNodeMode || "AUTO"
+    ).trim().toUpperCase() === "PINNED" &&
+    !String(
+      measurementNodeKey || ""
+    ).trim()
+  ) {
+    requirements.push(
+      ANALYSIS_REQUIREMENT_KEYS
+        .MEASUREMENT_NODE_REQUIRED
+    );
   }
 
   if (measurementPolicyLoading) {

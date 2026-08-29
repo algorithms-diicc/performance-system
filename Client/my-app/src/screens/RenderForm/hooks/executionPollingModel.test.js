@@ -44,6 +44,26 @@ describe("executionPollingModel", () => {
     expect(item.resultsReady).toBe(false);
   });
 
+  test("snapshot carries sanitized registered node provenance", () => {
+    const item = normalizeExecutionSnapshot({
+      state: "RUNNING",
+      measurementNode: {
+        nodeKey: "shenu",
+        displayName: "Shenu",
+      },
+      hardwareProfile: "Shenu Intel i5-9400",
+    });
+
+    expect(item.measurementNode).toEqual({
+      nodeKey: "shenu",
+      displayName: "Shenu",
+    });
+    expect(item.hardwareProfile).toBe(
+      "Shenu Intel i5-9400"
+    );
+    expect(item.measurementNode.id).toBeUndefined();
+  });
+
   test("CANCELLED is terminal but not a failure", () => {
     const item = normalizeExecutionSnapshot({ state: "CANCELLED" });
     expect(item.terminal).toBe(true);

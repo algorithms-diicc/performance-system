@@ -431,6 +431,24 @@ def cap_code():
         or request.form.get("protocolId")
         or None
     )
+    measurement_node_mode = (
+        request.form.get(
+            "measurement_node_mode"
+        )
+        or request.form.get(
+            "measurementNodeMode"
+        )
+        or None
+    )
+    measurement_node_key = (
+        request.form.get(
+            "measurement_node_key"
+        )
+        or request.form.get(
+            "measurementNodeKey"
+        )
+        or None
+    )
 
     title = (request.form.get("title") or "").strip()
     if not title:
@@ -468,6 +486,9 @@ def cap_code():
             original_filename=stored_upload.original_filename,
             note=note,
             course_id=course_id,
+            user_role_name=get_user_role_name(g.current_user),
+            measurement_node_mode=measurement_node_mode,
+            measurement_node_key=measurement_node_key,
             protocol_id=protocol_id,
         )
 

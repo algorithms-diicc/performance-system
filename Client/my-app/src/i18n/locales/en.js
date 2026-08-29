@@ -348,6 +348,9 @@ const en = {
     file: "File",
     zipUnavailable: "ZIP unavailable",
     lastActivity: "Last activity",
+    registeredProvenance: "Registered measurement provenance",
+    measurementNode: "Measurement node",
+    registeredHardwareProfile: "Registered hardware profile",
     implementations: "Implementations",
     language: "Language",
     languageUnavailable: "Not reported",
@@ -511,12 +514,33 @@ const en = {
     },
     measurement: {
       environmentLabel: "Execution environment",
-      environmentName: "Managed measurement environment",
-      automaticBadge: "Automatic",
+      environmentName: "Multi-node measurement pool",
+      automaticBadge: "AUTO",
       environmentDescription:
-        "Executions are sent to the measurement node configured for this installation.",
+        "In AUTO mode, the system selects an eligible node from the serial multi-node execution pool. Only one physical measurement remains active at a time.",
       environmentNote:
-        "The managed, controlled environment supports comparability and reproducibility while reducing variation from uncontrolled hardware. Hardware provenance is recorded when available.",
+        "Once a submission is assigned, its executions retain affinity with that node. Hardware provenance is recorded to preserve traceability and support comparability.",
+      targetHelp:
+        "AUTO is the recommended option. PINNED explicitly fixes an available node for a controlled execution.",
+      nodeModeGroupAria: "Measurement node selection mode",
+      autoModeAria: "Use automatic node selection",
+      pinnedModeAria: "Pin a measurement node",
+      pinnedModeTitle: "Pin measurement node",
+      pinnedModeBadge: "Advanced",
+      pinnedModeHelp:
+        "Explicitly selects an available node. Use it only when you need to control the physical provenance of the experiment.",
+      nodeLoading: "Loading available nodes…",
+      nodeLoadError:
+        "Available nodes for advanced selection could not be loaded.",
+      nodeRetry: "Retry nodes",
+      noNodes:
+        "No nodes are available for a new PINNED selection. You can return to AUTO.",
+      nodeLabel: "Measurement node",
+      nodePlaceholder: "Select a node…",
+      validationOnly: "Validation",
+      nodeProfile: "Hardware profile: {{profile}}",
+      pinnedNoFallback:
+        "PINNED retains affinity with this node and does not silently migrate to another node if it becomes unavailable.",
       profileLabel: "Measurement profile",
       profileHelp:
         "Defines how many times each measurement point is repeated. More repetitions usually provide more stable results, but increase the total experiment time.",
@@ -574,10 +598,25 @@ const en = {
       repetitionsSlider: "Repetitions per point",
       allowedRange:
         "Allowed range: {{min}}–{{max}}. This is an acceptance limit, not a guarantee of execution time.",
-      recommendedValues: "Recommended values",
+      policyContractLabel: "Effective operational policy",
+      minimumInput: "Minimum",
+      defaultInput: "Default",
+      recommendedMaxInput: "Recommended maximum",
+      hardMaxInput: "Absolute maximum",
+      inputStep: "Step",
+      operationalTimeout: "Operational timeout",
+      timeoutValueMinutes:
+        "{{seconds}} s · {{minutes}} min",
+      timeoutValueSeconds:
+        "{{seconds}} s",
+      hardMaxHelp:
+        "The absolute maximum ({{hardMax}}) is the parameter acceptance limit; it does not guarantee that the benchmark will complete successfully.",
+      timeoutHelp:
+        "The operational timeout is the maximum time allowed for this execution; it is not an estimated duration (ETA).",
+      recommendedValues: "Suggested values",
       advancedInputTitle: "Advanced input size",
       advancedInputWarning:
-        "This exceeds the largest recommended value ({{recommendedMax}}). The experiment may take a long time or reach the timeout depending on the implementation and selected profile.",
+        "This is above the recommended maximum ({{recommendedMax}}) but remains within the absolute maximum ({{hardMax}}). This is an advanced range: it may take a long time or reach the operational timeout depending on the implementation.",
       dataDistribution: "Data distribution",
       dataDistributionHelp:
         "Defines how the numeric dataset received by the algorithm is organized.",
@@ -629,10 +668,10 @@ const en = {
       noCourse: "No associated course",
       personal: "Personal",
       noActiveCourses:
-        "You currently have no active courses. You can still run a personal analysis.",
+        "You have no active courses available to associate with this analysis. You can continue with a personal analysis.",
       course: "Course",
       loading: "Loading…",
-      loadingText: "Loading your active courses.",
+      loadingText: "Loading courses available for this analysis.",
       loadError: "We could not load your courses",
       retry: "Retry",
       associatedCourse: "Associated course",
@@ -642,11 +681,16 @@ const en = {
       automaticAssociation:
         "This experiment will automatically be associated with your only active course.",
       selectCourse: "Select the course",
+      optionalAssociation: "Optional academic association",
       required: "Required",
+      optional: "Optional",
       deliveryCourse: "Course for this experiment",
       selectPlaceholder: "Select a course…",
+      personalOption: "Personal · No associated course",
       multipleCoursesHelp:
         "You have more than one active course. Selecting one prevents experiments from different courses or terms from being mixed.",
+      optionalCoursesHelp:
+        "You can keep this analysis personal or explicitly associate it with one of your active courses.",
     },
     overview: {
       title: "Review experiment",
@@ -671,7 +715,31 @@ const en = {
       dataDistribution: "Data distribution",
       measurement: "Measurement",
       environment: "Environment",
+      selectionMode: "Selection mode",
+      autoMode: "AUTO · automatic selection",
+      pinnedMode: "PINNED · fixed node",
+      node: "Node",
+      autoNodePending:
+        "A node will be assigned automatically from the eligible pool when the execution is registered.",
+      registeredHardwareProfile:
+        "Registered hardware profile",
       profile: "Profile",
+      effectivePolicy: "Effective operational policy",
+      minimumInput: "Minimum",
+      defaultInput: "Default",
+      recommendedMaxInput: "Recommended maximum",
+      hardMaxInput: "Absolute maximum",
+      inputStep: "Step",
+      operationalTimeout: "Operational timeout",
+      timeoutValueMinutes:
+        "{{seconds}} s · {{minutes}} min",
+      timeoutValueSeconds: "{{seconds}} s",
+      advancedInput:
+        "Advanced input: {{input}} exceeds the recommended maximum of {{recommended}}, but remains within the absolute maximum of {{hardMax}}.",
+      hardMaxHelp:
+        "The absolute maximum ({{hardMax}}) is an acceptance limit; it does not guarantee that the benchmark will complete successfully.",
+      timeoutHelp:
+        "The operational timeout is the maximum execution time allowed. It is not an estimate of how long the experiment will take (ETA).",
       course: "Course",
       noCourse: "No associated course",
       user: "User",
@@ -723,6 +791,8 @@ const en = {
           courseUnavailable:
             "Retry loading the academic context before continuing.",
           courseRequired: "Select the course for this experiment.",
+          measurementNodeRequired:
+            "Select a measurement node or return to AUTO mode.",
           measurementPolicyLoading:
             "Wait while the measurement policy is loaded.",
           measurementPolicyUnavailable:
@@ -768,6 +838,11 @@ const en = {
       },
       executionList: {
         title: "Status by implementation",
+        node: "Node: {{node}}",
+        registeredProfile:
+          "Registered profile: {{profile}}",
+        progressAria:
+          "Execution progress: {{name}}",
       },
       executionStates: {
         queued: "Queued",
@@ -1078,6 +1153,8 @@ const en = {
       duration: "Duration",
       result: "Result",
       measurementNode: "Measurement node",
+      registeredHardwareProfile:
+        "Registered hardware profile",
       environment: "Environment",
       shaHelp: "ZIP SHA-256: fingerprint used to verify that the original file has not changed.",
     },
@@ -1148,6 +1225,10 @@ const en = {
       reference: "Comparison reference",
       markReference: "Mark as comparison reference",
       referenceHint: "Highlight this experiment so its completed executions can be used as references in later comparisons.",
+      referenceUnavailableHint:
+        "This experiment does not yet have completed executions with available results, so it cannot be used as a comparison reference yet.",
+      referencePinnedUnavailableHint:
+        "This experiment is marked as a reference, but it currently has no completed executions with available results. You can remove the reference mark if it no longer applies.",
       archived: "Archived",
       archive: "Archive",
       restore: "Restore",
@@ -1195,7 +1276,7 @@ const en = {
       description: "Experimental references for {{name}}.",
       loading: "Finding references and evaluating compatibility…",
       empty:
-        "No references are available. Mark an Experiment as a Reference to use it here.",
+        "No comparable references are available for this execution. Only experiments marked as references with compatible results will appear here.",
       compare: "Compare",
       errors: {
         forbidden:
@@ -1212,6 +1293,10 @@ const en = {
     comparison: {
       needTwo:
         "At least two completed implementations with results are required.",
+      noneAvailable:
+        "This experiment does not yet have completed implementations with available results to compare.",
+      needAnother:
+        "One implementation has available results. At least one more comparable implementation is required to start a comparison.",
       regionAria:
         "Implementation selection for comparison",
       title: "Select comparable implementations",
@@ -3500,15 +3585,18 @@ const en = {
     measurementNodes: {
       title: "Registered measurement nodes",
       helper:
-        "Live registration and heartbeat state. This inventory is separate from the historical execution snapshot shown below.",
+        "Operational state derived from enablement, active profile, heartbeat, and draining. This inventory is separate from the historical execution snapshot shown below.",
       inventoryStatus: "Inventory",
       empty: "No measurement nodes are registered.",
       unavailable:
         "The measurement-node inventory is unavailable for this refresh.",
+      cardAria: "Measurement node {{name}}",
       hardwareProfile: "Hardware profile",
+      enabled: "Enabled",
+      draining: "Draining mode",
       validationOnly: "Validation only",
       lastHeartbeatAt: "Last heartbeat",
-      heartbeatAgeSeconds: "Heartbeat age (s)",
+      heartbeatAgeSeconds: "Heartbeat age",
       states: {
         AVAILABLE: "Available",
         OFFLINE: "Offline",

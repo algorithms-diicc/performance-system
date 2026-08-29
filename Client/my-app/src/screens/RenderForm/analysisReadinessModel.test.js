@@ -27,6 +27,8 @@ const valid = {
   courseContextError: "",
   courseSelectionRequired: false,
   selectedCourseId: "",
+  measurementNodeMode: "AUTO",
+  measurementNodeKey: "",
   measurementPolicyLoading: false,
   measurementPolicyUnavailable: false,
 };
@@ -81,6 +83,15 @@ describe("analysisReadinessModel", () => {
       "missing CAMM distribution",
       { selectedTaskType: "camm", inputSize: 5000 },
       ANALYSIS_REQUIREMENT_KEYS.DATA_TYPE_REQUIRED,
+    ],
+    [
+      "PINNED node required",
+      {
+        measurementNodeMode: "PINNED",
+        measurementNodeKey: "",
+      },
+      ANALYSIS_REQUIREMENT_KEYS
+        .MEASUREMENT_NODE_REQUIRED,
     ],
     [
       "measurement policy loading",

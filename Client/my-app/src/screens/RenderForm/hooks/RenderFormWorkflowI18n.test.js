@@ -411,8 +411,12 @@ describe("RenderForm workflow i18n", () => {
     expect(screen.getByText("done.cpp")).toBeInTheDocument();
     expect(screen.getByText("processing.cpp")).toBeInTheDocument();
     expect(screen.getByText("cancelled.cpp")).toBeInTheDocument();
-    expect(screen.getByText("Running analysis")).toBeInTheDocument();
-    expect(screen.getByText("Processing results")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Running analysis").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Processing results").length
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Cancelled")).toBeInTheDocument();
 
     fireEvent.click(
@@ -441,24 +445,35 @@ describe("RenderForm workflow i18n", () => {
     expect(screen.queryByText("Retry status request")).not.toBeInTheDocument();
   });
 
-  test("distinguishes recommended input values from the allowed hard range", () => {
+  test("distinguishes suggested values from recommended and hard policy limits", () => {
     render(<ParamsHarness />);
 
     expect(
-      screen.getByText("Recommended values")
+      screen.getByText("Suggested values")
     ).toBeInTheDocument();
 
     expect(
-      screen.getByText(
-        /Allowed range: 100–100000/i
-      )
-    ).toBeInTheDocument();
+      screen.getByTestId("policy-minimum-input")
+    ).toHaveTextContent("100");
 
     expect(
-      screen.getByText(
-        /exceeds the largest recommended value \(5000\)/i
+      screen.getByTestId(
+        "policy-recommended-max-input"
       )
-    ).toBeInTheDocument();
+    ).toHaveTextContent("5000");
+
+    expect(
+      screen.getByTestId("policy-hard-max-input")
+    ).toHaveTextContent("100000");
+
+    const advisory = screen.getByRole("status");
+
+    expect(advisory).toHaveTextContent(
+      "recommended maximum (5000)"
+    );
+    expect(advisory).toHaveTextContent(
+      "absolute maximum (100000)"
+    );
   });
 
   test("localizes ZIP validation errors and missing polling identifiers", async () => {

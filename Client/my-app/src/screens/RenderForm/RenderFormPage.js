@@ -37,6 +37,7 @@ import {
   resolveMeasurementPolicy,
 } from "./measurementPolicyModel";
 import {
+  fetchMeasurementNodes,
   fetchMeasurementPolicies,
 } from "./measurementPolicyApi";
 import {
@@ -84,19 +85,6 @@ const inputSizePresets = {
   lcs: [500, 750, 1000],
   camm: [2000, 5000, 10000],
   size: [1000, 2500, 5000],
-};
-
-/**
- * El backend actual no ofrece selección de hardware.
- * Por eso el entorno se presenta como información y no como un selector.
- */
-const executionEnvironment = {
-  name: "Entorno de medición administrado",
-  badge: "Automático",
-  description:
-    "Las ejecuciones se envían al nodo de medición configurado para esta instalación.",
-  note:
-    "El entorno controlado favorece la comparabilidad y reproducibilidad; la procedencia del hardware se registra cuando está disponible.",
 };
 
 /**
@@ -272,6 +260,21 @@ function RenderFormPage({ currentUser }) {
   const [measurementPolicyError, setMeasurementPolicyError] =
     useState(false);
 
+  const [measurementNodeMode, setMeasurementNodeMode] =
+    useState("AUTO");
+  const [measurementNodeKey, setMeasurementNodeKey] =
+    useState("");
+  const [measurementNodes, setMeasurementNodes] =
+    useState([]);
+  const [measurementNodesLoading, setMeasurementNodesLoading] =
+    useState(false);
+  const [measurementNodesError, setMeasurementNodesError] =
+    useState(false);
+  const [
+    measurementNodesReloadToken,
+    setMeasurementNodesReloadToken,
+  ] = useState(0);
+
   const [fileList, setFileList] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
@@ -287,6 +290,8 @@ function RenderFormPage({ currentUser }) {
   const [activeCourses, setActiveCourses] = useState([]);
   const [selectedCourseId, setSelectedCourseId] = useState("");
   const [courseSelectionRequired, setCourseSelectionRequired] =
+    useState(false);
+  const [coursePersonalAllowed, setCoursePersonalAllowed] =
     useState(false);
   const [courseContextLoading, setCourseContextLoading] = useState(true);
   const [courseContextError, setCourseContextError] = useState("");
@@ -361,21 +366,39 @@ function RenderFormPage({ currentUser }) {
     });
   }, [executionFiles]);
 
-  // ======= Gate 5: políticas operacionales de medición =======
+  // ======= G13.1-C2: policy efectiva según AUTO/PINNED =======
   useEffect(() => {
     let cancelled = false;
 
     const loadMeasurementPolicies = async () => {
+      if (
+        measurementNodeMode === "PINNED" &&
+        !measurementNodeKey
+      ) {
+        setMeasurementPolicyMatrix(null);
+        setMeasurementPolicyLoading(false);
+        setMeasurementPolicyError(false);
+        return;
+      }
+
       try {
         setMeasurementPolicyLoading(true);
         setMeasurementPolicyError(false);
+        setMeasurementPolicyMatrix(null);
 
-        const payload = await fetchMeasurementPolicies();
+        const payload =
+          await fetchMeasurementPolicies(
+            measurementNodeMode === "PINNED"
+              ? measurementNodeKey
+              : null
+          );
 
         if (cancelled) return;
 
         const matrix =
-          buildMeasurementPolicyMatrix(payload);
+          buildMeasurementPolicyMatrix(
+            payload
+          );
 
         if (!matrix) {
           setMeasurementPolicyMatrix(null);
@@ -383,7 +406,9 @@ function RenderFormPage({ currentUser }) {
           return;
         }
 
-        setMeasurementPolicyMatrix(matrix);
+        setMeasurementPolicyMatrix(
+          matrix
+        );
       } catch (error) {
         if (cancelled) return;
 
@@ -406,9 +431,97 @@ function RenderFormPage({ currentUser }) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [
+    measurementNodeKey,
+    measurementNodeMode,
+  ]);
 
-  // ======= CORE-07F-5: cursos activos del estudiante =======
+  // PINNED es avanzado: AUTO no consulta el inventario de nodos.
+  useEffect(() => {
+    if (
+      measurementNodeMode !==
+      "PINNED"
+    ) {
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const loadMeasurementNodes =
+      async () => {
+        try {
+          setMeasurementNodesLoading(
+            true
+          );
+          setMeasurementNodesError(
+            false
+          );
+
+          const payload =
+            await fetchMeasurementNodes();
+
+          if (cancelled) return;
+
+          const items =
+            Array.isArray(
+              payload?.items
+            )
+              ? payload.items
+              : [];
+
+          setMeasurementNodes(
+            items
+          );
+
+          setMeasurementNodeKey(
+            (previous) =>
+              items.some(
+                (node) =>
+                  String(
+                    node?.nodeKey
+                  ) ===
+                  String(previous)
+              )
+                ? previous
+                : ""
+          );
+        } catch (error) {
+          if (cancelled) return;
+
+          console.error(
+            "No fue posible cargar los nodos de medición:",
+            error
+          );
+
+          setMeasurementNodes(
+            []
+          );
+          setMeasurementNodeKey(
+            ""
+          );
+          setMeasurementNodesError(
+            true
+          );
+        } finally {
+          if (!cancelled) {
+            setMeasurementNodesLoading(
+              false
+            );
+          }
+        }
+      };
+
+    loadMeasurementNodes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    measurementNodeMode,
+    measurementNodesReloadToken,
+  ]);
+
+  // ======= G13.1: contextos académicos elegibles del usuario =======
   useEffect(() => {
     let cancelled = false;
 
@@ -418,7 +531,7 @@ function RenderFormPage({ currentUser }) {
         setCourseContextError("");
 
         const response = await axios.get(
-          `${serverURL}api/student/courses`,
+          `${serverURL}api/analysis/courses`,
           {
             withCredentials: true,
             headers: {
@@ -435,15 +548,28 @@ function RenderFormPage({ currentUser }) {
           : [];
 
         const requiresSelection =
-          response.data?.selectionRequired === true ||
-          items.length > 1;
+          response.data?.selectionRequired === true;
+        const personalAllowed =
+          response.data?.personalAllowed === true;
 
         setActiveCourses(items);
         setCourseSelectionRequired(requiresSelection);
+        setCoursePersonalAllowed(personalAllowed);
 
         setSelectedCourseId((previous) => {
           if (items.length === 0) {
             return "";
+          }
+
+          const previousStillExists = items.some(
+            (course) =>
+              String(course.id) === String(previous)
+          );
+
+          if (personalAllowed) {
+            return previousStillExists
+              ? String(previous)
+              : "";
           }
 
           if (items.length === 1) {
@@ -452,11 +578,6 @@ function RenderFormPage({ currentUser }) {
               items[0].id
             );
           }
-
-          const previousStillExists = items.some(
-            (course) =>
-              String(course.id) === String(previous)
-          );
 
           return previousStillExists
             ? String(previous)
@@ -468,6 +589,7 @@ function RenderFormPage({ currentUser }) {
         setActiveCourses([]);
         setSelectedCourseId("");
         setCourseSelectionRequired(false);
+        setCoursePersonalAllowed(false);
 
         const status = error?.response?.status;
         const key =
@@ -509,9 +631,17 @@ function RenderFormPage({ currentUser }) {
       return;
     }
 
-    // Con 0/1 cursos se conserva el contrato canónico existente:
-    // sin asociación o selección automática, respectivamente.
-    if (activeCourses.length <= 1) {
+    if (activeCourses.length === 0) {
+      return;
+    }
+
+    // Student con un único curso conserva la autoasociación.
+    // Teacher/Admin permiten asociación opcional, por lo que incluso con
+    // un solo curso debe respetarse una sugerencia ?course=<id>.
+    if (
+      !coursePersonalAllowed &&
+      activeCourses.length === 1
+    ) {
       return;
     }
 
@@ -527,6 +657,7 @@ function RenderFormPage({ currentUser }) {
     activeCourses,
     courseContextError,
     courseContextLoading,
+    coursePersonalAllowed,
     location.search,
   ]);
 
@@ -1257,15 +1388,22 @@ function RenderFormPage({ currentUser }) {
   const currentMeasurementPolicy =
     policyForTask(selectedTaskType);
 
+  const measurementTargetIncomplete =
+    measurementNodeMode === "PINNED" &&
+    !measurementNodeKey;
+
   const measurementPolicyUnavailable =
-    measurementPolicyError ||
+    !measurementTargetIncomplete &&
     (
-      !measurementPolicyLoading &&
+      measurementPolicyError ||
       (
-        !measurementPolicyMatrix ||
+        !measurementPolicyLoading &&
         (
-          Boolean(selectedTaskType) &&
-          !currentMeasurementPolicy
+          !measurementPolicyMatrix ||
+          (
+            Boolean(selectedTaskType) &&
+            !currentMeasurementPolicy
+          )
         )
       )
     );
@@ -1502,6 +1640,89 @@ function RenderFormPage({ currentUser }) {
     );
   };
 
+  const handleMeasurementNodeModeChange = (
+    mode
+  ) => {
+    const normalized =
+      String(mode || "")
+        .trim()
+        .toUpperCase();
+
+    if (
+      !["AUTO", "PINNED"].includes(
+        normalized
+      ) ||
+      normalized ===
+        measurementNodeMode
+    ) {
+      return;
+    }
+
+    setMeasurementNodeMode(
+      normalized
+    );
+    setMeasurementNodeKey("");
+    setMeasurementPolicyMatrix(
+      null
+    );
+    setMeasurementPolicyError(
+      false
+    );
+    setMeasurementNodesError(
+      false
+    );
+
+    if (normalized === "AUTO") {
+      setMeasurementNodes([]);
+      setMeasurementNodesLoading(
+        false
+      );
+      setMeasurementPolicyLoading(
+        true
+      );
+    } else {
+      setMeasurementPolicyLoading(
+        false
+      );
+    }
+  };
+
+  const handleMeasurementNodeChange = (
+    nodeKey
+  ) => {
+    const normalized =
+      String(nodeKey || "").trim();
+
+    const allowed =
+      measurementNodes.some(
+        (node) =>
+          String(
+            node?.nodeKey
+          ) === normalized
+      );
+
+    const nextKey =
+      allowed
+        ? normalized
+        : "";
+
+    setMeasurementNodeKey(
+      nextKey
+    );
+    setMeasurementPolicyMatrix(
+      null
+    );
+    setMeasurementPolicyError(
+      false
+    );
+
+    if (nextKey) {
+      setMeasurementPolicyLoading(
+        true
+      );
+    }
+  };
+
   // ======= Perfil de medición ↔ samples =======
   const handleExecutionProfileChange = (profileId) => {
     setExecutionProfile(profileId);
@@ -1558,6 +1779,16 @@ function RenderFormPage({ currentUser }) {
     setParamErrors({ inputSize: "", samples: "" });
     setDataType("");
     setExecutionProfile("equilibrado");
+
+    setMeasurementNodeMode("AUTO");
+    setMeasurementNodeKey("");
+    setMeasurementNodes([]);
+    setMeasurementNodesLoading(false);
+    setMeasurementNodesError(false);
+    setMeasurementPolicyMatrix(null);
+    setMeasurementPolicyError(false);
+    setMeasurementPolicyLoading(true);
+
     setDraftRestored(false);
     setActiveProtocol(null);
 
@@ -1656,6 +1887,21 @@ function RenderFormPage({ currentUser }) {
       );
     }
 
+    bodyFormData.append(
+      "measurement_node_mode",
+      measurementNodeMode
+    );
+
+    if (
+      measurementNodeMode === "PINNED" &&
+      measurementNodeKey
+    ) {
+      bodyFormData.append(
+        "measurement_node_key",
+        measurementNodeKey
+      );
+    }
+
     appendProtocolId(
       bodyFormData,
       activeProtocol
@@ -1677,6 +1923,13 @@ function RenderFormPage({ currentUser }) {
       executionProfileId: executionProfile,
       dataType,
       courseId: selectedCourseId || null,
+      measurementNodeMode,
+      measurementNodeKey:
+        measurementNodeMode === "PINNED"
+          ? measurementNodeKey
+          : null,
+      environmentLabel:
+        getEnvironmentLabel(),
     });
 
     setSubmissionError("");
@@ -1908,8 +2161,45 @@ function RenderFormPage({ currentUser }) {
       : translated;
   };
 
-  const getEnvironmentLabel = () =>
-    t("renderForm.measurement.environmentName");
+  const getSelectedMeasurementNode = (
+    nodeKey = measurementNodeKey
+  ) =>
+    measurementNodes.find(
+      (node) =>
+        String(
+          node?.nodeKey
+        ) === String(nodeKey)
+    ) || null;
+
+  const getEnvironmentLabel = () => {
+    if (
+      measurementNodeMode ===
+      "PINNED"
+    ) {
+      const node =
+        getSelectedMeasurementNode();
+
+      if (node) {
+        const profile =
+          String(
+            node.hardwareProfile?.name ||
+            ""
+          ).trim();
+
+        return profile
+          ? `PINNED · ${node.displayName} · ${profile}`
+          : `PINNED · ${node.displayName}`;
+      }
+
+      return t(
+        "renderForm.measurement.pinnedModeTitle"
+      );
+    }
+
+    return t(
+      "renderForm.measurement.environmentName"
+    );
+  };
 
   const getInputSizeLabel = (
     taskId = selectedTaskType,
@@ -2101,6 +2391,8 @@ function RenderFormPage({ currentUser }) {
     courseContextError,
     courseSelectionRequired,
     selectedCourseId,
+    measurementNodeMode,
+    measurementNodeKey,
     measurementPolicyLoading,
     measurementPolicyUnavailable,
   });
@@ -2208,6 +2500,7 @@ function RenderFormPage({ currentUser }) {
               error={courseContextErrorText}
               selectedCourseId={selectedCourseId}
               selectionRequired={courseSelectionRequired}
+              personalAllowed={coursePersonalAllowed}
               onCourseChange={handleCourseChange}
               onRetry={() =>
                 setCourseContextReloadToken(
@@ -2261,10 +2554,25 @@ function RenderFormPage({ currentUser }) {
 
             {/* Bloque: Sistema de medición + perfil de ejecución */}
             <MeasurementAndProfileSection
-              executionEnvironment={executionEnvironment}
               executionProfiles={executionProfiles}
               executionProfile={executionProfile}
               onExecutionProfileChange={handleExecutionProfileChange}
+              measurementNodeMode={measurementNodeMode}
+              measurementNodes={measurementNodes}
+              measurementNodesLoading={measurementNodesLoading}
+              measurementNodesError={measurementNodesError}
+              selectedMeasurementNodeKey={measurementNodeKey}
+              onMeasurementNodeModeChange={
+                handleMeasurementNodeModeChange
+              }
+              onMeasurementNodeChange={
+                handleMeasurementNodeChange
+              }
+              onRetryMeasurementNodes={() =>
+                setMeasurementNodesReloadToken(
+                  (value) => value + 1
+                )
+              }
             />
           </div>
 
@@ -2315,6 +2623,13 @@ function RenderFormPage({ currentUser }) {
         dataTypeLabel={getDataTypeLabel()}
         dataType={dataType}
         environmentLabel={getEnvironmentLabel()}
+        measurementNodeMode={measurementNodeMode}
+        measurementNodeLabel={
+          getSelectedMeasurementNode()?.displayName || ""
+        }
+        measurementHardwareProfileLabel={
+          getSelectedMeasurementNode()?.hardwareProfile?.name || ""
+        }
         executionProfileLabel={getExecutionProfileLabel()}
         executionProfileId={executionProfile}
         courseLabel={getSelectedCourseLabel()}

@@ -121,6 +121,16 @@ def build_execution_snapshot(row, current_user_id):
         and int(row.get("owner_user_id")) == int(current_user_id)
     )
 
+    measurement_node = None
+    node_key = str(row.get("measurement_node_key") or "").strip()
+    node_name = str(row.get("measurement_node_name") or "").strip()
+
+    if node_key or node_name:
+        measurement_node = {
+            "nodeKey": node_key or None,
+            "displayName": node_name or None,
+        }
+
     return {
         "publicId": row.get("public_id"),
         "submissionId": row.get("submission_id"),
@@ -135,6 +145,7 @@ def build_execution_snapshot(row, current_user_id):
         "samples": row.get("samples"),
         "executionProfile": row.get("execution_profile"),
         "hardwareProfile": row.get("hardware_profile_name"),
+        "measurementNode": measurement_node,
         "createdAt": _iso(row.get("created_at")),
         "queuedAt": _iso(row.get("queued_at")),
         "queueAhead": queue_ahead,

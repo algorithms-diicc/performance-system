@@ -347,6 +347,9 @@ const es = {
     file: "Archivo",
     zipUnavailable: "ZIP no disponible",
     lastActivity: "Última actividad",
+    registeredProvenance: "Procedencia de medición registrada",
+    measurementNode: "Nodo de medición",
+    registeredHardwareProfile: "Perfil de hardware registrado",
     implementations: "Implementaciones",
     language: "Lenguaje",
     languageUnavailable: "No informado",
@@ -510,12 +513,33 @@ const es = {
     },
     measurement: {
       environmentLabel: "Entorno de ejecución",
-      environmentName: "Entorno de medición administrado",
-      automaticBadge: "Automático",
+      environmentName: "Pool multinodo de medición",
+      automaticBadge: "AUTO",
       environmentDescription:
-        "Las ejecuciones se envían al nodo de medición configurado para esta instalación.",
+        "En modo AUTO, el sistema selecciona un nodo elegible del pool multinodo de ejecución serial. Se mantiene una única medición física activa a la vez.",
       environmentNote:
-        "El entorno administrado y controlado favorece la comparabilidad y reproducibilidad, y reduce variaciones atribuibles a hardware no controlado. La procedencia del hardware se registra cuando está disponible.",
+        "Una vez asignado el envío, sus ejecuciones conservan afinidad con ese nodo. La procedencia del hardware se registra para mantener trazabilidad y apoyar la comparabilidad.",
+      targetHelp:
+        "AUTO es la opción recomendada. PINNED permite fijar explícitamente un nodo disponible para una ejecución controlada.",
+      nodeModeGroupAria: "Modo de selección del nodo de medición",
+      autoModeAria: "Usar selección automática de nodo",
+      pinnedModeAria: "Fijar un nodo de medición",
+      pinnedModeTitle: "Fijar nodo de medición",
+      pinnedModeBadge: "Avanzado",
+      pinnedModeHelp:
+        "Permite seleccionar explícitamente un nodo disponible. Úsalo solo cuando necesites controlar la procedencia física del experimento.",
+      nodeLoading: "Consultando nodos disponibles…",
+      nodeLoadError:
+        "No fue posible consultar los nodos disponibles para selección avanzada.",
+      nodeRetry: "Reintentar nodos",
+      noNodes:
+        "No hay nodos disponibles para una nueva selección PINNED. Puedes volver a AUTO.",
+      nodeLabel: "Nodo de medición",
+      nodePlaceholder: "Selecciona un nodo…",
+      validationOnly: "Validación",
+      nodeProfile: "Perfil de hardware: {{profile}}",
+      pinnedNoFallback:
+        "PINNED conserva afinidad con este nodo y no migra silenciosamente a otro si deja de estar disponible.",
       profileLabel: "Perfil de medición",
       profileHelp:
         "Define cuántas veces se repite cada punto de medición. Más repeticiones suelen entregar resultados más estables, pero aumentan el tiempo total del experimento.",
@@ -573,10 +597,25 @@ const es = {
       repetitionsSlider: "Repeticiones por punto",
       allowedRange:
         "Rango permitido: {{min}}–{{max}}. Es un límite de aceptación, no una garantía de tiempo de ejecución.",
-      recommendedValues: "Valores recomendados",
+      policyContractLabel: "Política operacional efectiva",
+      minimumInput: "Mínimo",
+      defaultInput: "Predeterminado",
+      recommendedMaxInput: "Máximo recomendado",
+      hardMaxInput: "Máximo absoluto",
+      inputStep: "Paso",
+      operationalTimeout: "Timeout operativo",
+      timeoutValueMinutes:
+        "{{seconds}} s · {{minutes}} min",
+      timeoutValueSeconds:
+        "{{seconds}} s",
+      hardMaxHelp:
+        "El máximo absoluto ({{hardMax}}) es el límite de aceptación del parámetro; no garantiza que el benchmark finalice correctamente.",
+      timeoutHelp:
+        "El timeout operativo es el tiempo máximo permitido para esta ejecución; no es una estimación de duración (ETA).",
+      recommendedValues: "Valores sugeridos",
       advancedInputTitle: "Tamaño avanzado",
       advancedInputWarning:
-        "Supera el mayor valor recomendado ({{recommendedMax}}). El experimento puede tardar mucho o alcanzar el timeout según la implementación y el perfil seleccionado.",
+        "Supera el máximo recomendado ({{recommendedMax}}), pero permanece dentro del máximo absoluto ({{hardMax}}). Es un rango avanzado: puede tardar mucho o alcanzar el timeout operativo según la implementación.",
       dataDistribution: "Distribución de los datos",
       dataDistributionHelp:
         "Define cómo se organiza el conjunto numérico que recibirá el algoritmo.",
@@ -628,10 +667,10 @@ const es = {
       noCourse: "Sin curso asociado",
       personal: "Personal",
       noActiveCourses:
-        "Actualmente no tienes cursos activos. Puedes realizar un análisis personal igualmente.",
+        "No tienes cursos activos disponibles para asociar a este análisis. Puedes continuar como análisis personal.",
       course: "Curso",
       loading: "Cargando…",
-      loadingText: "Consultando tus cursos activos.",
+      loadingText: "Consultando los cursos disponibles para este análisis.",
       loadError: "No pudimos cargar tus cursos",
       retry: "Reintentar",
       associatedCourse: "Curso asociado",
@@ -641,11 +680,16 @@ const es = {
       automaticAssociation:
         "Este experimento quedará asociado automáticamente a tu único curso activo.",
       selectCourse: "Selecciona el curso",
+      optionalAssociation: "Asociación académica opcional",
       required: "Obligatorio",
+      optional: "Opcional",
       deliveryCourse: "Curso de este experimento",
       selectPlaceholder: "Selecciona un curso…",
+      personalOption: "Personal · Sin curso asociado",
       multipleCoursesHelp:
         "Tienes más de un curso activo. Elegirlo evita mezclar experimentos de ramos o semestres distintos.",
+      optionalCoursesHelp:
+        "Puedes mantener este análisis como personal o asociarlo explícitamente a uno de tus cursos activos.",
     },
     overview: {
       title: "Revisar experimento",
@@ -670,7 +714,31 @@ const es = {
       dataDistribution: "Distribución de datos",
       measurement: "Medición",
       environment: "Entorno",
+      selectionMode: "Modo de selección",
+      autoMode: "AUTO · selección automática",
+      pinnedMode: "PINNED · nodo fijado",
+      node: "Nodo",
+      autoNodePending:
+        "Se asignará automáticamente entre los nodos elegibles al registrar la ejecución.",
+      registeredHardwareProfile:
+        "Perfil de hardware registrado",
       profile: "Perfil",
+      effectivePolicy: "Política operacional efectiva",
+      minimumInput: "Mínimo",
+      defaultInput: "Predeterminado",
+      recommendedMaxInput: "Máximo recomendado",
+      hardMaxInput: "Máximo absoluto",
+      inputStep: "Paso",
+      operationalTimeout: "Timeout operativo",
+      timeoutValueMinutes:
+        "{{seconds}} s · {{minutes}} min",
+      timeoutValueSeconds: "{{seconds}} s",
+      advancedInput:
+        "Entrada avanzada: {{input}} supera el máximo recomendado de {{recommended}}, pero permanece dentro del máximo absoluto de {{hardMax}}.",
+      hardMaxHelp:
+        "El máximo absoluto ({{hardMax}}) es un límite de aceptación; no garantiza que el benchmark finalice correctamente.",
+      timeoutHelp:
+        "El timeout operativo es el tiempo máximo permitido para la ejecución. No es una estimación del tiempo que tardará el experimento (ETA).",
       course: "Curso",
       noCourse: "Sin curso asociado",
       user: "Usuario",
@@ -723,6 +791,8 @@ const es = {
           courseUnavailable:
             "Reintenta la carga del contexto académico antes de continuar.",
           courseRequired: "Selecciona el curso para este experimento.",
+          measurementNodeRequired:
+            "Selecciona un nodo de medición o vuelve al modo AUTO.",
           measurementPolicyLoading:
             "Espera mientras se carga la política de medición.",
           measurementPolicyUnavailable:
@@ -768,6 +838,11 @@ const es = {
       },
       executionList: {
         title: "Estado por implementación",
+        node: "Nodo: {{node}}",
+        registeredProfile:
+          "Perfil registrado: {{profile}}",
+        progressAria:
+          "Progreso de ejecución: {{name}}",
       },
       executionStates: {
         queued: "En cola",
@@ -1081,6 +1156,8 @@ const es = {
       duration: "Duración",
       result: "Resultado",
       measurementNode: "Nodo de medición",
+      registeredHardwareProfile:
+        "Perfil de hardware registrado",
       environment: "Entorno",
       shaHelp: "SHA-256 del ZIP: huella utilizada para verificar que el archivo original no haya cambiado.",
     },
@@ -1151,6 +1228,10 @@ const es = {
       reference: "Referencia de comparación",
       markReference: "Marcar como referencia de comparación",
       referenceHint: "Destaca este experimento para que sus ejecuciones completadas puedan utilizarse como referencias en comparaciones posteriores.",
+      referenceUnavailableHint:
+        "Este experimento todavía no tiene ejecuciones completadas con resultados disponibles, por lo que aún no puede utilizarse como referencia de comparación.",
+      referencePinnedUnavailableHint:
+        "Este experimento está marcado como referencia, pero actualmente no tiene ejecuciones completadas con resultados disponibles. Puedes quitar la marca si ya no corresponde.",
       archived: "Archivado",
       archive: "Archivar",
       restore: "Restaurar",
@@ -1198,7 +1279,7 @@ const es = {
       description: "Referencias experimentales para {{name}}.",
       loading: "Buscando referencias y evaluando compatibilidad…",
       empty:
-        "No hay referencias disponibles. Marca un Experimento como Referencia para usarlo aquí.",
+        "No hay referencias comparables disponibles para esta ejecución. Solo aparecerán experimentos marcados como referencia que tengan resultados compatibles.",
       compare: "Comparar",
       errors: {
         forbidden:
@@ -1215,6 +1296,10 @@ const es = {
     comparison: {
       needTwo:
         "Se necesitan al menos dos implementaciones completadas con resultados.",
+      noneAvailable:
+        "Este experimento todavía no tiene implementaciones completadas con resultados disponibles para comparar.",
+      needAnother:
+        "Hay una implementación con resultados disponibles. Se necesita al menos una segunda implementación comparable para iniciar la comparación.",
       regionAria:
         "Selección de implementaciones para comparar",
       title: "Selecciona implementaciones comparables",
@@ -3505,15 +3590,18 @@ const es = {
     measurementNodes: {
       title: "Nodos de medición registrados",
       helper:
-        "Estado de registro y heartbeat en vivo. Este inventario es independiente del snapshot histórico de ejecución mostrado más abajo.",
+        "Estado operacional derivado de habilitación, perfil activo, heartbeat y drenaje. Este inventario es independiente del snapshot histórico de ejecución mostrado más abajo.",
       inventoryStatus: "Inventario",
       empty: "No hay nodos de medición registrados.",
       unavailable:
         "El inventario de nodos de medición no está disponible en esta actualización.",
+      cardAria: "Nodo de medición {{name}}",
       hardwareProfile: "Perfil de hardware",
+      enabled: "Habilitado",
+      draining: "En drenaje",
       validationOnly: "Solo validación",
       lastHeartbeatAt: "Último heartbeat",
-      heartbeatAgeSeconds: "Antigüedad del heartbeat (s)",
+      heartbeatAgeSeconds: "Antigüedad del heartbeat",
       states: {
         AVAILABLE: "Disponible",
         OFFLINE: "Fuera de línea",

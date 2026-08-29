@@ -45,6 +45,13 @@ from .hardware_profile_service import (
     normalize_policy_execution_profile,
     resolve_hardware_profile_policy,
 )
+from .measurement_node_selector_service import (
+    AUTO,
+    PINNED,
+    MeasurementNodeSelectionError,
+    normalize_measurement_node_mode,
+    resolve_pinned_measurement_node,
+)
 from ...db_connection import get_connection
 
 
@@ -331,17 +338,190 @@ def validate_execution_policy_limits(
 
 
 
-def resolve_submission_course(user_id, requested_course_id=None, conn=None):
-    """
-    Resuelve el contexto académico de una nueva submission.
+SUBMISSION_COURSE_ROLES = {
+    "student": "Student",
+    "teacher": "Teacher",
+    "admin": "Admin",
+}
 
-    Reglas:
-    - course_id explícito: debe ser un curso ACTIVO donde el usuario tenga
-      membresía ACTIVA.
-    - sin course_id:
-        * 0 cursos activos -> None (compatibilidad/no curso);
-        * 1 curso activo   -> se asigna automáticamente;
-        * 2+ cursos        -> se exige selección explícita.
+
+def _normalize_submission_course_role(role_name):
+    normalized = str(role_name or "").strip().casefold()
+    return SUBMISSION_COURSE_ROLES.get(normalized)
+
+
+def _resolve_submission_course_role(
+    cur,
+    user_id,
+    role_name=None,
+):
+    normalized = _normalize_submission_course_role(role_name)
+    if normalized:
+        return normalized
+
+    cur.execute(
+        """
+        SELECT r.name AS role_name
+        FROM users u
+        JOIN roles r
+          ON r.id = u.role_id
+        WHERE u.id = %s
+          AND u.is_active = TRUE;
+        """,
+        (user_id,),
+    )
+    row = cur.fetchone()
+
+    if row is None:
+        raise InvalidExecutionRequest(
+            "No fue posible resolver el rol del usuario."
+        )
+
+    raw_role = (
+        row.get("role_name")
+        if hasattr(row, "get")
+        else row[0]
+    )
+    normalized = _normalize_submission_course_role(raw_role)
+
+    if not normalized:
+        raise InvalidExecutionRequest(
+            "El rol del usuario no admite contexto académico."
+        )
+
+    return normalized
+
+
+def get_submission_course_context(
+    user_id,
+    role_name=None,
+    conn=None,
+):
+    """
+    Devuelve los cursos elegibles para crear una Submission.
+
+    Student:
+    - cursos activos con membresía activa;
+    - un único curso se autoasocia;
+    - varios cursos exigen selección.
+
+    Teacher/Admin:
+    - solamente cursos activos donde el usuario es responsable;
+    - la asociación es opcional;
+    - sin course_id el análisis permanece personal.
+
+    La capacidad administrativa global de un Admin no convierte todos los
+    cursos supervisables en contextos académicos propios.
+    """
+    if not user_id:
+        raise InvalidExecutionRequest("user_id is required.")
+
+    owns_connection = conn is None
+    db = conn or get_connection()
+
+    try:
+        with db.cursor(cursor_factory=RealDictCursor) as cur:
+            actor_role = _resolve_submission_course_role(
+                cur,
+                user_id,
+                role_name=role_name,
+            )
+
+            if actor_role in {"Teacher", "Admin"}:
+                cur.execute(
+                    """
+                    SELECT
+                        c.id,
+                        c.code,
+                        c.name,
+                        c.academic_year,
+                        c.academic_term,
+                        c.teacher_user_id,
+                        c.is_active,
+                        t.full_name AS teacher_full_name,
+                        t.email AS teacher_email,
+                        NULL::timestamp AS membership_created_at
+                    FROM courses c
+                    JOIN users t
+                      ON t.id = c.teacher_user_id
+                    WHERE c.teacher_user_id = %s
+                      AND c.is_active = TRUE
+                    ORDER BY
+                        c.academic_year DESC,
+                        c.academic_term DESC,
+                        c.code,
+                        c.id;
+                    """,
+                    (user_id,),
+                )
+            else:
+                cur.execute(
+                    """
+                    SELECT
+                        c.id,
+                        c.code,
+                        c.name,
+                        c.academic_year,
+                        c.academic_term,
+                        c.teacher_user_id,
+                        c.is_active,
+                        t.full_name AS teacher_full_name,
+                        t.email AS teacher_email,
+                        cm.created_at AS membership_created_at
+                    FROM course_memberships cm
+                    JOIN courses c
+                      ON c.id = cm.course_id
+                    JOIN users t
+                      ON t.id = c.teacher_user_id
+                    WHERE cm.user_id = %s
+                      AND cm.is_active = TRUE
+                      AND c.is_active = TRUE
+                    ORDER BY
+                        c.academic_year DESC,
+                        c.academic_term DESC,
+                        c.code,
+                        c.id;
+                    """,
+                    (user_id,),
+                )
+
+            rows = list(cur.fetchall())
+
+        is_student = actor_role == "Student"
+
+        return {
+            "role_name": actor_role,
+            "courses": rows,
+            "selection_required": (
+                is_student and len(rows) > 1
+            ),
+            "auto_selected_course_id": (
+                int(rows[0]["id"])
+                if is_student and len(rows) == 1
+                else None
+            ),
+            "personal_allowed": (
+                not is_student or len(rows) == 0
+            ),
+        }
+
+    finally:
+        if owns_connection:
+            db.close()
+
+
+def resolve_submission_course(
+    user_id,
+    requested_course_id=None,
+    role_name=None,
+    conn=None,
+):
+    """
+    Resuelve y autoriza el course_id de una nueva Submission.
+
+    Student conserva la asociación académica dirigida.
+    Teacher/Admin deben asociar el curso explícitamente; por defecto el
+    experimento permanece personal.
     """
     if not user_id:
         raise InvalidExecutionRequest("user_id is required.")
@@ -357,57 +537,33 @@ def resolve_submission_course(user_id, requested_course_id=None, conn=None):
     db = conn or get_connection()
 
     try:
-        with db.cursor(cursor_factory=RealDictCursor) as cur:
-            if parsed_course_id is not None:
-                cur.execute(
-                    """
-                    SELECT
-                        c.id,
-                        c.code,
-                        c.name,
-                        c.academic_year,
-                        c.academic_term
-                    FROM course_memberships cm
-                    JOIN courses c
-                      ON c.id = cm.course_id
-                    WHERE cm.user_id = %s
-                      AND cm.course_id = %s
-                      AND cm.is_active = TRUE
-                      AND c.is_active = TRUE;
-                    """,
-                    (user_id, parsed_course_id),
-                )
-                row = cur.fetchone()
-                if row is None:
-                    raise InvalidExecutionRequest(
-                        "El curso seleccionado no está activo o el usuario "
-                        "no pertenece actualmente a él."
-                    )
-                return int(row["id"])
+        context = get_submission_course_context(
+            user_id=user_id,
+            role_name=role_name,
+            conn=db,
+        )
+        rows = context["courses"]
 
-            cur.execute(
-                """
-                SELECT
-                    c.id,
-                    c.code,
-                    c.name,
-                    c.academic_year,
-                    c.academic_term
-                FROM course_memberships cm
-                JOIN courses c
-                  ON c.id = cm.course_id
-                WHERE cm.user_id = %s
-                  AND cm.is_active = TRUE
-                  AND c.is_active = TRUE
-                ORDER BY
-                    c.academic_year DESC,
-                    c.academic_term DESC,
-                    c.code,
-                    c.id;
-                """,
-                (user_id,),
+        if parsed_course_id is not None:
+            selected = next(
+                (
+                    row
+                    for row in rows
+                    if int(row["id"]) == parsed_course_id
+                ),
+                None,
             )
-            rows = cur.fetchall()
+
+            if selected is None:
+                raise InvalidExecutionRequest(
+                    "El curso seleccionado no está activo o no está "
+                    "disponible como contexto académico para este usuario."
+                )
+
+            return int(selected["id"])
+
+        if context["role_name"] in {"Teacher", "Admin"}:
+            return None
 
         if not rows:
             return None
@@ -616,6 +772,9 @@ def create_submission_bundle(
     samples,
     source_specs,
     course_id=None,
+    user_role_name=None,
+    measurement_node_mode=None,
+    measurement_node_key=None,
     protocol_id=None,
     original_filename=None,
     note=None,
@@ -624,6 +783,7 @@ def create_submission_bundle(
     conn=None,
     policy_resolver=None,
     profile_key_resolver=None,
+    pinned_node_resolver=None,
     submission_repo=submission_repository,
     execution_repo=execution_repository,
 ):
@@ -699,10 +859,66 @@ def create_submission_bundle(
         profile_key_resolver
         or configured_measurement_profile_key
     )
+    pinned_node_resolver = (
+        pinned_node_resolver
+        or resolve_pinned_measurement_node
+    )
 
     try:
         try:
-            profile_key = profile_key_resolver()
+            try:
+                requested_measurement_mode = (
+                    normalize_measurement_node_mode(
+                        measurement_node_mode
+                    )
+                )
+            except MeasurementNodeSelectionError as exc:
+                raise InvalidExecutionRequest(str(exc))
+
+            assigned_measurement_node_id = None
+
+            if requested_measurement_mode == PINNED:
+                if measurement_node_key in (None, ""):
+                    raise InvalidExecutionRequest(
+                        "measurement_node_key is required "
+                        "when measurement_node_mode is PINNED."
+                    )
+
+                try:
+                    pinned_target = pinned_node_resolver(
+                        measurement_node_key,
+                        current_role_name=user_role_name,
+                        conn=db,
+                    )
+                except MeasurementNodeSelectionError as exc:
+                    raise InvalidExecutionRequest(str(exc))
+
+                assigned_measurement_node_id = int(
+                    pinned_target[
+                        "measurement_node_id"
+                    ]
+                )
+
+                profile_key = str(
+                    pinned_target[
+                        "hardware_profile_key"
+                    ]
+                ).strip()
+
+                if not profile_key:
+                    raise InvalidExecutionRequest(
+                        "The selected measurement node has no "
+                        "active hardware profile."
+                    )
+
+            else:
+                if measurement_node_key not in (None, ""):
+                    raise InvalidExecutionRequest(
+                        "measurement_node_key is only valid "
+                        "when measurement_node_mode is PINNED."
+                    )
+
+                profile_key = profile_key_resolver()
 
             policy = policy_resolver(
                 profile_key,
@@ -742,6 +958,7 @@ def create_submission_bundle(
             resolved_course_id = resolve_submission_course(
                 user_id=user_id,
                 requested_course_id=course_id,
+                role_name=user_role_name,
                 conn=db,
             )
 
@@ -756,6 +973,12 @@ def create_submission_bundle(
             course_id=resolved_course_id,
             protocol_id=resolved_protocol_id,
             status="QUEUED",
+            assigned_measurement_node_id=(
+                assigned_measurement_node_id
+            ),
+            measurement_node_mode=(
+                requested_measurement_mode
+            ),
             conn=db,
         )
 

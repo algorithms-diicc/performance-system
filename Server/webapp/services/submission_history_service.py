@@ -126,6 +126,12 @@ def build_submission_history_projection(row):
     source_filenames = _stable_unique_strings(
         row.get("source_filenames")
     )
+    measurement_nodes = _stable_unique_strings(
+        row.get("measurement_node_names")
+    )
+    hardware_profiles = _stable_unique_strings(
+        row.get("hardware_profile_names")
+    )
 
     summary = {
         "executionsCount": _count(row, "executions_count"),
@@ -147,5 +153,7 @@ def build_submission_history_projection(row):
         "benchmarks": benchmarks,
         "benchmarkFamilies": benchmark_families,
         "sourceFilenames": source_filenames,
+        "measurementNodes": measurement_nodes,
+        "hardwareProfiles": hardware_profiles,
         "summary": summary,
     }

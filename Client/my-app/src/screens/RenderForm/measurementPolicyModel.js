@@ -133,6 +133,20 @@ export const buildMeasurementPolicyMatrix = (payload) => {
     matrix[item.taskId][item.profileId] = item;
   }
 
+  const environmentMode = String(
+    payload?.environment?.mode || ""
+  )
+    .trim()
+    .toUpperCase();
+
+  // AUTO is backed by the institutional profile and must keep the
+  // complete 3 x 4 contract. A PINNED validation profile may
+  // intentionally expose only the calibrated combinations available
+  // for that physical node (for example Ryzen SIZE/QUICK).
+  if (environmentMode === "PINNED") {
+    return items.length > 0 ? matrix : null;
+  }
+
   const complete = EXPECTED_TASKS.every((taskId) =>
     EXPECTED_PROFILES.every(
       (profileId) => Boolean(matrix[taskId]?.[profileId])

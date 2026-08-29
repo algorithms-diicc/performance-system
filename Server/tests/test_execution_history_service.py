@@ -267,7 +267,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             "ryzen-validation",
         )
 
-    def test_serializer_falls_back_to_snapshot_cpu_model(self):
+    def test_serializer_does_not_reinterpret_observed_cpu_as_registered_profile(self):
         payload = serialize_execution_history_row(
             {
                 "execution_id": 63,
@@ -281,9 +281,8 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(
-            payload["hardwareProfile"],
-            "Intel Core i5-9400",
+        self.assertIsNone(
+            payload["hardwareProfile"]
         )
 
     def test_serializer_keeps_hardware_fallback_empty_for_legacy_rows(self):

@@ -3,13 +3,16 @@
 import os
 
 from ..repositories import measurement_node_assignment_repository
+from ..repositories import measurement_node_repository
 from .hardware_profile_service import (
     normalize_policy_benchmark,
     normalize_policy_execution_profile,
 )
 from .measurement_node_service import (
     AVAILABLE,
+    MeasurementNodeError,
     derive_measurement_node_state,
+    normalize_node_key,
 )
 
 
@@ -44,6 +47,190 @@ def configured_allow_validation_only(environment=None):
         source.get("MEASUREMENT_NODE_ALLOW_VALIDATION_ONLY", "false")
     ).strip().lower()
     return value in {"1", "true", "yes", "on"}
+
+
+def _validation_only_pin_allowed(
+    current_role_name,
+    environment=None,
+):
+    """
+    Los nodos validation-only no forman parte del flujo público normal.
+
+    Solo un Admin puede utilizarlos y únicamente cuando el servidor ha
+    habilitado explícitamente la campaña controlada.
+    """
+    role = str(current_role_name or "").strip().casefold()
+
+    return (
+        role == "admin"
+        and configured_allow_validation_only(environment)
+    )
+
+
+def _public_pin_candidate(
+    node,
+    *,
+    current_role_name,
+    now=None,
+    stale_after_seconds=None,
+    environment=None,
+):
+    """
+    Devuelve una proyección pública únicamente si el nodo puede recibir una
+    nueva selección PINNED en este instante.
+
+    No expone ID de BD, prioridad institucional, heartbeat, IP, SSH ni puertos.
+    """
+    candidate = dict(node or {})
+
+    if not bool(candidate.get("is_enabled")):
+        return None
+
+    if not bool(
+        candidate.get("hardware_profile_is_active", True)
+    ):
+        return None
+
+    if (
+        bool(candidate.get("is_validation_only"))
+        and not _validation_only_pin_allowed(
+            current_role_name,
+            environment,
+        )
+    ):
+        return None
+
+    state = derive_measurement_node_state(
+        candidate,
+        now=now,
+        stale_after_seconds=stale_after_seconds,
+    )
+
+    # No se asigna trabajo nuevo a OFFLINE ni DRAINING.
+    if state != AVAILABLE:
+        return None
+
+    node_key = str(
+        candidate.get("node_key") or ""
+    ).strip()
+
+    profile_key = str(
+        candidate.get("hardware_profile_key") or ""
+    ).strip()
+
+    if not node_key or not profile_key:
+        return None
+
+    return {
+        "node_key": node_key,
+        "display_name": str(
+            candidate.get("display_name") or node_key
+        ).strip(),
+        "hardware_profile_key": profile_key,
+        "hardware_profile_name": str(
+            candidate.get("hardware_profile_name")
+            or profile_key
+        ).strip(),
+        "operational_state": state,
+        "is_validation_only": bool(
+            candidate.get("is_validation_only")
+        ),
+    }
+
+
+def list_pinnable_measurement_nodes(
+    current_role_name,
+    *,
+    repository=measurement_node_repository,
+    conn=None,
+    now=None,
+    stale_after_seconds=None,
+    environment=None,
+):
+    """
+    Lista únicamente targets PINNED públicos y actualmente disponibles.
+    """
+    rows = repository.list_measurement_nodes(
+        conn=conn
+    )
+
+    items = []
+
+    for row in rows:
+        projected = _public_pin_candidate(
+            row,
+            current_role_name=current_role_name,
+            now=now,
+            stale_after_seconds=stale_after_seconds,
+            environment=environment,
+        )
+
+        if projected is not None:
+            items.append(projected)
+
+    return items
+
+
+def resolve_pinned_measurement_node(
+    node_key,
+    *,
+    current_role_name,
+    repository=measurement_node_repository,
+    conn=None,
+    now=None,
+    stale_after_seconds=None,
+    environment=None,
+):
+    """
+    Valida un node_key público y lo convierte en el target interno necesario
+    para persistir affinity.
+
+    El cliente nunca suministra ni conoce measurement_node_id.
+    """
+    try:
+        normalized_key = normalize_node_key(
+            node_key
+        )
+    except MeasurementNodeError:
+        raise MeasurementNodeSelectionError(
+            "El nodo de medición seleccionado no es válido."
+        )
+
+    row = repository.get_measurement_node_by_key(
+        normalized_key,
+        conn=conn,
+    )
+
+    if row is None:
+        raise MeasurementNodeSelectionError(
+            "El nodo de medición seleccionado no está disponible."
+        )
+
+    public_candidate = _public_pin_candidate(
+        row,
+        current_role_name=current_role_name,
+        now=now,
+        stale_after_seconds=stale_after_seconds,
+        environment=environment,
+    )
+
+    if public_candidate is None:
+        raise MeasurementNodeSelectionError(
+            "El nodo de medición seleccionado no está disponible "
+            "para nuevas ejecuciones."
+        )
+
+    node_id = _as_positive_int(row.get("id"))
+    if node_id is None:
+        raise MeasurementNodeSelectionError(
+            "El nodo de medición seleccionado no tiene una "
+            "identidad persistente válida."
+        )
+
+    return {
+        **public_candidate,
+        "measurement_node_id": node_id,
+    }
 
 
 def _as_positive_int(value):

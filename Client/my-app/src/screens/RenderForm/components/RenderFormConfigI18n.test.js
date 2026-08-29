@@ -167,7 +167,7 @@ describe("RenderForm configuration i18n", () => {
           sampleLimits={{ min: 1, max: 100 }}
           dataTypeLabel="Números aleatorios"
           dataType="cammr"
-          environmentLabel="Entorno de medición administrado"
+          environmentLabel="Multi-node measurement pool"
           executionProfileLabel="Equilibrado"
           executionProfileId="equilibrado"
           courseLabel="CC4102 · 2026-2"
@@ -186,7 +186,7 @@ describe("RenderForm configuration i18n", () => {
     expect(screen.getByText("+2 more")).toBeInTheDocument();
     expect(screen.getByText("student@udec.cl")).toBeInTheDocument();
     expect(
-      screen.getByText("Managed measurement environment")
+      screen.getByText("Multi-node measurement pool")
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Confirm and run" })

@@ -23,6 +23,7 @@ const baseProps = {
   error: "",
   selectedCourseId: "",
   selectionRequired: false,
+  personalAllowed: false,
   onCourseChange: jest.fn(),
   onRetry: jest.fn(),
 };
@@ -45,16 +46,23 @@ describe("AcademicCourseCard onboarding", () => {
         name: "Sin curso asociado",
       })
     ).toBeInTheDocument();
-    expect(screen.getByText("Personal")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Personal")
+    ).toBeInTheDocument();
+
     expect(
       screen.getByText(
-        /Actualmente no tienes cursos activos.*análisis personal igualmente/i
+        /No tienes cursos activos disponibles.*análisis personal/i
       )
     ).toBeInTheDocument();
-    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("combobox")
+    ).not.toBeInTheDocument();
   });
 
-  test("keeps the canonical automatic presentation for one active course", () => {
+  test("keeps the canonical automatic presentation for one Student course", () => {
     render(
       <AcademicCourseCard
         {...baseProps}
@@ -68,18 +76,89 @@ describe("AcademicCourseCard onboarding", () => {
         name: "Curso asociado",
       })
     ).toBeInTheDocument();
-    expect(screen.getByText("Automático")).toBeInTheDocument();
-    expect(screen.getByText("CC4102 · 2026-2")).toBeInTheDocument();
+
     expect(
-      screen.getByText("Diseño y Análisis de Algoritmos")
+      screen.getByText("Automático")
     ).toBeInTheDocument();
+
     expect(
-      screen.getByText("Profesor: Grace Hopper")
+      screen.getByText("CC4102 · 2026-2")
     ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Diseño y Análisis de Algoritmos"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        "Profesor: Grace Hopper"
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("combobox")
+    ).not.toBeInTheDocument();
   });
 
-  test("several courses expose the controlled required selector", () => {
+  test("Teacher or Admin can keep an owned course as personal context", () => {
     const onCourseChange = jest.fn();
+
+    render(
+      <AcademicCourseCard
+        {...baseProps}
+        courses={[courseA]}
+        personalAllowed
+        onCourseChange={onCourseChange}
+      />
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Asociación académica opcional",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Opcional")
+    ).toBeInTheDocument();
+
+    const selector = screen.getByRole(
+      "combobox",
+      {
+        name: "Curso de este experimento",
+      }
+    );
+
+    expect(selector).toHaveValue("");
+    expect(selector).not.toBeRequired();
+
+    expect(
+      screen.getByRole("option", {
+        name: "Personal · Sin curso asociado",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("option", {
+        name:
+          "CC4102 · 2026-2 · Diseño y Análisis de Algoritmos",
+      })
+    ).toBeInTheDocument();
+
+    fireEvent.change(selector, {
+      target: { value: "9" },
+    });
+
+    expect(
+      onCourseChange
+    ).toHaveBeenCalledWith("9");
+  });
+
+  test("several Student courses expose the controlled required selector", () => {
+    const onCourseChange = jest.fn();
+
     const courseB = {
       ...courseA,
       id: 12,
@@ -98,18 +177,32 @@ describe("AcademicCourseCard onboarding", () => {
       />
     );
 
-    const selector = screen.getByRole("combobox", {
-      name: "Curso de este experimento",
-    });
+    const selector = screen.getByRole(
+      "combobox",
+      {
+        name: "Curso de este experimento",
+      }
+    );
 
     expect(selector).toHaveValue("12");
     expect(selector).toBeRequired();
-    expect(screen.getByText("Obligatorio")).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Obligatorio")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByRole("option", {
+        name: "Personal · Sin curso asociado",
+      })
+    ).not.toBeInTheDocument();
 
     fireEvent.change(selector, {
       target: { value: "9" },
     });
 
-    expect(onCourseChange).toHaveBeenCalledWith("9");
+    expect(
+      onCourseChange
+    ).toHaveBeenCalledWith("9");
   });
 });

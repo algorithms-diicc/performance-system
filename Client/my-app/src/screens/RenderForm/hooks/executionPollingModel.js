@@ -118,6 +118,18 @@ export function normalizeExecutionSnapshot(snapshot = {}, fallback = {}) {
     taskType: snapshot.benchmark || "",
     inputSize: snapshot.inputSize,
     samples: snapshot.samples,
+    measurementNode:
+      snapshot.measurementNode &&
+      typeof snapshot.measurementNode === "object"
+        ? {
+            nodeKey:
+              snapshot.measurementNode.nodeKey || "",
+            displayName:
+              snapshot.measurementNode.displayName || "",
+          }
+        : null,
+    hardwareProfile:
+      snapshot.hardwareProfile || "",
     events: buildEventsFromSnapshot(snapshot),
     resultsReady,
     hasError: hasFailure,

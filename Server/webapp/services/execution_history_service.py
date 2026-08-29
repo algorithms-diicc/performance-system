@@ -86,19 +86,10 @@ def _measurement_node_label(row):
 
 
 def _hardware_label(row):
-    profile_name = _clean_text(row.get("hardware_name"))
-    if profile_name:
-        return profile_name
-
-    snapshot = row.get("hardware_snapshot") or {}
-    if not isinstance(snapshot, dict):
-        return None
-
-    node = snapshot.get("node") or {}
-    if not isinstance(node, dict):
-        return None
-
-    return _clean_text(node.get("cpu_model"))
+    # G13.4: hardwareProfile significa exclusivamente HardwareProfile
+    # REGISTRADO. hardware_snapshot es evidencia OBSERVADA por Execution
+    # y permanece en las superficies de resultados/reproducibilidad.
+    return _clean_text(row.get("hardware_name"))
 
 
 def _source_identity(row):

@@ -259,6 +259,25 @@ def _build_submission_history_cte(user_id, filters):
           ) <> ''
         ) AS source_filenames,
 
+        ARRAY_AGG(
+          DISTINCT COALESCE(
+            mn.display_name,
+            mn.node_key
+          )
+        ) FILTER (
+          WHERE COALESCE(
+            mn.display_name,
+            mn.node_key,
+            ''
+          ) <> ''
+        ) AS measurement_node_names,
+
+        ARRAY_AGG(
+          DISTINCT hp.name
+        ) FILTER (
+          WHERE COALESCE(hp.name, '') <> ''
+        ) AS hardware_profile_names,
+
         COALESCE(
           MAX(
             COALESCE(
@@ -276,6 +295,12 @@ def _build_submission_history_cte(user_id, filters):
 
       LEFT JOIN executions e
         ON e.submission_id = s.id
+
+      LEFT JOIN measurement_nodes mn
+        ON mn.id = e.measurement_node_id
+
+      LEFT JOIN hardware_profiles hp
+        ON hp.id = e.hardware_profile_id
 
       WHERE {where_sql}
 
@@ -578,6 +603,8 @@ def list_my_submissions():
               fh.cancelled_executions,
               fh.benchmarks,
               fh.source_filenames,
+              fh.measurement_node_names,
+              fh.hardware_profile_names,
               fh.activity_at AS activity_at
 
             FROM filtered_history fh
@@ -764,6 +791,7 @@ def create_submission():
             course_id = resolve_submission_course(
                 user_id=user["id"],
                 requested_course_id=requested_course_id,
+                role_name=get_user_role_name(user),
                 conn=conn,
             )
 

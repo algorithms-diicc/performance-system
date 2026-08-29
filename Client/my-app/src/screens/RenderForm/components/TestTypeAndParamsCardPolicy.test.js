@@ -127,13 +127,14 @@ describe(
           })
         ).toBeInTheDocument();
 
-        // Está permitido por hardMax, pero ya no se
-        // presenta falsamente como valor recomendado.
+        // Está sobre recommendedMax=750, pero el bloque
+        // es de valores sugeridos y 1000 sigue dentro
+        // de hardMax=1000.
         expect(
-          screen.queryByRole("button", {
+          screen.getByRole("button", {
             name: "1000",
           })
-        ).not.toBeInTheDocument();
+        ).toBeInTheDocument();
 
         // También queda fuera del hardMax.
         expect(

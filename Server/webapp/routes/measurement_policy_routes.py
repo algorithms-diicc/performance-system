@@ -1,14 +1,22 @@
-"""API read-only para políticas operacionales de medición."""
+"""API read-only para políticas y targets de medición públicos."""
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, g, jsonify, request
 
 from ..services.hardware_profile_service import (
     HardwareProfileError,
     configured_measurement_profile_key,
     list_hardware_profile_policies,
 )
+from ..services.measurement_node_selector_service import (
+    MeasurementNodeSelectionError,
+    list_pinnable_measurement_nodes,
+    resolve_pinned_measurement_node,
+)
 from ..utils.api_errors import APIError, handle_api_errors
-from ..utils.auth_decorators import login_required
+from ..utils.auth_decorators import (
+    get_user_role_name,
+    login_required,
+)
 
 
 measurement_policy_bp = Blueprint(
@@ -16,6 +24,7 @@ measurement_policy_bp = Blueprint(
     __name__,
     url_prefix="/api",
 )
+
 
 def serialize_measurement_policy(row):
     """
@@ -39,6 +48,59 @@ def serialize_measurement_policy(row):
     }
 
 
+def serialize_measurement_node_option(row):
+    """
+    Identidad pública estable del target.
+
+    No expone measurement_node_id ni información de transporte.
+    """
+    return {
+        "nodeKey": row["node_key"],
+        "displayName": row["display_name"],
+        "state": row["operational_state"],
+        "validationOnly": bool(
+            row.get("is_validation_only")
+        ),
+        "hardwareProfile": {
+            "profileKey": row[
+                "hardware_profile_key"
+            ],
+            "name": row[
+                "hardware_profile_name"
+            ],
+        },
+    }
+
+
+@measurement_policy_bp.route(
+    "/measurement/nodes",
+    methods=["GET"],
+)
+@handle_api_errors
+@login_required
+def get_measurement_nodes():
+    role_name = get_user_role_name(
+        g.current_user
+    )
+
+    rows = list_pinnable_measurement_nodes(
+        role_name
+    )
+
+    items = [
+        serialize_measurement_node_option(row)
+        for row in rows
+    ]
+
+    return jsonify(
+        {
+            "defaultMode": "AUTO",
+            "items": items,
+            "total": len(items),
+        }
+    ), 200
+
+
 @measurement_policy_bp.route(
     "/measurement/policies",
     methods=["GET"],
@@ -46,10 +108,51 @@ def serialize_measurement_policy(row):
 @handle_api_errors
 @login_required
 def get_measurement_policies():
-    profile_key = configured_measurement_profile_key()
+    requested_node_key = (
+        request.args.get("nodeKey")
+        or request.args.get("node_key")
+        or None
+    )
+
+    environment = {
+        "mode": "AUTO",
+    }
+
+    if requested_node_key is not None:
+        try:
+            target = resolve_pinned_measurement_node(
+                requested_node_key,
+                current_role_name=get_user_role_name(
+                    g.current_user
+                ),
+            )
+        except MeasurementNodeSelectionError as exc:
+            raise APIError(
+                str(exc),
+                status_code=400,
+                code="MEASUREMENT_NODE_SELECTION_INVALID",
+            )
+
+        profile_key = target[
+            "hardware_profile_key"
+        ]
+
+        environment = {
+            "mode": "PINNED",
+            "node": serialize_measurement_node_option(
+                target
+            ),
+        }
+
+    else:
+        profile_key = (
+            configured_measurement_profile_key()
+        )
 
     try:
-        rows = list_hardware_profile_policies(profile_key)
+        rows = list_hardware_profile_policies(
+            profile_key
+        )
     except HardwareProfileError:
         raise APIError(
             "La política del entorno de medición no está disponible.",
@@ -59,9 +162,7 @@ def get_measurement_policies():
 
     return jsonify(
         {
-            "environment": {
-                "mode": "AUTO",
-            },
+            "environment": environment,
             "items": [
                 serialize_measurement_policy(row)
                 for row in rows

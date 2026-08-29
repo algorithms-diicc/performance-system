@@ -174,7 +174,9 @@ describe("AdminSystemStatus i18n", () => {
     expect(
       screen.getByText("Nodos de medición registrados")
     ).toBeInTheDocument();
-    expect(screen.getByText("En drenaje")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("En drenaje").length
+    ).toBeGreaterThanOrEqual(1);
     expect(screen.getByText("Perfil de hardware")).toBeInTheDocument();
     expect(screen.getByText("Solo validación")).toBeInTheDocument();
     expect(screen.getByText(

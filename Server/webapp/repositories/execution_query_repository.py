@@ -43,6 +43,8 @@ def get_execution_snapshot_row(public_id, conn=None):
                     s.user_id AS owner_user_id,
                     s.title AS submission_title,
                     hp.name AS hardware_profile_name,
+                    mn.node_key AS measurement_node_key,
+                    mn.display_name AS measurement_node_name,
                     CASE
                         WHEN e.execution_state = 'QUEUED'
                         THEN oq.queue_ahead
@@ -51,6 +53,8 @@ def get_execution_snapshot_row(public_id, conn=None):
                 FROM executions e
                 JOIN submissions s ON s.id = e.submission_id
                 LEFT JOIN hardware_profiles hp ON hp.id = e.hardware_profile_id
+                LEFT JOIN measurement_nodes mn
+                  ON mn.id = e.measurement_node_id
                 LEFT JOIN ordered_queue oq ON oq.id = e.id
                 WHERE e.public_id = %s::uuid
                 LIMIT 1;

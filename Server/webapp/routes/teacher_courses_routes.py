@@ -24,6 +24,10 @@ from ..utils.audit_descriptions import (
     student_batch_audit_description,
 )
 from ..utils.db_utils import db_cursor
+from ..services.execution_creation_service import (
+    InvalidExecutionRequest,
+    get_submission_course_context,
+)
 from ..services.execution_history_service import (
     execution_status_filter_sql,
     map_execution_state_label,
@@ -420,6 +424,71 @@ def clone_course_in_transaction(
     )
 
     return cloned, students_copied
+
+
+def _serialize_analysis_course(row):
+    return {
+        "id": row["id"],
+        "code": row["code"],
+        "name": row["name"],
+        "academicYear": row["academic_year"],
+        "academicTerm": row["academic_term"],
+        "teacher": {
+            "fullName": row.get("teacher_full_name"),
+            "email": row.get("teacher_email"),
+        },
+        "membershipCreatedAt": _iso(
+            row.get("membership_created_at")
+        ),
+    }
+
+
+@teacher_courses_bp.route("/analysis/courses", methods=["GET"])
+@login_required
+@handle_api_errors
+def list_analysis_courses():
+    """
+    Contextos académicos que el usuario puede asignar a un nuevo análisis.
+
+    No reutiliza el scope global de supervisión de Admin:
+    Teacher/Admin solo reciben cursos donde son responsables académicos.
+    """
+    user = g.current_user
+    conn = get_connection()
+
+    try:
+        try:
+            context = get_submission_course_context(
+                user_id=user["id"],
+                role_name=get_user_role_name(user),
+                conn=conn,
+            )
+        except InvalidExecutionRequest as exc:
+            raise ValidationError(str(exc))
+
+        items = [
+            _serialize_analysis_course(row)
+            for row in context["courses"]
+        ]
+
+        return jsonify(
+            {
+                "items": items,
+                "total": len(items),
+                "selectionRequired": context[
+                    "selection_required"
+                ],
+                "autoSelectedCourseId": context[
+                    "auto_selected_course_id"
+                ],
+                "personalAllowed": context[
+                    "personal_allowed"
+                ],
+            }
+        ), 200
+
+    finally:
+        conn.close()
 
 
 @teacher_courses_bp.route("/student/courses", methods=["GET"])

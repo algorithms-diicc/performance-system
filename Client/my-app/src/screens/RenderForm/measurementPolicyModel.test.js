@@ -220,13 +220,81 @@ describe("measurementPolicyModel", () => {
     ).toBe(true);
   });
 
-  test("rejects a partial policy response", () => {
+  test("rejects a partial AUTO policy response", () => {
     const payload = completePayload();
 
     payload.items.pop();
 
     expect(
       buildMeasurementPolicyMatrix(payload)
+    ).toBeNull();
+  });
+
+  test("accepts a calibrated partial PINNED policy response", () => {
+    const payload = {
+      environment: {
+        mode: "PINNED",
+        node: {
+          nodeKey: "ryzen-validation",
+          displayName: "Ryzen Validation",
+          state: "AVAILABLE",
+          validationOnly: true,
+          hardwareProfile: {
+            profileKey:
+              "ryzen-amd-ryzen-5-3600",
+            name: "Ryzen AMD Ryzen 5 3600",
+          },
+        },
+      },
+      total: 1,
+      items: [
+        policy("SIZE", "QUICK", {
+          minimumInput: 1000,
+          defaultInput: 1000,
+          recommendedMaxInput: 1000,
+          hardMaxInput: 1000,
+          inputStep: 100,
+          operationalTimeoutSeconds: 120,
+        }),
+      ],
+    };
+
+    const matrix =
+      buildMeasurementPolicyMatrix(payload);
+
+    expect(matrix).not.toBeNull();
+
+    expect(
+      resolveMeasurementPolicy(
+        matrix,
+        "size",
+        "rapido"
+      )
+    ).toMatchObject({
+      benchmark: "SIZE",
+      executionProfile: "QUICK",
+      minimumInput: 1000,
+      defaultInput: 1000,
+      recommendedMaxInput: 1000,
+      hardMaxInput: 1000,
+      inputStep: 100,
+      operationalTimeoutSeconds: 120,
+    });
+
+    expect(
+      resolveMeasurementPolicy(
+        matrix,
+        "size",
+        "equilibrado"
+      )
+    ).toBeNull();
+
+    expect(
+      resolveMeasurementPolicy(
+        matrix,
+        "lcs",
+        "rapido"
+      )
     ).toBeNull();
   });
 

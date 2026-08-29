@@ -16,6 +16,7 @@ function AcademicCourseCard({
   error,
   selectedCourseId,
   selectionRequired,
+  personalAllowed,
   onCourseChange,
   onRetry,
 }) {
@@ -94,7 +95,8 @@ function AcademicCourseCard({
     );
   }
 
-  if (courses.length === 1) {
+  // Student + único curso: asociación canónica automática.
+  if (courses.length === 1 && !personalAllowed) {
     const course = courses[0];
 
     return (
@@ -138,11 +140,24 @@ function AcademicCourseCard({
           <span className="rf-course-context-kicker">
             {t("renderForm.course.context")}
           </span>
-          <h3>{t("renderForm.course.selectCourse")}</h3>
+
+          <h3>
+            {selectionRequired
+              ? t("renderForm.course.selectCourse")
+              : t("renderForm.course.optionalAssociation")}
+          </h3>
         </div>
 
-        <span className="rf-course-context-badge rf-course-context-badge--required">
-          {t("renderForm.course.required")}
+        <span
+          className={
+            selectionRequired
+              ? "rf-course-context-badge rf-course-context-badge--required"
+              : "rf-course-context-badge"
+          }
+        >
+          {selectionRequired
+            ? t("renderForm.course.required")
+            : t("renderForm.course.optional")}
         </span>
       </div>
 
@@ -160,19 +175,30 @@ function AcademicCourseCard({
         onChange={(event) => onCourseChange(event.target.value)}
         required={selectionRequired}
       >
-        <option value="">
-          {t("renderForm.course.selectPlaceholder")}
-        </option>
+        {personalAllowed ? (
+          <option value="">
+            {t("renderForm.course.personalOption")}
+          </option>
+        ) : (
+          <option value="">
+            {t("renderForm.course.selectPlaceholder")}
+          </option>
+        )}
 
         {courses.map((course) => (
-          <option key={course.id} value={String(course.id)}>
+          <option
+            key={course.id}
+            value={String(course.id)}
+          >
             {formatCourseLabel(course)} · {course.name}
           </option>
         ))}
       </select>
 
       <p className="form-help-text rf-course-context-message">
-        {t("renderForm.course.multipleCoursesHelp")}
+        {selectionRequired
+          ? t("renderForm.course.multipleCoursesHelp")
+          : t("renderForm.course.optionalCoursesHelp")}
       </p>
     </section>
   );

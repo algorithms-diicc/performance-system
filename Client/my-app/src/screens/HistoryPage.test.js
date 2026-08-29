@@ -35,6 +35,8 @@ const item = {
   benchmarks: ["SIZE"],
   benchmarkFamilies: ["SIZE"],
   sourceFilenames: ["insertion.cpp", "merge.cpp"],
+  measurementNodes: ["Shenu"],
+  hardwareProfiles: ["Shenu Intel i5-9400"],
 };
 
 const renderHistory = () =>
@@ -102,8 +104,64 @@ describe("HistoryPage", () => {
     expect(screen.getByText("C/C++", { selector: "strong" })).toBeInTheDocument();
 
     expect(
+      screen.getByRole("group", {
+        name:
+          "Procedencia de medición registrada",
+      })
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Nodo de medición")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Perfil de hardware registrado")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu Intel i5-9400")
+    ).toBeInTheDocument();
+
+    expect(
       screen.getByRole("link", { name: /Ver experimento/i })
     ).toHaveAttribute("href", "/submissions/42");
+  });
+
+  test("does not invent registered provenance for legacy history rows", async () => {
+    requestJson.mockImplementation((url) => {
+      if (url === "/api/submissions/history-filter-options") {
+        return Promise.resolve({ courses: [] });
+      }
+      if (url.startsWith("/api/submissions?")) {
+        return Promise.resolve(
+          historyResponse({
+            items: [
+              {
+                ...item,
+                measurementNodes: [],
+                hardwareProfiles: [],
+              },
+            ],
+          })
+        );
+      }
+      return Promise.reject(
+        new Error(`Unexpected request: ${url}`)
+      );
+    });
+
+    renderHistory();
+
+    await screen.findByRole("heading", {
+      name: "Comparación de ordenamiento",
+    });
+
+    expect(
+      screen.queryByLabelText(
+        "Procedencia de medición registrada"
+      )
+    ).not.toBeInTheDocument();
   });
 
   test("shows C, C++ and mixed identities without altering source filenames", async () => {

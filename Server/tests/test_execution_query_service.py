@@ -35,6 +35,8 @@ def row(state="QUEUED"):
         "result_path": None,
         "duration_ms": None,
         "hardware_profile_name": None,
+        "measurement_node_key": None,
+        "measurement_node_name": None,
         "queue_ahead": 0,
     }
 
@@ -137,6 +139,33 @@ class Tests(unittest.TestCase):
     def test_original_filename(self):
         p = build_execution_snapshot(row(), 5)
         self.assertEqual(p["originalFilename"], "lcs_template.cpp")
+
+    def test_snapshot_exposes_sanitized_registered_node(self):
+        r = row("RUNNING")
+        r["hardware_profile_name"] = "Shenu Intel i5-9400"
+        r["measurement_node_key"] = "shenu"
+        r["measurement_node_name"] = "Shenu"
+
+        p = build_execution_snapshot(r, 5)
+
+        self.assertEqual(
+            p["measurementNode"],
+            {
+                "nodeKey": "shenu",
+                "displayName": "Shenu",
+            },
+        )
+        self.assertEqual(
+            p["hardwareProfile"],
+            "Shenu Intel i5-9400",
+        )
+        self.assertNotIn("measurementNodeId", p)
+        self.assertNotIn("sshHost", p)
+        self.assertNotIn("sshPort", p)
+
+    def test_snapshot_without_assignment_keeps_node_null(self):
+        p = build_execution_snapshot(row("QUEUED"), 5)
+        self.assertIsNone(p["measurementNode"])
 
     def test_snapshot_does_not_expose_queue_rows_or_other_owners(self):
         p = build_execution_snapshot(row(), 5)

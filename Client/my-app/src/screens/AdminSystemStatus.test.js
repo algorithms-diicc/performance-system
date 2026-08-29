@@ -6,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 
 import {
@@ -161,7 +162,42 @@ describe("AdminSystemStatus", () => {
       screen.getByText("Shenu Intel i5-9400")
     ).toBeInTheDocument();
     expect(screen.getByText("Ryzen validation")).toBeInTheDocument();
-    expect(screen.getByText("Offline")).toBeInTheDocument();
+
+    const shenuCard = screen.getByRole("article", {
+      name: "Measurement node Shenu",
+    });
+    const ryzenCard = screen.getByRole("article", {
+      name: "Measurement node Ryzen validation",
+    });
+
+    expect(
+      within(shenuCard).getByText("Available")
+    ).toBeInTheDocument();
+    expect(
+      within(shenuCard)
+        .getByText("Enabled")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("Yes");
+    expect(
+      within(shenuCard)
+        .getByText("Draining mode")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("No");
+
+    expect(
+      within(ryzenCard).getByText("Offline")
+    ).toBeInTheDocument();
+    expect(
+      within(ryzenCard)
+        .getByText("Enabled")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("No");
+    expect(
+      within(ryzenCard)
+        .getByText("Draining mode")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("No");
+
     expect(
       screen.getAllByText("Validation only")
     ).toHaveLength(2);
@@ -172,6 +208,86 @@ describe("AdminSystemStatus", () => {
     expect(screen.getByText("Numeric sample")).toBeInTheDocument();
     expect(screen.getByText("Permission denied")).toBeInTheDocument();
     expect(screen.getByText("Event not exposed")).toBeInTheDocument();
+  });
+
+
+  test("formats heartbeat age as concise operational time", async () => {
+    const response = payload();
+
+    response.measurementNodes.items[0] = {
+      ...response.measurementNodes.items[0],
+      heartbeatAgeSeconds: 35403.938184,
+    };
+    response.measurementNodes.items[1] = {
+      ...response.measurementNodes.items[1],
+      heartbeatAgeSeconds: 4.093501,
+    };
+
+    requestJson.mockResolvedValue(response);
+    renderStatus();
+
+    const shenuCard = await screen.findByRole(
+      "article",
+      {
+        name: "Measurement node Shenu",
+      }
+    );
+    const ryzenCard = screen.getByRole(
+      "article",
+      {
+        name: "Measurement node Ryzen validation",
+      }
+    );
+
+    expect(
+      within(shenuCard).getByText("9 h 50 min")
+    ).toBeInTheDocument();
+
+    expect(
+      within(ryzenCard).getByText("4 s")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.queryByText("35403.938184")
+    ).not.toBeInTheDocument();
+  });
+
+  test("renders DRAINING as the canonical operational state without inventing a DISABLED state", async () => {
+    const response = payload();
+    response.measurementNodes.items[0] = {
+      ...response.measurementNodes.items[0],
+      state: "DRAINING",
+      enabled: true,
+      draining: true,
+    };
+
+    requestJson.mockResolvedValue(response);
+    renderStatus();
+
+    const shenuCard = await screen.findByRole(
+      "article",
+      {
+        name: "Measurement node Shenu",
+      }
+    );
+
+    expect(
+      within(shenuCard).getByText("Draining")
+    ).toBeInTheDocument();
+    expect(
+      within(shenuCard)
+        .getByText("Enabled")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("Yes");
+    expect(
+      within(shenuCard)
+        .getByText("Draining mode")
+        .closest(".admin-system-status__field")
+    ).toHaveTextContent("Yes");
+
+    expect(
+      screen.queryByText("Disabled")
+    ).not.toBeInTheDocument();
   });
 
   test("keeps live node inventory separate from historical measurement evidence", async () => {

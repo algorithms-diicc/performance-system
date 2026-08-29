@@ -20,6 +20,8 @@ def aggregate_row(**overrides):
         "cancelled_executions": 0,
         "benchmarks": [],
         "source_filenames": [],
+        "measurement_node_names": [],
+        "hardware_profile_names": [],
         "language": None,
         "created_at": datetime(
             2026,
@@ -154,6 +156,33 @@ class SubmissionHistoryServiceTests(unittest.TestCase):
         self.assertEqual(
             projection["activityAt"],
             activity_at.isoformat(),
+        )
+
+    def test_projection_exposes_registered_provenance_without_internal_ids(self):
+        projection = build_submission_history_projection(
+            aggregate_row(
+                measurement_node_names=[
+                    "Shenu",
+                    "Shenu",
+                ],
+                hardware_profile_names=[
+                    "Shenu Intel i5-9400",
+                    "Shenu Intel i5-9400",
+                ],
+            )
+        )
+
+        self.assertEqual(
+            projection["measurementNodes"],
+            ["Shenu"],
+        )
+        self.assertEqual(
+            projection["hardwareProfiles"],
+            ["Shenu Intel i5-9400"],
+        )
+        self.assertNotIn(
+            "measurementNodeIds",
+            projection,
         )
 
     def test_projection_falls_back_to_submission_creation_time(self):
