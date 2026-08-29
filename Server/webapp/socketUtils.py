@@ -1014,6 +1014,21 @@ def slave_serve(
             daemon=True,
         )
 
+        sendmng.start()
+        sendmng.join()
+
+        print(
+            "[🔌 MASTER] "
+            "Canal de envío finalizado."
+        )
+
+        # No puede existir un resultado válido si el payload no fue
+        # entregado a ningún slave. Evitar arrancar recv_manager en ese
+        # caso también evita bloquear el dispatcher durante el timeout
+        # largo del socket de resultados.
+        if activeS == 0:
+            return
+
         # ----------------------------------------------------
         # Thread que espera el resultado
         # ----------------------------------------------------
@@ -1028,22 +1043,7 @@ def slave_serve(
             daemon=True,
         )
 
-        sendmng.start()
         recvmng.start()
-
-        sendmng.join()
-
-        if activeS == 0:
-            try:
-                s2.close()
-            except Exception:
-                pass
-
-        print(
-            "[🔌 MASTER] "
-            "Canal de envío finalizado."
-        )
-
         recvmng.join()
 
         print(

@@ -2,6 +2,7 @@ import json
 import socket
 import tempfile
 import unittest
+from contextlib import ExitStack
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -167,6 +168,108 @@ class TargetingTransportTests(unittest.TestCase):
                     max_wait_seconds=0,
                 )
         self.assertEqual(socketUtils.activeS, 0)
+
+    def test_slave_serve_does_not_wait_for_result_when_send_has_no_delivery(self):
+        class FakeServerSocket:
+            def __init__(self):
+                self.closed = False
+
+            def setsockopt(self, *args):
+                pass
+
+            def bind(self, *args):
+                pass
+
+            def listen(self, *args):
+                pass
+
+            def close(self):
+                self.closed = True
+
+        send_socket = FakeServerSocket()
+        result_socket = FakeServerSocket()
+        receive_calls = []
+
+        def fake_send_manager(*args, **kwargs):
+            socketUtils.activeS = 0
+
+        def fake_recv_manager(*args, **kwargs):
+            receive_calls.append((args, kwargs))
+
+        payload = {
+            "payload_version": 2,
+            "name": "execASIZE",
+            "cmd": "-O3",
+            "source_language": "C",
+            "source_extension": ".c",
+            "compiler": "gcc",
+            "compiler_flags": "-O3",
+        }
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "A.c"
+            source.write_text(
+                "int main(void){return 0;}\n",
+                encoding="utf-8",
+            )
+
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(
+                        socketUtils.socket,
+                        "socket",
+                        side_effect=[send_socket, result_socket],
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "_load_measurement_snapshot",
+                        return_value={},
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "build_execution_payload",
+                        return_value=payload,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "escribir_estado",
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "send_manager",
+                        side_effect=fake_send_manager,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "recv_manager",
+                        side_effect=fake_recv_manager,
+                    )
+                )
+
+                socketUtils.slave_serve(
+                    str(source),
+                    "execASIZE",
+                    "-O3",
+                    1000,
+                    10,
+                    measurement_node_id=1,
+                    hardware_profile_id=3,
+                    measurement_node_key="shenu",
+                )
+
+        self.assertEqual(receive_calls, [])
+        self.assertTrue(send_socket.closed)
+        self.assertTrue(result_socket.closed)
 
     def test_wrong_result_is_rejected_before_result_side_effects(self):
         payload = attach_result_identity(
