@@ -7,17 +7,25 @@ except ImportError:
     from hardware_snapshot import collect_hardware_snapshot
 try:
     from .measurement_node_transport import (
+        AUTH_CONTEXT_PAYLOAD,
+        AUTH_CONTEXT_RESULT,
         MeasurementNodeTransportError,
         attach_result_identity,
         is_not_selected_payload,
+        receive_transport_frame,
+        respond_to_auth_challenge,
         send_slave_hello,
         validate_payload_assignment,
     )
 except ImportError:
     from measurement_node_transport import (
+        AUTH_CONTEXT_PAYLOAD,
+        AUTH_CONTEXT_RESULT,
         MeasurementNodeTransportError,
         attach_result_identity,
         is_not_selected_payload,
+        receive_transport_frame,
+        respond_to_auth_challenge,
         send_slave_hello,
         validate_payload_assignment,
     )
@@ -1460,6 +1468,7 @@ def send_results(
     measurement=None,
     compiler=None,
     measurement_node_key=None,
+    measurement_node_token=None,
 ):
 
     try:
@@ -1520,6 +1529,24 @@ def send_results(
                 (host, port)
             )
 
+            if measurement_node_key is not None:
+                if measurement_node_token is None:
+                    raise MeasurementNodeTransportError(
+                        "targeted result requires measurement node token"
+                    )
+
+                challenge = receive_transport_frame(
+                    sock
+                )
+
+                respond_to_auth_challenge(
+                    sock,
+                    challenge,
+                    measurement_node_key,
+                    measurement_node_token,
+                    AUTH_CONTEXT_RESULT,
+                )
+
             sock.sendall(
                 json.dumps(
                     payload
@@ -1535,7 +1562,10 @@ def send_results(
         return True
 
 
-    except OSError as e:
+    except (
+        OSError,
+        MeasurementNodeTransportError,
+    ) as e:
 
         log_admin_stage(
             "RESULT_SEND_ERROR",
@@ -1560,6 +1590,7 @@ def send_json_result(
     measurement=None,
     compiler=None,
     measurement_node_key=None,
+    measurement_node_token=None,
 ):
     error_dict = dict(error_dict)
     error_dict["hardware_snapshot"] = collect_hardware_snapshot(
@@ -1584,6 +1615,24 @@ def send_json_result(
                 (host, port)
             )
 
+            if measurement_node_key is not None:
+                if measurement_node_token is None:
+                    raise MeasurementNodeTransportError(
+                        "targeted result requires measurement node token"
+                    )
+
+                challenge = receive_transport_frame(
+                    sock
+                )
+
+                respond_to_auth_challenge(
+                    sock,
+                    challenge,
+                    measurement_node_key,
+                    measurement_node_token,
+                    AUTH_CONTEXT_RESULT,
+                )
+
             sock.sendall(
                 json.dumps(
                     error_dict
@@ -1599,7 +1648,10 @@ def send_json_result(
         return True
 
 
-    except OSError as e:
+    except (
+        OSError,
+        MeasurementNodeTransportError,
+    ) as e:
 
         log_admin_stage(
             "RESULT_SEND_ERROR",
@@ -1889,6 +1941,7 @@ def main():
             "[🔧 MeasurementNode] heartbeat disabled"
         )
         transport_node_key = None
+        transport_node_token = None
     else:
         print(
             "[🔧 MeasurementNode] "
@@ -1902,6 +1955,7 @@ def main():
             configuration=heartbeat_config
         )
         transport_node_key = heartbeat_config["node_key"]
+        transport_node_token = heartbeat_config["token"]
 
 
     while True:
@@ -1927,16 +1981,33 @@ def main():
                         transport_node_key,
                     )
 
+                    prelude = receive_transport_frame(
+                        sock
+                    )
+
+                    if is_not_selected_payload(
+                        prelude
+                    ):
+                        print(
+                            "[↪️ MeasurementNode] ejecución "
+                            "asignada a otro nodo."
+                        )
+                        time.sleep(
+                            QUEUE_POLL_SECONDS
+                        )
+                        continue
+
+                    respond_to_auth_challenge(
+                        sock,
+                        prelude,
+                        transport_node_key,
+                        transport_node_token,
+                        AUTH_CONTEXT_PAYLOAD,
+                    )
+
                 payload_dict = (
                     receive_payload(sock)
                 )
-
-                if is_not_selected_payload(payload_dict):
-                    print(
-                        "[↪️ MeasurementNode] ejecución asignada a otro nodo."
-                    )
-                    time.sleep(QUEUE_POLL_SECONDS)
-                    continue
 
                 try:
                     validate_payload_assignment(
@@ -2272,6 +2343,7 @@ def main():
                 measurement=measurement,
                 compiler=source_metadata.compiler,
                 measurement_node_key=transport_node_key,
+                measurement_node_token=transport_node_token,
             )
 
 
@@ -2285,6 +2357,7 @@ def main():
                 measurement=measurement,
                 compiler=source_metadata.compiler,
                 measurement_node_key=transport_node_key,
+                measurement_node_token=transport_node_token,
             )
 
 

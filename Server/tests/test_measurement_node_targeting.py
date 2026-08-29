@@ -12,13 +12,25 @@ from Server.tests.plotly_test_support import ensure_plotly_importable
 ensure_plotly_importable()
 
 from Server.measurement_node_transport import (
+    AUTH_CHALLENGE_MESSAGE_TYPE,
+    AUTH_CONTEXT_PAYLOAD,
+    AUTH_CONTEXT_RESULT,
+    AUTH_OK_MESSAGE_TYPE,
+    AUTH_READY_MESSAGE_TYPE,
     MeasurementNodeTransportError,
     attach_result_identity,
+    authenticate_measurement_node_peer,
+    build_auth_proof,
+    build_auth_ready,
     build_slave_hello,
     is_not_selected_payload,
     receive_slave_hello,
+    validate_auth_proof,
     validate_payload_assignment,
     validate_result_identity,
+)
+from Server.webapp.routes.measurement_node_heartbeat_routes import (
+    derive_measurement_node_heartbeat_token,
 )
 from Server.webapp.services.execution_queue_service import (
     claim_next_queued_execution,
@@ -30,10 +42,72 @@ from Server import execution_dispatcher
 from Server.webapp import socketUtils
 
 
+SECRET = "s" * 64
+TOKEN = derive_measurement_node_heartbeat_token(
+    SECRET,
+    "shenu",
+)
+OTHER_TOKEN = derive_measurement_node_heartbeat_token(
+    SECRET,
+    "ryzen-validation",
+)
+NONCE = "1" * 64
+OTHER_NONCE = "2" * 64
+
+
+def authentication_responder(
+    node_key,
+    token,
+):
+    def responder(payload):
+        try:
+            decoded = json.loads(
+                payload.decode("utf-8")
+            )
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+        ):
+            return None
+
+        if (
+            decoded.get("message_type")
+            == AUTH_CHALLENGE_MESSAGE_TYPE
+        ):
+            return build_auth_proof(
+                token,
+                node_key,
+                decoded["nonce"],
+                decoded["context"],
+            )
+
+        if (
+            decoded.get("message_type")
+            == AUTH_OK_MESSAGE_TYPE
+            and decoded.get("context")
+            == AUTH_CONTEXT_PAYLOAD
+        ):
+            return build_auth_ready(
+                node_key,
+                decoded["nonce"],
+                decoded["context"],
+            )
+
+        return None
+
+    return responder
+
+
 class BufferSocket:
-    def __init__(self, incoming=b"", recv_error=None):
+    def __init__(
+        self,
+        incoming=b"",
+        recv_error=None,
+        on_send=None,
+    ):
         self.incoming = incoming
         self.recv_error = recv_error
+        self.on_send = on_send
         self.sent = []
         self.closed = False
         self.timeout = None
@@ -52,6 +126,14 @@ class BufferSocket:
 
     def sendall(self, payload):
         self.sent.append(payload)
+
+        if self.on_send is not None:
+            response = self.on_send(
+                payload
+            )
+
+            if response:
+                self.incoming += response
 
     def close(self):
         self.closed = True
@@ -102,6 +184,154 @@ class TargetingTransportTests(unittest.TestCase):
                 BufferSocket(recv_error=socket.timeout())
             )
 
+    def test_authentication_accepts_valid_node_token(self):
+        sock = BufferSocket(
+            on_send=authentication_responder(
+                "shenu",
+                TOKEN,
+            )
+        )
+
+        nonce = authenticate_measurement_node_peer(
+            sock,
+            "shenu",
+            TOKEN,
+            AUTH_CONTEXT_PAYLOAD,
+            nonce=NONCE,
+        )
+
+        self.assertEqual(nonce, NONCE)
+
+        challenge = json.loads(
+            sock.sent[0].decode("utf-8")
+        )
+        ack = json.loads(
+            sock.sent[1].decode("utf-8")
+        )
+
+        self.assertEqual(
+            challenge["message_type"],
+            AUTH_CHALLENGE_MESSAGE_TYPE,
+        )
+        self.assertEqual(
+            ack["message_type"],
+            AUTH_OK_MESSAGE_TYPE,
+        )
+
+    def test_authentication_rejects_wrong_node_token(self):
+        sock = BufferSocket(
+            on_send=authentication_responder(
+                "shenu",
+                OTHER_TOKEN,
+            )
+        )
+
+        with self.assertRaises(
+            MeasurementNodeTransportError
+        ):
+            authenticate_measurement_node_peer(
+                sock,
+                "shenu",
+                TOKEN,
+                AUTH_CONTEXT_PAYLOAD,
+                nonce=NONCE,
+            )
+
+    def test_authentication_proof_rejects_replay_context_and_node_change(self):
+        proof = json.loads(
+            build_auth_proof(
+                TOKEN,
+                "shenu",
+                NONCE,
+                AUTH_CONTEXT_PAYLOAD,
+            ).decode("utf-8")
+        )
+
+        self.assertTrue(
+            validate_auth_proof(
+                proof,
+                TOKEN,
+                "shenu",
+                NONCE,
+                AUTH_CONTEXT_PAYLOAD,
+            )
+        )
+
+        self.assertFalse(
+            validate_auth_proof(
+                proof,
+                TOKEN,
+                "shenu",
+                OTHER_NONCE,
+                AUTH_CONTEXT_PAYLOAD,
+            )
+        )
+
+        self.assertFalse(
+            validate_auth_proof(
+                proof,
+                TOKEN,
+                "shenu",
+                NONCE,
+                AUTH_CONTEXT_RESULT,
+            )
+        )
+
+        self.assertFalse(
+            validate_auth_proof(
+                proof,
+                TOKEN,
+                "ryzen-validation",
+                NONCE,
+                AUTH_CONTEXT_PAYLOAD,
+            )
+        )
+
+    def test_unauthenticated_result_peer_is_rejected(self):
+        with self.assertRaises(
+            MeasurementNodeTransportError
+        ):
+            authenticate_measurement_node_peer(
+                BufferSocket(),
+                "shenu",
+                TOKEN,
+                AUTH_CONTEXT_RESULT,
+                nonce=NONCE,
+            )
+
+    def test_targeted_send_fails_closed_without_server_secret(self):
+        listener = FakeListener([])
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with ExitStack() as stack:
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "STATUS_DIR",
+                        tmp,
+                    )
+                )
+                stack.enter_context(
+                    patch.object(
+                        socketUtils,
+                        "configured_heartbeat_secret",
+                        return_value=None,
+                    )
+                )
+
+                socketUtils.send_manager(
+                    listener,
+                    '{"name":"execA"}',
+                    "execA",
+                    target_node_key="shenu",
+                    max_wait_seconds=1,
+                )
+
+        self.assertEqual(
+            socketUtils.activeS,
+            0,
+        )
+
     def test_payload_assignment_rejects_wrong_node(self):
         payload = {
             "measurement_node": {
@@ -134,7 +364,13 @@ class TargetingTransportTests(unittest.TestCase):
 
     def test_only_selected_slave_receives_payload(self):
         wrong = BufferSocket(build_slave_hello("unknown-node"))
-        right = BufferSocket(build_slave_hello("shenu"))
+        right = BufferSocket(
+            build_slave_hello("shenu"),
+            on_send=authentication_responder(
+                "shenu",
+                TOKEN,
+            ),
+        )
         listener = FakeListener([
             (wrong, ("127.0.0.2", 10001)),
             (right, ("127.0.0.3", 10002)),
@@ -146,15 +382,39 @@ class TargetingTransportTests(unittest.TestCase):
             "execA",
             target_node_key="shenu",
             max_wait_seconds=1,
+            target_node_token=TOKEN,
         )
 
         self.assertTrue(wrong.closed)
         self.assertEqual(len(wrong.sent), 1)
         self.assertTrue(
-            is_not_selected_payload(json.loads(wrong.sent[0].decode()))
+            is_not_selected_payload(
+                json.loads(
+                    wrong.sent[0].decode()
+                )
+            )
         )
-        self.assertEqual(right.sent, [b'{"name":"execA"}'])
-        self.assertEqual(socketUtils.activeS, 1)
+
+        self.assertEqual(
+            json.loads(
+                right.sent[0].decode()
+            )["message_type"],
+            AUTH_CHALLENGE_MESSAGE_TYPE,
+        )
+        self.assertEqual(
+            json.loads(
+                right.sent[1].decode()
+            )["message_type"],
+            AUTH_OK_MESSAGE_TYPE,
+        )
+        self.assertEqual(
+            right.sent[-1],
+            b'{"name":"execA"}',
+        )
+        self.assertEqual(
+            socketUtils.activeS,
+            1,
+        )
 
     def test_target_timeout_has_zero_deliveries(self):
         listener = FakeListener([])

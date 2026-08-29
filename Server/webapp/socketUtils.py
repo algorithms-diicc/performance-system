@@ -32,12 +32,19 @@ from ..source_contract import (
     validate_runtime_source_metadata,
 )
 from ..measurement_node_transport import (
+    AUTH_CONTEXT_PAYLOAD,
+    AUTH_CONTEXT_RESULT,
     MeasurementNodeTransportError,
+    authenticate_measurement_node_peer,
     build_assignment,
     build_not_selected_payload,
     normalize_node_key,
     receive_slave_hello,
     validate_result_identity,
+)
+from .routes.measurement_node_heartbeat_routes import (
+    configured_heartbeat_secret,
+    derive_measurement_node_heartbeat_token,
 )
 
 
@@ -146,6 +153,7 @@ def send_manager(
     name,
     target_node_key=None,
     max_wait_seconds=60,
+    target_node_token=None,
 ):
     """Entrega el payload sólo al MeasurementNode asignado."""
 
@@ -155,6 +163,27 @@ def send_manager(
         target_node_key,
         required=False,
     )
+
+    if (
+        target_node_key is not None
+        and target_node_token is None
+    ):
+        secret = configured_heartbeat_secret()
+
+        if secret is None:
+            print(
+                "[❌ MASTER] Autenticación de MeasurementNode "
+                "no disponible."
+            )
+            max_wait_seconds = 0
+        else:
+            target_node_token = (
+                derive_measurement_node_heartbeat_token(
+                    secret,
+                    target_node_key,
+                )
+            )
+
     s.settimeout(1.0)
 
     start_time = time.time()
@@ -201,6 +230,28 @@ def send_manager(
                         conn.sendall(build_not_selected_payload())
                     finally:
                         conn.close()
+                    continue
+
+                try:
+                    authenticate_measurement_node_peer(
+                        conn,
+                        peer_node_key,
+                        target_node_token,
+                        AUTH_CONTEXT_PAYLOAD,
+                    )
+                except (
+                    MeasurementNodeTransportError,
+                    OSError,
+                    socket.timeout,
+                ) as exc:
+                    print(
+                        "[⚠️ MASTER] Slave rechazado por "
+                        "autenticación: {}".format(exc)
+                    )
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
                     continue
 
                 send_program(conn, json_string)
@@ -277,7 +328,12 @@ def send_program(conn, json_string):
 # RECEPCIÓN DE RESULTADOS DESDE EL SLAVE
 # ============================================================
 
-def recv_manager(s, name, expected_node_key=None):
+def recv_manager(
+    s,
+    name,
+    expected_node_key=None,
+    expected_node_token=None,
+):
     """Espera resultados y acepta sólo la identidad esperada si existe."""
 
     global activeR
@@ -286,6 +342,28 @@ def recv_manager(s, name, expected_node_key=None):
         expected_node_key,
         required=False,
     )
+
+    if (
+        expected_node_key is not None
+        and expected_node_token is None
+    ):
+        secret = configured_heartbeat_secret()
+
+        if secret is None:
+            print(
+                "[❌ MASTER] Autenticación de resultados "
+                "MeasurementNode no disponible."
+            )
+            activeR = 0
+            return
+
+        expected_node_token = (
+            derive_measurement_node_heartbeat_token(
+                secret,
+                expected_node_key,
+            )
+        )
+
     counter = 0
     firsttime = True
 
@@ -306,6 +384,28 @@ def recv_manager(s, name, expected_node_key=None):
             )
 
             if expected_node_key is not None:
+                try:
+                    authenticate_measurement_node_peer(
+                        conn,
+                        expected_node_key,
+                        expected_node_token,
+                        AUTH_CONTEXT_RESULT,
+                    )
+                except (
+                    MeasurementNodeTransportError,
+                    OSError,
+                    socket.timeout,
+                ) as exc:
+                    print(
+                        "[⚠️ MASTER] Resultado rechazado por "
+                        "autenticación: {}".format(exc)
+                    )
+                    try:
+                        conn.close()
+                    except Exception:
+                        pass
+                    continue
+
                 accepted = receive_data(
                     conn,
                     counter,
