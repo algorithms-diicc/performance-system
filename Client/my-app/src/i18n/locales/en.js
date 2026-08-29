@@ -3497,6 +3497,24 @@ const en = {
       remote: "Remote",
       unknown: "Unknown",
     },
+    measurementNodes: {
+      title: "Registered measurement nodes",
+      helper:
+        "Live registration and heartbeat state. This inventory is separate from the historical execution snapshot shown below.",
+      inventoryStatus: "Inventory",
+      empty: "No measurement nodes are registered.",
+      unavailable:
+        "The measurement-node inventory is unavailable for this refresh.",
+      hardwareProfile: "Hardware profile",
+      validationOnly: "Validation only",
+      lastHeartbeatAt: "Last heartbeat",
+      heartbeatAgeSeconds: "Heartbeat age (s)",
+      states: {
+        AVAILABLE: "Available",
+        OFFLINE: "Offline",
+        DRAINING: "Draining",
+      },
+    },
     measurement: {
       historicalWarning:
         "These data are historical, come from the latest Execution with a valid snapshot, and do not represent live health.",

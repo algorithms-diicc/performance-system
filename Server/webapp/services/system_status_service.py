@@ -6,6 +6,7 @@ import os
 import re
 
 from ..repositories import system_status_repository
+from . import measurement_node_service
 
 
 DATABASE_AVAILABLE = "AVAILABLE"
@@ -62,6 +63,13 @@ def _empty_measurement_environment():
             "cores": _empty_energy_signal(),
             "ram": _empty_energy_signal(),
         },
+    }
+
+
+def _empty_measurement_nodes(status=DATABASE_UNKNOWN):
+    return {
+        "status": status,
+        "items": [],
     }
 
 
@@ -155,6 +163,16 @@ def _optional_logical_cpus(value):
     return value
 
 
+def _nonnegative_number(value):
+    if isinstance(value, bool):
+        return None
+    if not isinstance(value, (int, float)):
+        return None
+    if value < 0:
+        return None
+    return value
+
+
 def _snapshot_row_is_valid(row):
     if not isinstance(row, Mapping):
         return False
@@ -243,6 +261,112 @@ def _measurement_environment(row):
     return environment
 
 
+def _measurement_nodes(rows, *, environment, now):
+    if rows is None:
+        return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+    if not isinstance(rows, list):
+        return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+    stale_seconds = (
+        measurement_node_service.configured_stale_seconds(
+            environment
+        )
+    )
+
+    items = []
+
+    for row in rows:
+        if not isinstance(row, Mapping):
+            return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+        for boolean_field in (
+            "is_enabled",
+            "is_validation_only",
+            "is_draining",
+            "hardware_profile_is_active",
+        ):
+            if not isinstance(row.get(boolean_field), bool):
+                return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+        try:
+            projected = (
+                measurement_node_service.project_measurement_node_status(
+                    row,
+                    now=now,
+                    stale_after_seconds=stale_seconds,
+                )
+            )
+        except Exception:
+            return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+        node_key = _safe_text(
+            projected.get("node_key"),
+            token=True,
+            maximum=64,
+        )
+        state = projected.get("operational_state")
+
+        if not node_key or state not in {
+            measurement_node_service.AVAILABLE,
+            measurement_node_service.OFFLINE,
+            measurement_node_service.DRAINING,
+        }:
+            return _empty_measurement_nodes(DATABASE_UNKNOWN)
+
+        items.append(
+            {
+                "key": node_key,
+                "name": _safe_text(
+                    projected.get("display_name")
+                ),
+                "state": state,
+                "hardwareProfile": {
+                    "key": _safe_text(
+                        projected.get(
+                            "hardware_profile_key"
+                        ),
+                        token=True,
+                        maximum=128,
+                    ),
+                    "name": _safe_text(
+                        projected.get(
+                            "hardware_profile_name"
+                        )
+                    ),
+                },
+                "enabled": _optional_bool(
+                    projected.get("is_enabled")
+                ),
+                "validationOnly": _optional_bool(
+                    projected.get(
+                        "is_validation_only"
+                    )
+                ),
+                "draining": _optional_bool(
+                    projected.get("is_draining")
+                ),
+                "lastHeartbeatAt": _timestamp(
+                    projected.get(
+                        "last_heartbeat_at"
+                    )
+                ),
+                "heartbeatAgeSeconds": (
+                    _nonnegative_number(
+                        projected.get(
+                            "heartbeat_age_seconds"
+                        )
+                    )
+                ),
+            }
+        )
+
+    return {
+        "status": DATABASE_AVAILABLE,
+        "items": items,
+    }
+
+
 def _queue(row):
     return {
         "queued": _count(row.get("queued")),
@@ -291,6 +415,7 @@ def build_system_status(
     queue = _empty_queue()
     process_signals = _process_signals({})
     measurement_environment = _empty_measurement_environment()
+    measurement_nodes = _empty_measurement_nodes()
 
     try:
         diagnostic = repository.fetch_system_status(
@@ -300,6 +425,9 @@ def build_system_status(
         )
     except system_status_repository.DatabaseUnavailable:
         database_status = DATABASE_UNAVAILABLE
+        measurement_nodes = _empty_measurement_nodes(
+            DATABASE_UNAVAILABLE
+        )
     except system_status_repository.DiagnosticQueryUnavailable:
         database_status = DATABASE_UNKNOWN
     except Exception:
@@ -317,6 +445,11 @@ def build_system_status(
                     diagnostic.get("lock_signals")
                 )
                 measurement_environment = _measurement_environment(row)
+                measurement_nodes = _measurement_nodes(
+                    diagnostic.get("measurement_nodes"),
+                    environment=environment,
+                    now=checked_at.replace(tzinfo=None),
+                )
 
     return {
         "checkedAt": checked_at.isoformat(),
@@ -325,5 +458,6 @@ def build_system_status(
         "queue": queue,
         "runtime": runtime,
         "processSignals": process_signals,
+        "measurementNodes": measurement_nodes,
         "measurementEnvironment": measurement_environment,
     }

@@ -10,6 +10,7 @@ import {
   Database,
   ListOrdered,
   RefreshCw,
+  Server,
   Settings2,
 } from "lucide-react";
 
@@ -37,6 +38,12 @@ const LOCK_SIGNALS = new Set([
   "UNKNOWN",
 ]);
 
+const NODE_STATES = new Set([
+  "AVAILABLE",
+  "OFFLINE",
+  "DRAINING",
+]);
+
 const KNOWN_PROBE_STATES = new Set([
   "numeric",
   "permission_denied",
@@ -55,7 +62,7 @@ function statusTone(value, kind = "status") {
   if (value === "AVAILABLE") {
     return "available";
   }
-  if (value === "UNAVAILABLE") {
+  if (value === "UNAVAILABLE" || value === "OFFLINE") {
     return "unavailable";
   }
   return "neutral";
@@ -63,9 +70,18 @@ function statusTone(value, kind = "status") {
 
 
 function StatusPill({ value, kind = "status", t }) {
-  const allowed = kind === "lock" ? LOCK_SIGNALS : PUBLIC_STATUSES;
+  let allowed = PUBLIC_STATUSES;
+  let namespace = "statuses";
+
+  if (kind === "lock") {
+    allowed = LOCK_SIGNALS;
+    namespace = "lockSignals";
+  } else if (kind === "node") {
+    allowed = NODE_STATES;
+    namespace = "measurementNodes.states";
+  }
+
   const normalized = allowed.has(value) ? value : "UNKNOWN";
-  const namespace = kind === "lock" ? "lockSignals" : "statuses";
 
   return (
     <span
@@ -74,7 +90,9 @@ function StatusPill({ value, kind = "status", t }) {
         kind
       )}`}
     >
-      {t(`adminSystemStatus.${namespace}.${normalized}`)}
+      {kind === "node" && normalized === "UNKNOWN"
+        ? t("adminSystemStatus.statuses.UNKNOWN")
+        : t(`adminSystemStatus.${namespace}.${normalized}`)}
     </span>
   );
 }
@@ -215,6 +233,12 @@ export default function AdminSystemStatus() {
   const queue = data?.queue || {};
   const runtime = data?.runtime || {};
   const signals = data?.processSignals || {};
+  const measurementNodes = data?.measurementNodes || {};
+  const registeredNodes =
+    measurementNodes.status === "AVAILABLE" &&
+    Array.isArray(measurementNodes.items)
+      ? measurementNodes.items
+      : [];
   const measurement = data?.measurementEnvironment || {};
   const energy = measurement?.energy || {};
   const executionMode = ["local", "remote", "unknown"].includes(
@@ -378,6 +402,110 @@ export default function AdminSystemStatus() {
             <p className="admin-system-status__helper">
               {t("adminSystemStatus.runtime.helper")}
             </p>
+          </section>
+
+          <section className="admin-system-status__section admin-system-status__section--wide">
+            <div className="admin-system-status__section-heading">
+              <Server size={19} />
+              <h2>{t("adminSystemStatus.measurementNodes.title")}</h2>
+            </div>
+
+            <div className="admin-system-status__node-inventory-status">
+              <span>
+                {t("adminSystemStatus.measurementNodes.inventoryStatus")}
+              </span>
+              <StatusPill
+                value={measurementNodes.status}
+                t={t}
+              />
+            </div>
+
+            <p className="admin-system-status__helper">
+              {t("adminSystemStatus.measurementNodes.helper")}
+            </p>
+
+            {measurementNodes.status === "AVAILABLE" &&
+              registeredNodes.length === 0 && (
+                <p className="admin-system-status__empty">
+                  {t("adminSystemStatus.measurementNodes.empty")}
+                </p>
+              )}
+
+            {measurementNodes.status !== "AVAILABLE" && (
+              <p className="admin-system-status__empty">
+                {t("adminSystemStatus.measurementNodes.unavailable")}
+              </p>
+            )}
+
+            {registeredNodes.length > 0 && (
+              <div className="admin-system-status__nodes-grid">
+                {registeredNodes.map((node, index) => {
+                  const nodeKey =
+                    node?.key || `measurement-node-${index}`;
+                  const nodeName =
+                    node?.name || node?.key || unavailable;
+                  const hardwareProfile =
+                    node?.hardwareProfile?.name ||
+                    node?.hardwareProfile?.key ||
+                    unavailable;
+
+                  return (
+                    <article
+                      className="admin-system-status__node-card"
+                      key={nodeKey}
+                    >
+                      <div className="admin-system-status__node-heading">
+                        <div>
+                          <h3>{nodeName}</h3>
+                          <code>{node?.key || unavailable}</code>
+                        </div>
+                        <StatusPill
+                          value={node?.state}
+                          kind="node"
+                          t={t}
+                        />
+                      </div>
+
+                      <dl className="admin-system-status__fields">
+                        <Field
+                          label={t(
+                            "adminSystemStatus.measurementNodes.hardwareProfile"
+                          )}
+                          value={hardwareProfile}
+                          technical={
+                            Boolean(node?.hardwareProfile?.key) &&
+                            !node?.hardwareProfile?.name
+                          }
+                        />
+                        <Field
+                          label={t(
+                            "adminSystemStatus.measurementNodes.validationOnly"
+                          )}
+                          value={boolLabel(node?.validationOnly, t)}
+                        />
+                        <Field
+                          label={t(
+                            "adminSystemStatus.measurementNodes.lastHeartbeatAt"
+                          )}
+                          value={formatTimestamp(node?.lastHeartbeatAt)}
+                        />
+                        <Field
+                          label={t(
+                            "adminSystemStatus.measurementNodes.heartbeatAgeSeconds"
+                          )}
+                          value={
+                            node?.heartbeatAgeSeconds ?? unavailable
+                          }
+                          technical={
+                            node?.heartbeatAgeSeconds != null
+                          }
+                        />
+                      </dl>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
 
           <section className="admin-system-status__section admin-system-status__section--wide">

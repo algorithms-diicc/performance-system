@@ -54,7 +54,34 @@ def valid_operational_row(**overrides):
     return row
 
 
-def diagnostic(row=None, locks=None):
+def measurement_node_row(**overrides):
+    row = {
+        "id": 3,
+        "node_key": "shenu",
+        "display_name": "Shenu",
+        "hardware_profile_id": 3,
+        "institutional_priority": 100,
+        "is_enabled": True,
+        "is_validation_only": False,
+        "is_draining": False,
+        "last_heartbeat_at": datetime(
+            2026, 8, 22, 13, 29, 50
+        ),
+        "hardware_profile_key":
+            "shenu-intel-i5-9400",
+        "hardware_profile_name":
+            "Shenu Intel i5-9400",
+        "hardware_profile_is_active": True,
+    }
+    row.update(overrides)
+    return row
+
+
+def diagnostic(
+    row=None,
+    locks=None,
+    measurement_nodes=(),
+):
     return {
         "operational": row or valid_operational_row(),
         "lock_signals": locks
@@ -62,6 +89,11 @@ def diagnostic(row=None, locks=None):
             "dispatcher": "LOCK_OBSERVED",
             "watchdog": "LOCK_NOT_OBSERVED",
         },
+        "measurement_nodes": (
+            None
+            if measurement_nodes is None
+            else list(measurement_nodes)
+        ),
     }
 
 
@@ -102,8 +134,131 @@ class SystemStatusServiceTests(unittest.TestCase):
         )
         self.assertFalse(payload["queue"]["oldestQueuedAt"].endswith("Z"))
         self.assertEqual(
+            payload["measurementNodes"],
+            {
+                "status": "AVAILABLE",
+                "items": [],
+            },
+        )
+        self.assertEqual(
             repository.calls[0]["active_before"],
             datetime(2026, 8, 22, 13, 28),
+        )
+
+    def test_registered_nodes_use_canonical_liveness_and_public_whitelist(self):
+        shenu = measurement_node_row()
+        ryzen = measurement_node_row(
+            id=4,
+            node_key="ryzen-validation",
+            display_name="Ryzen validation",
+            hardware_profile_id=4,
+            institutional_priority=0,
+            is_enabled=False,
+            is_validation_only=True,
+            last_heartbeat_at=datetime(
+                2026, 8, 22, 13, 29, 55
+            ),
+            hardware_profile_key=(
+                "ryzen-amd-ryzen-5-3600"
+            ),
+            hardware_profile_name=(
+                "Ryzen AMD Ryzen 5 3600"
+            ),
+        )
+
+        payload = service.build_system_status(
+            repository=FakeRepository(
+                result=diagnostic(
+                    measurement_nodes=[
+                        shenu,
+                        ryzen,
+                    ]
+                )
+            ),
+            environment=self.environment,
+            now=self.now,
+        )
+
+        inventory = payload["measurementNodes"]
+        self.assertEqual(
+            inventory["status"],
+            "AVAILABLE",
+        )
+        self.assertEqual(
+            len(inventory["items"]),
+            2,
+        )
+
+        shenu_public = inventory["items"][0]
+        self.assertEqual(
+            shenu_public,
+            {
+                "key": "shenu",
+                "name": "Shenu",
+                "state": "AVAILABLE",
+                "hardwareProfile": {
+                    "key": "shenu-intel-i5-9400",
+                    "name": "Shenu Intel i5-9400",
+                },
+                "enabled": True,
+                "validationOnly": False,
+                "draining": False,
+                "lastHeartbeatAt":
+                    "2026-08-22T13:29:50",
+                "heartbeatAgeSeconds": 10.0,
+            },
+        )
+
+        self.assertEqual(
+            inventory["items"][1]["state"],
+            "OFFLINE",
+        )
+        self.assertTrue(
+            inventory["items"][1][
+                "validationOnly"
+            ]
+        )
+
+        self.assertEqual(
+            set(shenu_public),
+            {
+                "key",
+                "name",
+                "state",
+                "hardwareProfile",
+                "enabled",
+                "validationOnly",
+                "draining",
+                "lastHeartbeatAt",
+                "heartbeatAgeSeconds",
+            },
+        )
+        self.assertEqual(
+            set(shenu_public["hardwareProfile"]),
+            {"key", "name"},
+        )
+
+    def test_unavailable_node_inventory_does_not_degrade_available_database(self):
+        payload = service.build_system_status(
+            repository=FakeRepository(
+                result=diagnostic(
+                    measurement_nodes=None
+                )
+            ),
+            environment={},
+            now=self.now,
+        )
+
+        self.assertEqual(
+            payload["database"]["status"],
+            "AVAILABLE",
+        )
+        self.assertEqual(
+            payload["measurementNodes"],
+            {
+                "status": "UNKNOWN",
+                "items": [],
+            },
         )
 
     def test_runtime_is_observed_safely_and_lock_keys_never_leave_service(self):
@@ -149,6 +304,13 @@ class SystemStatusServiceTests(unittest.TestCase):
             },
         )
         self.assertIsNone(payload["measurementEnvironment"]["observedAt"])
+        self.assertEqual(
+            payload["measurementNodes"],
+            {
+                "status": "UNAVAILABLE",
+                "items": [],
+            },
+        )
 
     def test_main_query_failure_is_unknown_not_unavailable(self):
         payload = service.build_system_status(
@@ -161,6 +323,13 @@ class SystemStatusServiceTests(unittest.TestCase):
 
         self.assertEqual(payload["database"]["status"], "UNKNOWN")
         self.assertIsNone(payload["queue"]["staleActive"])
+        self.assertEqual(
+            payload["measurementNodes"],
+            {
+                "status": "UNKNOWN",
+                "items": [],
+            },
+        )
 
     def test_malformed_repository_result_degrades_to_unknown(self):
         payload = service.build_system_status(
@@ -173,6 +342,13 @@ class SystemStatusServiceTests(unittest.TestCase):
         self.assertIsNone(payload["queue"]["queued"])
         self.assertEqual(
             payload["processSignals"]["watchdog"]["signal"], "UNKNOWN"
+        )
+        self.assertEqual(
+            payload["measurementNodes"],
+            {
+                "status": "UNKNOWN",
+                "items": [],
+            },
         )
 
     def test_lock_query_failure_does_not_degrade_available_database(self):

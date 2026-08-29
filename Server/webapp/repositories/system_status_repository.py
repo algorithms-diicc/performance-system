@@ -8,6 +8,7 @@ separadas para que un fallo del segundo diagnóstico no degrade PostgreSQL.
 from psycopg2.extras import RealDictCursor
 
 from ...db_connection import get_connection
+from . import measurement_node_repository
 
 
 class SystemStatusRepositoryError(Exception):
@@ -279,9 +280,22 @@ def fetch_system_status(
             # auxiliar y su indisponibilidad no cambia el estado de la DB.
             lock_signals = dict(UNKNOWN_LOCK_SIGNALS)
 
+        measurement_nodes = None
+        try:
+            measurement_nodes = (
+                measurement_node_repository.list_measurement_nodes(
+                    conn=db
+                )
+            )
+        except Exception:
+            # El inventario de nodos es también una señal auxiliar. Su fallo
+            # no invalida la consulta operacional ya obtenida.
+            measurement_nodes = None
+
         return {
             "operational": dict(row),
             "lock_signals": lock_signals,
+            "measurement_nodes": measurement_nodes,
         }
     finally:
         if owns_connection:

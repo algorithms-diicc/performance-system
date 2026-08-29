@@ -46,6 +46,39 @@ const payload = (queued = 4) => ({
     dispatcher: { signal: "LOCK_OBSERVED" },
     watchdog: { signal: "LOCK_NOT_OBSERVED" },
   },
+  measurementNodes: {
+    status: "AVAILABLE",
+    items: [
+      {
+        key: "shenu",
+        name: "Shenu",
+        state: "AVAILABLE",
+        hardwareProfile: {
+          key: "shenu-intel-i5-9400",
+          name: "Shenu Intel i5-9400",
+        },
+        enabled: true,
+        validationOnly: false,
+        draining: false,
+        lastHeartbeatAt: "2026-08-22T13:29:50",
+        heartbeatAgeSeconds: 10,
+      },
+      {
+        key: "ryzen-validation",
+        name: "Ryzen validation",
+        state: "OFFLINE",
+        hardwareProfile: {
+          key: "ryzen-amd-ryzen-5-3600",
+          name: "Ryzen AMD Ryzen 5 3600",
+        },
+        enabled: false,
+        validationOnly: true,
+        draining: false,
+        lastHeartbeatAt: "2026-08-22T13:29:55",
+        heartbeatAgeSeconds: 5,
+      },
+    ],
+  },
   measurementEnvironment: {
     source: "LATEST_PERSISTED_EXECUTION",
     historical: true,
@@ -120,6 +153,18 @@ describe("AdminSystemStatus", () => {
     );
     expect(screen.getByText("Execution queue")).toBeInTheDocument();
     expect(screen.getByText("Auxiliary processes")).toBeInTheDocument();
+    expect(
+      screen.getByText("Registered measurement nodes")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Shenu")).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu Intel i5-9400")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Ryzen validation")).toBeInTheDocument();
+    expect(screen.getByText("Offline")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Validation only")
+    ).toHaveLength(2);
     expect(screen.getByText("AMD EPYC 7763")).toBeInTheDocument();
     expect(screen.getByText("x86_64")).toBeInTheDocument();
     expect(screen.getByText("perf version 6.8.0")).toBeInTheDocument();
@@ -127,6 +172,33 @@ describe("AdminSystemStatus", () => {
     expect(screen.getByText("Numeric sample")).toBeInTheDocument();
     expect(screen.getByText("Permission denied")).toBeInTheDocument();
     expect(screen.getByText("Event not exposed")).toBeInTheDocument();
+  });
+
+  test("keeps live node inventory separate from historical measurement evidence", async () => {
+    const response = payload();
+    response.measurementNodes = {
+      status: "UNKNOWN",
+      items: [],
+    };
+
+    requestJson.mockResolvedValue(response);
+    renderStatus();
+
+    expect(
+      await screen.findByText(
+        "The measurement-node inventory is unavailable for this refresh."
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("AMD EPYC 7763")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /historical.*do not represent live health/i
+      )
+    ).toBeInTheDocument();
   });
 
   test("manual refresh preserves the last valid response until the next one arrives", async () => {

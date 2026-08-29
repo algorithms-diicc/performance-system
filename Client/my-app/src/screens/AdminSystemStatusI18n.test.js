@@ -52,6 +52,25 @@ const payload = (databaseStatus = "AVAILABLE") => ({
     dispatcher: { signal: "LOCK_OBSERVED" },
     watchdog: { signal: "UNKNOWN" },
   },
+  measurementNodes: {
+    status: "AVAILABLE",
+    items: [
+      {
+        key: "shenu",
+        name: "Shenu",
+        state: "DRAINING",
+        hardwareProfile: {
+          key: "shenu-intel-i5-9400",
+          name: "Shenu Intel i5-9400",
+        },
+        enabled: true,
+        validationOnly: false,
+        draining: true,
+        lastHeartbeatAt: "2026-08-22T13:29:50",
+        heartbeatAgeSeconds: 10,
+      },
+    ],
+  },
   measurementEnvironment: {
     source: "LATEST_PERSISTED_EXECUTION",
     historical: true,
@@ -121,6 +140,12 @@ describe("AdminSystemStatus i18n", () => {
     renderEnglish();
 
     expect(await screen.findByText("Lock observed")).toBeInTheDocument();
+    expect(
+      screen.getByText("Registered measurement nodes")
+    ).toBeInTheDocument();
+    expect(screen.getByText("Draining")).toBeInTheDocument();
+    expect(screen.getByText("Hardware profile")).toBeInTheDocument();
+    expect(screen.getByText("Validation only")).toBeInTheDocument();
     expect(screen.getByText(
       /point-in-time coordination signal.*does not guarantee progress/i
     )).toBeInTheDocument();
@@ -146,6 +171,12 @@ describe("AdminSystemStatus i18n", () => {
     fireEvent.click(screen.getByRole("button", { name: "switch-es" }));
 
     expect(screen.getByText("Lock observado")).toBeInTheDocument();
+    expect(
+      screen.getByText("Nodos de medición registrados")
+    ).toBeInTheDocument();
+    expect(screen.getByText("En drenaje")).toBeInTheDocument();
+    expect(screen.getByText("Perfil de hardware")).toBeInTheDocument();
+    expect(screen.getByText("Solo validación")).toBeInTheDocument();
     expect(screen.getByText(
       /señal puntual de coordinación.*no garantiza progreso/i
     )).toBeInTheDocument();

@@ -1,5 +1,6 @@
 import unittest
 from datetime import datetime
+from unittest.mock import patch
 
 from Server.webapp.repositories import system_status_repository as repository
 
@@ -96,6 +97,91 @@ class SystemStatusRepositoryTests(unittest.TestCase):
         self.assertEqual(conn.commits, 0)
         self.assertEqual(conn.rollbacks, 0)
         self.assertEqual(conn.closed, 0)
+
+    def test_measurement_node_inventory_reuses_same_connection(self):
+        conn = ScriptedConnection(
+            [
+                operational_row(),
+                [
+                    {
+                        "name": "dispatcher",
+                        "signal": "LOCK_OBSERVED",
+                    },
+                    {
+                        "name": "watchdog",
+                        "signal": "LOCK_NOT_OBSERVED",
+                    },
+                ],
+            ]
+        )
+        nodes = [
+            {
+                "node_key": "shenu",
+                "display_name": "Shenu",
+            }
+        ]
+
+        with patch.object(
+            repository.measurement_node_repository,
+            "list_measurement_nodes",
+            return_value=nodes,
+        ) as list_nodes:
+            result = repository.fetch_system_status(
+                active_before=datetime(2026, 8, 22, 12, 0),
+                dispatcher_lock_key=74040102,
+                watchdog_lock_key=74040101,
+                conn=conn,
+            )
+
+        self.assertEqual(
+            result["measurement_nodes"],
+            nodes,
+        )
+        list_nodes.assert_called_once_with(conn=conn)
+        self.assertEqual(conn.commits, 0)
+        self.assertEqual(conn.rollbacks, 0)
+        self.assertEqual(conn.closed, 0)
+
+    def test_measurement_node_inventory_failure_is_auxiliary(self):
+        conn = ScriptedConnection(
+            [
+                operational_row(),
+                [
+                    {
+                        "name": "dispatcher",
+                        "signal": "LOCK_OBSERVED",
+                    },
+                    {
+                        "name": "watchdog",
+                        "signal": "LOCK_NOT_OBSERVED",
+                    },
+                ],
+            ]
+        )
+
+        with patch.object(
+            repository.measurement_node_repository,
+            "list_measurement_nodes",
+            side_effect=RuntimeError("node inventory unavailable"),
+        ):
+            result = repository.fetch_system_status(
+                active_before=datetime(2026, 8, 22, 12, 0),
+                dispatcher_lock_key=74040102,
+                watchdog_lock_key=74040101,
+                conn=conn,
+            )
+
+        self.assertEqual(
+            result["operational"]["running"],
+            1,
+        )
+        self.assertEqual(
+            result["lock_signals"]["dispatcher"],
+            "LOCK_OBSERVED",
+        )
+        self.assertIsNone(
+            result["measurement_nodes"]
+        )
 
     def test_connection_failure_is_unavailable_and_does_not_leak_cause(self):
         def fail_connection():

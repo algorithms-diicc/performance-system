@@ -201,6 +201,72 @@
   color: var(--color-text-muted);
 }
 
+.admin-system-status__node-inventory-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  padding: 0.65rem 0.7rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 0.68rem;
+  background: var(--color-surface-elevated);
+}
+
+.admin-system-status__node-inventory-status > span:first-child {
+  color: var(--color-text-soft);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-system-status__nodes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+}
+
+.admin-system-status__node-card {
+  min-width: 0;
+  padding: 0.78rem;
+  border: 1px solid var(--color-border-soft);
+  border-radius: 0.72rem;
+  background: var(--color-surface-elevated);
+}
+
+.admin-system-status__node-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.7rem;
+  margin-bottom: 0.65rem;
+}
+
+.admin-system-status__node-heading h3 {
+  margin: 0;
+  color: var(--color-text-main);
+  font-size: 0.88rem;
+}
+
+.admin-system-status__node-heading code {
+  display: block;
+  margin-top: 0.15rem;
+  overflow-wrap: anywhere;
+  color: var(--color-text-muted);
+  font-size: 0.7rem;
+}
+
+.admin-system-status__node-card .admin-system-status__field {
+  background: var(--color-surface);
+}
+
+.admin-system-status__empty {
+  margin: 0.75rem 0 0;
+  color: var(--color-text-muted);
+  font-size: 0.77rem;
+}
+
 .admin-system-status__counts {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -349,7 +415,8 @@
   .admin-system-status__fields,
   .admin-system-status__fields--three,
   .admin-system-status__fields--measurement,
-  .admin-system-status__energy-grid {
+  .admin-system-status__energy-grid,
+  .admin-system-status__nodes-grid {
     grid-template-columns: 1fr;
   }
 }

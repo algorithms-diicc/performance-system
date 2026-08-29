@@ -25,6 +25,26 @@ def safe_payload():
             "dispatcher": {"signal": "UNKNOWN"},
             "watchdog": {"signal": "UNKNOWN"},
         },
+        "measurementNodes": {
+            "status": "AVAILABLE",
+            "items": [
+                {
+                    "key": "shenu",
+                    "name": "Shenu",
+                    "state": "AVAILABLE",
+                    "hardwareProfile": {
+                        "key": "shenu-intel-i5-9400",
+                        "name": "Shenu Intel i5-9400",
+                    },
+                    "enabled": True,
+                    "validationOnly": False,
+                    "draining": False,
+                    "lastHeartbeatAt":
+                        "2026-08-22T13:29:50",
+                    "heartbeatAgeSeconds": 10.0,
+                }
+            ],
+        },
         "measurementEnvironment": {"historical": True},
     }
 
