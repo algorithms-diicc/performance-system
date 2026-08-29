@@ -1080,6 +1080,7 @@ const es = {
       benchmark: "Benchmark",
       duration: "Duración",
       result: "Resultado",
+      measurementNode: "Nodo de medición",
       environment: "Entorno",
       shaHelp: "SHA-256 del ZIP: huella utilizada para verificar que el archivo original no haya cambiado.",
     },
@@ -2057,6 +2058,14 @@ const es = {
       eyebrow: "Resultados de rendimiento",
       description:
         "Explora cómo cambia el comportamiento del programa a medida que aumenta el tamaño de entrada.",
+    },
+    registeredProvenance: {
+      measurementNode: "Nodo de medición",
+      measurementNodeDescription:
+        "Nodo registrado que ejecutó esta medición.",
+      hardwareProfile: "Perfil de hardware",
+      hardwareProfileDescription:
+        "Perfil de capacidades asociado al nodo durante la ejecución.",
     },
     categories: {
       aria: "Categorías de métricas",

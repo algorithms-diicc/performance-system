@@ -14,6 +14,10 @@ describe("submissionRepeatModel", () => {
     samples: 30,
     executionProfile: "BALANCED",
     courseId: 12,
+    measurementNode: "Ryzen validation",
+    hardwareProfile: "Ryzen 5 3600",
+    measurementNodeMode: "PINNED",
+    assignedMeasurementNodeId: 2,
   };
 
   test("parses and builds one positive Submission id", () => {

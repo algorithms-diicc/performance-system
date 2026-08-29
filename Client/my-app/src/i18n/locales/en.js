@@ -1077,6 +1077,7 @@ const en = {
       benchmark: "Benchmark",
       duration: "Duration",
       result: "Result",
+      measurementNode: "Measurement node",
       environment: "Environment",
       shaHelp: "ZIP SHA-256: fingerprint used to verify that the original file has not changed.",
     },
@@ -2051,6 +2052,14 @@ const en = {
       eyebrow: "Performance results",
       description:
         "Explore how program behavior changes as the input size increases.",
+    },
+    registeredProvenance: {
+      measurementNode: "Measurement node",
+      measurementNodeDescription:
+        "Registered node that executed this measurement.",
+      hardwareProfile: "Hardware profile",
+      hardwareProfileDescription:
+        "Capability profile associated with the node during the execution.",
     },
     categories: {
       aria: "Metric categories",

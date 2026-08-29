@@ -93,6 +93,10 @@ class ExecutionReuseServiceTests(unittest.TestCase):
             execution_config={"original_filename": "old.cpp"},
             result_path="/private/result.csv",
             submission_title="Old title",
+            measurement_node_id=2,
+            hardware_profile_id=4,
+            measurement_node_mode="PINNED",
+            assigned_measurement_node_id=2,
         )
 
         descriptor = build_execution_reuse_descriptor(
@@ -104,6 +108,10 @@ class ExecutionReuseServiceTests(unittest.TestCase):
         self.assertNotIn("executionConfig", descriptor)
         self.assertNotIn("resultPath", descriptor)
         self.assertNotIn("submissionTitle", descriptor)
+        self.assertNotIn("measurementNodeId", descriptor)
+        self.assertNotIn("hardwareProfileId", descriptor)
+        self.assertNotIn("measurementNodeMode", descriptor)
+        self.assertNotIn("assignedMeasurementNodeId", descriptor)
 
 
 if __name__ == "__main__":

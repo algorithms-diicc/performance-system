@@ -1145,6 +1145,8 @@ def get_submission_executions(submission_id: int):
             FROM executions e
             JOIN submissions s
               ON s.id = e.submission_id
+            LEFT JOIN measurement_nodes mn
+              ON mn.id = e.measurement_node_id
             LEFT JOIN hardware_profiles hp
               ON hp.id = e.hardware_profile_id
             WHERE e.submission_id = %s
@@ -1178,6 +1180,8 @@ def get_submission_executions(submission_id: int):
               e.execution_config,
               e.execution_config->>'original_filename' AS original_filename,
               s.title AS submission_title,
+              mn.node_key AS measurement_node_key,
+              mn.display_name AS measurement_node_name,
               hp.name AS hardware_name
             """ + base_sql + """
             ORDER BY e.id DESC
@@ -1355,12 +1359,16 @@ def get_execution_detail(execution_id: int):
                   e.finished_at,
                   e.duration_ms,
                   e.result_available,
+                  mn.node_key AS measurement_node_key,
+                  mn.display_name AS measurement_node_name,
                   hp.name AS hardware_name,
                   s.user_id,
                   s.title AS submission_title
                 FROM executions e
                 JOIN submissions s
                   ON s.id = e.submission_id
+                LEFT JOIN measurement_nodes mn
+                  ON mn.id = e.measurement_node_id
                 LEFT JOIN hardware_profiles hp
                   ON hp.id = e.hardware_profile_id
                 WHERE e.id = %s;

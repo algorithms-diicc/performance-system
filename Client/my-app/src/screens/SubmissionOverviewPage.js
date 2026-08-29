@@ -1942,6 +1942,17 @@ const SubmissionOverviewPage = ({ currentUser }) => {
                           )}
                         </dd>
                       </div>
+                      {execution.measurementNode && (
+                        <div>
+                          <Server size={17} strokeWidth={1.9} aria-hidden="true" />
+                          <dt>
+                            {t(
+                              "submissionOverview.labels.measurementNode"
+                            )}
+                          </dt>
+                          <dd>{execution.measurementNode}</dd>
+                        </div>
+                      )}
                       {execution.hardwareProfile && (
                         <div>
                           <Server size={17} strokeWidth={1.9} aria-hidden="true" />

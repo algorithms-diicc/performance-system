@@ -16,6 +16,10 @@ def get_execution_access_row_by_codename(codename, conn=None):
                     e.result_available,
                     e.result_path,
                     e.hardware_snapshot,
+                    mn.node_key AS measurement_node_key,
+                    mn.display_name AS measurement_node_name,
+                    hp.profile_key AS hardware_profile_key,
+                    hp.name AS hardware_profile_name,
                     s.id AS submission_id,
                     s.user_id AS owner_user_id,
                     s.course_id,
@@ -23,6 +27,10 @@ def get_execution_access_row_by_codename(codename, conn=None):
                 FROM executions e
                 JOIN submissions s ON s.id = e.submission_id
                 LEFT JOIN courses c ON c.id = s.course_id
+                LEFT JOIN measurement_nodes mn
+                  ON mn.id = e.measurement_node_id
+                LEFT JOIN hardware_profiles hp
+                  ON hp.id = e.hardware_profile_id
                 WHERE e.codename = %s
                 LIMIT 1;
                 """,

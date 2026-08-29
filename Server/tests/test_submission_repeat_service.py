@@ -64,7 +64,20 @@ class SubmissionRepeatServiceTests(unittest.TestCase):
     def test_builds_minimal_descriptor_from_verified_common_configuration(self):
         descriptor = build_submission_repeat_descriptor(
             archive_row(),
-            [configuration_row(), configuration_row()],
+            [
+                configuration_row(
+                    measurement_node_id=2,
+                    hardware_profile_id=4,
+                    measurement_node_mode="PINNED",
+                    assigned_measurement_node_id=2,
+                ),
+                configuration_row(
+                    measurement_node_id=2,
+                    hardware_profile_id=4,
+                    measurement_node_mode="PINNED",
+                    assigned_measurement_node_id=2,
+                ),
+            ],
             current_user_id=3,
             archive_inspector=verified,
         )

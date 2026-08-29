@@ -39,6 +39,10 @@ describe("executionReuseModel", () => {
           samples: 30,
           executionProfile: "BALANCED",
           courseId: 12,
+          measurementNode: "Ryzen validation",
+          hardwareProfile: "Ryzen 5 3600",
+          measurementNodeMode: "PINNED",
+          assignedMeasurementNodeId: 2,
         },
         [{ id: 12 }, { id: 13 }]
       )

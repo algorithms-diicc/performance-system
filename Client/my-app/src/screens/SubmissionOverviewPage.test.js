@@ -74,6 +74,7 @@ const completedExecution = {
   state: "COMPLETED",
   stateLabel: "Completado",
   durationMs: 1250,
+  measurementNode: "Shenu",
   hardwareProfile: "Intel i7",
   resultAvailable: true,
   failure: null,
@@ -264,6 +265,15 @@ describe("SubmissionOverviewPage", () => {
     expect(within(executionCard).getByText("LCS")).toBeInTheDocument();
     expect(within(executionCard).getByText("1,25 s")).toBeInTheDocument();
     expect(within(executionCard).getByText("Disponible")).toBeInTheDocument();
+    expect(
+      within(executionCard).getByText("Nodo de medición")
+    ).toBeInTheDocument();
+    expect(
+      within(executionCard).getByText("Shenu")
+    ).toBeInTheDocument();
+    expect(
+      within(executionCard).getByText("Intel i7")
+    ).toBeInTheDocument();
 
     fireEvent.click(
       within(executionCard).getByRole("button", {

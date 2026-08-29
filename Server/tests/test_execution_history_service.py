@@ -237,6 +237,36 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
             "Laboratorio Ryzen",
         )
 
+    def test_serializer_exposes_registered_measurement_node_name(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 67,
+                "execution_state": "COMPLETED",
+                "measurement_node_key": "shenu",
+                "measurement_node_name": "Shenu",
+            }
+        )
+
+        self.assertEqual(
+            payload["measurementNode"],
+            "Shenu",
+        )
+
+    def test_serializer_falls_back_to_measurement_node_key(self):
+        payload = serialize_execution_history_row(
+            {
+                "execution_id": 68,
+                "execution_state": "COMPLETED",
+                "measurement_node_key": "ryzen-validation",
+                "measurement_node_name": " ",
+            }
+        )
+
+        self.assertEqual(
+            payload["measurementNode"],
+            "ryzen-validation",
+        )
+
     def test_serializer_falls_back_to_snapshot_cpu_model(self):
         payload = serialize_execution_history_row(
             {
@@ -267,6 +297,7 @@ class ExecutionHistoryServiceTests(unittest.TestCase):
         )
 
         self.assertIsNone(payload["hardwareProfile"])
+        self.assertIsNone(payload["measurementNode"])
 
     def test_summary_keeps_legacy_alias(self):
         summary = summary_from_aggregate(

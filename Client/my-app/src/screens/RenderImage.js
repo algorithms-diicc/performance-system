@@ -1164,6 +1164,12 @@ function RenderImage({ currentUser }) {
           <ExecutionMetadata
             statusData={statusData}
             courseContext={submissionNavigationContext}
+            measurementRegistry={
+              resultsData?.execution
+                ?.measurement_context
+                ?.registry ||
+              null
+            }
           />
         </header>
 
@@ -2110,6 +2116,7 @@ function KpiCard({ item }) {
 function ExecutionMetadata({
   statusData,
   courseContext,
+  measurementRegistry,
 }) {
   const { t } = useI18n();
   const taskLabel =
@@ -2148,6 +2155,24 @@ function ExecutionMetadata({
       )
     : null;
 
+  const registeredNode =
+    measurementRegistry?.measurement_node ||
+    {};
+
+  const registeredHardwareProfile =
+    measurementRegistry?.hardware_profile ||
+    {};
+
+  const measurementNodeLabel =
+    registeredNode.name ||
+    registeredNode.key ||
+    null;
+
+  const hardwareProfileLabel =
+    registeredHardwareProfile.name ||
+    registeredHardwareProfile.key ||
+    null;
+
   return (
     <div className="results-metadata-grid">
       <MetadataCard
@@ -2181,6 +2206,30 @@ function ExecutionMetadata({
           "renderImage.metadata.environmentDescription"
         )}
       />
+
+      {measurementNodeLabel && (
+        <MetadataCard
+          label={t(
+            "renderImage.registeredProvenance.measurementNode"
+          )}
+          value={measurementNodeLabel}
+          description={t(
+            "renderImage.registeredProvenance.measurementNodeDescription"
+          )}
+        />
+      )}
+
+      {hardwareProfileLabel && (
+        <MetadataCard
+          label={t(
+            "renderImage.registeredProvenance.hardwareProfile"
+          )}
+          value={hardwareProfileLabel}
+          description={t(
+            "renderImage.registeredProvenance.hardwareProfileDescription"
+          )}
+        />
+      )}
 
       {courseContext && (
         <MetadataCard

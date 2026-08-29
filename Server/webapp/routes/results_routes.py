@@ -55,6 +55,89 @@ class ExecutionResultContractMismatch(Exception):
     """La referencia persistida no coincide con el artefacto de la Execution."""
 
 
+def _clean_public_text(value):
+    if value is None:
+        return None
+
+    normalized = str(value).strip()
+    return normalized or None
+
+
+def _attach_registered_measurement_context(
+    payload,
+    execution_row,
+):
+    """
+    Añade identidad registrada y sanitizada de procedencia.
+
+    Los ids internos y la configuración operacional del nodo no forman
+    parte de este contrato público.
+    """
+    if not isinstance(payload, dict):
+        return payload
+
+    execution = payload.get("execution")
+    if not isinstance(execution, dict):
+        return payload
+
+    row = (
+        execution_row
+        if isinstance(execution_row, dict)
+        else {}
+    )
+
+    node = {
+        key: value
+        for key, value in {
+            "key": _clean_public_text(
+                row.get("measurement_node_key")
+            ),
+            "name": _clean_public_text(
+                row.get("measurement_node_name")
+            ),
+        }.items()
+        if value is not None
+    }
+
+    hardware_profile = {
+        key: value
+        for key, value in {
+            "key": _clean_public_text(
+                row.get("hardware_profile_key")
+            ),
+            "name": _clean_public_text(
+                row.get("hardware_profile_name")
+            ),
+        }.items()
+        if value is not None
+    }
+
+    registry = {}
+
+    if node:
+        registry["measurement_node"] = node
+
+    if hardware_profile:
+        registry["hardware_profile"] = hardware_profile
+
+    if not registry:
+        return payload
+
+    measurement_context = execution.get(
+        "measurement_context"
+    )
+
+    if not isinstance(measurement_context, dict):
+        measurement_context = {}
+    else:
+        measurement_context = dict(measurement_context)
+
+    measurement_context["registry"] = registry
+    execution["measurement_context"] = measurement_context
+
+    return payload
+
+
 def _assert_current_user_can_view(codename):
     role_name = getattr(g, "current_role_name", None)
     if not role_name:
@@ -150,6 +233,10 @@ def get_execution_results(codename):
             hardware_snapshot=execution_row.get(
                 "hardware_snapshot"
             ),
+        )
+        _attach_registered_measurement_context(
+            payload,
+            execution_row,
         )
     except ResultsNotFoundError:
         return _error_response(

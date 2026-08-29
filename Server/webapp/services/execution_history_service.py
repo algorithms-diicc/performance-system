@@ -73,6 +73,18 @@ def _clean_text(value):
     return normalized or None
 
 
+def _measurement_node_label(row):
+    display_name = _clean_text(
+        row.get("measurement_node_name")
+    )
+    if display_name:
+        return display_name
+
+    return _clean_text(
+        row.get("measurement_node_key")
+    )
+
+
 def _hardware_label(row):
     profile_name = _clean_text(row.get("hardware_name"))
     if profile_name:
@@ -141,6 +153,7 @@ def serialize_execution_history_row(row):
         "processingAt": _iso(row.get("processing_at")),
         "finishedAt": _iso(row.get("finished_at")),
         "durationMs": _duration_ms(row),
+        "measurementNode": _measurement_node_label(row),
         "hardwareProfile": _hardware_label(row),
         "resultAvailable": bool(row.get("result_available")),
         **_source_identity(row),

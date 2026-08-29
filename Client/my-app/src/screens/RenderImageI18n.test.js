@@ -52,6 +52,18 @@ const resultsPayload = {
   execution: {
     codename: "exec70LCS",
     submission_id: 42,
+    measurement_context: {
+      registry: {
+        measurement_node: {
+          key: "shenu",
+          name: "Shenu",
+        },
+        hardware_profile: {
+          key: "shenu-intel-i5-9400",
+          name: "Shenu Intel i5-9400",
+        },
+      },
+    },
   },
   processing: {},
   metrics: {
@@ -254,6 +266,19 @@ describe("RenderImage shell i18n", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText("Managed")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Measurement node")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Hardware profile")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu Intel i5-9400")
     ).toBeInTheDocument();
 
     expect(

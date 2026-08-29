@@ -140,6 +140,7 @@ describe("RenderImage reproducibility integration", () => {
     },
     submissionError = null,
     resultsError = null,
+    resultsExecution = {},
   } = {}) => {
     axios.get.mockImplementation((url) => {
       const requestURL = String(url);
@@ -147,7 +148,10 @@ describe("RenderImage reproducibility integration", () => {
       if (requestURL.includes("/results")) {
         if (resultsError) return Promise.reject(resultsError);
 
-        const execution = { codename: "exec70LCS" };
+        const execution = {
+          codename: "exec70LCS",
+          ...resultsExecution,
+        };
         if (includeSubmission) {
           execution.submission_id = submissionId;
         }
@@ -212,6 +216,57 @@ describe("RenderImage reproducibility integration", () => {
     jest.clearAllMocks();
     downloadAuthenticatedFile.mockResolvedValue({ data: new Blob([]) });
     arrangeRequests();
+  });
+
+  test("shows registered measurement provenance without changing observed hardware semantics", async () => {
+    arrangeRequests({
+      resultsExecution: {
+        measurement_context: {
+          registry: {
+            measurement_node: {
+              key: "shenu",
+              name: "Shenu",
+            },
+            hardware_profile: {
+              key: "shenu-intel-i5-9400",
+              name: "Shenu Intel i5-9400",
+            },
+          },
+        },
+      },
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByText("Nodo de medición")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Perfil de hardware")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Shenu Intel i5-9400")
+    ).toBeInTheDocument();
+  });
+
+  test("legacy results omit registered provenance when registry is absent", async () => {
+    renderPage();
+
+    await screen.findByRole("heading", {
+      name: "Ejecución exec70LCS",
+    });
+
+    expect(
+      screen.queryByText("Nodo de medición")
+    ).not.toBeInTheDocument();
+
+    expect(
+      screen.queryByText("Perfil de hardware")
+    ).not.toBeInTheDocument();
   });
 
   test("keeps deterministic experiment navigation while loading manifest and trace by codename", async () => {
