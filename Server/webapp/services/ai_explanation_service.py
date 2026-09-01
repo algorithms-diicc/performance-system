@@ -457,6 +457,28 @@ def build_openai_request(context, model, language=None):
             "por evidencia y conserva las limitaciones experimentales."
         )
 
+    if resolved_language == "en":
+        system_text += (
+            " Mandatory output rules: Every observations[].metric value must "
+            "exactly match a key from STRUCTURED CONTEXT.metrics; never invent "
+            "aggregate labels. Do not write the expressions 'asymptotic "
+            "complexity' or Big-O notation, even to negate them; omit that "
+            "topic completely. Every numeric literal must be copied exactly "
+            "from STRUCTURED CONTEXT. Do not calculate percentages, "
+            "differences, ratios, factors, conversions or rounded values."
+        )
+    else:
+        system_text += (
+            " Reglas obligatorias de salida: cada valor "
+            "observations[].metric debe coincidir exactamente con una clave "
+            "de STRUCTURED CONTEXT.metrics; no inventes etiquetas agregadas. "
+            "No escribas las expresiones 'complejidad asintótica' ni notación "
+            "Big-O, incluso para negarlas; omite ese tema por completo. Todo "
+            "literal numérico debe copiarse exactamente de STRUCTURED CONTEXT. "
+            "No calcules porcentajes, diferencias, razones, factores, "
+            "conversiones ni valores redondeados."
+        )
+
     user_text = (
         user_prefix
         + "\n\nSTRUCTURED CONTEXT:\n"
@@ -470,7 +492,7 @@ def build_openai_request(context, model, language=None):
     return {
         "model": model,
         "store": False,
-        "max_output_tokens": 700,
+        "max_output_tokens": 1600,
         "input": [
             {
                 "role": "system",

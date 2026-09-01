@@ -322,6 +322,23 @@ class ComparisonAIServiceTests(unittest.TestCase):
             "Do not recompute metrics",
             request["input"][0]["content"],
         )
+        self.assertEqual(request["max_output_tokens"], 2400)
+
+        english_system = request["input"][0]["content"]
+        self.assertIn("Mandatory output rules", english_system)
+        self.assertIn("Every numeric literal", english_system)
+
+        spanish_request = build_comparison_openai_request(
+            build_comparison_ai_context(
+                comparison_fixture(),
+                language="es",
+            ),
+            "model-x",
+            language="es",
+        )
+        spanish_system = spanish_request["input"][0]["content"]
+        self.assertIn("Reglas obligatorias de salida", spanish_system)
+        self.assertIn("Todo literal numérico", spanish_system)
         self.assertIn(
             "or declare an overall winner",
             request["input"][0]["content"].lower(),

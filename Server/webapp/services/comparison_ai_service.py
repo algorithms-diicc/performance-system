@@ -524,12 +524,34 @@ def build_comparison_openai_request(context, model, language=None):
             "exista evidencia, qué conviene analizar y limitaciones."
         )
 
+    if resolved_language == "en":
+        system_text += (
+            " Mandatory output rules: Do not write the expressions "
+            "'asymptotic complexity', 'winner', 'best', 'worst' or Big-O "
+            "notation, even to negate them; omit those topics completely. "
+            "Every numeric literal must be copied exactly from STRUCTURED "
+            "COMPARISON CONTEXT. Do not calculate percentages, differences, "
+            "ratios, factors, conversions or rounded values. Describe only "
+            "observed metric relationships and omit explanatory mechanisms."
+        )
+    else:
+        system_text += (
+            " Reglas obligatorias de salida: no escribas las expresiones "
+            "'complejidad asintótica', 'ganador', 'ganadora', 'winner', "
+            "'best', 'worst' ni notación Big-O, incluso para negarlas; omite "
+            "esos temas por completo. Todo literal numérico debe copiarse "
+            "exactamente de STRUCTURED COMPARISON CONTEXT. No calcules "
+            "porcentajes, diferencias, razones, factores, conversiones ni "
+            "valores redondeados. Describe únicamente relaciones observadas "
+            "entre métricas y omite mecanismos explicativos."
+        )
+
     import json
 
     return {
         "model": model,
         "store": False,
-        "max_output_tokens": 1100,
+        "max_output_tokens": 2400,
         "input": [
             {
                 "role": "system",
