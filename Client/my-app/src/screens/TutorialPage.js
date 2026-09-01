@@ -42,7 +42,10 @@ import comparisonEs from "../assets/tutorial/tutorial-06-comparison-es.png";
 import teacherCourseEn from "../assets/tutorial/tutorial-07-teacher-course-en.png";
 import teacherCourseEs from "../assets/tutorial/tutorial-07-teacher-course-es.png";
 
-import { canAccessTeacherArea } from "../common/userAccessModel";
+import {
+  canAccessTeacherArea,
+  isStudentUser,
+} from "../common/userAccessModel";
 import { useI18n } from "../i18n";
 
 const COPY = "tutorialPage.v9";
@@ -253,6 +256,7 @@ const TutorialPage = ({ currentUser = null }) => {
   const { language, t } = useI18n();
 
   const showTeacherSection = canAccessTeacherArea(currentUser);
+  const showStudentProtocolLink = isStudentUser(currentUser);
   const navItems = showTeacherSection
     ? [...CORE_NAV_ITEMS, TEACHER_NAV_ITEM]
     : CORE_NAV_ITEMS;
@@ -367,6 +371,45 @@ const TutorialPage = ({ currentUser = null }) => {
               <article><Archive size={21} aria-hidden="true" /><h3>{t(`${COPY}.create.mixed.title`)}</h3><p>{t(`${COPY}.create.mixed.text`)}</p></article>
             </div>
 
+            <div
+              className="tutorial-concept-grid"
+              data-testid="tutorial-final-edition-operational-contract"
+            >
+              <article>
+                <Cpu size={21} aria-hidden="true" />
+                <h3>{t(`${COPY}.create.operational.auto.title`)}</h3>
+                <p>{t(`${COPY}.create.operational.auto.text`)}</p>
+              </article>
+              <article>
+                <Settings2 size={21} aria-hidden="true" />
+                <h3>{t(`${COPY}.create.operational.policy.title`)}</h3>
+                <p>{t(`${COPY}.create.operational.policy.text`)}</p>
+              </article>
+              <article>
+                <Clock3 size={21} aria-hidden="true" />
+                <h3>{t(`${COPY}.create.operational.availability.title`)}</h3>
+                <p>{t(`${COPY}.create.operational.availability.text`)}</p>
+              </article>
+            </div>
+
+            <div className="tutorial-callout" role="note">
+              <Info size={19} aria-hidden="true" />
+              <div>
+                <strong>{t(`${COPY}.create.academic.title`)}</strong>
+                <p>{t(`${COPY}.create.academic.text`)}</p>
+                <p>{t(`${COPY}.create.academic.protocol`)}</p>
+                {showStudentProtocolLink && (
+                  <Link
+                    to="/protocols"
+                    className="tutorial-secondary-link"
+                  >
+                    {t(`${COPY}.create.academic.protocolCta`)}
+                    <ChevronRight size={17} aria-hidden="true" />
+                  </Link>
+                )}
+              </div>
+            </div>
+
             <div className="tutorial-callout" role="note">
               <Info size={19} aria-hidden="true" />
               <div><strong>{t(`${COPY}.create.noLinking.title`)}</strong><p>{t(`${COPY}.create.noLinking.text`)}</p></div>
@@ -465,6 +508,14 @@ const TutorialPage = ({ currentUser = null }) => {
             <section className="tutorial-section tutorial-teacher-section" id="supervisar" data-testid="tutorial-teacher-section">
               <SectionHeading number="04" kickerKey={`${COPY}.teacher.kicker`} titleKey={`${COPY}.teacher.title`} descriptionKey={`${COPY}.teacher.description`} />
               <MediaStory shot={shot("teacherCourse")} pointKeys={[`${COPY}.teacher.points.attention`, `${COPY}.teacher.points.noExecutions`, `${COPY}.teacher.points.failures`, `${COPY}.teacher.points.activity`, `${COPY}.teacher.points.students`]} onOpen={openShot} />
+              <div className="tutorial-callout" role="note">
+                <Settings2 size={19} aria-hidden="true" />
+                <div>
+                  <strong>{t(`${COPY}.teacher.protocols.title`)}</strong>
+                  <p>{t(`${COPY}.teacher.protocols.text`)}</p>
+                  <p>{t(`${COPY}.teacher.protocols.policy`)}</p>
+                </div>
+              </div>
               <div className="tutorial-teacher-actions">
                 <div><ShieldCheck size={22} aria-hidden="true" /><p>{t(`${COPY}.teacher.guardrail`)}</p></div>
                 <Link to="/teacher/courses" className="tutorial-primary-link">{t(`${COPY}.teacher.cta`)}<ChevronRight size={17} aria-hidden="true" /></Link>

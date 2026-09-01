@@ -6,6 +6,10 @@ from Server.webapp.services.experimental_protocol_service import (
     ProtocolUnavailable,
     normalize_protocol_configuration,
     resolve_submission_protocol,
+    validate_protocol_operational_policy,
+)
+from Server.webapp.services.hardware_profile_service import (
+    HardwareProfileError,
 )
 from Server.webapp.services.execution_creation_service import (
     create_submission_bundle,
@@ -205,6 +209,152 @@ class ExperimentalProtocolContractTests(unittest.TestCase):
                 user_id=31,
                 requested_protocol_id=9,
                 conn=FakeConnection(row=None),
+            )
+
+    def test_structural_normalization_has_no_stale_static_ceiling(self):
+        config = normalize_protocol_configuration(
+            {
+                "title": "LCS draft",
+                "objective": "Objetivo",
+                "benchmark": "LCS",
+                "inputSize": 50000,
+                "executionProfile": "rapido",
+                "samples": 10,
+            }
+        )
+
+        self.assertEqual(
+            config["input_size"],
+            50000,
+        )
+
+    def test_operational_policy_accepts_current_auto_limits(self):
+        calls = []
+
+        def resolver(
+            profile_key,
+            benchmark,
+            execution_profile,
+            conn=None,
+        ):
+            calls.append(
+                (
+                    profile_key,
+                    benchmark,
+                    execution_profile,
+                    conn,
+                )
+            )
+            return {
+                "benchmark": "LCS",
+                "execution_profile": "BALANCED",
+                "minimum_input": 100,
+                "default_input": 500,
+                "recommended_max_input": 500,
+                "hard_max_input": 750,
+                "input_step": 100,
+                "operational_timeout_seconds": 1680,
+                "is_active": True,
+            }
+
+        config = normalize_protocol_configuration(
+            {
+                "title": "LCS balanced",
+                "objective": "Objetivo",
+                "benchmark": "LCS",
+                "inputSize": 700,
+                "executionProfile": "equilibrado",
+                "samples": 30,
+            }
+        )
+
+        policy = validate_protocol_operational_policy(
+            config,
+            conn="CONN",
+            policy_resolver=resolver,
+            profile_key_resolver=lambda: (
+                "shenu-intel-i5-9400"
+            ),
+        )
+
+        self.assertEqual(
+            calls,
+            [
+                (
+                    "shenu-intel-i5-9400",
+                    "LCS",
+                    "BALANCED",
+                    "CONN",
+                )
+            ],
+        )
+        self.assertEqual(
+            policy["hard_max_input"],
+            750,
+        )
+        self.assertTrue(
+            policy["above_recommended"]
+        )
+
+    def test_operational_policy_rejects_input_above_hard_max(self):
+        config = normalize_protocol_configuration(
+            {
+                "title": "LCS invalid",
+                "objective": "Objetivo",
+                "benchmark": "LCS",
+                "inputSize": 501,
+                "executionProfile": "exhaustivo",
+                "samples": 50,
+            }
+        )
+
+        with self.assertRaises(
+            InvalidProtocolConfiguration
+        ):
+            validate_protocol_operational_policy(
+                config,
+                policy_resolver=lambda *args, **kwargs: {
+                    "benchmark": "LCS",
+                    "execution_profile": "EXHAUSTIVE",
+                    "minimum_input": 100,
+                    "default_input": 500,
+                    "recommended_max_input": 500,
+                    "hard_max_input": 500,
+                    "input_step": 100,
+                    "operational_timeout_seconds": 1320,
+                    "is_active": True,
+                },
+                profile_key_resolver=lambda: (
+                    "shenu-intel-i5-9400"
+                ),
+            )
+
+    def test_operational_policy_unavailability_fails_closed(self):
+        config = normalize_protocol_configuration(
+            {
+                "title": "LCS unavailable",
+                "objective": "Objetivo",
+                "benchmark": "LCS",
+                "inputSize": 500,
+                "executionProfile": "rapido",
+                "samples": 10,
+            }
+        )
+
+        def unavailable(*args, **kwargs):
+            raise HardwareProfileError(
+                "missing"
+            )
+
+        with self.assertRaises(
+            HardwareProfileError
+        ):
+            validate_protocol_operational_policy(
+                config,
+                policy_resolver=unavailable,
+                profile_key_resolver=lambda: (
+                    "shenu-intel-i5-9400"
+                ),
             )
 
     @patch(

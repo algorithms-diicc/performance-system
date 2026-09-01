@@ -11,8 +11,13 @@ from ..services.experimental_protocol_service import (
     InvalidProtocolConfiguration,
     normalize_protocol_configuration,
     protocol_row_as_configuration,
+    validate_protocol_operational_policy,
+)
+from ..services.hardware_profile_service import (
+    HardwareProfileError,
 )
 from ..utils.api_errors import (
+    APIError,
     BadRequestError,
     NotFoundError,
     handle_api_errors,
@@ -150,11 +155,29 @@ def _audit(cur, action, description):
     )
 
 
-def _validated_payload(data, base=None):
+def _validated_payload(
+    data,
+    base=None,
+    conn=None,
+):
     try:
-        return normalize_protocol_configuration(data, base=base)
+        config = normalize_protocol_configuration(
+            data,
+            base=base,
+        )
+        validate_protocol_operational_policy(
+            config,
+            conn=conn,
+        )
+        return config
     except InvalidProtocolConfiguration as exc:
         raise BadRequestError(str(exc))
+    except HardwareProfileError:
+        raise APIError(
+            "La policy AUTO del entorno de medición no está disponible.",
+            status_code=503,
+            code="MEASUREMENT_POLICY_UNAVAILABLE",
+        )
 
 
 @experimental_protocols_bp.route(
@@ -208,7 +231,6 @@ def list_teacher_protocols(course_id):
 @login_required
 @teacher_or_admin_required
 def create_teacher_protocol(course_id):
-    config = _validated_payload(request.get_json(silent=True))
     conn = get_connection()
     try:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -216,6 +238,10 @@ def create_teacher_protocol(course_id):
                 cur,
                 course_id,
                 require_active=True,
+            )
+            config = _validated_payload(
+                request.get_json(silent=True),
+                conn=conn,
             )
             cur.execute(
                 """
@@ -298,6 +324,7 @@ def update_teacher_protocol(course_id, protocol_id):
             config = _validated_payload(
                 data,
                 base=protocol_row_as_configuration(current),
+                conn=conn,
             )
 
             cur.execute(
@@ -373,6 +400,10 @@ def publish_teacher_protocol(course_id, protocol_id):
                 require_active=True,
             )
             current = _load_protocol(cur, course_id, protocol_id)
+            _validated_payload(
+                protocol_row_as_configuration(current),
+                conn=conn,
+            )
             became_available = not (
                 bool(current.get("is_published"))
                 and bool(current.get("is_active"))

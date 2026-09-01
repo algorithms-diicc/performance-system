@@ -225,7 +225,7 @@ const ProfilePage = () => {
 
     try {
       const body = await requestJson(
-        "/api/student/courses",
+        "/api/analysis/courses",
         { credentials: "include" },
         { fallback: translate("es", "profile.errors.courses") }
       );
@@ -236,7 +236,7 @@ const ProfilePage = () => {
           : []
       );
     } catch (loadError) {
-      console.error("Error cargando /api/student/courses:", loadError);
+      console.error("Error cargando /api/analysis/courses:", loadError);
       setCourses([]);
       setCoursesError({
         key: "profile.errors.courses",

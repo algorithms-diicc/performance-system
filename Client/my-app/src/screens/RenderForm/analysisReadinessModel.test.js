@@ -31,6 +31,7 @@ const valid = {
   measurementNodeKey: "",
   measurementPolicyLoading: false,
   measurementPolicyUnavailable: false,
+  measurementUnavailable: false,
 };
 
 describe("analysisReadinessModel", () => {
@@ -102,6 +103,11 @@ describe("analysisReadinessModel", () => {
       "measurement policy unavailable",
       { measurementPolicyUnavailable: true },
       ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_UNAVAILABLE,
+    ],
+    [
+      "measurement environment unavailable",
+      { measurementUnavailable: true },
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_UNAVAILABLE,
     ],
     [
       "academic context loading",

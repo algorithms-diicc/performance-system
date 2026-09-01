@@ -265,7 +265,7 @@ describe(
         await waitFor(() =>
           expect(
             teacherApi
-          ).toHaveBeenCalledTimes(4)
+          ).toHaveBeenCalledTimes(5)
         );
 
         fireEvent.click(
@@ -309,7 +309,7 @@ describe(
 
         expect(
           teacherApi
-        ).toHaveBeenCalledTimes(4);
+        ).toHaveBeenCalledTimes(5);
       }
     );
 

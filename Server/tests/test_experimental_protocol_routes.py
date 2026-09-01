@@ -143,6 +143,13 @@ class ExperimentalProtocolRoutesTests(unittest.TestCase):
         ), patch(
             "Server.webapp.routes.experimental_protocol_routes.get_connection",
             return_value=conn,
+        ), patch(
+            "Server.webapp.routes.experimental_protocol_routes."
+            "validate_protocol_operational_policy",
+            return_value={
+                "benchmark": "LCS",
+                "execution_profile": "QUICK",
+            },
         ):
             response = self.client.open(
                 path,

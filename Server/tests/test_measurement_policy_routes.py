@@ -47,7 +47,12 @@ class MeasurementPolicyRoutesTests(unittest.TestCase):
         app.register_blueprint(measurement_policy_bp)
         self.client = app.test_client()
 
-    def _get(self, rows, path="/api/measurement/policies"):
+    def _get(
+        self,
+        rows,
+        path="/api/measurement/policies",
+        available=True,
+    ):
         with patch(
             "Server.webapp.utils.auth_decorators.get_current_user",
             return_value=STUDENT,
@@ -55,7 +60,11 @@ class MeasurementPolicyRoutesTests(unittest.TestCase):
             "Server.webapp.routes.measurement_policy_routes."
             "list_hardware_profile_policies",
             return_value=rows,
-        ) as list_policies, patch.dict(
+        ) as list_policies, patch(
+            "Server.webapp.routes.measurement_policy_routes."
+            "is_new_measurement_target_available",
+            return_value=available,
+        ), patch.dict(
             os.environ,
             {
                 "MEASUREMENT_HARDWARE_PROFILE_KEY":
@@ -90,6 +99,10 @@ class MeasurementPolicyRoutesTests(unittest.TestCase):
         payload = response.get_json()
 
         self.assertEqual(payload["environment"], {"mode": "AUTO"})
+        self.assertEqual(
+            payload["availability"],
+            {"available": True},
+        )
         self.assertEqual(payload["total"], 2)
         self.assertEqual(
             payload["items"][0],
@@ -108,6 +121,29 @@ class MeasurementPolicyRoutesTests(unittest.TestCase):
         list_policies.assert_called_once_with(
             "shenu-intel-i5-9400"
         )
+
+    def test_auto_contract_reports_temporary_unavailability(self):
+        response, _list_policies = self._get(
+            [policy_row()],
+            available=False,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(
+            payload["availability"],
+            {"available": False},
+        )
+        self.assertEqual(
+            payload["environment"],
+            {"mode": "AUTO"},
+        )
+
+        # Availability remains a minimal public signal; no node transport,
+        # heartbeat, or internal identity is surfaced here.
+        self.assertNotIn("node", payload["availability"])
+        self.assertNotIn("heartbeat", payload["availability"])
+        self.assertNotIn("measurementNodeId", payload["availability"])
 
     def test_client_cannot_override_profile_key(self):
         response, list_policies = self._get(

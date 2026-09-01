@@ -124,9 +124,30 @@ export function hasMeaningfulDraft(draft) {
 
   if (profile && profile !== "equilibrado") return true;
 
-  const inputSize = Number(draft.inputSize);
-  if (Number.isFinite(inputSize) && inputSize !== 1000) return true;
+  const rawInputSize = draft.inputSize;
+  if (
+    rawInputSize !== null &&
+    rawInputSize !== undefined &&
+    rawInputSize !== ""
+  ) {
+    const inputSize = Number(rawInputSize);
+    if (
+      Number.isFinite(inputSize) &&
+      inputSize !== 1000
+    ) {
+      return true;
+    }
+  }
 
-  const samples = Number(draft.samples);
+  const rawSamples = draft.samples;
+  if (
+    rawSamples === null ||
+    rawSamples === undefined ||
+    rawSamples === ""
+  ) {
+    return false;
+  }
+
+  const samples = Number(rawSamples);
   return Number.isFinite(samples) && samples !== 30;
 }

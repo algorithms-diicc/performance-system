@@ -46,10 +46,12 @@ function MeasurementAndProfileSection({
   measurementNodes = [],
   measurementNodesLoading = false,
   measurementNodesError = false,
+  measurementAvailability = "CHECKING",
   selectedMeasurementNodeKey = "",
   onMeasurementNodeModeChange,
   onMeasurementNodeChange,
   onRetryMeasurementNodes,
+  onRetryMeasurementAvailability,
 }) {
   const { t } = useI18n();
 
@@ -197,6 +199,51 @@ function MeasurementAndProfileSection({
             </p>
           </label>
         </div>
+
+        {normalizedMode === "AUTO" && (
+          <div
+            className="measurement-node-picker"
+            data-testid="measurement-availability"
+          >
+            {measurementAvailability === "CHECKING" && (
+              <p className="form-help-text" role="status">
+                {t(
+                  "renderForm.measurement.availabilityChecking"
+                )}
+              </p>
+            )}
+
+            {measurementAvailability === "AVAILABLE" && (
+              <p className="form-help-text" role="status">
+                {t(
+                  "renderForm.measurement.availabilityReady"
+                )}
+              </p>
+            )}
+
+            {measurementAvailability === "UNAVAILABLE" && (
+              <div
+                className="measurement-node-error"
+                role="alert"
+              >
+                <span>
+                  {t(
+                    "renderForm.measurement.availabilityUnavailable"
+                  )}
+                </span>
+                <button
+                  type="button"
+                  className="rf-course-context-retry"
+                  onClick={onRetryMeasurementAvailability}
+                >
+                  {t(
+                    "renderForm.measurement.availabilityRetry"
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {normalizedMode === "PINNED" && (
           <div

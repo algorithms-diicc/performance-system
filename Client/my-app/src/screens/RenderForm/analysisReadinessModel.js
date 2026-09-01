@@ -15,6 +15,8 @@ export const ANALYSIS_REQUIREMENT_KEYS = Object.freeze({
     "measurementPolicyLoading",
   MEASUREMENT_POLICY_UNAVAILABLE:
     "measurementPolicyUnavailable",
+  MEASUREMENT_UNAVAILABLE:
+    "measurementUnavailable",
 });
 
 function isValidNumber(value, limits) {
@@ -57,6 +59,7 @@ export function buildAnalysisRequirements({
   measurementNodeKey,
   measurementPolicyLoading,
   measurementPolicyUnavailable,
+  measurementUnavailable,
 } = {}) {
   const requirements = [];
 
@@ -91,6 +94,12 @@ export function buildAnalysisRequirements({
   } else if (measurementPolicyUnavailable) {
     requirements.push(
       ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_POLICY_UNAVAILABLE
+    );
+  }
+
+  if (measurementUnavailable) {
+    requirements.push(
+      ANALYSIS_REQUIREMENT_KEYS.MEASUREMENT_UNAVAILABLE
     );
   }
 

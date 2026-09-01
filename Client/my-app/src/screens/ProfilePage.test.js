@@ -66,7 +66,7 @@ const renderProfile = async (
       });
     }
 
-    if (url === "/api/student/courses") {
+    if (url === "/api/analysis/courses") {
       return coursesError
         ? Promise.reject(coursesError)
         : Promise.resolve({ items: coursesValue });
@@ -103,6 +103,16 @@ describe("ProfilePage submission navigation", () => {
     expect(
       screen.getByRole("link", { name: /Iniciar análisis personal/i })
     ).toHaveAttribute("href", "/");
+    expect(requestJson).toHaveBeenCalledWith(
+      "/api/analysis/courses",
+      { credentials: "include" },
+      expect.any(Object)
+    );
+    expect(requestJson).not.toHaveBeenCalledWith(
+      "/api/student/courses",
+      expect.anything(),
+      expect.anything()
+    );
   });
 
   test("shows the active course context and builds its analysis link", async () => {
@@ -156,7 +166,7 @@ describe("ProfilePage submission navigation", () => {
         return Promise.resolve({ profile, summary });
       }
 
-      if (url === "/api/student/courses") {
+      if (url === "/api/analysis/courses") {
         courseAttempts += 1;
         return courseAttempts === 1
           ? Promise.reject(new Error("Cursos temporalmente no disponibles"))

@@ -58,7 +58,7 @@ describe("ProfilePage i18n", () => {
       if (url === "/api/profile") {
         return Promise.resolve({ profile, summary });
       }
-      if (url === "/api/student/courses") {
+      if (url === "/api/analysis/courses") {
         return Promise.resolve({ items: [course] });
       }
       return Promise.reject(new Error(`Unexpected request: ${url}`));

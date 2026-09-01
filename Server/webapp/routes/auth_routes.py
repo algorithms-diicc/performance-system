@@ -117,6 +117,10 @@ def _frontend_login_redirect(code, message, email=None):
 def _business_auth_error_code(message):
     normalized = str(message or "").casefold()
 
+    if "invitación previa" in normalized:
+        return "EXTERNAL_ACCESS_REQUIRED"
+    if "invitacion previa" in normalized:
+        return "EXTERNAL_ACCESS_REQUIRED"
     if "dominio permitido" in normalized:
         return "EXTERNAL_DOMAIN"
     if "no existe una cuenta registrada" in normalized:

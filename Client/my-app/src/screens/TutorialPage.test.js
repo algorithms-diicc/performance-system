@@ -58,6 +58,39 @@ describe("TutorialPage Iteration 9", () => {
     ).not.toBeInTheDocument();
   });
 
+
+  test("documents AUTO, PINNED, operational policy, availability, and student academic context", () => {
+    renderTutorial();
+
+    const operational = screen.getByTestId(
+      "tutorial-final-edition-operational-contract"
+    );
+
+    expect(
+      within(operational).getByRole("heading", {
+        name: "AUTO es la opción recomendada",
+      })
+    ).toBeInTheDocument();
+
+    expect(operational).toHaveTextContent("PINNED");
+    expect(operational).toHaveTextContent(/cola FIFO/i);
+    expect(operational).toHaveTextContent(
+      /policy define el rango ejecutable/i
+    );
+
+    expect(
+      screen.getByText(
+        /curso activo o elegir explícitamente un análisis personal/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("link", {
+        name: "Abrir Protocolos",
+      })
+    ).toHaveAttribute("href", "/protocols");
+  });
+
   test("documents C, C++, mixed, and the three canonical example downloads", () => {
     const { container } = renderTutorial({ route: "/tutorial#ejemplos" });
 
@@ -118,6 +151,17 @@ describe("TutorialPage Iteration 9", () => {
     expect(
       screen.getByRole("link", { name: "Abrir Supervisión" })
     ).toHaveAttribute("href", "/teacher/courses");
+
+    expect(
+      screen.getByText(
+        /Protocolos experimentales del curso/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /no queda ligado a un nodo concreto/i
+      )
+    ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: /Administración/i })
     ).not.toBeInTheDocument();

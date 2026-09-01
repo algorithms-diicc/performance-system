@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 
 from Server.webapp.services.measurement_node_selector_service import (
     MeasurementNodeSelectionError,
+    is_new_measurement_target_available,
     list_pinnable_measurement_nodes,
     resolve_pinned_measurement_node,
 )
@@ -198,6 +199,76 @@ class MeasurementNodePublicSelectionTests(
         self.assertEqual(
             target["hardware_profile_key"],
             "profile-2",
+        )
+
+    def test_auto_admission_requires_at_least_one_live_public_node(self):
+        live_repo = FakeNodeRepository(
+            [node(1, "shenu")]
+        )
+        offline_repo = FakeNodeRepository(
+            [
+                node(
+                    1,
+                    "shenu",
+                    heartbeat_age=120,
+                )
+            ]
+        )
+
+        self.assertTrue(
+            is_new_measurement_target_available(
+                "Student",
+                "AUTO",
+                repository=live_repo,
+                now=NOW,
+                stale_after_seconds=30,
+                environment={},
+            )
+        )
+        self.assertFalse(
+            is_new_measurement_target_available(
+                "Student",
+                "AUTO",
+                repository=offline_repo,
+                now=NOW,
+                stale_after_seconds=30,
+                environment={},
+            )
+        )
+
+    def test_pinned_admission_requires_the_requested_live_node(self):
+        repo = FakeNodeRepository(
+            [
+                node(1, "shenu"),
+                node(
+                    2,
+                    "offline",
+                    heartbeat_age=120,
+                ),
+            ]
+        )
+
+        self.assertTrue(
+            is_new_measurement_target_available(
+                "Student",
+                "PINNED",
+                "shenu",
+                repository=repo,
+                now=NOW,
+                stale_after_seconds=30,
+                environment={},
+            )
+        )
+        self.assertFalse(
+            is_new_measurement_target_available(
+                "Student",
+                "PINNED",
+                "offline",
+                repository=repo,
+                now=NOW,
+                stale_after_seconds=30,
+                environment={},
+            )
         )
 
     def test_offline_target_is_rejected(self):

@@ -62,44 +62,42 @@ describe("AcademicCourseCard onboarding", () => {
     ).not.toBeInTheDocument();
   });
 
-  test("keeps the canonical automatic presentation for one Student course", () => {
+  test("one Student course is recommended by default but personal remains selectable", () => {
+    const onCourseChange = jest.fn();
+
     render(
       <AcademicCourseCard
         {...baseProps}
         courses={[courseA]}
         selectedCourseId="9"
+        personalAllowed
+        onCourseChange={onCourseChange}
       />
     );
 
+    const selector = screen.getByRole(
+      "combobox",
+      {
+        name: "Curso de este experimento",
+      }
+    );
+
+    expect(selector).toHaveValue("9");
+    expect(selector).not.toBeRequired();
+
     expect(
-      screen.getByRole("heading", {
-        name: "Curso asociado",
+      screen.getByRole("option", {
+        name: "Personal · Sin curso asociado",
       })
     ).toBeInTheDocument();
 
-    expect(
-      screen.getByText("Automático")
-    ).toBeInTheDocument();
+    fireEvent.change(selector, {
+      target: { value: "" },
+    });
 
     expect(
-      screen.getByText("CC4102 · 2026-2")
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(
-        "Diseño y Análisis de Algoritmos"
-      )
-    ).toBeInTheDocument();
-
-    expect(
-      screen.getByText(
-        "Profesor: Grace Hopper"
-      )
-    ).toBeInTheDocument();
-
-    expect(
-      screen.queryByRole("combobox")
-    ).not.toBeInTheDocument();
+      onCourseChange
+    ).toHaveBeenCalledWith("");
   });
 
   test("Teacher or Admin can keep an owned course as personal context", () => {
@@ -156,7 +154,7 @@ describe("AcademicCourseCard onboarding", () => {
     ).toHaveBeenCalledWith("9");
   });
 
-  test("several Student courses expose the controlled required selector", () => {
+  test("several Student courses allow either a course or personal context", () => {
     const onCourseChange = jest.fn();
 
     const courseB = {
@@ -172,7 +170,7 @@ describe("AcademicCourseCard onboarding", () => {
         {...baseProps}
         courses={[courseA, courseB]}
         selectedCourseId="12"
-        selectionRequired
+        personalAllowed
         onCourseChange={onCourseChange}
       />
     );
@@ -185,17 +183,17 @@ describe("AcademicCourseCard onboarding", () => {
     );
 
     expect(selector).toHaveValue("12");
-    expect(selector).toBeRequired();
+    expect(selector).not.toBeRequired();
 
     expect(
-      screen.getByText("Obligatorio")
+      screen.getByText("Opcional")
     ).toBeInTheDocument();
 
     expect(
-      screen.queryByRole("option", {
+      screen.getByRole("option", {
         name: "Personal · Sin curso asociado",
       })
-    ).not.toBeInTheDocument();
+    ).toBeInTheDocument();
 
     fireEvent.change(selector, {
       target: { value: "9" },

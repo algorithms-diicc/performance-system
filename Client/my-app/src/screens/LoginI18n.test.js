@@ -37,7 +37,7 @@ describe("Login i18n", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /^Acceso institucional$/i,
+        name: /^Acceso a Performance System$/i,
       })
     ).toBeInTheDocument();
 
@@ -96,7 +96,7 @@ describe("Login i18n", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /^Institutional access$/i,
+        name: /^Access to Performance System$/i,
       })
     ).toBeInTheDocument();
 
@@ -129,7 +129,7 @@ describe("Login i18n", () => {
 
     expect(
       screen.getByRole("heading", {
-        name: /^Acceso institucional$/i,
+        name: /^Acceso a Performance System$/i,
       })
     ).toBeInTheDocument();
   });
@@ -188,6 +188,64 @@ describe("Login i18n", () => {
     expect(
       screen.queryByText("MENSAJE_BACKEND_EN_ES")
     ).not.toBeInTheDocument();
+  });
+
+
+  test("external preauthorization failures are localized and never expose backend copy", () => {
+    renderLogin({
+      language: "en",
+      route:
+        "/login?auth_status=error" +
+        "&auth_code=EXTERNAL_ACCESS_REQUIRED" +
+        "&auth_message=MENSAJE_BACKEND_EXTERNO",
+    });
+
+    expect(
+      screen.getByRole("status")
+    ).toHaveTextContent(
+      "External access requires a prior invitation or authorization from the administrator."
+    );
+
+    expect(
+      screen.queryByText("MENSAJE_BACKEND_EXTERNO")
+    ).not.toBeInTheDocument();
+  });
+
+
+  test("explains the three onboarding policies while keeping the public form UdeC-only", () => {
+    renderLogin();
+
+    expect(
+      screen.getByText(
+        /@inf\.udec\.cl tienen acceso institucional directo/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /@udec\.cl pueden ingresar si ya fueron preautorizadas/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /cuentas externas requieren una habilitación previa del administrador/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      document.querySelector(
+        ".login-divider-label"
+      )
+    ).toHaveTextContent(
+      "Solicitud de acceso UdeC"
+    );
+
+    expect(
+      screen.getByText(
+        /formulario público es sólo para cuentas @udec\.cl/i
+      )
+    ).toBeInTheDocument();
   });
 
   test("normalizes mixed-case emails and explains approval email delivery", async () => {

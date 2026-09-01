@@ -149,8 +149,23 @@ describe("formOnboardingModel draft compatibility", () => {
         testName: "",
         note: "",
         selectedTaskType: "",
-        inputSize: 1000,
+        inputSize: null,
         samples: 30,
+        dataType: "",
+        executionProfile: "equilibrado",
+      })
+    ).toBe(false);
+  });
+
+  test("null policy-dependent fields are not meaningful draft evidence", () => {
+    expect(
+      hasMeaningfulDraft({
+        version: 1,
+        testName: "",
+        note: "",
+        selectedTaskType: "",
+        inputSize: null,
+        samples: null,
         dataType: "",
         executionProfile: "equilibrado",
       })

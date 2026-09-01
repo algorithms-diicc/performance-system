@@ -42,7 +42,7 @@ const es = {
       instructions: "Instrucciones",
       optional: "(opcional)",
       benchmark: "Benchmark",
-      inputSize: "Tamaño máximo",
+      inputSize: "Tamaño de entrada",
       profile: "Perfil de medición",
       samples: "Repeticiones",
       distribution: "Distribución CAMM",
@@ -68,8 +68,16 @@ const es = {
       instructions: "Ver instrucciones",
       courseInactive:
         "El curso está inactivo. Puedes revisar o editar protocolos existentes, pero no crear ni publicar nuevos protocolos.",
+      policyLoading:
+        "Cargando la policy operacional AUTO…",
+      policyLimits:
+        "Policy AUTO vigente: rango {{min}}–{{max}}, valor inicial {{defaultValue}} y recomendado hasta {{recommended}}.",
+      policyUnavailable:
+        "La policy operacional AUTO no está disponible. Puedes revisar protocolos existentes, pero no crear o guardar configuraciones hasta recuperarla.",
       errors: {
         load: "No fue posible cargar los protocolos del curso.",
+        policy:
+          "La policy operacional AUTO no está disponible. Inténtalo nuevamente cuando se recupere el entorno de medición.",
         save: "No fue posible guardar el protocolo.",
         action: "No fue posible actualizar el estado del protocolo.",
       },
@@ -204,30 +212,33 @@ const es = {
       benchmarks: "LCS, CAMM y SIZE",
       metricsLead: "Métricas avanzadas:",
       metrics: "IPC, caché, energía, ciclos",
-      integrationLead: "Integración con cuentas institucionales",
-      accounts: "@inf.udec.cl y @udec.cl*",
+      integrationLead: "Autenticación con Google y autorización por cuenta",
+      accounts: "acceso institucional y externo preautorizado",
     },
     note: {
-      standardLead: "El acceso estándar es con tu correo",
-      otherLead:
-        "Si perteneces a otra carrera de la UdeC, puedes solicitar acceso con tu correo",
-      formSuffix: "usando el formulario de esta página.",
+      inf:
+        "Las cuentas @inf.udec.cl tienen acceso institucional directo. Si la cuenta fue preautorizada previamente, conserva el rol asignado.",
+      udec:
+        "Las cuentas @udec.cl pueden ingresar si ya fueron preautorizadas o solicitar acceso mediante el formulario UdeC de esta página.",
+      external:
+        "Las cuentas externas requieren una habilitación previa del administrador y deben usar exactamente el correo autorizado.",
     },
-    title: "Acceso institucional",
+    title: "Acceso a Performance System",
     subtitle: {
-      lead: "Ingresa con tu cuenta institucional:",
-      direct: "(acceso directo) o",
-      approval: "(previa aprobación).",
+      inf:
+        "@inf.udec.cl: acceso institucional directo.",
+      udec:
+        "@udec.cl: acceso previamente autorizado o mediante solicitud UdeC.",
+      external:
+        "Correo externo: acceso sólo si fue preautorizado por el administrador.",
     },
     google: {
       redirecting: "Redirigiendo a Google...",
       continue: "Continuar con Google",
-      hintLead:
-        "Se utilizará tu cuenta institucional para autenticarte de forma segura. Si tu correo pertenece a",
-      hintImmediate: "el acceso es inmediato. Si usas",
-      hintRequest: "primero debes solicitar acceso y esperar la aprobación.",
+      hint:
+        "Google autentica tu identidad. Performance System autoriza el acceso según el correo exacto y el estado de tu cuenta.",
     },
-    accessRequestDivider: "Solicitud de acceso (correo @udec.cl)",
+    accessRequestDivider: "Solicitud de acceso UdeC",
     fields: {
       fullName: "Nombre completo",
       fullNamePlaceholder: "Nombre Apellido",
@@ -252,6 +263,8 @@ const es = {
         "Ingresa un correo institucional UdeC válido para el profesor.",
     },
     request: {
+      scope:
+        "Este formulario público es sólo para cuentas @udec.cl. Las cuentas externas deben ser habilitadas previamente por el administrador.",
       submit: "Enviar solicitud de acceso",
       submitting: "Enviando solicitud...",
       success:
@@ -285,7 +298,9 @@ const es = {
       missingIdToken:
         "No fue posible validar tu identidad con Google.",
       externalDomain:
-        "Este correo no pertenece a un dominio institucional permitido.",
+        "Esta dirección no está habilitada para ingresar.",
+      externalAccessRequired:
+        "Esta dirección no está habilitada. El acceso externo requiere una invitación o autorización previa del administrador.",
       accessRequired:
         "Tu correo necesita una solicitud de acceso antes de poder ingresar.",
       accessPending:
@@ -532,6 +547,13 @@ const es = {
       nodeLoadError:
         "No fue posible consultar los nodos disponibles para selección avanzada.",
       nodeRetry: "Reintentar nodos",
+      availabilityChecking:
+        "Comprobando disponibilidad del entorno de medición…",
+      availabilityReady:
+        "Entorno de medición disponible para aceptar nuevas ejecuciones.",
+      availabilityUnavailable:
+        "No hay un nodo de medición operativo en este momento. Inténtalo nuevamente más tarde o contacta al responsable del sistema.",
+      availabilityRetry: "Reintentar disponibilidad",
       noNodes:
         "No hay nodos disponibles para una nueva selección PINNED. Puedes volver a AUTO.",
       nodeLabel: "Nodo de medición",
@@ -585,6 +607,8 @@ const es = {
       },
       sectionHelp:
         "Selecciona el tipo de entrada que mejor representa el algoritmo que quieres analizar. Performance System utilizará el benchmark asociado para generar los distintos puntos de medición.",
+      policyNeutral:
+        "Selecciona un benchmark para cargar los límites operacionales aplicables.",
       maxInput: "Tamaño máximo de entrada",
       repetitionsPerPoint: "Repeticiones por punto de medición",
       decreaseRepetitions: "Disminuir repeticiones",
@@ -797,6 +821,8 @@ const es = {
             "Espera mientras se carga la política de medición.",
           measurementPolicyUnavailable:
             "La política de medición no está disponible. Recarga la página o inténtalo nuevamente.",
+          measurementUnavailable:
+            "No hay un nodo de medición disponible para aceptar una nueva ejecución. Reintenta la disponibilidad antes de continuar.",
         },
         review: "Revisar y ejecutar",
         clear: "Limpiar configuración",
@@ -1077,6 +1103,8 @@ const es = {
           "Tu cuenta no tiene permisos para registrar este análisis.",
         submitTooLarge:
           "El archivo enviado supera el tamaño permitido por el servidor.",
+        submitMeasurementUnavailable:
+          "El entorno de medición no está disponible en este momento. Tu análisis no fue registrado. Inténtalo nuevamente más tarde o contacta al responsable del sistema.",
         submitGeneric:
           "No fue posible registrar el análisis en el servidor. Inténtalo nuevamente.",
         resultsDestination:
@@ -3376,6 +3404,32 @@ const es = {
   },
 
   adminUsers: {
+    preauthorize: {
+      title: "Preautorizar usuario",
+      description:
+        "Habilita previamente una identidad para que pueda ingresar con Google. Puede ser una cuenta @inf.udec.cl, @udec.cl o una cuenta externa.",
+      open: "Preautorizar usuario",
+      close: "Cerrar",
+      fullName: "Nombre completo",
+      email: "Correo exacto",
+      role: "Rol inicial",
+      submit: "Crear preautorización",
+      submitting: "Creando…",
+      help:
+        "Para cuentas externas, el correo debe corresponder exactamente a una cuenta que pueda autenticarse con Google. La preautorización no crea una contraseña ni vincula la identidad hasta el primer inicio de sesión.",
+      success:
+        "Usuario preautorizado correctamente. Ya puede ingresar con Google usando ese correo exacto.",
+      validationRequired:
+        "Completa el nombre y el correo antes de continuar.",
+      emailExists:
+        "Ese correo ya existe. Gestiona el rol o el acceso desde el usuario existente.",
+      emailConflict:
+        "Existe un conflicto de normalización para ese correo. Revisa los usuarios existentes antes de continuar.",
+      forbidden:
+        "Sólo un administrador puede preautorizar usuarios.",
+      error:
+        "No fue posible crear la preautorización. Revisa los datos e inténtalo nuevamente.",
+    },
     header: {
       eyebrow: "Administración",
       title: "Usuarios",
@@ -3708,6 +3762,29 @@ const es = {
         "Última sesión",
       lastActivity:
         "Última ejecución",
+    },
+    accessChange: {
+      title: "Gestión de acceso",
+      description:
+        "Revoca o reactiva el acceso global sin eliminar la cuenta ni su historial.",
+      activeDescription:
+        "La cuenta está activa. Al revocar el acceso, sus sesiones activas se invalidarán.",
+      inactiveDescription:
+        "La cuenta está inactiva. Reactivarla permitirá un nuevo inicio de sesión sin recuperar sesiones anteriores.",
+      revokeAction: "Revocar acceso",
+      reactivateAction: "Reactivar acceso",
+      revokeModalTitle:
+        "Confirmar revocación de acceso",
+      reactivateModalTitle:
+        "Confirmar reactivación de acceso",
+      revokeDescription:
+        "Se revocará el acceso de {{name}}. Sus sesiones activas se cerrarán, pero su identidad y su historial se conservarán.",
+      reactivateDescription:
+        "Se reactivará el acceso de {{name}}. Deberá iniciar sesión nuevamente con Google.",
+      pendingRequestError:
+        "Este usuario tiene una solicitud UdeC pendiente. Resuélvela desde Solicitudes de acceso antes de reactivar la cuenta.",
+      error:
+        "No fue posible actualizar el acceso del usuario.",
     },
     roleChange: {
       title: "Gestión de rol",
@@ -4216,6 +4293,31 @@ const es = {
           text:
             "Las fuentes .c usan gcc, las fuentes .cpp usan g++ y un mismo ZIP puede contener ambos lenguajes.",
         },
+        operational: {
+          auto: {
+            title: "AUTO es la opción recomendada",
+            text:
+              "AUTO selecciona un nodo de medición elegible manteniendo una única medición física activa. PINNED es una opción avanzada para fijar explícitamente un nodo; no se usa para elegir el hardware más potente.",
+          },
+          policy: {
+            title: "La policy define el rango ejecutable",
+            text:
+              "Benchmark y perfil determinan mínimos, valor inicial, rango recomendado, máximo operacional, paso y timeout. La interfaz orienta, pero el backend vuelve a validar la configuración antes de aceptar la ejecución.",
+          },
+          availability: {
+            title: "Ocupado no significa fuera de servicio",
+            text:
+              "Si existe un nodo operacional pero está ocupado, el trabajo puede aceptarse y esperar en la cola FIFO. Si no existe ningún nodo elegible disponible, el sistema bloquea nuevas mediciones físicas hasta que el entorno se recupere.",
+          },
+        },
+        academic: {
+          title: "Curso, análisis personal y protocolos",
+          text:
+            "Un estudiante puede asociar el experimento a un curso activo o elegir explícitamente un análisis personal. Con un único curso, ese contexto se propone por defecto sin eliminar la opción personal.",
+          protocol:
+            "Los protocolos publicados por un docente preparan una configuración académica reutilizable. El análisis sigue siendo editable y la policy operacional vigente se valida al crear, actualizar, publicar y ejecutar.",
+          protocolCta: "Abrir Protocolos",
+        },
         noLinking: {
           title: "El ZIP no es un proyecto multiarchivo",
           text:
@@ -4232,7 +4334,7 @@ const es = {
             sources:
               "El resumen conserva los nombres de ambas implementaciones.",
             ready:
-              "Benchmark, tamaños, repeticiones y entorno quedan visibles antes de ejecutar.",
+              "Benchmark, policy operacional, contexto académico, modo de medición y disponibilidad quedan visibles antes de ejecutar.",
           },
         },
         mixedExecutions: {
@@ -4455,6 +4557,13 @@ const es = {
           students:
             "La lista permite abrir la ficha y el último resultado disponible.",
         },
+        protocols: {
+          title: "Protocolos experimentales del curso",
+          text:
+            "El docente puede crear, editar, publicar y desactivar configuraciones reutilizables para orientar los análisis del curso. Un protocolo no queda ligado a un nodo concreto.",
+          policy:
+            "El tamaño de entrada se mantiene alineado con la policy AUTO vigente del benchmark y perfil seleccionados; si esa policy no está disponible, se conservan los protocolos existentes pero se bloquea crear o guardar una configuración inválida.",
+        },
         guardrail:
           "Son señales operativas para revisar casos, sin calificar ni comparar estudiantes. No representan rankings ni puntuaciones.",
         cta: "Abrir Supervisión",
@@ -4463,7 +4572,7 @@ const es = {
         kicker: "Siguiente paso",
         title: "Conserva el contexto junto a cada medición",
         description:
-          "Prepara fuentes autónomas, verifica el resumen antes de ejecutar y vuelve al historial para interpretar o comparar resultados bajo condiciones explícitas.",
+          "Prepara fuentes autónomas, revisa policy, disponibilidad y contexto académico antes de ejecutar, y vuelve al historial para interpretar o comparar resultados bajo condiciones explícitas.",
         newAnalysis: "Ir a Nuevo análisis",
         history: "Abrir Historial",
       },

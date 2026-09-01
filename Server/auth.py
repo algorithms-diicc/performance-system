@@ -10,6 +10,10 @@ from flask import request
 
 from dotenv import load_dotenv
 from .db_connection import get_connection  # función para abrir conexión a PostgreSQL
+from .webapp.services.account_identity_service import (
+    account_email_domain,
+    normalize_account_email,
+)
 
 
 # =========================
@@ -177,143 +181,260 @@ def decode_id_token(id_token: str):
 
 
 def get_or_create_user_from_claims(claims: dict):
-    """
-    A partir del id_token (claims), busca o crea el usuario en la BD.
+    # Google autentica la identidad. PostgreSQL autoriza el acceso.
+    raw_email = (
+        claims.get("email")
+        or claims.get("preferred_username")
+    )
+    name = str(
+        claims.get("name") or "Sin nombre"
+    ).strip()[:100] or "Sin nombre"
+    subject = str(
+        claims.get("sub") or ""
+    ).strip()
 
-    Reglas de negocio:
-    - @inf.udec.cl:
-        - Si no existe el usuario -> se crea con rol Student e is_active = TRUE.
-        - Si existe y is_active = TRUE -> se permite login.
-        - Si existe y is_active = FALSE -> se rechaza (usuario deshabilitado por admin).
-    - @udec.cl:
-        - NO se crea usuario aquí.
-        - Si no existe usuario -> se rechaza login (debe solicitar acceso con el formulario).
-        - Si existe pero is_active = FALSE -> se rechaza login (solicitud pendiente o rechazada).
-        - Si existe y is_active = TRUE -> se permite login.
-    - Otros dominios -> se rechaza.
-    """
-    email = claims.get("email") or claims.get("preferred_username")
-    name = claims.get("name", "Sin nombre")
-    subject = claims.get("sub")  # identificador único del usuario en Google
+    try:
+        email = normalize_account_email(
+            raw_email
+        )
+    except ValueError:
+        raise ValueError(
+            "El token no contiene un email válido."
+        )
 
-    if not email:
-        raise ValueError("El token no contiene un email válido")
+    if not subject:
+        raise ValueError(
+            "El token no contiene una identidad Google válida."
+        )
 
-    domain = email.split("@")[-1]
+    domain = account_email_domain(email)
 
     conn = get_connection()
     cur = conn.cursor()
 
-    # Buscar usuario por email
-    cur.execute("SELECT * FROM users WHERE email = %s;", (email,))
-    user = cur.fetchone()
+    try:
+        # Compatibilidad con filas históricas: lookup case-insensitive.
+        cur.execute(
+            """
+            SELECT *
+            FROM users
+            WHERE LOWER(email) = %s
+            ORDER BY id
+            LIMIT 2;
+            """,
+            (email,),
+        )
+        user = cur.fetchone()
+        duplicate = cur.fetchone()
 
-    if domain == "inf.udec.cl":
-        # Caso 1: alumno de INF
-        if user is None:
-            # Asegurar rol Student
-            cur.execute("SELECT id FROM roles WHERE name = %s;", ("Student",))
-            role = cur.fetchone()
-            if role is None:
+        if duplicate is not None:
+            raise ValueError(
+                "Existe un conflicto de normalización para este correo. "
+                "Contacta al administrador."
+            )
+
+        if domain == "inf.udec.cl":
+            # Acceso INF directo. Si existe una preautorización Teacher,
+            # se conserva el rol existente.
+            if user is None:
                 cur.execute(
-                    "INSERT INTO roles (name, description) VALUES (%s, %s) RETURNING id;",
-                    ("Student", "Rol estudiante por defecto"),
+                    "SELECT id FROM roles WHERE name = %s;",
+                    ("Student",),
                 )
                 role = cur.fetchone()
 
-            if role is None:
-                conn.close()
-                raise RuntimeError("No se pudo obtener/crear el rol 'Student'")
+                if role is None:
+                    cur.execute(
+                        """
+                        INSERT INTO roles (name, description)
+                        VALUES (%s, %s)
+                        RETURNING id;
+                        """,
+                        (
+                            "Student",
+                            "Rol estudiante por defecto",
+                        ),
+                    )
+                    role = cur.fetchone()
 
-            role_id = role["id"]
+                if role is None:
+                    raise RuntimeError(
+                        "No se pudo obtener/crear el rol 'Student'."
+                    )
 
-            # Crear usuario activo
+                cur.execute(
+                    """
+                    INSERT INTO users (
+                      full_name,
+                      email,
+                      role_id,
+                      is_active,
+                      created_at
+                    )
+                    VALUES (%s, %s, %s, TRUE, NOW())
+                    RETURNING *;
+                    """,
+                    (
+                        name,
+                        email,
+                        role["id"],
+                    ),
+                )
+                user = cur.fetchone()
+
+            elif not user.get("is_active"):
+                raise ValueError(
+                    "Tu cuenta institucional ha sido deshabilitada. "
+                    "Contacta al administrador."
+                )
+
+        elif domain == "udec.cl":
+            # UdeC exacto: preautorizado o solicitud/aprobación.
+            if user is None:
+                raise ValueError(
+                    "No existe una cuenta registrada para este correo. "
+                    "Debes solicitar acceso con el formulario UdeC "
+                    "de la página de login."
+                )
+
+            if not user.get("is_active"):
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM access_requests
+                    WHERE user_id = %s
+                      AND status = 'PENDING'
+                    ORDER BY id DESC
+                    LIMIT 1;
+                    """,
+                    (user["id"],),
+                )
+                pending = cur.fetchone()
+
+                if pending is not None:
+                    raise ValueError(
+                        "Tu cuenta aún no ha sido aprobada por el profesor. "
+                        "Espera la confirmación para poder ingresar."
+                    )
+
+                raise ValueError(
+                    "Tu cuenta ha sido deshabilitada. "
+                    "Contacta al administrador."
+                )
+
+        else:
+            # Externo: sólo correo exacto ya preautorizado y activo.
+            if user is None:
+                raise ValueError(
+                    "Esta dirección no está habilitada. "
+                    "El acceso externo requiere una invitación previa "
+                    "del administrador."
+                )
+
+            if not user.get("is_active"):
+                raise ValueError(
+                    "Tu cuenta ha sido deshabilitada. "
+                    "Contacta al administrador."
+                )
+
+        user_id = user["id"]
+
+        # Nunca mover silenciosamente un provider_subject entre users.
+        cur.execute(
+            """
+            SELECT *
+            FROM auth_identities
+            WHERE provider = %s
+              AND provider_subject = %s;
+            """,
+            (PROVIDER_NAME, subject),
+        )
+        identity = cur.fetchone()
+
+        if identity is not None:
+            if int(identity["user_id"]) != int(user_id):
+                raise ValueError(
+                    "No fue posible vincular esta identidad de Google "
+                    "con la cuenta autorizada."
+                )
+
             cur.execute(
                 """
-                INSERT INTO users (full_name, email, role_id, is_active, created_at)
-                VALUES (%s, %s, %s, TRUE, NOW())
-                RETURNING *;
+                UPDATE auth_identities
+                SET last_used_at = NOW()
+                WHERE id = %s;
                 """,
-                (name, email, role_id),
+                (identity["id"],),
             )
-            user = cur.fetchone()
+
         else:
-            # Usuario INF ya existía: si está desactivado, no puede entrar
-            if not user.get("is_active"):
-                conn.close()
-                raise ValueError("Tu cuenta institucional ha sido deshabilitada. Contacta al administrador.")
+            # Tampoco adjuntar un segundo subject distinto a un user
+            # que ya tiene identidad Google vinculada.
+            cur.execute(
+                """
+                SELECT id, provider_subject
+                FROM auth_identities
+                WHERE provider = %s
+                  AND user_id = %s
+                ORDER BY id
+                LIMIT 1;
+                """,
+                (PROVIDER_NAME, user_id),
+            )
+            existing_identity = cur.fetchone()
 
-    elif domain == "udec.cl":
-        # Caso 2: usuario de otra carrera / UdeC
-        # Aquí NO se crean usuarios. Deben existir previamente tras enviar formulario.
-        if user is None:
-            conn.close()
-            raise ValueError(
-                "No existe una cuenta registrada para este correo. "
-                "Debes solicitar acceso con el formulario de la página de login."
+            if (
+                existing_identity is not None
+                and str(
+                    existing_identity.get(
+                        "provider_subject"
+                    )
+                    or ""
+                ) != subject
+            ):
+                raise ValueError(
+                    "No fue posible vincular esta identidad de Google "
+                    "con la cuenta autorizada."
+                )
+
+            cur.execute(
+                """
+                INSERT INTO auth_identities (
+                  user_id,
+                  provider,
+                  provider_subject,
+                  email_verified,
+                  created_at,
+                  last_used_at
+                )
+                VALUES (%s, %s, %s, TRUE, NOW(), NOW());
+                """,
+                (
+                    user_id,
+                    PROVIDER_NAME,
+                    subject,
+                ),
             )
 
-        if not user.get("is_active"):
-            conn.close()
-            raise ValueError(
-                "Tu cuenta aún no ha sido aprobada por el profesor. "
-                "Espera el correo de confirmación para poder ingresar."
-            )
-
-        # Si existe y está activa, seguimos y creamos/actualizamos la identidad externa
-
-    else:
-        conn.close()
-        raise ValueError("Correo no pertenece a un dominio permitido")
-
-    # En este punto user existe y está activo
-    user_id = user["id"]
-
-    # 2) Registrar/actualizar identidad externa (Google OAuth)
-    cur.execute(
-        """
-        SELECT * FROM auth_identities
-        WHERE provider = %s AND provider_subject = %s;
-        """,
-        (PROVIDER_NAME, subject),
-    )
-    identity = cur.fetchone()
-
-    if identity is None:
         cur.execute(
             """
-            INSERT INTO auth_identities
-            (user_id, provider, provider_subject, email_verified, created_at, last_used_at)
-            VALUES (%s, %s, %s, TRUE, NOW(), NOW());
-            """,
-            (user_id, PROVIDER_NAME, subject),
-        )
-    else:
-        cur.execute(
-            """
-            UPDATE auth_identities
-            SET last_used_at = NOW()
+            UPDATE users
+            SET last_login = NOW()
             WHERE id = %s;
             """,
-            (identity["id"],),
+            (user_id,),
         )
 
-    # 3) Actualizar last_login
-    cur.execute(
-        """
-        UPDATE users
-        SET last_login = NOW()
-        WHERE id = %s;
-        """,
-        (user_id,),
-    )
+        conn.commit()
+        return user
 
-    conn.commit()
-    cur.close()
-    conn.close()
+    except Exception:
+        conn.rollback()
+        raise
 
-    return user
-
+    finally:
+        cur.close()
+        conn.close()
 
 def create_session_for_user(user_id: int, response):
     """

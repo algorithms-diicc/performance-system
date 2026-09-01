@@ -11,19 +11,62 @@ import {
   teacherApi,
   teacherRequestErrorMessage,
 } from "./teacherApi";
+import {
+  buildMeasurementPolicyMatrix,
+  resolveMeasurementPolicy,
+} from "./RenderForm/measurementPolicyModel";
 
 import "./TeacherProtocolsPanel.css";
 
-const EMPTY_FORM = {
+const BASE_EMPTY_FORM = {
   title: "",
   objective: "",
   instructions: "",
   benchmark: "LCS",
-  inputSize: 1000,
+  inputSize: "",
   executionProfile: "rapido",
   samples: 10,
   dataType: "",
 };
+
+function taskIdFromBenchmark(benchmark) {
+  const normalized =
+    String(benchmark || "")
+      .trim()
+      .toLowerCase();
+
+  return ["lcs", "camm", "size"].includes(
+    normalized
+  )
+    ? normalized
+    : "";
+}
+
+function policyForForm(
+  matrix,
+  benchmark,
+  executionProfile
+) {
+  return resolveMeasurementPolicy(
+    matrix,
+    taskIdFromBenchmark(benchmark),
+    executionProfile
+  );
+}
+
+function emptyFormFromPolicy(matrix) {
+  const policy = policyForForm(
+    matrix,
+    "LCS",
+    "rapido"
+  );
+
+  return {
+    ...BASE_EMPTY_FORM,
+    inputSize:
+      policy?.defaultInput ?? "",
+  };
+}
 
 function profileSamples(profile, current) {
   if (profile === "rapido") return 10;
@@ -38,7 +81,7 @@ function formFromProtocol(protocol) {
     objective: protocol?.objective || "",
     instructions: protocol?.instructions || "",
     benchmark: protocol?.benchmark || "LCS",
-    inputSize: protocol?.inputSize ?? 1000,
+    inputSize: protocol?.inputSize ?? "",
     executionProfile: protocol?.executionProfile || "rapido",
     samples: protocol?.samples ?? 10,
     dataType: protocol?.dataType || "",
@@ -62,7 +105,19 @@ export default function TeacherProtocolsPanel({
   const [reloadToken, setReloadToken] = useState(0);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState(BASE_EMPTY_FORM);
+  const [
+    measurementPolicyMatrix,
+    setMeasurementPolicyMatrix,
+  ] = useState(null);
+  const [
+    measurementPolicyLoading,
+    setMeasurementPolicyLoading,
+  ] = useState(true);
+  const [
+    measurementPolicyError,
+    setMeasurementPolicyError,
+  ] = useState(null);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState(null);
   const [actionId, setActionId] = useState(null);
@@ -86,11 +141,80 @@ export default function TeacherProtocolsPanel({
     }
   }, [courseId]);
 
+  const loadMeasurementPolicies =
+    useCallback(async (signal) => {
+      try {
+        setMeasurementPolicyLoading(
+          true
+        );
+        setMeasurementPolicyError(
+          null
+        );
+
+        const data = await teacherApi(
+          "/api/measurement/policies",
+          { signal }
+        );
+
+        const matrix =
+          buildMeasurementPolicyMatrix(
+            data
+          );
+
+        if (!matrix) {
+          const invalidPolicyError =
+            new Error(
+              "Invalid AUTO measurement policy matrix"
+            );
+          invalidPolicyError.code =
+            "MEASUREMENT_POLICY_UNAVAILABLE";
+          throw invalidPolicyError;
+        }
+
+        setMeasurementPolicyMatrix(
+          matrix
+        );
+      } catch (error) {
+        if (
+          error?.name === "AbortError"
+        ) {
+          return;
+        }
+
+        setMeasurementPolicyMatrix(
+          null
+        );
+        setMeasurementPolicyError(
+          error
+        );
+      } finally {
+        if (!signal?.aborted) {
+          setMeasurementPolicyLoading(
+            false
+          );
+        }
+      }
+    }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     loadProtocols(controller.signal);
     return () => controller.abort();
   }, [loadProtocols, reloadToken]);
+
+  useEffect(() => {
+    const controller =
+      new AbortController();
+
+    loadMeasurementPolicies(
+      controller.signal
+    );
+
+    return () =>
+      controller.abort();
+  }, [
+    loadMeasurementPolicies,
+  ]);
 
   const loadErrorMessage = useMemo(
     () => loadError
@@ -100,6 +224,33 @@ export default function TeacherProtocolsPanel({
       : "",
     [loadError, t]
   );
+
+  const measurementPolicyErrorMessage =
+    useMemo(
+      () =>
+        measurementPolicyError
+          ? teacherRequestErrorMessage(
+              measurementPolicyError,
+              t,
+              {
+                fallbackKey:
+                  "protocols.teacher.errors.policy",
+                codeKeys: {
+                  MEASUREMENT_POLICY_UNAVAILABLE:
+                    "protocols.teacher.errors.policy",
+                },
+                statusKeys: {
+                  503:
+                    "protocols.teacher.errors.policy",
+                },
+              }
+            )
+          : "",
+      [
+        measurementPolicyError,
+        t,
+      ]
+    );
 
   const formErrorMessage = useMemo(
     () => formError
@@ -120,8 +271,16 @@ export default function TeacherProtocolsPanel({
   );
 
   const openCreate = () => {
+    if (!measurementPolicyMatrix) {
+      return;
+    }
+
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm(
+      emptyFormFromPolicy(
+        measurementPolicyMatrix
+      )
+    );
     setFormError(null);
     setActionError(null);
     setFormOpen(true);
@@ -139,26 +298,69 @@ export default function TeacherProtocolsPanel({
     if (saving) return;
     setFormOpen(false);
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    setForm(BASE_EMPTY_FORM);
     setFormError(null);
   };
 
   const changeForm = (field, value) => {
     setForm((previous) => {
       if (field === "executionProfile") {
+        const nextPolicy =
+          policyForForm(
+            measurementPolicyMatrix,
+            previous.benchmark,
+            value
+          );
+
+        const numericInput =
+          Number(previous.inputSize);
+
+        const inputSize =
+          nextPolicy
+          && (
+            !Number.isFinite(
+              numericInput
+            )
+            || numericInput
+              < nextPolicy.minimumInput
+            || numericInput
+              > nextPolicy.hardMaxInput
+          )
+            ? nextPolicy.defaultInput
+            : previous.inputSize;
+
         return {
           ...previous,
           executionProfile: value,
-          samples: profileSamples(value, previous.samples),
+          samples:
+            profileSamples(
+              value,
+              previous.samples
+            ),
+          inputSize,
         };
       }
+
       if (field === "benchmark") {
+        const nextPolicy =
+          policyForForm(
+            measurementPolicyMatrix,
+            value,
+            previous.executionProfile
+          );
+
         return {
           ...previous,
           benchmark: value,
+          inputSize:
+            nextPolicy?.defaultInput
+            ?? "",
           dataType:
             value === "CAMM"
-              ? (previous.dataType || "cammr")
+              ? (
+                  previous.dataType
+                  || "cammr"
+                )
               : "",
         };
       }
@@ -194,7 +396,7 @@ export default function TeacherProtocolsPanel({
 
       setFormOpen(false);
       setEditingId(null);
-      setForm(EMPTY_FORM);
+      setForm(BASE_EMPTY_FORM);
       setReloadToken((value) => value + 1);
     } catch (error) {
       setFormError(error);
@@ -202,6 +404,36 @@ export default function TeacherProtocolsPanel({
       setSaving(false);
     }
   };
+
+  const currentMeasurementPolicy =
+    useMemo(
+      () =>
+        policyForForm(
+          measurementPolicyMatrix,
+          form.benchmark,
+          form.executionProfile
+        ),
+      [
+        measurementPolicyMatrix,
+        form.benchmark,
+        form.executionProfile,
+      ]
+    );
+
+  const numericInputSize =
+    Number(form.inputSize);
+
+  const inputSizeWithinPolicy =
+    Boolean(
+      currentMeasurementPolicy
+    )
+    && Number.isFinite(
+      numericInputSize
+    )
+    && numericInputSize
+      >= currentMeasurementPolicy.minimumInput
+    && numericInputSize
+      <= currentMeasurementPolicy.hardMaxInput;
 
   const runAction = async (protocol, action) => {
     try {
@@ -235,7 +467,12 @@ export default function TeacherProtocolsPanel({
         <button
           type="button"
           className="btn teacher-primary-button"
-          disabled={!courseActive || saving}
+          disabled={
+            !courseActive
+            || saving
+            || measurementPolicyLoading
+            || !measurementPolicyMatrix
+          }
           title={
             courseActive
               ? ""
@@ -248,6 +485,26 @@ export default function TeacherProtocolsPanel({
             : t("protocols.actions.create")}
         </button>
       </div>
+
+      {measurementPolicyLoading && (
+        <p
+          className="teacher-protocols-note"
+          role="status"
+        >
+          {t(
+            "protocols.teacher.policyLoading"
+          )}
+        </p>
+      )}
+
+      {measurementPolicyErrorMessage && (
+        <p
+          className="teacher-protocols-note"
+          role="alert"
+        >
+          {measurementPolicyErrorMessage}
+        </p>
+      )}
 
       {!courseActive && (
         <p className="teacher-protocols-note" role="note">
@@ -339,7 +596,20 @@ export default function TeacherProtocolsPanel({
               <input
                 className="form-control"
                 type="number"
-                min="1"
+                min={
+                  currentMeasurementPolicy
+                    ?.minimumInput
+                  ?? 1
+                }
+                max={
+                  currentMeasurementPolicy
+                    ?.hardMaxInput
+                }
+                step={
+                  currentMeasurementPolicy
+                    ?.inputStep
+                  ?? 1
+                }
                 value={form.inputSize}
                 onChange={(event) =>
                   changeForm("inputSize", event.target.value)
@@ -347,6 +617,27 @@ export default function TeacherProtocolsPanel({
                 required
               />
             </label>
+
+            {currentMeasurementPolicy && (
+              <p
+                className="teacher-protocols-note teacher-protocol-span-2"
+                role="note"
+              >
+                {t(
+                  "protocols.teacher.policyLimits",
+                  {
+                    min:
+                      currentMeasurementPolicy.minimumInput,
+                    defaultValue:
+                      currentMeasurementPolicy.defaultInput,
+                    recommended:
+                      currentMeasurementPolicy.recommendedMaxInput,
+                    max:
+                      currentMeasurementPolicy.hardMaxInput,
+                  }
+                )}
+              </p>
+            )}
 
             <label className="teacher-protocol-field">
               <span>{t("protocols.fields.profile")}</span>
@@ -409,7 +700,10 @@ export default function TeacherProtocolsPanel({
             <button
               type="submit"
               className="btn teacher-primary-button"
-              disabled={saving}
+              disabled={
+                saving
+                || !inputSizeWithinPolicy
+              }
             >
               {saving
                 ? t("protocols.actions.saving")

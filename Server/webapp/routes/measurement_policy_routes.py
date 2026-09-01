@@ -9,6 +9,7 @@ from ..services.hardware_profile_service import (
 )
 from ..services.measurement_node_selector_service import (
     MeasurementNodeSelectionError,
+    is_new_measurement_target_available,
     list_pinnable_measurement_nodes,
     resolve_pinned_measurement_node,
 )
@@ -108,6 +109,10 @@ def get_measurement_nodes():
 @handle_api_errors
 @login_required
 def get_measurement_policies():
+    role_name = get_user_role_name(
+        g.current_user
+    )
+
     requested_node_key = (
         request.args.get("nodeKey")
         or request.args.get("node_key")
@@ -122,9 +127,7 @@ def get_measurement_policies():
         try:
             target = resolve_pinned_measurement_node(
                 requested_node_key,
-                current_role_name=get_user_role_name(
-                    g.current_user
-                ),
+                current_role_name=role_name,
             )
         except MeasurementNodeSelectionError as exc:
             raise APIError(
@@ -143,10 +146,17 @@ def get_measurement_policies():
                 target
             ),
         }
+        measurement_available = True
 
     else:
         profile_key = (
             configured_measurement_profile_key()
+        )
+        measurement_available = (
+            is_new_measurement_target_available(
+                role_name,
+                "AUTO",
+            )
         )
 
     try:
@@ -163,6 +173,11 @@ def get_measurement_policies():
     return jsonify(
         {
             "environment": environment,
+            "availability": {
+                "available": bool(
+                    measurement_available
+                ),
+            },
             "items": [
                 serialize_measurement_policy(row)
                 for row in rows

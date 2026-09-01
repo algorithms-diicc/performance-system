@@ -132,6 +132,10 @@ function formatHeartbeatAge(
   value,
   unavailable
 ) {
+  if (value === null || value === undefined || value === "") {
+    return unavailable;
+  }
+
   const numeric = Number(value);
 
   if (!Number.isFinite(numeric) || numeric < 0) {

@@ -252,6 +252,33 @@ describe("AdminSystemStatus", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("renders a missing heartbeat age as unavailable instead of 0 s", async () => {
+    const response = payload();
+    response.measurementNodes.items[0] = {
+      ...response.measurementNodes.items[0],
+      lastHeartbeatAt: null,
+      heartbeatAgeSeconds: null,
+    };
+
+    requestJson.mockResolvedValue(response);
+    renderStatus();
+
+    const shenuCard = await screen.findByRole(
+      "article",
+      {
+        name: "Measurement node Shenu",
+      }
+    );
+
+    const heartbeatAgeField = within(shenuCard)
+      .getByText("Heartbeat age")
+      .closest(".admin-system-status__field");
+
+    expect(heartbeatAgeField).toHaveTextContent("Unavailable");
+    expect(heartbeatAgeField).not.toHaveTextContent("0 s");
+  });
+
+
   test("renders DRAINING as the canonical operational state without inventing a DISABLED state", async () => {
     const response = payload();
     response.measurementNodes.items[0] = {

@@ -244,7 +244,7 @@ function RenderFormPage({ currentUser }) {
   const testName = titleState.value;
   const [note, setNote] = useState("");
   const [selectedTaskType, setSelectedTaskType] = useState("");
-  const [inputSize, setInputSize] = useState(1000);
+  const [inputSize, setInputSize] = useState("");
   const [samples, setSamples] = useState(30);
   const [paramErrors, setParamErrors] = useState({
     inputSize: "",
@@ -259,6 +259,14 @@ function RenderFormPage({ currentUser }) {
     useState(true);
   const [measurementPolicyError, setMeasurementPolicyError] =
     useState(false);
+  const [
+    measurementAvailability,
+    setMeasurementAvailability,
+  ] = useState("CHECKING");
+  const [
+    measurementPolicyReloadToken,
+    setMeasurementPolicyReloadToken,
+  ] = useState(0);
 
   const [measurementNodeMode, setMeasurementNodeMode] =
     useState("AUTO");
@@ -297,6 +305,7 @@ function RenderFormPage({ currentUser }) {
   const [courseContextError, setCourseContextError] = useState("");
   const [courseContextReloadToken, setCourseContextReloadToken] =
     useState(0);
+  const coursePersonalExplicitRef = useRef(false);
 
   const [activeProtocol, setActiveProtocol] =
     useState(null);
@@ -385,6 +394,7 @@ function RenderFormPage({ currentUser }) {
         setMeasurementPolicyLoading(true);
         setMeasurementPolicyError(false);
         setMeasurementPolicyMatrix(null);
+        setMeasurementAvailability("CHECKING");
 
         const payload =
           await fetchMeasurementPolicies(
@@ -409,6 +419,12 @@ function RenderFormPage({ currentUser }) {
         setMeasurementPolicyMatrix(
           matrix
         );
+
+        setMeasurementAvailability(
+          payload?.availability?.available === true
+            ? "AVAILABLE"
+            : "UNAVAILABLE"
+        );
       } catch (error) {
         if (cancelled) return;
 
@@ -419,6 +435,7 @@ function RenderFormPage({ currentUser }) {
 
         setMeasurementPolicyMatrix(null);
         setMeasurementPolicyError(true);
+        setMeasurementAvailability("UNKNOWN");
       } finally {
         if (!cancelled) {
           setMeasurementPolicyLoading(false);
@@ -434,6 +451,7 @@ function RenderFormPage({ currentUser }) {
   }, [
     measurementNodeKey,
     measurementNodeMode,
+    measurementPolicyReloadToken,
   ]);
 
   // PINNED es avanzado: AUTO no consulta el inventario de nodos.
@@ -551,6 +569,8 @@ function RenderFormPage({ currentUser }) {
           response.data?.selectionRequired === true;
         const personalAllowed =
           response.data?.personalAllowed === true;
+        const autoSelectedCourseId =
+          response.data?.autoSelectedCourseId ?? null;
 
         setActiveCourses(items);
         setCourseSelectionRequired(requiresSelection);
@@ -566,22 +586,30 @@ function RenderFormPage({ currentUser }) {
               String(course.id) === String(previous)
           );
 
-          if (personalAllowed) {
-            return previousStillExists
-              ? String(previous)
-              : "";
+          if (previousStillExists) {
+            return String(previous);
           }
 
-          if (items.length === 1) {
-            return String(
-              response.data?.autoSelectedCourseId ??
-              items[0].id
-            );
+          if (
+            previous === "" &&
+            coursePersonalExplicitRef.current &&
+            personalAllowed
+          ) {
+            return "";
           }
 
-          return previousStillExists
-            ? String(previous)
-            : "";
+          if (
+            autoSelectedCourseId !== null &&
+            items.some(
+              (course) =>
+                String(course.id) ===
+                String(autoSelectedCourseId)
+            )
+          ) {
+            return String(autoSelectedCourseId);
+          }
+
+          return "";
         });
       } catch (error) {
         if (cancelled) return;
@@ -1408,6 +1436,12 @@ function RenderFormPage({ currentUser }) {
       )
     );
 
+  const measurementUnavailable =
+    measurementNodeMode === "AUTO" &&
+    !measurementPolicyLoading &&
+    !measurementPolicyError &&
+    measurementAvailability === "UNAVAILABLE";
+
   // Un borrador antiguo puede no traer inputSize. Una vez disponible
   // la policy se aplica su default; valores históricos explícitos se
   // preservan para que la validación pueda mostrarlos si ya no son válidos.
@@ -1635,6 +1669,9 @@ function RenderFormPage({ currentUser }) {
       }
     }
 
+    coursePersonalExplicitRef.current =
+      nextCourseId === "";
+
     setSelectedCourseId(
       nextCourseId
     );
@@ -1667,6 +1704,9 @@ function RenderFormPage({ currentUser }) {
     );
     setMeasurementPolicyError(
       false
+    );
+    setMeasurementAvailability(
+      "CHECKING"
     );
     setMeasurementNodesError(
       false
@@ -1774,7 +1814,7 @@ function RenderFormPage({ currentUser }) {
     setTitleState(manualSubmissionTitle(""));
     setNote("");
     setSelectedTaskType("");
-    setInputSize(1000);
+    setInputSize("");
     setSamples(30);
     setParamErrors({ inputSize: "", samples: "" });
     setDataType("");
@@ -1788,6 +1828,9 @@ function RenderFormPage({ currentUser }) {
     setMeasurementPolicyMatrix(null);
     setMeasurementPolicyError(false);
     setMeasurementPolicyLoading(true);
+    setMeasurementPolicyReloadToken(
+      (value) => value + 1
+    );
 
     setDraftRestored(false);
     setActiveProtocol(null);
@@ -1884,6 +1927,15 @@ function RenderFormPage({ currentUser }) {
       bodyFormData.append(
         "course_id",
         selectedCourseId
+      );
+      bodyFormData.append(
+        "course_mode",
+        "COURSE"
+      );
+    } else {
+      bodyFormData.append(
+        "course_mode",
+        "PERSONAL"
       );
     }
 
@@ -2012,9 +2064,14 @@ function RenderFormPage({ currentUser }) {
         console.error("❌ Error al enviar archivo:", error);
 
         const status = error?.response?.status;
+        const errorCode = String(
+          error?.response?.data?.error?.code || ""
+        ).trim().toUpperCase();
 
         const key =
-          !error?.response
+          errorCode === "MEASUREMENT_UNAVAILABLE"
+            ? "renderForm.page.errors.submitMeasurementUnavailable"
+            : !error?.response
             ? "renderForm.page.errors.submitNetwork"
             : status === 401
             ? "renderForm.page.errors.submitSession"
@@ -2395,6 +2452,7 @@ function RenderFormPage({ currentUser }) {
     measurementNodeKey,
     measurementPolicyLoading,
     measurementPolicyUnavailable,
+    measurementUnavailable,
   });
 
   const isSubmitDisabled =
@@ -2561,6 +2619,7 @@ function RenderFormPage({ currentUser }) {
               measurementNodes={measurementNodes}
               measurementNodesLoading={measurementNodesLoading}
               measurementNodesError={measurementNodesError}
+              measurementAvailability={measurementAvailability}
               selectedMeasurementNodeKey={measurementNodeKey}
               onMeasurementNodeModeChange={
                 handleMeasurementNodeModeChange
@@ -2570,6 +2629,11 @@ function RenderFormPage({ currentUser }) {
               }
               onRetryMeasurementNodes={() =>
                 setMeasurementNodesReloadToken(
+                  (value) => value + 1
+                )
+              }
+              onRetryMeasurementAvailability={() =>
+                setMeasurementPolicyReloadToken(
                   (value) => value + 1
                 )
               }

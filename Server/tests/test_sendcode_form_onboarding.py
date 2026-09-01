@@ -20,6 +20,7 @@ data_processing_stub = ModuleType("Server.webapp.dataProcessing")
 data_processing_stub.graph_results = lambda *_args, **_kwargs: None
 socket_utils_stub = ModuleType("Server.webapp.socketUtils")
 socket_utils_stub.escribir_estado = lambda *_args, **_kwargs: None
+socket_utils_stub.slave_serve = lambda *_args, **_kwargs: None
 
 with patch.dict(
     sys.modules,
@@ -69,7 +70,13 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
         auth_patch.start()
         self.addCleanup(auth_patch.stop)
 
-    def _post_sendcode(self, note=MISSING, sources=None):
+    def _post_sendcode(
+        self,
+        note=MISSING,
+        sources=None,
+        measurement_available=True,
+        course_mode=MISSING,
+    ):
         source_entries = sources or [
             ("src/main.cpp", "int main() { return 0; }\n")
         ]
@@ -117,6 +124,8 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
         }
         if note is not MISSING:
             form["note"] = note
+        if course_mode is not MISSING:
+            form["course_mode"] = course_mode
 
         queue = []
         create_mock = Mock(side_effect=create_bundle)
@@ -124,11 +133,18 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
         update_status_mock = Mock()
 
         with ExitStack() as stack:
-            stack.enter_context(
+            store_mock = stack.enter_context(
                 patch.object(
                     app_module,
                     "store_and_inspect_zip",
                     return_value=stored_upload,
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    app_module,
+                    "is_new_measurement_target_available",
+                    return_value=measurement_available,
                 )
             )
             stack.enter_context(
@@ -182,12 +198,48 @@ class SendcodeFormOnboardingTests(unittest.TestCase):
 
         return {
             "response": response,
+            "store": store_mock,
             "create": create_mock,
             "remove": remove_mock,
             "update_status": update_status_mock,
             "queue": queue,
             "normalized_notes": observed_normalized_notes,
         }
+
+    def test_unavailable_measurement_environment_rejects_before_upload_storage(self):
+        result = self._post_sendcode(
+            measurement_available=False
+        )
+
+        self.assertEqual(
+            result["response"].status_code,
+            503,
+        )
+        self.assertEqual(
+            result["response"].get_json()["error"]["code"],
+            "MEASUREMENT_UNAVAILABLE",
+        )
+        result["store"].assert_not_called()
+        result["create"].assert_not_called()
+        result["remove"].assert_not_called()
+        result["update_status"].assert_not_called()
+        self.assertEqual(result["queue"], [])
+
+    def test_explicit_course_mode_reaches_transactional_creation(self):
+        result = self._post_sendcode(
+            course_mode="COURSE"
+        )
+
+        self.assertEqual(
+            result["response"].status_code,
+            202,
+        )
+        self.assertEqual(
+            result["create"].call_args.kwargs[
+                "course_mode"
+            ],
+            "COURSE",
+        )
 
     def test_note_absent_keeps_single_transactional_creation(self):
         result = self._post_sendcode()

@@ -70,6 +70,11 @@ from .services.execution_creation_service import (
     InvalidExecutionRequest,
     create_submission_bundle,
 )
+from .services.measurement_node_selector_service import (
+    MeasurementNodeSelectionError,
+    is_new_measurement_target_available,
+    normalize_measurement_node_mode,
+)
 from .services.execution_state_service import mark_failed
 from .services.execution_pipeline_service import (
     execution_result_path,
@@ -426,6 +431,11 @@ def cap_code():
         or request.form.get("courseId")
         or None
     )
+    course_mode = (
+        request.form.get("course_mode")
+        or request.form.get("courseMode")
+        or None
+    )
     protocol_id = (
         request.form.get("protocol_id")
         or request.form.get("protocolId")
@@ -449,6 +459,32 @@ def cap_code():
         )
         or None
     )
+
+    try:
+        normalized_measurement_node_mode = (
+            normalize_measurement_node_mode(
+                measurement_node_mode
+            )
+        )
+        measurement_available = (
+            is_new_measurement_target_available(
+                get_user_role_name(
+                    g.current_user
+                ),
+                normalized_measurement_node_mode,
+                measurement_node_key,
+            )
+        )
+    except MeasurementNodeSelectionError as exc:
+        raise ValidationError(str(exc))
+
+    if not measurement_available:
+        raise APIError(
+            "No hay un nodo de medición disponible para "
+            "aceptar una nueva ejecución en este momento.",
+            status_code=503,
+            code="MEASUREMENT_UNAVAILABLE",
+        )
 
     title = (request.form.get("title") or "").strip()
     if not title:
@@ -486,8 +522,9 @@ def cap_code():
             original_filename=stored_upload.original_filename,
             note=note,
             course_id=course_id,
+            course_mode=course_mode,
             user_role_name=get_user_role_name(g.current_user),
-            measurement_node_mode=measurement_node_mode,
+            measurement_node_mode=normalized_measurement_node_mode,
             measurement_node_key=measurement_node_key,
             protocol_id=protocol_id,
         )

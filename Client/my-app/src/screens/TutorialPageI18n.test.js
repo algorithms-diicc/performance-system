@@ -109,4 +109,47 @@ describe("TutorialPage Iteration 9 i18n", () => {
     expect(screen.getByText("C · gcc · -O3")).toBeInTheDocument();
     expect(screen.getByText("perf · gcc 9.4.0")).toBeInTheDocument();
   });
+
+
+  test("localizes the Final Edition operational and protocol guidance", () => {
+    renderBilingualTutorial();
+
+    expect(
+      screen.getByRole("heading", {
+        name: "AUTO is the recommended option",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /PINNED is an advanced option/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Course experimental protocols/i
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "switch-es",
+      })
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "AUTO es la opción recomendada",
+      })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /PINNED es una opción avanzada/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Protocolos experimentales del curso/i
+      )
+    ).toBeInTheDocument();
+  });
 });

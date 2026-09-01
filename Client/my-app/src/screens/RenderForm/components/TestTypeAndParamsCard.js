@@ -227,6 +227,17 @@ function TestTypeAndParamsCard({
           {t("renderForm.benchmark.sectionHelp")}
         </p>
 
+        {!selectedTaskType && (
+          <p
+            className="param-policy-note"
+            role="status"
+          >
+            {t(
+              "renderForm.benchmark.policyNeutral"
+            )}
+          </p>
+        )}
+
         <div className="test-options">
           {tasks.map((task) => {
             const isSelected = selectedTaskType === task.id;

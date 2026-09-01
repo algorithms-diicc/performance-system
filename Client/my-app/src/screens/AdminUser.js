@@ -224,6 +224,32 @@ const AdminUser = () => {
   ] = useState(0);
 
 
+  const [
+    preauthorizationOpen,
+    setPreauthorizationOpen,
+  ] = useState(false);
+  const [
+    preauthFullName,
+    setPreauthFullName,
+  ] = useState("");
+  const [
+    preauthEmail,
+    setPreauthEmail,
+  ] = useState("");
+  const [
+    preauthRole,
+    setPreauthRole,
+  ] = useState("Student");
+  const [
+    preauthSubmitting,
+    setPreauthSubmitting,
+  ] = useState(false);
+  const [
+    preauthFeedback,
+    setPreauthFeedback,
+  ] = useState(null);
+
+
   const hasFilters =
     search.trim() !== ""
     || role !== "all"
@@ -470,6 +496,133 @@ const AdminUser = () => {
     };
 
 
+  const handlePreauthorizationSubmit =
+    async (event) => {
+      event.preventDefault();
+
+      const fullName =
+        preauthFullName.trim();
+      const email =
+        preauthEmail.trim();
+
+      if (!fullName || !email) {
+        setPreauthFeedback({
+          type: "error",
+          key:
+            "adminUsers.preauthorize.validationRequired",
+        });
+        return;
+      }
+
+      setPreauthSubmitting(true);
+      setPreauthFeedback(null);
+
+      try {
+        const response =
+          await fetch(
+            "/api/admin/users",
+            {
+              method: "POST",
+              credentials:
+                "include",
+              headers: {
+                "Content-Type":
+                  "application/json",
+              },
+              body: JSON.stringify({
+                fullName,
+                email,
+                role:
+                  preauthRole,
+              }),
+            }
+          );
+
+        let payload = null;
+
+        try {
+          payload =
+            await response.json();
+        } catch (_error) {
+          payload = null;
+        }
+
+        if (!response.ok) {
+          const requestError =
+            new Error(
+              `HTTP ${response.status}`
+            );
+
+          requestError.status =
+            response.status;
+          requestError.code =
+            payload?.error?.code
+            || "";
+          requestError.payload =
+            payload;
+
+          throw requestError;
+        }
+
+        setPreauthFullName("");
+        setPreauthEmail("");
+        setPreauthRole("Student");
+        setPreauthFeedback({
+          type: "success",
+          key:
+            "adminUsers.preauthorize.success",
+        });
+
+        setReloadToken(
+          (value) =>
+            value + 1
+        );
+      } catch (err) {
+        const code =
+          String(
+            err?.code
+            || err?.payload
+              ?.error?.code
+            || ""
+          )
+            .trim()
+            .toUpperCase();
+
+        let key =
+          "adminUsers.preauthorize.error";
+
+        if (
+          code
+          === "USER_EMAIL_EXISTS"
+        ) {
+          key =
+            "adminUsers.preauthorize.emailExists";
+        } else if (
+          code
+          === "NORMALIZED_EMAIL_CONFLICT"
+        ) {
+          key =
+            "adminUsers.preauthorize.emailConflict";
+        } else if (
+          Number(err?.status)
+          === 403
+        ) {
+          key =
+            "adminUsers.preauthorize.forbidden";
+        }
+
+        setPreauthFeedback({
+          type: "error",
+          key,
+        });
+      } finally {
+        setPreauthSubmitting(
+          false
+        );
+      }
+    };
+
+
   const goToPreviousPage =
     () => {
       setPage(
@@ -524,6 +677,183 @@ const AdminUser = () => {
 
             </div>
           </header>
+
+
+          <section
+            className="admin-preauthorize-panel"
+            aria-labelledby="admin-preauthorize-title"
+          >
+            <div className="admin-preauthorize-heading">
+              <div>
+                <h2
+                  id="admin-preauthorize-title"
+                  className="admin-preauthorize-title"
+                >
+                  {t(
+                    "adminUsers.preauthorize.title"
+                  )}
+                </h2>
+                <p className="admin-preauthorize-description">
+                  {t(
+                    "adminUsers.preauthorize.description"
+                  )}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="btn admin-preauthorize-toggle"
+                onClick={() => {
+                  setPreauthorizationOpen(
+                    (value) => !value
+                  );
+                  setPreauthFeedback(null);
+                }}
+                aria-expanded={
+                  preauthorizationOpen
+                }
+                aria-controls="admin-preauthorize-form"
+              >
+                {preauthorizationOpen
+                  ? t(
+                      "adminUsers.preauthorize.close"
+                    )
+                  : t(
+                      "adminUsers.preauthorize.open"
+                    )}
+              </button>
+            </div>
+
+            {preauthorizationOpen && (
+              <form
+                id="admin-preauthorize-form"
+                className="admin-preauthorize-form"
+                onSubmit={
+                  handlePreauthorizationSubmit
+                }
+              >
+                <div>
+                  <label
+                    className="form-label app-label-sm"
+                    htmlFor="admin-preauth-name"
+                  >
+                    {t(
+                      "adminUsers.preauthorize.fullName"
+                    )}
+                  </label>
+                  <input
+                    id="admin-preauth-name"
+                    className="form-control"
+                    type="text"
+                    value={preauthFullName}
+                    onChange={(event) =>
+                      setPreauthFullName(
+                        event.target.value
+                      )
+                    }
+                    autoComplete="name"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="form-label app-label-sm"
+                    htmlFor="admin-preauth-email"
+                  >
+                    {t(
+                      "adminUsers.preauthorize.email"
+                    )}
+                  </label>
+                  <input
+                    id="admin-preauth-email"
+                    className="form-control"
+                    type="email"
+                    value={preauthEmail}
+                    onChange={(event) =>
+                      setPreauthEmail(
+                        event.target.value
+                      )
+                    }
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    className="form-label app-label-sm"
+                    htmlFor="admin-preauth-role"
+                  >
+                    {t(
+                      "adminUsers.preauthorize.role"
+                    )}
+                  </label>
+                  <select
+                    id="admin-preauth-role"
+                    className="form-select"
+                    value={preauthRole}
+                    onChange={(event) =>
+                      setPreauthRole(
+                        event.target.value
+                      )
+                    }
+                  >
+                    <option value="Student">
+                      {adminRoleLabel(
+                        "Student",
+                        t
+                      )}
+                    </option>
+                    <option value="Teacher">
+                      {adminRoleLabel(
+                        "Teacher",
+                        t
+                      )}
+                    </option>
+                  </select>
+                </div>
+
+                <div className="admin-preauthorize-actions">
+                  <button
+                    type="submit"
+                    className="btn admin-preauthorize-submit"
+                    disabled={
+                      preauthSubmitting
+                    }
+                  >
+                    {preauthSubmitting
+                      ? t(
+                          "adminUsers.preauthorize.submitting"
+                        )
+                      : t(
+                          "adminUsers.preauthorize.submit"
+                        )}
+                  </button>
+                </div>
+
+                <p className="admin-preauthorize-help">
+                  {t(
+                    "adminUsers.preauthorize.help"
+                  )}
+                </p>
+
+                {preauthFeedback && (
+                  <div
+                    className={`admin-preauthorize-feedback ${
+                      preauthFeedback.type
+                      === "success"
+                        ? "admin-preauthorize-feedback--success"
+                        : "admin-preauthorize-feedback--error"
+                    }`}
+                    role="status"
+                  >
+                    {t(
+                      preauthFeedback.key
+                    )}
+                  </div>
+                )}
+              </form>
+            )}
+          </section>
 
 
           <section

@@ -3,6 +3,13 @@
 from psycopg2.extras import RealDictCursor
 
 from ...db_connection import get_connection
+from .hardware_profile_service import (
+    HardwareProfileError,
+    configured_measurement_profile_key,
+    normalize_policy_benchmark,
+    normalize_policy_execution_profile,
+    resolve_hardware_profile_policy,
+)
 
 
 PROTOCOL_BENCHMARKS = frozenset({"LCS", "CAMM", "SIZE"})
@@ -16,11 +23,6 @@ PROTOCOL_PROFILES = {
     "exhaustive": ("EXHAUSTIVE", 50),
     "personalizado": ("CUSTOM", None),
     "custom": ("CUSTOM", None),
-}
-PROTOCOL_INPUT_LIMITS = {
-    "LCS": (100, 50000),
-    "CAMM": (1000, 150000),
-    "SIZE": (100, 100000),
 }
 MAX_PROTOCOL_TITLE = 150
 MAX_PROTOCOL_OBJECTIVE = 2000
@@ -130,16 +132,13 @@ def normalize_protocol_configuration(data, base=None):
             "benchmark debe ser LCS, CAMM o SIZE."
         )
 
-    input_size = _positive_int(merged.get("inputSize"), "inputSize")
-    minimum, maximum = PROTOCOL_INPUT_LIMITS[benchmark]
-    if input_size < minimum or input_size > maximum:
-        raise InvalidProtocolConfiguration(
-            "inputSize debe estar entre {} y {} para {}.".format(
-                minimum,
-                maximum,
-                benchmark,
-            )
-        )
+    # El protocolo conserva una configuración académica genérica.
+    # Los límites operacionales dependen de HardwareProfilePolicy y se
+    # validan separadamente contra el contrato AUTO vigente.
+    input_size = _positive_int(
+        merged.get("inputSize"),
+        "inputSize",
+    )
 
     raw_profile = str(
         merged.get("executionProfile") or ""
@@ -197,6 +196,139 @@ def normalize_protocol_configuration(data, base=None):
         "execution_profile": execution_profile,
         "samples": samples,
         "data_type": data_type,
+    }
+
+
+def validate_protocol_operational_policy(
+    config,
+    *,
+    conn=None,
+    policy_resolver=None,
+    profile_key_resolver=None,
+):
+    # Valida el protocolo normalizado contra la policy AUTO vigente.
+    # El protocolo no queda ligado a MeasurementNode ni persiste profile_key.
+    if not isinstance(config, dict):
+        raise InvalidProtocolConfiguration(
+            "La configuración normalizada del protocolo es inválida."
+        )
+
+    policy_resolver = (
+        policy_resolver
+        or resolve_hardware_profile_policy
+    )
+    profile_key_resolver = (
+        profile_key_resolver
+        or configured_measurement_profile_key
+    )
+
+    profile_key = profile_key_resolver()
+
+    benchmark = str(
+        config.get("benchmark") or ""
+    ).strip().upper()
+    execution_profile = str(
+        config.get("execution_profile") or ""
+    ).strip().upper()
+    input_size = _positive_int(
+        config.get("input_size"),
+        "inputSize",
+    )
+
+    policy = policy_resolver(
+        profile_key,
+        benchmark,
+        execution_profile,
+        conn=conn,
+    )
+
+    if not isinstance(policy, dict):
+        raise HardwareProfileError(
+            "The active measurement policy is invalid."
+        )
+
+    expected_benchmark = normalize_policy_benchmark(
+        benchmark
+    )
+    expected_profile = (
+        normalize_policy_execution_profile(
+            execution_profile
+        )
+    )
+
+    policy_benchmark = str(
+        policy.get("benchmark") or ""
+    ).strip().upper()
+    policy_profile = str(
+        policy.get("execution_profile") or ""
+    ).strip().upper()
+
+    if (
+        policy_benchmark != expected_benchmark
+        or policy_profile != expected_profile
+    ):
+        raise HardwareProfileError(
+            "The active measurement policy does not match "
+            "the protocol configuration."
+        )
+
+    try:
+        minimum = int(policy["minimum_input"])
+        default = int(policy["default_input"])
+        recommended = int(
+            policy["recommended_max_input"]
+        )
+        hard_max = int(policy["hard_max_input"])
+        input_step = int(policy["input_step"])
+        timeout = int(
+            policy["operational_timeout_seconds"]
+        )
+    except (KeyError, TypeError, ValueError):
+        raise HardwareProfileError(
+            "The active measurement policy is incomplete."
+        )
+
+    if not (
+        minimum > 0
+        and minimum <= default
+        and default <= recommended
+        and recommended <= hard_max
+        and input_step > 0
+        and timeout > 0
+    ):
+        raise HardwareProfileError(
+            "The active measurement policy contains invalid limits."
+        )
+
+    if policy.get("is_active") is False:
+        raise HardwareProfileError(
+            "The measurement policy is not active."
+        )
+
+    if input_size < minimum or input_size > hard_max:
+        raise InvalidProtocolConfiguration(
+            "inputSize debe estar entre {} y {} para {} "
+            "con el perfil {} bajo la policy AUTO vigente.".format(
+                minimum,
+                hard_max,
+                benchmark,
+                execution_profile,
+            )
+        )
+
+    return {
+        "profile_key": profile_key,
+        "benchmark": expected_benchmark,
+        "execution_profile": expected_profile,
+        "minimum_input": minimum,
+        "default_input": default,
+        "recommended_max_input": recommended,
+        "hard_max_input": hard_max,
+        "input_step": input_step,
+        "operational_timeout_seconds": timeout,
+        "above_recommended": (
+            input_size > recommended
+        ),
     }
 
 

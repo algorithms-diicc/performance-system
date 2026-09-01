@@ -23,11 +23,32 @@ jest.mock("./components/AcademicCourseCard", () => {
   const ReactModule = require("react");
   return function MockAcademicCourseCard({
     selectedCourseId,
+    onCourseChange,
   }) {
     return ReactModule.createElement(
-      "span",
-      { "data-testid": "selected-course" },
-      selectedCourseId || ""
+      ReactModule.Fragment,
+      null,
+      ReactModule.createElement(
+        "span",
+        { "data-testid": "selected-course" },
+        selectedCourseId || ""
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onCourseChange(""),
+        },
+        "Curso personal"
+      ),
+      ReactModule.createElement(
+        "button",
+        {
+          type: "button",
+          onClick: () => onCourseChange("12"),
+        },
+        "Curso 12"
+      )
     );
   };
 });
@@ -496,6 +517,7 @@ const measurementPolicyItem = (
 const measurementPolicyResponse = {
   data: {
     environment: { mode: "AUTO" },
+    availability: { available: true },
     total: 12,
     items: [
       measurementPolicyItem("LCS", "QUICK", {
@@ -808,6 +830,72 @@ describe("RenderFormPage 6A onboarding", () => {
   });
 
   test(
+    "one Student course remains the default but can be changed to personal",
+    async () => {
+      const oneCourseResponse = {
+        data: {
+          items: [
+            {
+              id: 12,
+              code: "INF-221",
+              name: "Algoritmos",
+              academicYear: 2026,
+              academicTerm: 2,
+            },
+          ],
+          selectionRequired: false,
+          autoSelectedCourseId: 12,
+          personalAllowed: true,
+        },
+      };
+
+      axios.get.mockImplementation((url) => {
+        if (
+          String(url).includes(
+            "api/measurement/policies"
+          )
+        ) {
+          return Promise.resolve(
+            measurementPolicyResponse
+          );
+        }
+
+        if (
+          String(url).includes(
+            "api/analysis/courses"
+          )
+        ) {
+          return Promise.resolve(
+            oneCourseResponse
+          );
+        }
+
+        return Promise.reject(
+          new Error(`Unexpected GET ${url}`)
+        );
+      });
+
+      await renderPage();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("selected-course")
+        ).toHaveTextContent("12");
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Curso personal",
+        })
+      );
+
+      expect(
+        screen.getByTestId("selected-course")
+      ).toHaveTextContent("");
+    }
+  );
+
+  test(
     "AUTO remains default and does not discover nodes eagerly",
     async () => {
       await renderPage();
@@ -828,6 +916,60 @@ describe("RenderFormPage 6A onboarding", () => {
             )
         )
       ).toBe(false);
+    }
+  );
+
+  test(
+    "AUTO blocks review when no live measurement node is reported",
+    async () => {
+      const unavailablePolicyResponse = {
+        data: {
+          ...measurementPolicyResponse.data,
+          availability: { available: false },
+        },
+      };
+
+      axios.get.mockImplementation((url) => {
+        if (
+          String(url).includes(
+            "api/measurement/policies"
+          )
+        ) {
+          return Promise.resolve(
+            unavailablePolicyResponse
+          );
+        }
+
+        if (
+          String(url).includes(
+            "api/analysis/courses"
+          )
+        ) {
+          return Promise.resolve(
+            courseResponse
+          );
+        }
+
+        return Promise.reject(
+          new Error(`Unexpected GET ${url}`)
+        );
+      });
+
+      await renderPage();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId("requirements")
+        ).toHaveTextContent(
+          "measurementUnavailable"
+        );
+      });
+
+      expect(
+        screen.getByRole("button", {
+          name: "Revisar y ejecutar",
+        })
+      ).toBeDisabled();
     }
   );
 
@@ -929,6 +1071,93 @@ describe("RenderFormPage 6A onboarding", () => {
           "measurement_node_key"
         )
       ).toBeNull();
+    }
+  );
+
+  test(
+    "a backend availability race is surfaced as a specific temporary error",
+    async () => {
+      axios.mockRejectedValue({
+        response: {
+          status: 503,
+          data: {
+            error: {
+              code: "MEASUREMENT_UNAVAILABLE",
+            },
+          },
+        },
+      });
+
+      await renderPage();
+      selectBenchmark();
+      await selectZipFromInput(
+        "availability-race.zip"
+      );
+
+      const review =
+        screen.getByRole("button", {
+          name: "Revisar y ejecutar",
+        });
+
+      await waitFor(() =>
+        expect(review).toBeEnabled()
+      );
+
+      fireEvent.click(review);
+      fireEvent.click(
+        await screen.findByRole(
+          "button",
+          {
+            name: "Confirmar y ejecutar",
+          }
+        )
+      );
+
+      expect(
+        await screen.findByRole("alert")
+      ).toHaveTextContent(
+        /entorno de medición no está disponible/i
+      );
+    }
+  );
+
+  test(
+    "personal submission sends an explicit PERSONAL course mode",
+    async () => {
+      axios.mockResolvedValue({
+        data: {
+          submissionId: 83,
+          executions: [
+            {
+              publicId:
+                "00000000-0000-0000-0000-000000000083",
+              codename: "personalLCS",
+            },
+          ],
+        },
+      });
+
+      await renderPage();
+      selectBenchmark();
+      await selectZipFromInput(
+        "personal.zip"
+      );
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Curso personal",
+        })
+      );
+
+      const form =
+        await submitThroughOverview();
+
+      expect(
+        form.get("course_id")
+      ).toBeNull();
+      expect(
+        form.get("course_mode")
+      ).toBe("PERSONAL");
     }
   );
 
@@ -1593,6 +1822,32 @@ describe("RenderFormPage 6A onboarding", () => {
       screen.getByRole("button", { name: "Limpiar configuración" })
     );
     expect(note).toHaveValue("");
+    expect(
+      screen.getByTestId("selected-task-type")
+    ).toHaveTextContent("");
+    expect(
+      screen.getByTestId("input-size")
+    ).toHaveTextContent("");
+    expect(
+      screen.getByTestId("policy-min")
+    ).toHaveTextContent("");
+    expect(
+      screen.getByTestId("policy-default")
+    ).toHaveTextContent("");
+
+    await waitFor(() => {
+      expect(
+        window.localStorage.getItem(DRAFT_KEY)
+      ).toBeNull();
+    });
+
+    selectBenchmark();
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("input-size")
+      ).toHaveTextContent("500");
+    });
   });
 
   test("predefined profiles synchronize 10/30/50 and Custom keeps manual samples", async () => {

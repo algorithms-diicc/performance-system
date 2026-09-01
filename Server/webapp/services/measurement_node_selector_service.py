@@ -171,6 +171,65 @@ def list_pinnable_measurement_nodes(
     return items
 
 
+def is_new_measurement_target_available(
+    current_role_name,
+    measurement_node_mode=AUTO,
+    measurement_node_key=None,
+    *,
+    repository=measurement_node_repository,
+    conn=None,
+    now=None,
+    stale_after_seconds=None,
+    environment=None,
+):
+    # Admission check for NEW work only.
+    # A live-but-busy node remains a normal FIFO queue case.
+    mode = normalize_measurement_node_mode(
+        measurement_node_mode
+    )
+
+    if mode == AUTO and measurement_node_key not in (None, ""):
+        raise MeasurementNodeSelectionError(
+            "measurement_node_key is only valid when "
+            "measurement_node_mode is PINNED."
+        )
+
+    normalized_key = None
+
+    if mode == PINNED:
+        if measurement_node_key in (None, ""):
+            raise MeasurementNodeSelectionError(
+                "measurement_node_key is required when "
+                "measurement_node_mode is PINNED."
+            )
+
+        try:
+            normalized_key = normalize_node_key(
+                measurement_node_key
+            )
+        except MeasurementNodeError:
+            raise MeasurementNodeSelectionError(
+                "El nodo de medición seleccionado no es válido."
+            )
+
+    items = list_pinnable_measurement_nodes(
+        current_role_name,
+        repository=repository,
+        conn=conn,
+        now=now,
+        stale_after_seconds=stale_after_seconds,
+        environment=environment,
+    )
+
+    if mode == AUTO:
+        return bool(items)
+
+    return any(
+        item.get("node_key") == normalized_key
+        for item in items
+    )
+
+
 def resolve_pinned_measurement_node(
     node_key,
     *,

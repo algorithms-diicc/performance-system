@@ -72,13 +72,13 @@ class AnalysisCourseContextTests(unittest.TestCase):
             11,
         )
         self.assertFalse(context["selection_required"])
-        self.assertFalse(context["personal_allowed"])
+        self.assertTrue(context["personal_allowed"])
         self.assertIn(
             "course_memberships",
             cursor.executed[0][0],
         )
 
-    def test_student_multiple_courses_require_selection(self):
+    def test_student_multiple_courses_allow_personal_but_legacy_omission_requires_context(self):
         cursor = ScriptedCursor(
             rows=[course(11), course(12, "INF-102")]
         )
@@ -90,11 +90,11 @@ class AnalysisCourseContextTests(unittest.TestCase):
             conn=conn,
         )
 
-        self.assertTrue(context["selection_required"])
+        self.assertFalse(context["selection_required"])
         self.assertIsNone(
             context["auto_selected_course_id"]
         )
-        self.assertFalse(context["personal_allowed"])
+        self.assertTrue(context["personal_allowed"])
 
         cursor = ScriptedCursor(
             rows=[course(11), course(12, "INF-102")]
@@ -104,6 +104,46 @@ class AnalysisCourseContextTests(unittest.TestCase):
         with self.assertRaises(InvalidExecutionRequest):
             resolve_submission_course(
                 user_id=7,
+                role_name="Student",
+                conn=conn,
+            )
+
+    def test_student_single_course_can_explicitly_choose_personal(self):
+        cursor = ScriptedCursor(rows=[course(11)])
+        conn = FakeConnection(cursor)
+
+        resolved = resolve_submission_course(
+            user_id=7,
+            requested_course_mode="PERSONAL",
+            role_name="Student",
+            conn=conn,
+        )
+
+        self.assertIsNone(resolved)
+
+    def test_student_multiple_courses_can_explicitly_choose_personal(self):
+        cursor = ScriptedCursor(
+            rows=[course(11), course(12, "INF-102")]
+        )
+        conn = FakeConnection(cursor)
+
+        resolved = resolve_submission_course(
+            user_id=7,
+            requested_course_mode="PERSONAL",
+            role_name="Student",
+            conn=conn,
+        )
+
+        self.assertIsNone(resolved)
+
+    def test_course_mode_course_requires_explicit_course_id(self):
+        cursor = ScriptedCursor(rows=[course(11)])
+        conn = FakeConnection(cursor)
+
+        with self.assertRaises(InvalidExecutionRequest):
+            resolve_submission_course(
+                user_id=7,
+                requested_course_mode="COURSE",
                 role_name="Student",
                 conn=conn,
             )

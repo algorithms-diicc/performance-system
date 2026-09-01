@@ -42,7 +42,7 @@ const en = {
       instructions: "Instructions",
       optional: "(optional)",
       benchmark: "Benchmark",
-      inputSize: "Maximum size",
+      inputSize: "Input size",
       profile: "Measurement profile",
       samples: "Repetitions",
       distribution: "CAMM distribution",
@@ -68,8 +68,16 @@ const en = {
       instructions: "View instructions",
       courseInactive:
         "The course is inactive. You can review or edit existing protocols, but you cannot create or publish new ones.",
+      policyLoading:
+        "Loading the AUTO operational policy…",
+      policyLimits:
+        "Current AUTO policy: range {{min}}–{{max}}, initial value {{defaultValue}}, recommended up to {{recommended}}.",
+      policyUnavailable:
+        "The AUTO operational policy is unavailable. You can review existing protocols, but you cannot create or save configurations until it recovers.",
       errors: {
         load: "The course protocols could not be loaded.",
+        policy:
+          "The AUTO operational policy is unavailable. Try again when the measurement environment recovers.",
         save: "The protocol could not be saved.",
         action: "The protocol state could not be updated.",
       },
@@ -204,30 +212,33 @@ const en = {
       benchmarks: "LCS, CAMM and SIZE",
       metricsLead: "Advanced metrics:",
       metrics: "IPC, cache, energy, cycles",
-      integrationLead: "Integration with institutional accounts",
-      accounts: "@inf.udec.cl and @udec.cl*",
+      integrationLead: "Google authentication with account-based authorization",
+      accounts: "institutional and preauthorized external access",
     },
     note: {
-      standardLead: "Standard access uses your",
-      otherLead:
-        "If you belong to another UdeC program, you can request access with your",
-      formSuffix: "using the form on this page.",
+      inf:
+        "@inf.udec.cl accounts have direct institutional access. If an account was preauthorized beforehand, its assigned role is preserved.",
+      udec:
+        "@udec.cl accounts can sign in if they were already preauthorized or request access through the UdeC form on this page.",
+      external:
+        "External accounts require prior administrator authorization and must use the exact authorized email.",
     },
-    title: "Institutional access",
+    title: "Access to Performance System",
     subtitle: {
-      lead: "Sign in with your institutional account:",
-      direct: "(direct access) or",
-      approval: "(approval required).",
+      inf:
+        "@inf.udec.cl: direct institutional access.",
+      udec:
+        "@udec.cl: previously authorized access or a UdeC access request.",
+      external:
+        "External email: access only when preauthorized by the administrator.",
     },
     google: {
       redirecting: "Redirecting to Google...",
       continue: "Continue with Google",
-      hintLead:
-        "Your institutional account will be used to authenticate you securely. If your email belongs to",
-      hintImmediate: "access is immediate. If you use",
-      hintRequest: "you must first request access and wait for approval.",
+      hint:
+        "Google authenticates your identity. Performance System authorizes access according to the exact email and account status.",
     },
-    accessRequestDivider: "Access request (@udec.cl email)",
+    accessRequestDivider: "UdeC access request",
     fields: {
       fullName: "Full name",
       fullNamePlaceholder: "First name Last name",
@@ -252,6 +263,8 @@ const en = {
         "Enter a valid UdeC institutional email for the professor.",
     },
     request: {
+      scope:
+        "This public form is only for @udec.cl accounts. External accounts must be enabled in advance by the administrator.",
       submit: "Submit access request",
       submitting: "Submitting request...",
       success:
@@ -286,7 +299,9 @@ const en = {
       missingIdToken:
         "Your identity could not be validated with Google.",
       externalDomain:
-        "This email does not belong to an allowed institutional domain.",
+        "This email address is not enabled for sign-in.",
+      externalAccessRequired:
+        "This email address is not enabled. External access requires a prior invitation or authorization from the administrator.",
       accessRequired:
         "Your email requires an access request before you can sign in.",
       accessPending:
@@ -533,6 +548,13 @@ const en = {
       nodeLoadError:
         "Available nodes for advanced selection could not be loaded.",
       nodeRetry: "Retry nodes",
+      availabilityChecking:
+        "Checking measurement-environment availability…",
+      availabilityReady:
+        "The measurement environment is available for new executions.",
+      availabilityUnavailable:
+        "No measurement node is operational right now. Try again later or contact the system owner.",
+      availabilityRetry: "Retry availability",
       noNodes:
         "No nodes are available for a new PINNED selection. You can return to AUTO.",
       nodeLabel: "Measurement node",
@@ -586,6 +608,8 @@ const en = {
       },
       sectionHelp:
         "Select the input type that best represents the algorithm you want to analyze. Performance System will use the associated benchmark to generate the measurement points.",
+      policyNeutral:
+        "Select a benchmark to load the applicable operational limits.",
       maxInput: "Maximum input size",
       repetitionsPerPoint: "Repetitions per measurement point",
       decreaseRepetitions: "Decrease repetitions",
@@ -797,6 +821,8 @@ const en = {
             "Wait while the measurement policy is loaded.",
           measurementPolicyUnavailable:
             "The measurement policy is unavailable. Reload the page or try again.",
+          measurementUnavailable:
+            "No measurement node is available to accept a new execution. Retry availability before continuing.",
         },
         review: "Review and run",
         clear: "Clear configuration",
@@ -1074,6 +1100,8 @@ const en = {
           "Your account does not have permission to register this analysis.",
         submitTooLarge:
           "The submitted file exceeds the size allowed by the server.",
+        submitMeasurementUnavailable:
+          "The measurement environment is currently unavailable. Your analysis was not registered. Try again later or contact the system owner.",
         submitGeneric:
           "The analysis could not be registered on the server. Try again.",
         resultsDestination:
@@ -3372,6 +3400,32 @@ const en = {
   },
 
   adminUsers: {
+    preauthorize: {
+      title: "Preauthorize user",
+      description:
+        "Enable an identity in advance so it can sign in with Google. It may be an @inf.udec.cl, @udec.cl, or external account.",
+      open: "Preauthorize user",
+      close: "Close",
+      fullName: "Full name",
+      email: "Exact email",
+      role: "Initial role",
+      submit: "Create preauthorization",
+      submitting: "Creating…",
+      help:
+        "For external accounts, the email must exactly match an account that can authenticate with Google. Preauthorization does not create a password or link the identity until the first sign-in.",
+      success:
+        "User preauthorized successfully. They can now sign in with Google using that exact email.",
+      validationRequired:
+        "Complete the name and email before continuing.",
+      emailExists:
+        "That email already exists. Manage the role or access from the existing user.",
+      emailConflict:
+        "There is a normalization conflict for that email. Review existing users before continuing.",
+      forbidden:
+        "Only an administrator can preauthorize users.",
+      error:
+        "The preauthorization could not be created. Review the data and try again.",
+    },
     header: {
       eyebrow: "Administration",
       title: "Users",
@@ -3702,6 +3756,29 @@ const en = {
         "Last session",
       lastActivity:
         "Last execution",
+    },
+    accessChange: {
+      title: "Access management",
+      description:
+        "Revoke or reactivate global access without deleting the account or its history.",
+      activeDescription:
+        "The account is active. Revoking access will invalidate its active sessions.",
+      inactiveDescription:
+        "The account is inactive. Reactivating it will allow a new sign-in without restoring previous sessions.",
+      revokeAction: "Revoke access",
+      reactivateAction: "Reactivate access",
+      revokeModalTitle:
+        "Confirm access revocation",
+      reactivateModalTitle:
+        "Confirm access reactivation",
+      revokeDescription:
+        "Access for {{name}} will be revoked. Active sessions will be closed, while identity and history will be preserved.",
+      reactivateDescription:
+        "Access for {{name}} will be reactivated. They will need to sign in again with Google.",
+      pendingRequestError:
+        "This user has a pending UdeC access request. Resolve it from Access requests before reactivating the account.",
+      error:
+        "The user's access could not be updated.",
     },
     roleChange: {
       title: "Role management",
@@ -4214,6 +4291,31 @@ const en = {
           text:
             ".c sources use gcc, .cpp sources use g++, and one ZIP may contain both languages.",
         },
+        operational: {
+          auto: {
+            title: "AUTO is the recommended option",
+            text:
+              "AUTO selects an eligible measurement node while keeping a single physical measurement active. PINNED is an advanced option to explicitly fix a node; it is not used to choose the most powerful hardware.",
+          },
+          policy: {
+            title: "The policy defines the executable range",
+            text:
+              "Benchmark and profile determine the minimum, initial value, recommended range, operational maximum, step, and timeout. The interface guides the configuration, but the backend validates it again before accepting execution.",
+          },
+          availability: {
+            title: "Busy does not mean unavailable",
+            text:
+              "If an operational node exists but is busy, the job can be accepted and wait in the FIFO queue. If no eligible node is available, the system blocks new physical measurements until the environment recovers.",
+          },
+        },
+        academic: {
+          title: "Course, personal analysis, and protocols",
+          text:
+            "A student can associate the experiment with an active course or explicitly choose a personal analysis. With a single course, that context is proposed by default without removing the personal option.",
+          protocol:
+            "Protocols published by a teacher prepare a reusable academic configuration. The analysis remains editable and the current operational policy is validated when creating, updating, publishing, and executing.",
+          protocolCta: "Open Protocols",
+        },
         noLinking: {
           title: "The ZIP is not a multi-file project",
           text:
@@ -4230,7 +4332,7 @@ const en = {
             sources:
               "The summary preserves the names of both implementations.",
             ready:
-              "Benchmark, sizes, repetitions, and environment remain visible before execution.",
+              "Benchmark, operational policy, academic context, measurement mode, and availability remain visible before execution.",
           },
         },
         mixedExecutions: {
@@ -4452,6 +4554,13 @@ const en = {
           students:
             "The list opens the student record and latest available result.",
         },
+        protocols: {
+          title: "Course experimental protocols",
+          text:
+            "Teachers can create, edit, publish, and deactivate reusable configurations to guide course analyses. A protocol is not bound to a specific node.",
+          policy:
+            "Input size stays aligned with the current AUTO policy for the selected benchmark and profile; if that policy is unavailable, existing protocols remain reviewable while creating or saving an invalid configuration is blocked.",
+        },
         guardrail:
           "These are operational signals for reviewing cases, without grading or comparing students. They are not rankings or scores.",
         cta: "Open Supervision",
@@ -4460,7 +4569,7 @@ const en = {
         kicker: "Next step",
         title: "Keep context alongside every measurement",
         description:
-          "Prepare standalone sources, verify the summary before execution, and return to History to interpret or compare results under explicit conditions.",
+          "Prepare standalone sources, review policy, availability, and academic context before execution, and return to History to interpret or compare results under explicit conditions.",
         newAnalysis: "Go to New analysis",
         history: "Open History",
       },

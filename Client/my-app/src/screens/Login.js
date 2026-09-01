@@ -16,6 +16,8 @@ const AUTH_MESSAGE_KEYS = {
   MISSING_AUTH_CODE: "login.auth.missingAuthCode",
   MISSING_ID_TOKEN: "login.auth.missingIdToken",
   EXTERNAL_DOMAIN: "login.auth.externalDomain",
+  EXTERNAL_ACCESS_REQUIRED:
+    "login.auth.externalAccessRequired",
   ACCESS_REQUIRED: "login.auth.accessRequired",
   ACCESS_PENDING: "login.auth.accessPending",
   ACCOUNT_DISABLED: "login.auth.accountDisabled",
@@ -252,13 +254,17 @@ const Login = () => {
             </li>
           </ul>
 
-          <p className="login-note">
-            {t("login.note.standardLead")}{" "}
-            <strong>@inf.udec.cl</strong>.{" "}
-            {t("login.note.otherLead")}{" "}
-            <strong>@udec.cl</strong>{" "}
-            {t("login.note.formSuffix")}
-          </p>
+          <div className="login-note">
+            <p>
+              {t("login.note.inf")}
+            </p>
+            <p>
+              {t("login.note.udec")}
+            </p>
+            <p>
+              {t("login.note.external")}
+            </p>
+          </div>
         </section>
 
         {/* Panel de login */}
@@ -266,12 +272,11 @@ const Login = () => {
           <header className="login-header">
             <h2 className="login-title">{t("login.title")}</h2>
             <p className="login-subtitle">
-              {t("login.subtitle.lead")}
+              {t("login.subtitle.inf")}
               <br />
-              <strong>@inf.udec.cl</strong>{" "}
-              {t("login.subtitle.direct")}{" "}
-              <strong>@udec.cl</strong>{" "}
-              {t("login.subtitle.approval")}
+              {t("login.subtitle.udec")}
+              <br />
+              {t("login.subtitle.external")}
             </p>
           </header>
 
@@ -304,11 +309,7 @@ const Login = () => {
               </span>
             </button>
             <p className="login-oauth-hint">
-              {t("login.google.hintLead")}{" "}
-              <strong>@inf.udec.cl</strong>,{" "}
-              {t("login.google.hintImmediate")}{" "}
-              <strong>@udec.cl</strong>,{" "}
-              {t("login.google.hintRequest")}
+              {t("login.google.hint")}
             </p>
           </div>
 
@@ -320,6 +321,10 @@ const Login = () => {
             </span>
             <span className="login-divider-line" />
           </div>
+
+          <p className="login-oauth-hint">
+            {t("login.request.scope")}
+          </p>
 
           {/* Mensaje global del formulario (éxito / error) */}
           {requestFeedback && (

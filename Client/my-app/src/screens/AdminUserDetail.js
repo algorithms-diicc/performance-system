@@ -186,6 +186,36 @@ function adminDetailErrorMessage(
 }
 
 
+function adminAccessChangeErrorMessage(
+  error,
+  t
+) {
+  const code =
+    String(
+      error?.code
+      || error?.payload?.error?.code
+      || ""
+    )
+      .trim()
+      .toUpperCase();
+
+  if (
+    code
+    === "USER_HAS_PENDING_ACCESS_REQUEST"
+  ) {
+    return t(
+      "adminUserDetail.accessChange.pendingRequestError"
+    );
+  }
+
+  return adminDetailErrorMessage(
+    error,
+    t,
+    "adminUserDetail.accessChange.error"
+  );
+}
+
+
 function adminRoleChangeErrorMessage(
   error,
   t
@@ -2821,6 +2851,21 @@ const AdminUserDetail = () => {
   ] = useState(0);
 
   const [
+    accessDecision,
+    setAccessDecision,
+  ] = useState(null);
+
+  const [
+    changingAccess,
+    setChangingAccess,
+  ] = useState(false);
+
+  const [
+    accessError,
+    setAccessError,
+  ] = useState(null);
+
+  const [
     roleDecision,
     setRoleDecision,
   ] = useState(null);
@@ -2979,9 +3024,63 @@ const AdminUserDetail = () => {
       "executions"
     );
     setExecutionId(null);
+    setAccessDecision(null);
+    setAccessError(null);
     setRoleDecision(null);
     setRoleError(null);
   }, [id]);
+
+
+  const accessChangeConfig =
+    useMemo(
+      () => {
+        const role =
+          String(
+            profile?.role || ""
+          ).trim();
+
+        if (
+          !profile
+          || role === "Admin"
+        ) {
+          return null;
+        }
+
+        const isActive =
+          profile?.isActive === true;
+
+        if (isActive) {
+          return {
+            nextActive: false,
+            actionKey:
+              "adminUserDetail.accessChange.revokeAction",
+            modalTitleKey:
+              "adminUserDetail.accessChange.revokeModalTitle",
+            descriptionKey:
+              "adminUserDetail.accessChange.activeDescription",
+            modalDescriptionKey:
+              "adminUserDetail.accessChange.revokeDescription",
+            variant: "danger",
+          };
+        }
+
+        return {
+          nextActive: true,
+          actionKey:
+            "adminUserDetail.accessChange.reactivateAction",
+          modalTitleKey:
+            "adminUserDetail.accessChange.reactivateModalTitle",
+          descriptionKey:
+            "adminUserDetail.accessChange.inactiveDescription",
+          modalDescriptionKey:
+            "adminUserDetail.accessChange.reactivateDescription",
+          variant: "normal",
+        };
+      },
+      [
+        profile,
+      ]
+    );
 
 
   const roleChangeConfig =
@@ -3014,6 +3113,48 @@ const AdminUserDetail = () => {
       },
       [profile?.role]
     );
+
+
+  const confirmAccessChange =
+    async () => {
+      if (!accessDecision) {
+        return;
+      }
+
+      try {
+        setChangingAccess(true);
+        setAccessError(null);
+
+        await fetchJson(
+          `/api/admin/users/${id}/access`,
+          {
+            method: "PATCH",
+            body:
+              JSON.stringify({
+                isActive:
+                  accessDecision.nextActive,
+              }),
+          }
+        );
+
+        setProfile(
+          (previous) => ({
+            ...previous,
+            isActive:
+              accessDecision.nextActive,
+          })
+        );
+
+        setAccessDecision(null);
+        setReloadToken(
+          (value) => value + 1
+        );
+      } catch (err) {
+        setAccessError(err);
+      } finally {
+        setChangingAccess(false);
+      }
+    };
 
 
   const confirmRoleChange =
@@ -3108,6 +3249,15 @@ const AdminUserDetail = () => {
           "adminUserDetail.errors.load"
         )
       : "";
+
+  const accessErrorMessage =
+    accessError
+      ? adminAccessChangeErrorMessage(
+          accessError,
+          t
+        )
+      : "";
+
 
   const roleErrorMessage =
     roleError
@@ -3218,6 +3368,44 @@ const AdminUserDetail = () => {
                     summary
                   }
                 />
+
+
+                {accessChangeConfig && (
+                  <section className="admin-user-role-action admin-user-access-action">
+                    <div>
+                      <h2>
+                        {t(
+                          "adminUserDetail.accessChange.title"
+                        )}
+                      </h2>
+                      <p>
+                        {t(
+                          accessChangeConfig.descriptionKey
+                        )}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className={
+                        accessChangeConfig.variant
+                          === "danger"
+                          ? "btn admin-detail-danger-button"
+                          : "btn admin-detail-primary-button"
+                      }
+                      onClick={() => {
+                        setAccessError(null);
+                        setAccessDecision(
+                          accessChangeConfig
+                        );
+                      }}
+                    >
+                      {t(
+                        accessChangeConfig.actionKey
+                      )}
+                    </button>
+                  </section>
+                )}
 
 
                 {roleChangeConfig && (
@@ -3362,6 +3550,70 @@ const AdminUserDetail = () => {
         }
         onClose={
           closeExecutionDetail
+        }
+      />
+
+
+      <ConfirmActionModal
+        open={Boolean(
+          accessDecision
+        )}
+        title={
+          accessDecision
+            ? t(
+                accessDecision.modalTitleKey
+              )
+            : ""
+        }
+        body={
+          <>
+            <p>
+              {accessDecision
+                ? t(
+                    accessDecision.modalDescriptionKey,
+                    {
+                      name:
+                        profile?.fullName
+                        || profile?.email
+                        || t(
+                          "adminUserDetail.fallbacks.name"
+                        ),
+                    }
+                  )
+                : ""}
+            </p>
+
+            {accessErrorMessage && (
+              <p
+                className="admin-role-modal-error"
+                role="alert"
+              >
+                {accessErrorMessage}
+              </p>
+            )}
+          </>
+        }
+        confirmLabel={
+          accessDecision
+            ? t(
+                accessDecision.actionKey
+              )
+            : ""
+        }
+        cancelLabel={t(
+          "adminUserDetail.actions.cancel"
+        )}
+        onConfirm={
+          confirmAccessChange
+        }
+        onCancel={() => {
+          setAccessDecision(null);
+          setAccessError(null);
+        }}
+        loading={changingAccess}
+        variant={
+          accessDecision?.variant
+          || "normal"
         }
       />
 

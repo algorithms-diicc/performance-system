@@ -14,6 +14,9 @@ from ..utils.api_errors import (
     handle_api_errors,
 )
 from ..utils.db_utils import db_cursor
+from ..services.account_identity_service import (
+    normalize_account_email,
+)
 from ..services.execution_history_service import (
     execution_status_filter_sql,
     map_execution_state_label,
@@ -327,6 +330,236 @@ def map_submission_status_from_counts(
     if ok > 0 and (to > 0 or er > 0):
         return "Mixto"
     return "En revisión"
+
+
+def _admin_preauthorization_payload(data):
+    if not isinstance(data, dict):
+        raise ValidationError("El cuerpo debe ser un objeto JSON.")
+
+    full_name = data.get("fullName")
+    if full_name is None:
+        full_name = data.get("full_name")
+    if not isinstance(full_name, str):
+        raise ValidationError("Debe indicar un nombre válido.", extra={"field": "fullName"})
+    full_name = full_name.strip()
+    if not full_name or len(full_name) > 100:
+        raise ValidationError(
+            "El nombre debe contener entre 1 y 100 caracteres.",
+            extra={"field": "fullName"},
+        )
+
+    try:
+        email = normalize_account_email(data.get("email"))
+    except ValueError as exc:
+        raise ValidationError(str(exc), extra={"field": "email"})
+
+    role = parse_admin_role_target(data.get("role"))
+    return {"full_name": full_name, "email": email, "role": role}
+
+
+@admin_users_bp.route("/users", methods=["POST"])
+@handle_api_errors
+@login_required
+@admin_required
+def preauthorize_admin_user():
+    # Generic preauthorization: INF, UdeC or external exact email.
+    # auth_identities is intentionally untouched until a valid Google login.
+    payload = _admin_preauthorization_payload(request.get_json(silent=True))
+
+    with db_cursor() as (_conn, cur):
+        cur.execute(
+            """
+            SELECT u.id, u.email, u.is_active, r.name AS role_name
+            FROM users u
+            JOIN roles r ON r.id = u.role_id
+            WHERE LOWER(u.email) = %s
+            ORDER BY u.id
+            LIMIT 2
+            FOR UPDATE;
+            """,
+            (payload["email"],),
+        )
+        existing = cur.fetchone()
+        duplicate = cur.fetchone()
+
+        if duplicate is not None:
+            raise APIError(
+                "Existen múltiples usuarios para el mismo correo normalizado.",
+                status_code=409,
+                code="NORMALIZED_EMAIL_CONFLICT",
+                extra={"field": "email"},
+            )
+
+        if existing is not None:
+            raise APIError(
+                "El correo ya existe en Performance System. Use la gestión del usuario existente para cambiar su rol o reactivar su acceso.",
+                status_code=409,
+                code="USER_EMAIL_EXISTS",
+                extra={
+                    "field": "email",
+                    "userId": existing["id"],
+                    "role": existing.get("role_name"),
+                    "isActive": bool(existing.get("is_active")),
+                },
+            )
+
+        cur.execute("SELECT id FROM roles WHERE name = %s;", (payload["role"],))
+        role_row = cur.fetchone()
+        if role_row is None:
+            raise ValidationError("El rol solicitado no está configurado.", extra={"field": "role"})
+
+        cur.execute(
+            """
+            INSERT INTO users (full_name, email, role_id, is_active, created_at)
+            VALUES (%s, %s, %s, TRUE, NOW())
+            RETURNING id, full_name, email, is_active;
+            """,
+            (payload["full_name"], payload["email"], role_row["id"]),
+        )
+        created = cur.fetchone()
+        if created is None:
+            raise APIError(
+                "No fue posible crear la preautorización.",
+                status_code=500,
+                code="PREAUTHORIZATION_CREATE_FAILED",
+            )
+
+        cur.execute(
+            """
+            INSERT INTO audit_log (user_id, action, description, created_at)
+            VALUES (%s, %s, %s, NOW());
+            """,
+            (
+                g.current_user["id"],
+                "preauthorize_user",
+                "Usuario #{target_id} ({target_email}) preautorizado como {role} por {actor_email}.".format(
+                    target_id=created["id"],
+                    target_email=created["email"],
+                    role=payload["role"],
+                    actor_email=g.current_user.get("email"),
+                ),
+            ),
+        )
+
+    return jsonify({
+        "user": {
+            "id": created["id"],
+            "fullName": created["full_name"],
+            "email": created["email"],
+            "role": payload["role"],
+            "isActive": bool(created["is_active"]),
+            "preauthorized": True,
+        }
+    }), 201
+
+
+@admin_users_bp.route("/users/<int:user_id>/access", methods=["PATCH"])
+@handle_api_errors
+@login_required
+@admin_required
+def change_admin_user_access(user_id: int):
+    # Revoke/reactivate global access while preserving identity and history.
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise ValidationError("El cuerpo debe ser un objeto JSON.")
+
+    requested_active = data.get("isActive")
+    if not isinstance(requested_active, bool):
+        raise ValidationError("isActive debe ser booleano.", extra={"field": "isActive"})
+
+    with db_cursor() as (_conn, cur):
+        cur.execute(
+            """
+            SELECT u.id, u.full_name, u.email, u.is_active, r.name AS role_name
+            FROM users u
+            JOIN roles r ON r.id = u.role_id
+            WHERE u.id = %s
+            FOR UPDATE;
+            """,
+            (user_id,),
+        )
+        target = cur.fetchone()
+        if target is None:
+            raise NotFoundError(f"Usuario con id {user_id} no existe.")
+        if target.get("role_name") == "Admin":
+            raise ForbiddenError("El acceso de una cuenta Admin está protegido.")
+
+        current_active = bool(target.get("is_active"))
+        if current_active == requested_active:
+            return jsonify({
+                "user": {
+                    "id": target["id"],
+                    "fullName": target["full_name"],
+                    "email": target["email"],
+                    "role": target["role_name"],
+                    "isActive": current_active,
+                    "changed": False,
+                },
+                "invalidatedSessions": 0,
+            }), 200
+
+        if requested_active:
+            cur.execute(
+                """
+                SELECT id
+                FROM access_requests
+                WHERE user_id = %s AND status = 'PENDING'
+                ORDER BY id DESC
+                LIMIT 1;
+                """,
+                (user_id,),
+            )
+            if cur.fetchone() is not None:
+                raise APIError(
+                    "El usuario mantiene una solicitud de acceso pendiente.",
+                    status_code=409,
+                    code="USER_HAS_PENDING_ACCESS_REQUEST",
+                )
+
+        cur.execute("UPDATE users SET is_active = %s WHERE id = %s;", (requested_active, user_id))
+
+        invalidated_sessions = 0
+        if not requested_active:
+            cur.execute(
+                """
+                UPDATE sessions
+                SET is_active = FALSE
+                WHERE user_id = %s AND is_active = TRUE;
+                """,
+                (user_id,),
+            )
+            invalidated_sessions = max(int(cur.rowcount or 0), 0)
+
+        action = "reactivate_user" if requested_active else "revoke_user"
+        verb = "reactivado" if requested_active else "revocado"
+        cur.execute(
+            """
+            INSERT INTO audit_log (user_id, action, description, created_at)
+            VALUES (%s, %s, %s, NOW());
+            """,
+            (
+                g.current_user["id"],
+                action,
+                "Acceso de usuario #{target_id} ({target_email}) {verb} por {actor_email}.".format(
+                    target_id=target["id"],
+                    target_email=target["email"],
+                    verb=verb,
+                    actor_email=g.current_user.get("email"),
+                ),
+            ),
+        )
+
+    return jsonify({
+        "user": {
+            "id": target["id"],
+            "fullName": target["full_name"],
+            "email": target["email"],
+            "role": target["role_name"],
+            "isActive": requested_active,
+            "changed": True,
+        },
+        "invalidatedSessions": invalidated_sessions,
+    }), 200
 
 
 # ==========================

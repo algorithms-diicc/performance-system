@@ -338,6 +338,27 @@ def validate_execution_policy_limits(
 
 
 
+SUBMISSION_COURSE_MODE_PERSONAL = "PERSONAL"
+SUBMISSION_COURSE_MODE_COURSE = "COURSE"
+SUBMISSION_COURSE_MODES = frozenset({
+    SUBMISSION_COURSE_MODE_PERSONAL,
+    SUBMISSION_COURSE_MODE_COURSE,
+})
+
+
+def normalize_submission_course_mode(value):
+    if value in (None, ""):
+        return None
+
+    normalized = str(value).strip().upper()
+    if normalized not in SUBMISSION_COURSE_MODES:
+        raise InvalidExecutionRequest(
+            "Unsupported course_mode: {!r}.".format(value)
+        )
+
+    return normalized
+
+
 SUBMISSION_COURSE_ROLES = {
     "student": "Student",
     "teacher": "Teacher",
@@ -402,8 +423,9 @@ def get_submission_course_context(
 
     Student:
     - cursos activos con membresía activa;
-    - un único curso se autoasocia;
-    - varios cursos exigen selección.
+    - un único curso se propone como asociación por defecto;
+    - el análisis personal sigue disponible de forma explícita;
+    - con varios cursos puede elegir uno o mantener contexto personal.
 
     Teacher/Admin:
     - solamente cursos activos donde el usuario es responsable;
@@ -492,17 +514,15 @@ def get_submission_course_context(
         return {
             "role_name": actor_role,
             "courses": rows,
-            "selection_required": (
-                is_student and len(rows) > 1
-            ),
+            # Personal is now always a valid explicit choice, so
+            # multiple Student courses no longer force an association.
+            "selection_required": False,
             "auto_selected_course_id": (
                 int(rows[0]["id"])
                 if is_student and len(rows) == 1
                 else None
             ),
-            "personal_allowed": (
-                not is_student or len(rows) == 0
-            ),
+            "personal_allowed": True,
         }
 
     finally:
@@ -513,13 +533,16 @@ def get_submission_course_context(
 def resolve_submission_course(
     user_id,
     requested_course_id=None,
+    requested_course_mode=None,
     role_name=None,
     conn=None,
 ):
     """
     Resuelve y autoriza el course_id de una nueva Submission.
 
-    Student conserva la asociación académica dirigida.
+    Student conserva la asociación académica por defecto cuando se omite
+    course_mode, pero puede solicitar explícitamente PERSONAL. Esto mantiene
+    compatibilidad con clientes legacy sin volver ambigua la nueva UI.
     Teacher/Admin deben asociar el curso explícitamente; por defecto el
     experimento permanece personal.
     """
@@ -531,6 +554,26 @@ def resolve_submission_course(
         parsed_course_id = _positive_int(
             requested_course_id,
             "course_id",
+        )
+
+    course_mode = normalize_submission_course_mode(
+        requested_course_mode
+    )
+
+    if (
+        course_mode == SUBMISSION_COURSE_MODE_PERSONAL
+        and parsed_course_id is not None
+    ):
+        raise InvalidExecutionRequest(
+            "course_id cannot be combined with course_mode=PERSONAL."
+        )
+
+    if (
+        course_mode == SUBMISSION_COURSE_MODE_COURSE
+        and parsed_course_id is None
+    ):
+        raise InvalidExecutionRequest(
+            "course_id is required when course_mode=COURSE."
         )
 
     owns_connection = conn is None
@@ -561,6 +604,9 @@ def resolve_submission_course(
                 )
 
             return int(selected["id"])
+
+        if course_mode == SUBMISSION_COURSE_MODE_PERSONAL:
+            return None
 
         if context["role_name"] in {"Teacher", "Admin"}:
             return None
@@ -772,6 +818,7 @@ def create_submission_bundle(
     samples,
     source_specs,
     course_id=None,
+    course_mode=None,
     user_role_name=None,
     measurement_node_mode=None,
     measurement_node_key=None,
@@ -958,6 +1005,7 @@ def create_submission_bundle(
             resolved_course_id = resolve_submission_course(
                 user_id=user_id,
                 requested_course_id=course_id,
+                requested_course_mode=course_mode,
                 role_name=user_role_name,
                 conn=db,
             )
