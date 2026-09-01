@@ -195,6 +195,26 @@ class AIExplanationServiceTests(unittest.TestCase):
             "clear technical English",
             request["input"][0]["content"],
         )
+        self.assertEqual(request["max_output_tokens"], 1600)
+
+        english_system = request["input"][0]["content"]
+        self.assertIn(
+            "Every observations[].metric value",
+            english_system,
+        )
+        self.assertIn("Every numeric literal", english_system)
+
+        spanish_request = build_openai_request(
+            build_ai_context(sample_results(), language="es"),
+            "gpt-5.6-luna",
+            language="es",
+        )
+        spanish_system = spanish_request["input"][0]["content"]
+        self.assertIn(
+            "cada valor observations[].metric",
+            spanish_system,
+        )
+        self.assertIn("Todo literal numérico", spanish_system)
 
     def test_default_mock_needs_no_key_and_uses_real_pipeline(self):
         old_key = os.environ.pop("OPENAI_API_KEY", None)
