@@ -936,10 +936,27 @@ def serve_frontend(path):
         abort(404)
 
     full_path = os.path.join(FRONTEND_DIR, path)
-    if path != "" and os.path.exists(full_path):
-        return send_from_directory(FRONTEND_DIR, path)
-    else:
-        return send_from_directory(FRONTEND_DIR, "index.html")
+    is_static_path = path == "static" or path.startswith("static/")
+
+    if is_static_path:
+        if not os.path.isfile(full_path):
+            abort(404)
+        response = send_from_directory(
+            FRONTEND_DIR,
+            path,
+            max_age=31536000,
+        )
+        response.headers["Cache-Control"] = (
+            "public, max-age=31536000, immutable"
+        )
+        return response
+
+    if path != "" and os.path.isfile(full_path):
+        return send_from_directory(FRONTEND_DIR, path, max_age=0)
+
+    response = send_from_directory(FRONTEND_DIR, "index.html", max_age=0)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 
 

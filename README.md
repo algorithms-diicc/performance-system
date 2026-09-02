@@ -417,8 +417,10 @@ El script:
 
 1. instala las dependencias exactas mediante `npm ci`;
 2. genera el build de producción;
-3. sincroniza `Client/my-app/build/` con `Server/webapp/frontend/`;
-4. verifica que ambos directorios sean idénticos.
+3. copia primero los assets nuevos a `Server/webapp/frontend/`;
+4. publica `index.html` al final mediante un reemplazo atómico;
+5. conserva temporalmente assets con hash de releases anteriores;
+6. verifica que todos los archivos del build vigente estén sincronizados.
 
 El frontend generado es un artefacto de despliegue y no se versiona.
 

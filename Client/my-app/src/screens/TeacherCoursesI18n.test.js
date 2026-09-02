@@ -96,7 +96,7 @@ describe(
   "TeacherCourses i18n",
   () => {
     beforeEach(() => {
-      jest.clearAllMocks();
+      jest.resetAllMocks();
     });
 
 
@@ -251,6 +251,14 @@ describe(
           "heading",
           { name: "Courses" }
         );
+
+        await screen.findByText(
+          "There are no active courses yet"
+        );
+
+        expect(
+          teacherApi
+        ).toHaveBeenCalledTimes(1);
 
         fireEvent.click(
           screen.getAllByRole(

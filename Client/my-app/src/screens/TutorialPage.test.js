@@ -5,7 +5,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 
 import TutorialPage from "./TutorialPage";
 
@@ -24,11 +24,22 @@ const ADMIN = {
   role_name: "Admin",
 };
 
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return (
+    <output data-testid="tutorial-location">
+      {`${location.pathname}${location.search}`}
+    </output>
+  );
+};
+
 const renderTutorial = ({
   currentUser = STUDENT,
   route = "/tutorial",
 } = {}) => render(
   <MemoryRouter initialEntries={[route]}>
+    <LocationProbe />
     <TutorialPage currentUser={currentUser} />
   </MemoryRouter>
 );
@@ -115,14 +126,24 @@ describe("TutorialPage Iteration 9", () => {
       screen.getByRole("link", { name: "Descargar ejemplo CAMM" })
     ).toHaveAttribute("href", "/tutorial-codigos/camm_template.zip");
 
+    const prepareLinks = screen.getAllByRole(
+      "link",
+      { name: /Preparar análisis/ }
+    );
+
     expect(
-      screen.getAllByRole("link", { name: /Preparar análisis/ })
-        .map((link) => link.getAttribute("href"))
+      prepareLinks.map((link) => link.getAttribute("href"))
     ).toEqual([
       "/?starter=lcs",
       "/?starter=camm",
       "/?starter=size",
     ]);
+
+    fireEvent.click(prepareLinks[0]);
+
+    expect(
+      screen.getByTestId("tutorial-location")
+    ).toHaveTextContent("/?starter=lcs");
 
     const exampleCards = Array.from(
       container.querySelectorAll(".tutorial-example-card")

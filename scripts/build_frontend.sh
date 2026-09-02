@@ -64,17 +64,42 @@ echo
 echo "==> Sincronizando build con Flask"
 mkdir -p "${FLASK_FRONTEND_DIR}"
 
-rsync -a --delete \
+rsync -a --exclude '/index.html' \
     "${BUILD_DIR}/" \
     "${FLASK_FRONTEND_DIR}/"
+
+# Conserva temporalmente los assets con hash del release anterior.
+# Una pestaña abierta antes del despliegue puede terminar de cargarlos.
+# index.html se publica al final mediante un rename atómico.
+INDEX_CANDIDATE="${FLASK_FRONTEND_DIR}/.index.html.next.$$"
+trap 'rm -f "${INDEX_CANDIDATE}"' EXIT
+
+cp "${BUILD_DIR}/index.html" "${INDEX_CANDIDATE}"
+chmod 0644 "${INDEX_CANDIDATE}"
+mv -f "${INDEX_CANDIDATE}" "${FLASK_FRONTEND_DIR}/index.html"
+
+trap - EXIT
 
 echo
 echo "==> Verificando sincronización"
 
-if ! diff -qr "${BUILD_DIR}" "${FLASK_FRONTEND_DIR}"; then
-    echo "ERROR: build y frontend Flask no son idénticos." >&2
+sync_mismatch=0
+
+while IFS= read -r -d '' source_file; do
+    relative_path="${source_file#${BUILD_DIR}/}"
+    destination_file="${FLASK_FRONTEND_DIR}/${relative_path}"
+
+    if [[ ! -f "${destination_file}" ]] ||
+       ! cmp -s "${source_file}" "${destination_file}"; then
+        echo "ERROR: archivo no sincronizado: ${relative_path}" >&2
+        sync_mismatch=1
+    fi
+done < <(find "${BUILD_DIR}" -type f -print0)
+
+if [[ "${sync_mismatch}" -ne 0 ]]; then
+    echo "ERROR: el build vigente no quedó sincronizado con Flask." >&2
     exit 1
 fi
 
 echo
-echo "OK: frontend construido y sincronizado correctamente."
+echo "OK: frontend publicado; se conservaron assets hash de releases anteriores."

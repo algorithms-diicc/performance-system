@@ -439,14 +439,14 @@ const TutorialPage = ({ currentUser = null }) => {
                       <Download size={16} aria-hidden="true" />
                       {t(`${COPY}.examples.download`, { benchmark: example.benchmark })}
                     </a>
-                    <a
-                      href={example.starterHref}
+                    <Link
+                      to={example.starterHref}
                       className="tutorial-example-download tutorial-example-prepare"
                       aria-label={`${t(`${COPY}.examples.prepare`)} ${example.benchmark}`}
                     >
                       <PlayCircle size={16} aria-hidden="true" />
                       {t(`${COPY}.examples.prepare`)}
-                    </a>
+                    </Link>
                   </div>
                 </article>
               ))}
