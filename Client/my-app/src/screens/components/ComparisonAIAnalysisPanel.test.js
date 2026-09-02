@@ -110,7 +110,7 @@ describe("ComparisonAIAnalysisPanel", () => {
     for (const name of [
       "Resumen",
       "Patrones observados",
-      "Compensaciones observadas",
+      "Relaciones observadas entre métricas",
       "Qué conviene analizar",
       "Limitaciones",
     ]) {

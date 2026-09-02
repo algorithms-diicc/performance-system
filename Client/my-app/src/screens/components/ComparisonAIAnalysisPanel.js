@@ -244,7 +244,7 @@ export default function ComparisonAIAnalysisPanel({
                   )}
                 </section>
 
-                <section className="comparison-ai-block">
+                <section className="comparison-ai-block comparison-ai-block--limitations">
                   <h3>
                     {t("comparisonPage.ai.sections.limitations")}
                   </h3>
