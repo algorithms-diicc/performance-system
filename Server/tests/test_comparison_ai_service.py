@@ -327,6 +327,22 @@ class ComparisonAIServiceTests(unittest.TestCase):
         english_system = request["input"][0]["content"]
         self.assertIn("Mandatory output rules", english_system)
         self.assertIn("Every numeric literal", english_system)
+        self.assertIn(
+            "exact keys from STRUCTURED COMPARISON CONTEXT.metrics",
+            english_system,
+        )
+        self.assertIn(
+            "at most three concise sentences",
+            english_system,
+        )
+        self.assertNotIn(
+            "asymptotic complexity",
+            english_system.lower(),
+        )
+        self.assertNotIn(
+            "overall winner",
+            english_system.lower(),
+        )
 
         spanish_request = build_comparison_openai_request(
             build_comparison_ai_context(
@@ -337,11 +353,26 @@ class ComparisonAIServiceTests(unittest.TestCase):
             language="es",
         )
         spanish_system = spanish_request["input"][0]["content"]
-        self.assertIn("Reglas obligatorias de salida", spanish_system)
+        self.assertIn(
+            "Reglas obligatorias de salida",
+            spanish_system,
+        )
         self.assertIn("Todo literal numérico", spanish_system)
         self.assertIn(
-            "or declare an overall winner",
-            request["input"][0]["content"].lower(),
+            "claves exactas de STRUCTURED COMPARISON CONTEXT.metrics",
+            spanish_system,
+        )
+        self.assertIn(
+            "como máximo tres oraciones breves",
+            spanish_system,
+        )
+        self.assertNotIn(
+            "complejidad asintótica",
+            spanish_system.lower(),
+        )
+        self.assertNotIn(
+            "ganador global",
+            spanish_system.lower(),
         )
 
     def test_default_mock_uses_real_parser_guardrails_and_metadata(self):

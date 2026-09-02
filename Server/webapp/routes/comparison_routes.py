@@ -3,7 +3,7 @@
 import os
 import re
 
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from ..repositories import comparison_repository, export_repository
 from ..services.comparison_candidates_service import (
@@ -448,7 +448,11 @@ def create_comparison_ai_explanation():
             "AI_NOT_CONFIGURED",
             "La explicación con IA no está configurada.",
         )
-    except ComparisonAIOutputRejectedError:
+    except ComparisonAIOutputRejectedError as exc:
+        current_app.logger.warning(
+            "Comparison AI output rejected by guardrails: %s",
+            exc,
+        )
         _comparison_error(
             502,
             "AI_OUTPUT_REJECTED",

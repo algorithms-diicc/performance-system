@@ -1525,7 +1525,7 @@ const en = {
       sections: {
         summary: "Summary",
         patterns: "Observed patterns",
-        tradeoffs: "Observed trade-offs",
+        tradeoffs: "Observed metric relationships",
         focus: "What to analyze",
         limitations: "Limitations",
       },
@@ -1533,7 +1533,7 @@ const en = {
         summary: "No additional summary was reported.",
         patterns: "No additional patterns were reported.",
         tradeoffs:
-          "No observed trade-offs were identified with sufficient evidence.",
+          "No metric relationships were identified with sufficient evidence.",
         focus: "No additional analysis targets were reported.",
         limitations: "No additional limitations were reported.",
       },

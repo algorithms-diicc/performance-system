@@ -1529,7 +1529,7 @@ const es = {
       sections: {
         summary: "Resumen",
         patterns: "Patrones observados",
-        tradeoffs: "Compensaciones observadas",
+        tradeoffs: "Relaciones observadas entre métricas",
         focus: "Qué conviene analizar",
         limitations: "Limitaciones",
       },
@@ -1537,7 +1537,7 @@ const es = {
         summary: "No se informó un resumen adicional.",
         patterns: "No se informaron patrones adicionales.",
         tradeoffs:
-          "No se identificaron compensaciones observadas con evidencia suficiente.",
+          "No se identificaron relaciones entre métricas con evidencia suficiente.",
         focus: "No se informaron focos adicionales.",
         limitations:
           "No se informaron limitaciones adicionales.",
