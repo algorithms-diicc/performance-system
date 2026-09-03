@@ -114,6 +114,17 @@ describe("TutorialPage Iteration 9 i18n", () => {
   test("localizes the Final Edition operational and protocol guidance", () => {
     renderBilingualTutorial();
 
+    const technicalDetails = screen
+      .getByText("View technical details")
+      .closest("details");
+    const technicalSummary = screen
+      .getByText("View technical details")
+      .closest("summary");
+
+    expect(technicalDetails).not.toHaveAttribute("open");
+    fireEvent.click(technicalSummary);
+    expect(technicalDetails).toHaveAttribute("open");
+
     expect(
       screen.getByRole("heading", {
         name: "AUTO is the recommended option",

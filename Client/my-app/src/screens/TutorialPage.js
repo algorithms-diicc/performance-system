@@ -371,26 +371,47 @@ const TutorialPage = ({ currentUser = null }) => {
               <article><Archive size={21} aria-hidden="true" /><h3>{t(`${COPY}.create.mixed.title`)}</h3><p>{t(`${COPY}.create.mixed.text`)}</p></article>
             </div>
 
-            <div
-              className="tutorial-concept-grid"
-              data-testid="tutorial-final-edition-operational-contract"
-            >
-              <article>
-                <Cpu size={21} aria-hidden="true" />
-                <h3>{t(`${COPY}.create.operational.auto.title`)}</h3>
-                <p>{t(`${COPY}.create.operational.auto.text`)}</p>
-              </article>
-              <article>
-                <Settings2 size={21} aria-hidden="true" />
-                <h3>{t(`${COPY}.create.operational.policy.title`)}</h3>
-                <p>{t(`${COPY}.create.operational.policy.text`)}</p>
-              </article>
-              <article>
-                <Clock3 size={21} aria-hidden="true" />
-                <h3>{t(`${COPY}.create.operational.availability.title`)}</h3>
-                <p>{t(`${COPY}.create.operational.availability.text`)}</p>
-              </article>
-            </div>
+            <details className="tutorial-technical-details">
+              <summary>
+                <span className="tutorial-technical-details__label">
+                  <Settings2 size={21} aria-hidden="true" />
+                  <span>
+                    <strong>
+                      {t(`${COPY}.create.operational.detailsSummary`)}
+                    </strong>
+                    <small>
+                      {t(`${COPY}.create.operational.detailsDescription`)}
+                    </small>
+                  </span>
+                </span>
+                <ChevronRight
+                  className="tutorial-technical-details__chevron"
+                  size={20}
+                  aria-hidden="true"
+                />
+              </summary>
+
+              <div
+                className="tutorial-concept-grid"
+                data-testid="tutorial-final-edition-operational-contract"
+              >
+                <article>
+                  <Cpu size={21} aria-hidden="true" />
+                  <h3>{t(`${COPY}.create.operational.auto.title`)}</h3>
+                  <p>{t(`${COPY}.create.operational.auto.text`)}</p>
+                </article>
+                <article>
+                  <Settings2 size={21} aria-hidden="true" />
+                  <h3>{t(`${COPY}.create.operational.policy.title`)}</h3>
+                  <p>{t(`${COPY}.create.operational.policy.text`)}</p>
+                </article>
+                <article>
+                  <Clock3 size={21} aria-hidden="true" />
+                  <h3>{t(`${COPY}.create.operational.availability.title`)}</h3>
+                  <p>{t(`${COPY}.create.operational.availability.text`)}</p>
+                </article>
+              </div>
+            </details>
 
             <div className="tutorial-callout" role="note">
               <Info size={19} aria-hidden="true" />

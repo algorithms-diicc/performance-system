@@ -294,6 +294,70 @@ describe(
 
 
     test(
+      "active summary counts repeated enrolment once",
+      async () => {
+        teacherApi.mockResolvedValue({
+          items: [
+            {
+              id: 10,
+              code: "INF-101",
+              name: "Algorithms",
+              academicYear: 2026,
+              academicTerm: 1,
+              isActive: true,
+              teacher: {
+                fullName: "Alan Turing",
+              },
+              activeStudents: 1,
+              totalStudents: 1,
+              submissions: 2,
+              executions: 3,
+            },
+            {
+              id: 11,
+              code: "INF-102",
+              name: "Data Structures",
+              academicYear: 2026,
+              academicTerm: 1,
+              isActive: true,
+              teacher: {
+                fullName: "Alan Turing",
+              },
+              activeStudents: 1,
+              totalStudents: 1,
+              submissions: 1,
+              executions: 2,
+            },
+          ],
+          total: 2,
+          summary: {
+            activeStudents: 1,
+            totalStudents: 1,
+          },
+        });
+
+        renderPage({
+          id: 8,
+          role_name: "Teacher",
+        });
+
+        const activeLabel =
+          await screen.findByText(
+            "Active students"
+          );
+
+        await waitFor(() => {
+          expect(
+            within(
+              activeLabel.closest("article")
+            ).getByText("1")
+          ).toBeInTheDocument();
+        });
+      }
+    );
+
+
+    test(
       "historical courses use registered totals in the summary and card",
       async () => {
         teacherApi.mockImplementation(

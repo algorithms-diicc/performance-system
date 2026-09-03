@@ -4302,6 +4302,9 @@ const en = {
             ".c sources use gcc, .cpp sources use g++, and one ZIP may contain both languages.",
         },
         operational: {
+          detailsSummary: "View technical details",
+          detailsDescription:
+            "AUTO, operating ranges, and measurement-node availability.",
           auto: {
             title: "AUTO is the recommended option",
             text:

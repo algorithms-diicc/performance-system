@@ -46,6 +46,37 @@ def _iso(value):
     return value.isoformat() if value is not None else None
 
 
+def _canonical_benchmark_family(value):
+    benchmark = str(value or "").strip().upper()
+    if benchmark in {
+        "CAMM",
+        "CAMMR",
+        "CAMMS",
+        "CAMMSO",
+    }:
+        return "CAMM"
+    return benchmark
+
+
+def _benchmark_execution_counts(rows):
+    counts = {
+        "LCS": 0,
+        "CAMM": 0,
+        "SIZE": 0,
+    }
+
+    for row in rows:
+        benchmark = _canonical_benchmark_family(
+            row.get("benchmark")
+        )
+        if benchmark in counts:
+            counts[benchmark] += int(
+                row.get("executions_count") or 0
+            )
+
+    return counts
+
+
 def _as_int(value, field, minimum=None, maximum=None):
     try:
         parsed = int(value)
@@ -670,10 +701,42 @@ def list_teacher_courses():
             )
             rows = cur.fetchall()
 
+            cur.execute(
+                """
+                SELECT
+                    COUNT(DISTINCT cm.user_id) FILTER (
+                        WHERE cm.is_active = TRUE
+                    ) AS active_students,
+                    COUNT(DISTINCT cm.user_id) AS total_students
+                FROM courses c
+                JOIN users t
+                  ON t.id = c.teacher_user_id
+                LEFT JOIN course_memberships cm
+                  ON cm.course_id = c.id
+                WHERE {where_sql};
+                """.format(
+                    where_sql=" AND ".join(where)
+                ),
+                params,
+            )
+            list_summary = cur.fetchone() or {}
+
         return jsonify(
             {
                 "items": [_serialize_course(row) for row in rows],
                 "total": len(rows),
+                "summary": {
+                    "activeStudents": int(
+                        list_summary.get(
+                            "active_students"
+                        ) or 0
+                    ),
+                    "totalStudents": int(
+                        list_summary.get(
+                            "total_students"
+                        ) or 0
+                    ),
+                },
             }
         ), 200
     finally:
@@ -1062,11 +1125,6 @@ def get_course_analytics(course_id):
                 JOIN submissions s
                   ON s.id = e.submission_id
                 WHERE s.course_id = %s
-                  AND UPPER(TRIM(COALESCE(e.benchmark, ''))) IN (
-                      'LCS',
-                      'CAMM',
-                      'SIZE'
-                  )
                 GROUP BY UPPER(TRIM(e.benchmark));
                 """,
                 (course_id,),
@@ -1132,13 +1190,9 @@ def get_course_analytics(course_id):
             else 0.0
         )
 
-        benchmark_counts = {"LCS": 0, "CAMM": 0, "SIZE": 0}
-        for row in benchmark_rows:
-            benchmark = row.get("benchmark")
-            if benchmark in benchmark_counts:
-                benchmark_counts[benchmark] = int(
-                    row.get("executions_count") or 0
-                )
+        benchmark_counts = _benchmark_execution_counts(
+            benchmark_rows
+        )
 
         participation = [
             {

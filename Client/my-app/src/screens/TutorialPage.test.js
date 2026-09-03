@@ -76,6 +76,23 @@ describe("TutorialPage Iteration 9", () => {
     const operational = screen.getByTestId(
       "tutorial-final-edition-operational-contract"
     );
+    const technicalDetails = operational.closest("details");
+    const technicalSummary = screen
+      .getByText("Ver detalles técnicos")
+      .closest("summary");
+
+    expect(technicalDetails).not.toBeNull();
+    expect(technicalSummary).not.toBeNull();
+    expect(technicalDetails).not.toHaveAttribute("open");
+    expect(
+      screen.getByText(
+        "AUTO, rangos operacionales y disponibilidad del nodo."
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(technicalSummary);
+
+    expect(technicalDetails).toHaveAttribute("open");
 
     expect(
       within(operational).getByRole("heading", {

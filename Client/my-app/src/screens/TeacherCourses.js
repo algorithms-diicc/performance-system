@@ -335,6 +335,11 @@ export default function TeacherCourses({
   ] = useState([]);
 
   const [
+    summary,
+    setSummary,
+  ] = useState(null);
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -518,6 +523,13 @@ export default function TeacherCourses({
                 ? data.items
                 : []
             );
+            setSummary(
+              data.summary
+              && typeof data.summary
+                === "object"
+                ? data.summary
+                : null
+            );
           } catch (err) {
             if (
               err.name === "AbortError"
@@ -526,6 +538,7 @@ export default function TeacherCourses({
             }
 
             setItems([]);
+            setSummary(null);
             setError(err);
           } finally {
             if (
@@ -555,22 +568,31 @@ export default function TeacherCourses({
   ]);
 
 
+  const summaryStudents =
+    activeView
+      ? summary?.activeStudents
+      : summary?.totalStudents;
+
   const stats =
     useMemo(
       () => ({
         courses:
           items.length,
         students:
-          items.reduce(
-            (total, course) =>
-              total +
-              ((
-                activeView
-                  ? course.activeStudents
-                  : course.totalStudents
-              ) || 0),
-            0
-          ),
+          Number.isFinite(
+            Number(summaryStudents)
+          )
+            ? Number(summaryStudents)
+            : items.reduce(
+                (total, course) =>
+                  total +
+                  ((
+                    activeView
+                      ? course.activeStudents
+                      : course.totalStudents
+                  ) || 0),
+                0
+              ),
         submissions:
           items.reduce(
             (total, course) =>
@@ -595,6 +617,7 @@ export default function TeacherCourses({
       [
         activeView,
         items,
+        summary,
       ]
     );
 

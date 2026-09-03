@@ -9,6 +9,7 @@ from Server.webapp.routes.admin_users_routes import (
     parse_admin_role_target,
 )
 from Server.webapp.routes.teacher_courses_routes import (
+    _benchmark_execution_counts,
     _course_scope_sql,
     clone_course_in_transaction,
     teacher_courses_bp,
@@ -52,6 +53,34 @@ class ScriptedCursor:
         if not self.fetchall_responses:
             raise AssertionError("Unexpected fetchall()")
         return self.fetchall_responses.pop(0)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(
+        self,
+        exc_type,
+        exc_value,
+        traceback,
+    ):
+        del exc_type
+        del exc_value
+        del traceback
+        return False
+
+
+class ScriptedConnection:
+    def __init__(self, cursor):
+        self.scripted_cursor = cursor
+        self.closed = False
+
+    def cursor(self, *args, **kwargs):
+        del args
+        del kwargs
+        return self.scripted_cursor
+
+    def close(self):
+        self.closed = True
 
 
 def target_user(role):
@@ -297,6 +326,122 @@ class Iteration3CloneContractTests(unittest.TestCase):
             sql, params = _course_scope_sql("c")
             self.assertEqual(sql, "TRUE")
             self.assertEqual(params, [])
+
+
+class Iteration3DashboardEdgeCaseTests(unittest.TestCase):
+    def setUp(self):
+        app = Flask(__name__)
+        app.config.update(
+            TESTING=True,
+            SECRET_KEY="test-only",
+        )
+        app.register_blueprint(teacher_courses_bp)
+        self.client = app.test_client()
+
+    def test_course_list_reports_unique_students(self):
+        course = {
+            **source_course(),
+            "is_active": True,
+            "created_at": None,
+            "updated_at": None,
+            "teacher_full_name": "Current Teacher",
+            "teacher_email": TEACHER["email"],
+            "active_students": 1,
+            "total_students": 1,
+            "submissions_count": 3,
+            "executions_count": 6,
+            "last_activity_at": None,
+        }
+        cur = ScriptedCursor(
+            fetchall=[[course]],
+            fetchone=[
+                {
+                    "active_students": 1,
+                    "total_students": 1,
+                }
+            ],
+        )
+        conn = ScriptedConnection(cur)
+
+        with patch(
+            "Server.webapp.utils.auth_decorators.get_current_user",
+            return_value=TEACHER,
+        ), patch(
+            "Server.webapp.routes.teacher_courses_routes.get_connection",
+            return_value=conn,
+        ):
+            response = self.client.get(
+                "/api/teacher/courses?active=true"
+            )
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(
+            payload["summary"]["activeStudents"],
+            1,
+        )
+        self.assertEqual(
+            payload["summary"]["totalStudents"],
+            1,
+        )
+        self.assertTrue(conn.closed)
+
+        summary_sql = cur.executed[1][0]
+        self.assertIn(
+            "COUNT(DISTINCT cm.user_id)",
+            summary_sql,
+        )
+        self.assertIn(
+            "c.teacher_user_id = %s",
+            summary_sql,
+        )
+        self.assertIn(
+            "c.is_active = TRUE",
+            summary_sql,
+        )
+
+    def test_camm_variants_share_one_analytics_family(self):
+        counts = _benchmark_execution_counts(
+            [
+                {
+                    "benchmark": "CAMMR",
+                    "executions_count": 2,
+                },
+                {
+                    "benchmark": "CAMMS",
+                    "executions_count": 3,
+                },
+                {
+                    "benchmark": "CAMMSO",
+                    "executions_count": 4,
+                },
+                {
+                    "benchmark": "CAMM",
+                    "executions_count": 1,
+                },
+                {
+                    "benchmark": "LCS",
+                    "executions_count": 2,
+                },
+                {
+                    "benchmark": "SIZE",
+                    "executions_count": 2,
+                },
+                {
+                    "benchmark": "UNKNOWN",
+                    "executions_count": 99,
+                },
+            ]
+        )
+
+        self.assertEqual(
+            counts,
+            {
+                "LCS": 2,
+                "CAMM": 10,
+                "SIZE": 2,
+            },
+        )
 
 
 class Iteration3TransferRouteTests(unittest.TestCase):

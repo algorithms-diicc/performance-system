@@ -4304,6 +4304,9 @@ const es = {
             "Las fuentes .c usan gcc, las fuentes .cpp usan g++ y un mismo ZIP puede contener ambos lenguajes.",
         },
         operational: {
+          detailsSummary: "Ver detalles técnicos",
+          detailsDescription:
+            "AUTO, rangos operacionales y disponibilidad del nodo.",
           auto: {
             title: "AUTO es la opción recomendada",
             text:
