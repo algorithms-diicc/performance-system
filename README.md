@@ -524,6 +524,9 @@ Posteriormente se requieren, como mínimo, tres procesos.
 ```bash
 gunicorn \
   --workers 1 \
+  --worker-class gthread \
+  --threads 4 \
+  --timeout 90 \
   --bind 0.0.0.0:5000 \
   Server.webapp.app:app
 ```
@@ -555,7 +558,35 @@ python3 Server/recovery_watchdog.py \
 
 La cola ya no depende de memoria ni de threads internos de Gunicorn. El `execution_dispatcher` es un proceso separado y usa un PostgreSQL advisory lock para garantizar una única instancia activa por base de datos.
 
-El comando de producción anterior conserva **un único worker Gunicorn** porque ésa es la configuración web validada actualmente. La coordinación de la cola ya no impone esa restricción, pero cualquier aumento de workers debe validarse respecto del resto de la capa web antes de adoptarse en producción.
+El comando de producción anterior conserva **un único worker Gunicorn** y utiliza `gthread` con cuatro hilos. Esta configuración permite que una solicitud externa lenta, como una consulta al proveedor de IA, no bloquee por sí sola todas las solicitudes web.
+
+Los hilos pertenecen únicamente a la capa HTTP. No crean dispatchers adicionales, no ejecutan mediciones en paralelo y no modifican la serialidad experimental del nodo. La cola sigue coordinada por el `execution_dispatcher` y su PostgreSQL advisory lock.
+
+Esta configuración fue validada con 24 solicitudes concurrentes. Cualquier aumento posterior de workers o hilos debe someterse nuevamente a pruebas de concurrencia, caché, sesiones y regresión web.
+
+Para las operaciones asistidas por IA se recomienda mantener límites escalonados:
+
+- proveedor de IA: 30 segundos por intento;
+- Gunicorn: 90 segundos por solicitud;
+- proxy inverso: 120 segundos.
+
+Gunicorn debe permitir que termine el intento normal y, cuando corresponda, el único intento controlado de reparación. El proxy dispone de un margen adicional para que Flask devuelva un error JSON controlado, en vez de que la conexión termine anticipadamente con una página HTML `502`.
+
+Estos límites no garantizan la disponibilidad del proveedor externo. Las métricas, gráficos y resultados experimentales permanecen disponibles e independientes de la generación asistida por IA.
+
+Una configuración equivalente de Nginx dentro del bloque `location` de la aplicación es:
+
+```nginx
+location / {
+    proxy_pass http://127.0.0.1:5000;
+    include /etc/nginx/proxy_params;
+
+    proxy_http_version 1.1;
+    proxy_redirect off;
+    proxy_read_timeout 120s;
+    proxy_send_timeout 120s;
+}
+```
 
 El despliegue validado usa **una única instancia de `Server/slave.py` por nodo de medición**. No deben ejecutarse dos procesos slave sobre el mismo hardware: el protocolo Master/Slave legacy todavía puede entregar la misma tarea a más de una conexión disponible, lo que invalidaría la serialidad experimental del nodo.
 

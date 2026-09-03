@@ -213,5 +213,59 @@ describe(
         ).toBeInTheDocument();
       }
     );
+
+    test(
+      "keeps previous individual analysis visible while regeneration is loading",
+      () => {
+        renderPanel(
+          "es",
+          {
+            explanation: mockExplanation,
+            loading: true,
+          }
+        );
+
+        expect(
+          document.querySelector(".individual-ai-panel")
+        ).toHaveAttribute("aria-busy", "true");
+
+        expect(
+          document.querySelector(".individual-ai-loading")
+        ).toBeInTheDocument();
+
+        expect(
+          document.querySelectorAll(".individual-ai-spinner").length
+        ).toBeGreaterThanOrEqual(2);
+
+        expect(
+          screen.getByText(
+            mockExplanation.content.summary
+          )
+        ).toBeInTheDocument();
+
+        expect(
+          screen.getByRole("button")
+        ).toBeDisabled();
+      }
+    );
+
+    test(
+      "communicates provider timeout without invalidating measurements",
+      () => {
+        renderPanel(
+          "es",
+          {
+            errorKey:
+              "renderImageScientific.ai.errors.timeout",
+          }
+        );
+
+        expect(
+          screen.getByText(
+            /las mediciones y los gráficos siguen disponibles/i
+          )
+        ).toBeInTheDocument();
+      }
+    );
   }
 );

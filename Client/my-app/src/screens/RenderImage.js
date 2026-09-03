@@ -920,6 +920,8 @@ function RenderImage({ currentUser }) {
 
       const code =
         error?.response?.data?.error?.code;
+      const statusCode =
+        error?.response?.status;
 
       const errorKeys = {
         AI_NOT_CONFIGURED:
@@ -928,14 +930,34 @@ function RenderImage({ currentUser }) {
           "renderImageScientific.ai.errors.outputRejected",
         AI_PROVIDER_ERROR:
           "renderImageScientific.ai.errors.provider",
+        AI_PROVIDER_TIMEOUT:
+          "renderImageScientific.ai.errors.timeout",
         INVALID_AI_LANGUAGE:
           "renderImageScientific.ai.errors.invalidLanguage",
       };
 
-      setAiError(
+      let errorKey =
         errorKeys[code] ||
-          "renderImageScientific.ai.errors.generic"
-      );
+        "renderImageScientific.ai.errors.generic";
+
+      if (!error?.response) {
+        errorKey =
+          "renderImageScientific.ai.errors.network";
+      } else if (statusCode === 401) {
+        errorKey =
+          "renderImageScientific.ai.errors.unauthorized";
+      } else if (statusCode === 403) {
+        errorKey =
+          "renderImageScientific.ai.errors.forbidden";
+      } else if (statusCode === 504) {
+        errorKey =
+          "renderImageScientific.ai.errors.timeout";
+      } else if (statusCode === 502 && !code) {
+        errorKey =
+          "renderImageScientific.ai.errors.provider";
+      }
+
+      setAiError(errorKey);
     } finally {
       setAiLoading(false);
     }

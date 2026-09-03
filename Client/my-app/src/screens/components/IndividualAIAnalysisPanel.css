@@ -330,3 +330,28 @@
       minmax(0, 1fr);
   }
 }
+
+/* AI-UX-01 loading indicator */
+.results-page .individual-ai-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.results-page .individual-ai-spinner {
+  flex: 0 0 auto;
+  animation: individual-ai-spin 0.9s linear infinite;
+}
+
+@keyframes individual-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .results-page .individual-ai-spinner {
+    animation: none;
+  }
+}

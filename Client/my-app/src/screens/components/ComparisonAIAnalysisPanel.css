@@ -257,3 +257,27 @@
     width: 100%;
   }
 }
+
+/* AI-UX-01 loading indicator */
+.comparison-ai-state--loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.comparison-ai-spinner {
+  flex: 0 0 auto;
+  animation: comparison-ai-spin 0.9s linear infinite;
+}
+
+@keyframes comparison-ai-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .comparison-ai-spinner {
+    animation: none;
+  }
+}

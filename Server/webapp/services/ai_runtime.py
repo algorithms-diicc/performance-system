@@ -1,6 +1,7 @@
 import hashlib
 import json
 import os
+import tempfile
 
 
 SUPPORTED_LANGUAGES = frozenset({"es", "en"})
@@ -166,16 +167,50 @@ def read_valid_ai_cache(
 
 def write_ai_cache(cache_path, payload):
     directory = os.path.dirname(cache_path)
+    descriptor = None
+    temporary_path = None
 
     try:
         os.makedirs(directory, exist_ok=True)
-        with open(cache_path, "w", encoding="utf-8") as handle:
+
+        descriptor, temporary_path = tempfile.mkstemp(
+            prefix=".ai-cache-",
+            suffix=".tmp",
+            dir=directory,
+        )
+
+        with os.fdopen(
+            descriptor,
+            "w",
+            encoding="utf-8",
+        ) as handle:
+            descriptor = None
             json.dump(
                 payload,
                 handle,
                 ensure_ascii=False,
                 indent=2,
             )
+            handle.flush()
+            os.fsync(handle.fileno())
+
+        os.replace(
+            temporary_path,
+            cache_path,
+        )
+        temporary_path = None
     except OSError:
         # La IA sigue siendo utilizable aunque el cache no pueda persistirse.
         pass
+    finally:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
+
+        if temporary_path is not None:
+            try:
+                os.unlink(temporary_path)
+            except OSError:
+                pass

@@ -154,4 +154,43 @@ describe("ComparisonAIAnalysisPanel", () => {
       })
     ).toBeInTheDocument();
   });
+  test("keeps previous comparison visible while regeneration is loading", () => {
+    renderPanel({
+      explanation,
+      loading: true,
+    });
+
+    expect(
+      document.querySelector(".comparison-ai-panel")
+    ).toHaveAttribute("aria-busy", "true");
+
+    expect(
+      document.querySelector(".comparison-ai-state--loading")
+    ).toBeInTheDocument();
+
+    expect(
+      document.querySelectorAll(".comparison-ai-spinner").length
+    ).toBeGreaterThanOrEqual(2);
+
+    expect(
+      screen.getByText("Síntesis comparativa.")
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByRole("button")
+    ).toBeDisabled();
+  });
+
+  test("communicates provider timeout without invalidating measurements", () => {
+    renderPanel({
+      errorKey: "comparisonPage.ai.errors.timeout",
+    });
+
+    expect(
+      screen.getByText(
+        /las mediciones y los gráficos siguen disponibles/i
+      )
+    ).toBeInTheDocument();
+  });
+
 });

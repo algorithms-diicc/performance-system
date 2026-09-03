@@ -15,6 +15,7 @@ from Server.webapp.services.comparison_ai_service import (
     ComparisonAINotConfiguredError,
     ComparisonAIOutputRejectedError,
     ComparisonAIProviderError,
+    ComparisonAITimeoutError,
     ComparisonAIUnavailableError,
 )
 from Server.webapp.services.comparison_service import build_comparison
@@ -267,6 +268,19 @@ class ComparisonAIRoutesTests(unittest.TestCase):
             response.get_json()["error"]["code"],
             "AI_NOT_CONFIGURED",
         )
+
+    def test_provider_timeout_maps_to_504(self):
+        response, calls = self._post(
+            {"executions": ["exec1SIZE", "exec2SIZE"]},
+            ai_side_effect=ComparisonAITimeoutError("timeout"),
+        )
+
+        self.assertEqual(response.status_code, 504)
+        self.assertEqual(
+            response.get_json()["error"]["code"],
+            "AI_PROVIDER_TIMEOUT",
+        )
+        calls["ai"].assert_called_once()
 
     def test_provider_and_guardrail_failures_map_to_502(self):
         cases = [

@@ -7,6 +7,7 @@ from .ai_transports import (
     AITransportConfigurationError,
     AITransportError,
     AITransportSelection,
+    AITransportTimeoutError,
     DEFAULT_OPENAI_URL,
     DEFAULT_TIMEOUT_SECONDS,
     resolve_ai_transport,
@@ -66,10 +67,47 @@ class AINotConfiguredError(AIExplanationError):
 
 
 
+class AIExplanationTimeoutError(AIExplanationError):
+    """El proveedor excedió el límite de tiempo disponible."""
+
+
 class AIOutputRejectedError(AIExplanationError):
     """La salida no superó las validaciones de consistencia locales."""
 
 
+
+
+def _build_individual_repair_request(
+    request_payload,
+    rejection_reason,
+    language,
+):
+    repaired = dict(request_payload)
+    repaired["input"] = list(request_payload.get("input") or [])
+
+    if normalize_ai_language(language) == "en":
+        instruction = (
+            "CORRECTION REQUEST: the previous generated output was rejected "
+            "by local scientific validation for this reason: {}. Regenerate "
+            "the complete response from scratch, preserve the JSON schema and "
+            "use only deterministic evidence from the structured context."
+        )
+    else:
+        instruction = (
+            "SOLICITUD DE CORRECCIÓN: la salida generada anteriormente fue "
+            "rechazada por la validación científica local por esta razón: {}. "
+            "Regenera la respuesta completa desde cero, conserva el esquema "
+            "JSON y utiliza únicamente evidencia determinística del contexto "
+            "estructurado."
+        )
+
+    repaired["input"].append(
+        {
+            "role": "user",
+            "content": instruction.format(rejection_reason),
+        }
+    )
+    return repaired
 
 
 def generate_ai_explanation(
@@ -195,22 +233,41 @@ def generate_ai_explanation(
         language=resolved_language,
     )
 
-    try:
-        provider_response = selection.send(
-            request_payload,
-            resolved_api_key,
+    repair_attempted = False
+    attempt = 0
+
+    while True:
+        try:
+            provider_response = selection.send(
+                request_payload,
+                resolved_api_key,
+            )
+        except AITransportTimeoutError as exc:
+            raise AIExplanationTimeoutError(str(exc)) from exc
+        except AITransportError as exc:
+            raise AIProviderError(str(exc)) from exc
+
+        parsed = parse_openai_structured_output(
+            provider_response
         )
-    except AITransportError as exc:
-        raise AIProviderError(str(exc)) from exc
 
-    parsed = parse_openai_structured_output(
-        provider_response
-    )
+        try:
+            validate_ai_output(
+                output=parsed,
+                context=context,
+            )
+            break
+        except AIOutputRejectedError as exc:
+            if attempt >= 1:
+                raise
 
-    validate_ai_output(
-        output=parsed,
-        context=context,
-    )
+            repair_attempted = True
+            attempt += 1
+            request_payload = _build_individual_repair_request(
+                request_payload,
+                str(exc),
+                resolved_language,
+            )
 
     result = {
         "schema_version": AI_SCHEMA_VERSION,
@@ -240,6 +297,8 @@ def generate_ai_explanation(
             "structured_output": True,
             "numeric_consistency_check": True,
             "asymptotic_claim_check": True,
+            "repair_attempted": repair_attempted,
+            "attempts": attempt + 1,
             "passed": True,
         },
         "content": parsed,

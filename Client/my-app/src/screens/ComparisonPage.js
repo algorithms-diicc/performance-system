@@ -737,7 +737,7 @@ const ComparisonPage = ({ currentUser }) => {
         : "noEvidence";
 
   const handleGenerateComparisonAI = async () => {
-    if (!aiAvailable) return;
+    if (!aiAvailable || aiState.kind === "loading") return;
 
     const previous = aiState.data;
     const serial = aiRequestSerial.current + 1;
@@ -784,6 +784,8 @@ const ComparisonPage = ({ currentUser }) => {
           "comparisonPage.ai.errors.outputRejected",
         AI_PROVIDER_ERROR:
           "comparisonPage.ai.errors.provider",
+        AI_PROVIDER_TIMEOUT:
+          "comparisonPage.ai.errors.timeout",
         INVALID_AI_LANGUAGE:
           "comparisonPage.ai.errors.invalidLanguage",
         COMPARISON_AI_UNAVAILABLE:
@@ -803,6 +805,12 @@ const ComparisonPage = ({ currentUser }) => {
       } else if (statusCode === 403) {
         errorKey =
           "comparisonPage.ai.errors.forbidden";
+      } else if (statusCode === 504) {
+        errorKey =
+          "comparisonPage.ai.errors.timeout";
+      } else if (statusCode === 502 && !code) {
+        errorKey =
+          "comparisonPage.ai.errors.provider";
       }
 
       setAiState({

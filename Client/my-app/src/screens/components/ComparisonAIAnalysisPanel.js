@@ -1,5 +1,5 @@
 import React from "react";
-import { Info, Sparkles } from "lucide-react";
+import { Info, LoaderCircle, Sparkles } from "lucide-react";
 
 import { useI18n } from "../../i18n";
 
@@ -76,6 +76,7 @@ export default function ComparisonAIAnalysisPanel({
       id="comparison-ai"
       className="comparison-page__section comparison-page__major-section comparison-ai-panel"
       aria-labelledby="comparison-ai-title"
+      aria-busy={loading}
     >
       <header className="comparison-ai-header">
         <div className="comparison-ai-heading">
@@ -97,7 +98,15 @@ export default function ComparisonAIAnalysisPanel({
             onClick={onGenerate}
             disabled={loading}
           >
-            <Sparkles size={15} aria-hidden="true" />
+            {loading ? (
+              <LoaderCircle
+                size={15}
+                className="comparison-ai-spinner"
+                aria-hidden="true"
+              />
+            ) : (
+              <Sparkles size={15} aria-hidden="true" />
+            )}
             {t(
               loading
                 ? "comparisonPage.ai.actions.loading"
@@ -140,9 +149,18 @@ export default function ComparisonAIAnalysisPanel({
             </div>
           )}
 
-          {loading && !content && (
-            <div className="comparison-ai-state" role="status">
-              {t("comparisonPage.ai.loading")}
+          {loading && (
+            <div
+              className="comparison-ai-state comparison-ai-state--loading"
+              role="status"
+              aria-live="polite"
+            >
+              <LoaderCircle
+                size={17}
+                className="comparison-ai-spinner"
+                aria-hidden="true"
+              />
+              <span>{t("comparisonPage.ai.loading")}</span>
             </div>
           )}
 

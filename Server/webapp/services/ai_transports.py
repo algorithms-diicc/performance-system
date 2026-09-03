@@ -13,6 +13,10 @@ class AITransportError(RuntimeError):
     pass
 
 
+class AITransportTimeoutError(AITransportError):
+    """El proveedor no respondió dentro del límite configurado."""
+
+
 class AITransportConfigurationError(AITransportError):
     pass
 
@@ -124,8 +128,21 @@ def openai_http_transport(
             )
         ) from exc
     except URLError as exc:
+        reason = getattr(exc, "reason", None)
+        if (
+            isinstance(reason, TimeoutError)
+            or "timed out" in str(reason).lower()
+        ):
+            raise AITransportTimeoutError(
+                "OpenAI API excedió el tiempo máximo de respuesta."
+            ) from exc
+
         raise AITransportError(
             "No fue posible conectar con OpenAI API."
+        ) from exc
+    except TimeoutError as exc:
+        raise AITransportTimeoutError(
+            "OpenAI API excedió el tiempo máximo de respuesta."
         ) from exc
     except ValueError as exc:
         raise AITransportError(

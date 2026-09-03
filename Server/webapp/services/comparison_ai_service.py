@@ -22,6 +22,7 @@ from .ai_transports import (
     AITransportConfigurationError,
     AITransportError,
     AITransportSelection,
+    AITransportTimeoutError,
     DEFAULT_OPENAI_URL,
     DEFAULT_TIMEOUT_SECONDS,
     resolve_ai_transport,
@@ -68,12 +69,51 @@ class ComparisonAIUnavailableError(ComparisonAIError):
     """La comparación no tiene base válida suficiente para análisis IA."""
 
 
+class ComparisonAITimeoutError(ComparisonAIError):
+    """El proveedor excedió el límite de tiempo disponible."""
+
+
 class ComparisonAIOutputRejectedError(ComparisonAIError):
     """La salida del asistente no superó guardrails comparativos."""
 
 
 class ComparisonAIProviderError(ComparisonAIError):
     """El transporte/proveedor no entregó una respuesta utilizable."""
+
+
+def _build_comparison_repair_request(
+    request_payload,
+    rejection_reason,
+    language,
+):
+    repaired = dict(request_payload)
+    repaired["input"] = list(request_payload.get("input") or [])
+
+    if normalize_ai_language(language) == "en":
+        instruction = (
+            "CORRECTION REQUEST: the previous generated output was rejected "
+            "by local scientific validation for this reason: {}. Regenerate "
+            "the complete response from scratch. Preserve the JSON schema and "
+            "use only claims directly supported by the structured comparison "
+            "context. Do not repeat the rejected claim."
+        )
+    else:
+        instruction = (
+            "SOLICITUD DE CORRECCIÓN: la salida generada anteriormente fue "
+            "rechazada por la validación científica local por esta razón: {}. "
+            "Regenera la respuesta completa desde cero. Conserva el esquema "
+            "JSON y utiliza únicamente afirmaciones respaldadas directamente "
+            "por el contexto comparativo estructurado. No repitas la "
+            "afirmación rechazada."
+        )
+
+    repaired["input"].append(
+        {
+            "role": "user",
+            "content": instruction.format(rejection_reason),
+        }
+    )
+    return repaired
 
 
 def generate_comparison_ai_explanation(
@@ -209,25 +249,44 @@ def generate_comparison_ai_explanation(
         language=resolved_language,
     )
 
-    try:
-        provider_response = selection.send(
-            request_payload,
-            resolved_api_key,
-        )
-    except AITransportError as exc:
-        raise ComparisonAIProviderError(str(exc)) from exc
+    repair_attempted = False
+    attempt = 0
 
-    try:
-        parsed = parse_openai_structured_output(
-            provider_response
-        )
-    except AIProviderError as exc:
-        raise ComparisonAIProviderError(str(exc)) from exc
+    while True:
+        try:
+            provider_response = selection.send(
+                request_payload,
+                resolved_api_key,
+            )
+        except AITransportTimeoutError as exc:
+            raise ComparisonAITimeoutError(str(exc)) from exc
+        except AITransportError as exc:
+            raise ComparisonAIProviderError(str(exc)) from exc
 
-    validate_comparison_ai_output(
-        output=parsed,
-        context=context,
-    )
+        try:
+            parsed = parse_openai_structured_output(
+                provider_response
+            )
+        except AIProviderError as exc:
+            raise ComparisonAIProviderError(str(exc)) from exc
+
+        try:
+            validate_comparison_ai_output(
+                output=parsed,
+                context=context,
+            )
+            break
+        except ComparisonAIOutputRejectedError as exc:
+            if attempt >= 1:
+                raise
+
+            repair_attempted = True
+            attempt += 1
+            request_payload = _build_comparison_repair_request(
+                request_payload,
+                str(exc),
+                resolved_language,
+            )
 
     pedagogy = context.get("contract") or {}
     result = {
@@ -265,6 +324,8 @@ def generate_comparison_ai_explanation(
             "causal_claim_check": True,
             "metric_reference_check": True,
             "implementation_reference_check": True,
+            "repair_attempted": repair_attempted,
+            "attempts": attempt + 1,
             "passed": True,
         },
         "content": parsed,

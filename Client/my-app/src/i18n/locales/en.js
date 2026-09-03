@@ -1556,9 +1556,11 @@ const en = {
         notConfigured:
           "The AI provider is not configured on the server.",
         outputRejected:
-          "The generated response did not pass the scientific validations.",
+          "The generated response did not pass the scientific validations and will not be shown. Measurements remain available.",
         provider:
-          "The AI provider is temporarily unavailable.",
+          "The AI provider is temporarily unavailable. Measurements and charts were not affected.",
+        timeout:
+          "The AI provider took longer than expected. Measurements and charts remain available. Try again.",
         invalidLanguage:
           "The requested language is not supported.",
         unavailable:
@@ -2457,11 +2459,19 @@ const en = {
         notConfigured:
           "Real AI is not configured on the server. The deterministic interpretation remains available.",
         outputRejected:
-          "The response was discarded because it did not pass the consistency checks.",
+          "The response was discarded because it did not pass the consistency checks. Measurements remain available.",
         provider:
-          "The AI provider is temporarily unavailable.",
+          "The AI provider is temporarily unavailable. Measurements and charts were not affected.",
+        timeout:
+          "The AI provider took longer than expected. Measurements and charts remain available. Try again.",
         invalidLanguage:
           "The requested language is not supported for assisted analysis.",
+        unauthorized:
+          "Your session no longer allows this analysis.",
+        forbidden:
+          "You do not have permission to analyze this execution.",
+        network:
+          "We could not connect to the server. Check your connection and try again.",
         generic:
           "The assisted analysis could not be generated at this time.",
       },

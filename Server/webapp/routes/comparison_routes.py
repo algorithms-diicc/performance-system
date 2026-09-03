@@ -17,6 +17,7 @@ from ..services.comparison_ai_service import (
     ComparisonAINotConfiguredError,
     ComparisonAIOutputRejectedError,
     ComparisonAIProviderError,
+    ComparisonAITimeoutError,
     ComparisonAIUnavailableError,
     generate_comparison_ai_explanation,
 )
@@ -447,6 +448,12 @@ def create_comparison_ai_explanation():
             503,
             "AI_NOT_CONFIGURED",
             "La explicación con IA no está configurada.",
+        )
+    except ComparisonAITimeoutError:
+        _comparison_error(
+          504,
+          "AI_PROVIDER_TIMEOUT",
+          "El proveedor de IA excedió el tiempo máximo de respuesta.",
         )
     except ComparisonAIOutputRejectedError as exc:
         current_app.logger.warning(

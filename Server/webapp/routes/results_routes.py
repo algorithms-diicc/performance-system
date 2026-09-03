@@ -22,6 +22,7 @@ from ..utils.api_errors import ForbiddenError, NotFoundError
 from ..utils.auth_decorators import get_user_role_name, login_required
 from ..services.ai_explanation_service import (
     AIExplanationError,
+    AIExplanationTimeoutError,
     AIInvalidLanguageError,
     AINotConfiguredError,
     AIOutputRejectedError,
@@ -360,6 +361,12 @@ def create_ai_explanation(codename):
             status=503,
             code="AI_NOT_CONFIGURED",
             message="La explicación con IA no está configurada.",
+        )
+    except AIExplanationTimeoutError:
+        return _error_response(
+            status=504,
+            code="AI_PROVIDER_TIMEOUT",
+            message="El proveedor de IA excedió el tiempo máximo de respuesta.",
         )
     except AIOutputRejectedError:
         return _error_response(

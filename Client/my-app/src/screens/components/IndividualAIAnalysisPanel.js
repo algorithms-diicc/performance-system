@@ -1,6 +1,7 @@
 import React from "react";
 import {
   Info,
+  LoaderCircle,
   Sparkles,
 } from "lucide-react";
 
@@ -121,6 +122,7 @@ export default function IndividualAIAnalysisPanel({
     <section
       className="individual-ai-panel"
       aria-labelledby="individual-ai-title"
+      aria-busy={loading}
     >
       <header className="individual-ai-header">
         <div className="individual-ai-heading">
@@ -152,10 +154,18 @@ export default function IndividualAIAnalysisPanel({
           onClick={onGenerate}
           disabled={loading}
         >
-          <Sparkles
-            size={15}
-            aria-hidden="true"
-          />
+          {loading ? (
+            <LoaderCircle
+              size={15}
+              className="individual-ai-spinner"
+              aria-hidden="true"
+            />
+          ) : (
+            <Sparkles
+              size={15}
+              aria-hidden="true"
+            />
+          )}
 
           {loading
             ? t(
@@ -170,6 +180,23 @@ export default function IndividualAIAnalysisPanel({
               )}
         </button>
       </header>
+
+      {loading && (
+        <div
+          className="individual-ai-loading"
+          role="status"
+          aria-live="polite"
+        >
+          <LoaderCircle
+            size={17}
+            className="individual-ai-spinner"
+            aria-hidden="true"
+          />
+          <span>
+            {t("renderImageScientific.ai.actions.loading")}
+          </span>
+        </div>
+      )}
 
       {!content && !errorText && (
         <div className="individual-ai-intro">

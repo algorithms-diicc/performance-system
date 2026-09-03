@@ -1561,9 +1561,11 @@ const es = {
         notConfigured:
           "El proveedor de IA no está configurado en el servidor.",
         outputRejected:
-          "La respuesta generada no superó las validaciones científicas.",
+          "La respuesta generada no superó las validaciones científicas y no será mostrada. Las mediciones permanecen disponibles.",
         provider:
-          "El proveedor de IA no está disponible temporalmente.",
+          "El proveedor de IA no está disponible temporalmente. Las mediciones y los gráficos no se han visto afectados.",
+        timeout:
+          "El proveedor de IA tardó más de lo esperado. Las mediciones y los gráficos siguen disponibles. Intenta nuevamente.",
         invalidLanguage:
           "El idioma solicitado no está soportado.",
         unavailable:
@@ -2463,11 +2465,19 @@ const es = {
         notConfigured:
           "La IA real no está configurada en el servidor. La interpretación determinística sigue disponible.",
         outputRejected:
-          "La respuesta fue descartada porque no superó las validaciones de consistencia.",
+          "La respuesta fue descartada porque no superó las validaciones de consistencia. Las mediciones permanecen disponibles.",
         provider:
-          "El proveedor de IA no está disponible temporalmente.",
+          "El proveedor de IA no está disponible temporalmente. Las mediciones y los gráficos no se han visto afectados.",
+        timeout:
+          "El proveedor de IA tardó más de lo esperado. Las mediciones y los gráficos siguen disponibles. Intenta nuevamente.",
         invalidLanguage:
           "El idioma solicitado para el análisis asistido no está soportado.",
+        unauthorized:
+          "Tu sesión ya no permite generar este análisis.",
+        forbidden:
+          "No tienes permisos para analizar esta ejecución.",
+        network:
+          "No pudimos conectar con el servidor. Comprueba tu conexión e intenta nuevamente.",
         generic:
           "No fue posible generar el análisis asistido en este momento.",
       },
