@@ -1,6 +1,8 @@
+from socket import timeout as SocketTimeout
 import tempfile
 import unittest
 from unittest.mock import patch
+from urllib.error import URLError
 
 from Server.tests.test_ai_explanation_service import (
     fake_response,
@@ -34,6 +36,47 @@ class AIResilienceTests(unittest.TestCase):
         with patch(
             "Server.webapp.services.ai_transports.urlopen",
             side_effect=TimeoutError("timed out"),
+        ):
+            with self.assertRaises(AITransportTimeoutError):
+                openai_http_transport(
+                    {"model": "test"},
+                    "test-key",
+                    timeout_seconds=1,
+                )
+
+    def test_transport_classifies_socket_read_timeout(self):
+        class TimeoutResponse:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, exc_type, exc_value, traceback):
+                del exc_type
+                del exc_value
+                del traceback
+                return False
+
+            def read(self):
+                raise SocketTimeout(
+                    "The read operation timed out"
+                )
+
+        with patch(
+            "Server.webapp.services.ai_transports.urlopen",
+            return_value=TimeoutResponse(),
+        ):
+            with self.assertRaises(AITransportTimeoutError):
+                openai_http_transport(
+                    {"model": "test"},
+                    "test-key",
+                    timeout_seconds=1,
+                )
+
+    def test_transport_classifies_wrapped_socket_timeout(self):
+        with patch(
+            "Server.webapp.services.ai_transports.urlopen",
+            side_effect=URLError(
+                SocketTimeout("timed out")
+            ),
         ):
             with self.assertRaises(AITransportTimeoutError):
                 openai_http_transport(

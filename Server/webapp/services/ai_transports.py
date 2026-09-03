@@ -1,5 +1,6 @@
 import json
 from dataclasses import dataclass
+from socket import timeout as SocketTimeout
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -130,7 +131,7 @@ def openai_http_transport(
     except URLError as exc:
         reason = getattr(exc, "reason", None)
         if (
-            isinstance(reason, TimeoutError)
+            isinstance(reason, (TimeoutError, SocketTimeout))
             or "timed out" in str(reason).lower()
         ):
             raise AITransportTimeoutError(
@@ -140,7 +141,7 @@ def openai_http_transport(
         raise AITransportError(
             "No fue posible conectar con OpenAI API."
         ) from exc
-    except TimeoutError as exc:
+    except (TimeoutError, SocketTimeout) as exc:
         raise AITransportTimeoutError(
             "OpenAI API excedió el tiempo máximo de respuesta."
         ) from exc
