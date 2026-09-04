@@ -491,14 +491,28 @@ class ComparisonAIServiceTests(unittest.TestCase):
                 context,
             )
 
-    def test_rejects_unreferenced_number_big_o_winner_and_causality(self):
+    def test_unreferenced_number_is_reported_as_warning(self):
+        context = build_comparison_ai_context(
+            comparison_fixture(),
+            language="es",
+        )
+        output = valid_output()
+        output["summary"] = "El valor principal fue 999."
+
+        warnings = validate_comparison_ai_output(
+            output,
+            context,
+        )
+
+        self.assertEqual(warnings, ["999"])
+
+    def test_rejects_big_o_winner_and_causality(self):
         context = build_comparison_ai_context(
             comparison_fixture(),
             language="es",
         )
 
         cases = [
-            "El valor principal fue 999.",
             "El algoritmo es O(n²).",
             "a.cpp es el ganador.",
             "La caché causa la diferencia observada.",
@@ -516,6 +530,76 @@ class ComparisonAIServiceTests(unittest.TestCase):
                     output,
                     context,
                 )
+
+    def test_retries_transient_provider_parse_failure_once(self):
+        calls = {"count": 0}
+
+        def transport(payload, api_key):
+            del payload
+            del api_key
+            calls["count"] += 1
+            if calls["count"] == 1:
+                return {"status": "incomplete"}
+            return build_provider_shaped_response(valid_output())
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = generate_comparison_ai_explanation(
+                static_dir=temp_dir,
+                comparison_payload=comparison_fixture(),
+                transport=transport,
+                transport_name="test-provider",
+                transport_simulated=False,
+                force=True,
+            )
+
+        self.assertEqual(calls["count"], 2)
+        self.assertEqual(result["guardrails"]["attempts"], 2)
+        self.assertTrue(
+            result["guardrails"]["provider_retry_attempted"]
+        )
+        self.assertFalse(
+            result["guardrails"]["repair_attempted"]
+        )
+
+    def test_accepts_numeric_warning_after_bounded_repair(self):
+        calls = {"count": 0}
+
+        def transport(payload, api_key):
+            del payload
+            del api_key
+            calls["count"] += 1
+            output = valid_output()
+            output["summary"] = "El valor derivado fue 999."
+            return build_provider_shaped_response(output)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = generate_comparison_ai_explanation(
+                static_dir=temp_dir,
+                comparison_payload=comparison_fixture(),
+                transport=transport,
+                transport_name="test-provider",
+                transport_simulated=False,
+                force=True,
+            )
+
+        self.assertEqual(calls["count"], 2)
+        self.assertEqual(result["guardrails"]["attempts"], 2)
+        self.assertTrue(
+            result["guardrails"]["repair_attempted"]
+        )
+        self.assertFalse(
+            result["guardrails"]["numeric_consistency_check"]
+        )
+        self.assertEqual(
+            result["guardrails"]["numeric_warnings"],
+            [
+                {
+                    "code": "UNVERIFIED_NUMERIC_LITERAL",
+                    "literals": ["999"],
+                }
+            ],
+        )
+        self.assertTrue(result["guardrails"]["passed"])
 
     def test_cache_is_separated_by_language_and_provider(self):
         calls = {"count": 0}

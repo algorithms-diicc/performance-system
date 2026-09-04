@@ -449,27 +449,45 @@ def create_comparison_ai_explanation():
             "AI_NOT_CONFIGURED",
             "La explicación con IA no está configurada.",
         )
-    except ComparisonAITimeoutError:
+    except ComparisonAITimeoutError as exc:
+        current_app.logger.warning(
+            "Comparison AI provider timed out after retries: %s",
+            exc,
+        )
         _comparison_error(
           504,
           "AI_PROVIDER_TIMEOUT",
-          "El proveedor de IA excedió el tiempo máximo de respuesta.",
+          (
+              "El proveedor de IA excedió el tiempo máximo después "
+              "de dos intentos. Las mediciones permanecen disponibles."
+          ),
         )
     except ComparisonAIOutputRejectedError as exc:
         current_app.logger.warning(
-            "Comparison AI output rejected by guardrails: %s",
+            "Comparison AI output rejected after retries: %s",
             exc,
         )
         _comparison_error(
             502,
             "AI_OUTPUT_REJECTED",
-            "La explicación generada no superó las validaciones.",
+            (
+                "La explicación no superó las validaciones científicas "
+                "después de dos intentos. Las mediciones permanecen "
+                "disponibles."
+            ),
         )
-    except ComparisonAIProviderError:
+    except ComparisonAIProviderError as exc:
+        current_app.logger.warning(
+            "Comparison AI provider failed after retries: %s",
+            exc,
+        )
         _comparison_error(
             502,
             "AI_PROVIDER_ERROR",
-            "El proveedor de IA no está disponible temporalmente.",
+            (
+                "El proveedor de IA no respondió correctamente después "
+                "de dos intentos. Las mediciones permanecen disponibles."
+            ),
         )
     except ComparisonAIError:
         _comparison_error(

@@ -71,6 +71,14 @@ export default function ComparisonAIAnalysisPanel({
       ? "comparisonPage.ai.unavailable.incompatible"
       : "comparisonPage.ai.unavailable.noEvidence";
 
+  const retryableError = [
+    "comparisonPage.ai.errors.outputRejected",
+    "comparisonPage.ai.errors.provider",
+    "comparisonPage.ai.errors.timeout",
+    "comparisonPage.ai.errors.network",
+    "comparisonPage.ai.errors.generic",
+  ].includes(errorKey);
+
   return (
     <section
       id="comparison-ai"
@@ -110,16 +118,19 @@ export default function ComparisonAIAnalysisPanel({
             {t(
               loading
                 ? "comparisonPage.ai.actions.loading"
-                : explanation
-                  ? "comparisonPage.ai.actions.update"
-                  : "comparisonPage.ai.actions.generate"
+                : retryableError
+                  ? "comparisonPage.ai.actions.retry"
+                  : explanation
+                    ? "comparisonPage.ai.actions.update"
+                    : "comparisonPage.ai.actions.generate"
             )}
           </button>
         )}
       </header>
 
       <p className="comparison-ai-intro">
-        {t("comparisonPage.ai.intro")}
+        {t("comparisonPage.ai.intro")}{" "}
+        {t("comparisonPage.ai.reliability")}
       </p>
 
       <div className="comparison-ai-privacy">
@@ -146,6 +157,21 @@ export default function ComparisonAIAnalysisPanel({
               role="alert"
             >
               {t(errorKey)}
+            </div>
+          )}
+
+          {explanation?.guardrails
+            ?.numeric_consistency_check === false && (
+            <div
+              className="comparison-ai-privacy"
+              role="status"
+            >
+              <Info size={16} aria-hidden="true" />
+              <span>
+                {t(
+                  "comparisonPage.ai.errors.numericWarning"
+                )}
+              </span>
             </div>
           )}
 

@@ -1493,6 +1493,8 @@ const en = {
       title: "AI-assisted comparative analysis",
       intro:
         "Complements the deterministic reading with a structured synthesis of the canonical comparative evidence.",
+      reliability:
+        "Every response passes the system's own scientific validations. Provider variability or a rejected output may occasionally require another attempt; measurements and charts are not affected.",
       privacy:
         "The assistant does not receive student source code, raw CSV data, or browser-supplied metrics as scientific evidence.",
       loading:
@@ -1500,6 +1502,7 @@ const en = {
       actions: {
         generate: "Generate comparative analysis",
         update: "Update analysis",
+        retry: "Retry analysis",
         loading: "Generating...",
       },
       status: {
@@ -1556,11 +1559,13 @@ const en = {
         notConfigured:
           "The AI provider is not configured on the server.",
         outputRejected:
-          "The generated response did not pass the scientific validations and will not be shown. Measurements remain available.",
+          "The generated response did not pass the scientific validations after two attempts. Measurements remain available; select Retry analysis to request a new response.",
+        numericWarning:
+          "The response contains derived numeric values that the system could not verify literally. Contrast them with the measurements and charts.",
         provider:
-          "The AI provider is temporarily unavailable. Measurements and charts were not affected.",
+          "The AI provider did not respond correctly after two attempts. Measurements and charts were not affected; select Retry analysis.",
         timeout:
-          "The AI provider took longer than expected. Measurements and charts remain available. Try again.",
+          "The AI provider took longer than expected after two attempts. Measurements and charts remain available; select Retry analysis.",
         invalidLanguage:
           "The requested language is not supported.",
         unavailable:

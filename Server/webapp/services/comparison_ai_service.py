@@ -36,6 +36,7 @@ COMPARISON_AI_PROMPT_VERSION = "iter11e-comparison-v3"
 DEFAULT_MODEL = "gpt-5.6-luna"
 DEFAULT_TRANSPORT = "mock"
 CACHE_DIRNAME = "_comparison_ai"
+MAX_PROVIDER_ATTEMPTS = 2
 ALLOWED_EVIDENCE_KINDS = {
     "observation",
     "trend",
@@ -250,17 +251,27 @@ def generate_comparison_ai_explanation(
     )
 
     repair_attempted = False
-    attempt = 0
+    provider_retry_attempted = False
+    provider_attempts = 0
+    numeric_warnings = []
 
-    while True:
+    while provider_attempts < MAX_PROVIDER_ATTEMPTS:
+        provider_attempts += 1
+
         try:
             provider_response = selection.send(
                 request_payload,
                 resolved_api_key,
             )
         except AITransportTimeoutError as exc:
+            if provider_attempts < MAX_PROVIDER_ATTEMPTS:
+                provider_retry_attempted = True
+                continue
             raise ComparisonAITimeoutError(str(exc)) from exc
         except AITransportError as exc:
+            if provider_attempts < MAX_PROVIDER_ATTEMPTS:
+                provider_retry_attempted = True
+                continue
             raise ComparisonAIProviderError(str(exc)) from exc
 
         try:
@@ -268,25 +279,44 @@ def generate_comparison_ai_explanation(
                 provider_response
             )
         except AIProviderError as exc:
+            if provider_attempts < MAX_PROVIDER_ATTEMPTS:
+                provider_retry_attempted = True
+                continue
             raise ComparisonAIProviderError(str(exc)) from exc
 
         try:
-            validate_comparison_ai_output(
+            numeric_warnings = validate_comparison_ai_output(
                 output=parsed,
                 context=context,
             )
-            break
         except ComparisonAIOutputRejectedError as exc:
-            if attempt >= 1:
+            if provider_attempts >= MAX_PROVIDER_ATTEMPTS:
                 raise
 
             repair_attempted = True
-            attempt += 1
             request_payload = _build_comparison_repair_request(
                 request_payload,
                 str(exc),
                 resolved_language,
             )
+            continue
+
+        if (
+            numeric_warnings
+            and provider_attempts < MAX_PROVIDER_ATTEMPTS
+        ):
+            repair_attempted = True
+            request_payload = _build_comparison_repair_request(
+                request_payload,
+                (
+                    "La salida contiene literales numéricos que no "
+                    "aparecen directamente en la evidencia canónica: {}."
+                ).format(", ".join(numeric_warnings)),
+                resolved_language,
+            )
+            continue
+
+        break
 
     pedagogy = context.get("contract") or {}
     result = {
@@ -318,14 +348,25 @@ def generate_comparison_ai_explanation(
         },
         "guardrails": {
             "structured_output": True,
-            "numeric_consistency_check": True,
+            "numeric_consistency_check": not numeric_warnings,
+            "numeric_warnings": (
+                [
+                    {
+                        "code": "UNVERIFIED_NUMERIC_LITERAL",
+                        "literals": numeric_warnings,
+                    }
+                ]
+                if numeric_warnings
+                else []
+            ),
             "asymptotic_claim_check": True,
             "global_winner_check": True,
             "causal_claim_check": True,
             "metric_reference_check": True,
             "implementation_reference_check": True,
             "repair_attempted": repair_attempted,
-            "attempts": attempt + 1,
+            "provider_retry_attempted": provider_retry_attempted,
+            "attempts": provider_attempts,
             "passed": True,
         },
         "content": parsed,
@@ -809,7 +850,7 @@ def validate_comparison_ai_output(output, context):
                 "La salida contiene una afirmación comparativa no permitida."
             )
 
-    _validate_numeric_consistency(
+    return _validate_numeric_consistency(
         output_text=all_text,
         context=context,
     )
@@ -946,6 +987,7 @@ def _output_text(output):
 
 def _validate_numeric_consistency(output_text, context):
     context_numbers = _collect_context_numbers(context)
+    warnings = []
 
     for token in NUMBER_RE.findall(output_text or ""):
         normalized = token.replace(",", ".")
@@ -962,11 +1004,10 @@ def _validate_numeric_consistency(output_text, context):
                 abs_tol=1e-9,
             )
             for reference in context_numbers
-        ):
-            raise ComparisonAIOutputRejectedError(
-                "La salida contiene un número no presente en la "
-                "evidencia comparativa canónica: {}.".format(token)
-            )
+        ) and token not in warnings:
+            warnings.append(token)
+
+    return warnings
 
 
 def _collect_context_numbers(value):

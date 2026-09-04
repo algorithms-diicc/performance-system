@@ -1497,6 +1497,8 @@ const es = {
       title: "Análisis comparativo asistido por IA",
       intro:
         "Complementa la lectura determinística con una síntesis estructurada de la evidencia comparativa canónica.",
+      reliability:
+        "Cada respuesta pasa por validaciones científicas propias del sistema. Debido a la variabilidad del proveedor o al rechazo de una salida, ocasionalmente puede ser necesario reintentar; esto no afecta las mediciones ni los gráficos.",
       privacy:
         "El asistente no recibe código fuente del estudiante, CSV bruto ni métricas aportadas por el navegador como fuente científica.",
       loading:
@@ -1504,6 +1506,7 @@ const es = {
       actions: {
         generate: "Generar análisis comparativo",
         update: "Actualizar análisis",
+        retry: "Reintentar análisis",
         loading: "Generando...",
       },
       status: {
@@ -1561,11 +1564,13 @@ const es = {
         notConfigured:
           "El proveedor de IA no está configurado en el servidor.",
         outputRejected:
-          "La respuesta generada no superó las validaciones científicas y no será mostrada. Las mediciones permanecen disponibles.",
+          "La respuesta generada no superó las validaciones científicas después de dos intentos. Las mediciones permanecen disponibles; pulsa Reintentar análisis para solicitar una nueva respuesta.",
+        numericWarning:
+          "La respuesta contiene valores numéricos derivados que el sistema no pudo verificar literalmente. Contrástalos con las mediciones y los gráficos.",
         provider:
-          "El proveedor de IA no está disponible temporalmente. Las mediciones y los gráficos no se han visto afectados.",
+          "El proveedor de IA no respondió correctamente después de dos intentos. Las mediciones y los gráficos no se han visto afectados; pulsa Reintentar análisis.",
         timeout:
-          "El proveedor de IA tardó más de lo esperado. Las mediciones y los gráficos siguen disponibles. Intenta nuevamente.",
+          "El proveedor de IA tardó más de lo esperado después de dos intentos. Las mediciones y los gráficos siguen disponibles; pulsa Reintentar análisis.",
         invalidLanguage:
           "El idioma solicitado no está soportado.",
         unavailable:

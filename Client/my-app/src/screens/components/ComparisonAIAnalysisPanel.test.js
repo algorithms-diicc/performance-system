@@ -193,4 +193,48 @@ describe("ComparisonAIAnalysisPanel", () => {
     ).toBeInTheDocument();
   });
 
+  test("offers an explicit retry after a rejected response", () => {
+    const onGenerate = renderPanel({
+      errorKey: "comparisonPage.ai.errors.outputRejected",
+    });
+
+    expect(
+      screen.getByText(/después de dos intentos/i)
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText(
+        /cada respuesta pasa por validaciones científicas/i
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Reintentar análisis",
+      })
+    );
+
+    expect(onGenerate).toHaveBeenCalledTimes(1);
+  });
+
+  test("keeps accepted content visible with a numeric warning", () => {
+    renderPanel({
+      explanation: {
+        ...explanation,
+        guardrails: {
+          numeric_consistency_check: false,
+        },
+      },
+    });
+
+    expect(
+      screen.getByText(
+        /valores numéricos derivados que el sistema no pudo verificar/i
+      )
+    ).toBeInTheDocument();
+
+    expect(
+      screen.getByText("Síntesis comparativa.")
+    ).toBeInTheDocument();
+  });
 });
