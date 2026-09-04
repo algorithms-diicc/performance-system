@@ -978,14 +978,40 @@ describe("ComparisonPage", () => {
     ]);
   });
 
-  test("passes responsive and logo-free configuration to Plotly", async () => {
+  test("configures readable named PNG exports", async () => {
     await renderResolved();
     const props = lastPlotProps();
 
-    expect(props.config).toEqual({ responsive: true, displaylogo: false });
+    expect(props.config).toEqual({
+      responsive: true,
+      displaylogo: false,
+      toImageButtonOptions: {
+        format: "png",
+        filename: expect.stringMatching(
+          /^performance-system-comparison-[a-z0-9-]+$/
+        ),
+        scale: 2,
+      },
+    });
+    expect(
+      props.config.toImageButtonOptions.filename
+    ).not.toBe("newplot");
     expect(props.useResizeHandler).toBe(true);
-    expect(props.style).toEqual({ width: "100%", height: "100%" });
+    expect(props.style).toEqual({
+      width: "100%",
+      height: "100%",
+    });
     expect(props.layout.autosize).toBe(true);
+    expect(props.layout.paper_bgcolor).toBeTruthy();
+    expect(props.layout.paper_bgcolor).not.toBe(
+      "rgba(0,0,0,0)"
+    );
+    expect(props.layout.plot_bgcolor).toBe(
+      props.layout.paper_bgcolor
+    );
+    expect(props.layout.legend.bgcolor).toBe(
+      props.layout.paper_bgcolor
+    );
   });
 
   test("renders category small-multiple plots while preserving the detailed inspector", async () => {

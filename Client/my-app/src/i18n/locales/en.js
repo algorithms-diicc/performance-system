@@ -4364,40 +4364,89 @@ const en = {
         },
       },
       examples: {
-        kicker: "Downloadable examples",
-        title: "Three valid ways to prepare an experiment",
+        kicker: "Guided comparisons",
+        title: "Three cases for forming and testing hypotheses",
         description:
-          "The public URLs remain unchanged. Each ZIP follows its benchmark input and output contract and demonstrates one mode supported by the product.",
-        observeLabel: "What to observe",
-        download: "Download {{benchmark}} example",
+          "Each ZIP contains two standalone implementations of the same problem. Use them to design a comparison, inspect evidence, and develop your own conclusions.",
+        download: "Download {{benchmark}} comparison",
         prepare: "Prepare analysis",
         contractNote:
-          "Each .c or .cpp file is a standalone implementation with its own entry point. The ZIP files contain no headers, build systems, or unsupported sources.",
+          "The implementations in each pair are executed and measured separately. Keep the experimental configuration unchanged when you want to attribute a difference to the strategy under study.",
         modes: {
-          mixed: "Mixed C + C++",
+          mixed: "C + C++",
           c: "C",
           cpp: "C++",
         },
-        size: {
-          title: "Insertion Sort vs. Merge Sort",
-          description:
-            "A mixed experiment with two algorithms that generate the same deterministic data set from size N.",
-          observe:
-            "Compare how time and instructions change between insertion_sort.c and merge_sort.cpp as N grows.",
+        guide: {
+          open: "Explore {{benchmark}}",
+          strategies: "Included strategies",
+          evidence: "Evidence worth examining",
+          questions: "Questions for forming a hypothesis",
+          disclaimer:
+            "These questions guide exploration, but measurements do not establish causality by themselves. Compare several metrics and control the remaining conditions.",
         },
         lcs: {
-          title: "Longest Common Subsequence",
+          title: "LCS: full matrix and reduced memory",
           description:
-            "A C implementation using dynamic programming over the lines in the file supplied by the benchmark.",
+            "Two dynamic-programming implementations compute the longest common subsequence length over the same sequences.",
           observe:
-            "Relate work growth to the number of processed lines and the dynamic-programming table.",
+            "Compare time, cycles, instructions, cache behavior, and energy as n grows. Relate the trends to the number of processed states and the storage used.",
+          strategies: {
+            fullMatrix:
+              "Stores the complete (n + 1) × (n + 1) dynamic-programming matrix representing every subproblem.",
+            twoRows:
+              "Applies the same recurrence while retaining only the previous row and the current row.",
+          },
+          questions: {
+            memory:
+              "If both implementations process equivalent states, which metrics might reflect their different storage requirements?",
+            scaling:
+              "Does the separation between measurements remain stable, increase, or decrease as n grows?",
+            evidence:
+              "Which combination of time, cycles, instructions, cache behavior, and energy would support your explanation?",
+          },
         },
         camm: {
-          title: "Blocked matrix multiplication",
+          title: "CAMM: direct traversal and blocked multiplication",
           description:
-            "A C++ implementation that processes the numeric values supplied as arguments by the benchmark.",
+            "Two implementations multiply the same matrices and produce the same checksum while traversing the data differently.",
           observe:
-            "Review time, instructions, and cache behavior as the input grows.",
+            "Examine time, cycles, instructions, cache behavior, and energy across input sizes. Consider that the effect may depend on hardware and block size.",
+          strategies: {
+            naive:
+              "Uses the direct i-j-k traversal and computes each cell by accumulating its corresponding products.",
+            blocked:
+              "Divides the matrices into blocks of 24 and reorganizes traversal to reuse nearby data before moving forward.",
+          },
+          questions: {
+            cache:
+              "Do cache metrics change consistently between direct and blocked traversal?",
+            size:
+              "At which input sizes does a stable difference appear, and what happens for smaller inputs?",
+            energy:
+              "Are changes in execution time and processor activity also reflected in observed energy?",
+          },
+        },
+        size: {
+          title: "SIZE: two strategies for detecting a duplicate",
+          description:
+            "Both implementations generate the same deterministic set with one duplicate, but apply different algorithmic strategies.",
+          observe:
+            "Compare how time, instructions, cycles, and energy evolve. Remember that the language and compiler also change.",
+          strategies: {
+            quadratic:
+              "The C implementation compares pairs of elements until two equal values are found.",
+            sort:
+              "The C++ implementation sorts the values and then checks adjacent positions for equality.",
+          },
+          questions: {
+            growth:
+              "How does the separation between both measurements change as the input size increases?",
+            crossover:
+              "Is there a region where the initial cost of sorting matters before a different trend becomes visible?",
+            confounds:
+              "Which part of the difference may come from the algorithm, and which part might relate to language, compiler, or implementation?",
+          },
         },
       },
       results: {

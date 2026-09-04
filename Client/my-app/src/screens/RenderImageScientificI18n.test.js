@@ -343,6 +343,33 @@ describe("RenderImage scientific i18n", () => {
       expect(mockLastPlotProps).not.toBeNull()
     );
 
+    expect(mockLastPlotProps.config).toEqual({
+      responsive: true,
+      displaylogo: false,
+      toImageButtonOptions: {
+        format: "png",
+        filename:
+          "performance-system-result-execution-time",
+        scale: 2,
+      },
+    });
+    expect(
+      mockLastPlotProps.layout.paper_bgcolor
+    ).toBeTruthy();
+    expect(
+      mockLastPlotProps.layout.paper_bgcolor
+    ).not.toBe("rgba(0,0,0,0)");
+    expect(
+      mockLastPlotProps.layout.plot_bgcolor
+    ).toBe(
+      mockLastPlotProps.layout.paper_bgcolor
+    );
+    expect(
+      mockLastPlotProps.layout.legend.bgcolor
+    ).toBe(
+      mockLastPlotProps.layout.paper_bgcolor
+    );
+
     expect(
       mockLastPlotProps.layout.xaxis.title.text
     ).toBe("Input size");
@@ -411,6 +438,12 @@ describe("RenderImage scientific i18n", () => {
       ).toBe("Tamaño de entrada")
     );
 
+    expect(
+      mockLastPlotProps.config
+        .toImageButtonOptions.filename
+    ).toBe(
+      "performance-system-result-tiempo-de-ejecucion"
+    );
     expect(axios.get).toHaveBeenCalledTimes(4);
   });
 

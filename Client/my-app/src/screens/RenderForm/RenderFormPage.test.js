@@ -2171,4 +2171,45 @@ describe("RenderFormPage 6A onboarding", () => {
     expect(formData.get("note")).toBeNull();
     expect(formData.get("file").name).toBe(".zip");
   });
+
+  test("LCS starter uses the recommended Quick input", async () => {
+    await renderPage("/new-analysis?starter=lcs");
+
+    await waitFor(() => {
+      expect(
+        screen.getByTestId("selected-task-type")
+      ).toHaveTextContent("lcs");
+    });
+
+    expect(
+      screen.getByTestId("execution-profile")
+    ).toHaveTextContent("rapido");
+    expect(
+      screen.getByTestId("samples")
+    ).toHaveTextContent("10");
+    expect(
+      screen.getByTestId("input-size")
+    ).toHaveTextContent("500");
+    expect(
+      screen.getByTestId("policy-recommended-max")
+    ).toHaveTextContent("750");
+    expect(
+      screen.getByTestId("policy-hard-max")
+    ).toHaveTextContent("1000");
+
+    const inputSize = Number(
+      screen.getByTestId("input-size").textContent
+    );
+    const recommendedMax = Number(
+      screen.getByTestId("policy-recommended-max").textContent
+    );
+
+    expect(inputSize).toBeLessThanOrEqual(recommendedMax);
+    expect(
+      screen.getByText(
+        /Configuración inicial preparada para LCS/i
+      )
+    ).toBeInTheDocument();
+  });
+
 });

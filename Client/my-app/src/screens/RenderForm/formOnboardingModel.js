@@ -98,7 +98,7 @@ export function normalizeDraftNote(value) {
 
 const STARTER_CONFIGURATIONS = Object.freeze({
   size: { selectedTaskType: "size", inputSize: 2500, executionProfile: "rapido", samples: 10, dataType: "" },
-  lcs: { selectedTaskType: "lcs", inputSize: 1000, executionProfile: "rapido", samples: 10, dataType: "" },
+  lcs: { selectedTaskType: "lcs", inputSize: 500, executionProfile: "rapido", samples: 10, dataType: "" },
   camm: { selectedTaskType: "camm", inputSize: 5000, executionProfile: "rapido", samples: 10, dataType: "cammr" },
 });
 

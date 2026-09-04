@@ -4366,40 +4366,89 @@ const es = {
         },
       },
       examples: {
-        kicker: "Ejemplos descargables",
-        title: "Tres formas válidas de preparar un experimento",
+        kicker: "Comparaciones guiadas",
+        title: "Tres casos para formular y contrastar hipótesis",
         description:
-          "Las URLs públicas se mantienen. Cada ZIP respeta el contrato de entrada y salida de su benchmark y muestra una modalidad admitida por el producto.",
-        observeLabel: "Qué observar",
-        download: "Descargar ejemplo {{benchmark}}",
+          "Cada ZIP contiene dos implementaciones autónomas del mismo problema. Úsalas para diseñar una comparación, observar evidencia y elaborar tus propias conclusiones.",
+        download: "Descargar comparación {{benchmark}}",
         prepare: "Preparar análisis",
         contractNote:
-          "Cada archivo .c o .cpp es una implementación autónoma con su propio punto de entrada. Los ZIP no contienen headers, build systems ni fuentes no soportadas.",
+          "Las implementaciones de cada par se ejecutan y miden por separado. Conserva la misma configuración experimental cuando quieras atribuir una diferencia a la estrategia estudiada.",
         modes: {
-          mixed: "Mixed C + C++",
+          mixed: "C + C++",
           c: "C",
           cpp: "C++",
         },
-        size: {
-          title: "Insertion Sort vs. Merge Sort",
-          description:
-            "Un experimento mixed con dos algoritmos que generan el mismo conjunto determinista desde el tamaño N.",
-          observe:
-            "Compara cómo cambian tiempo e instrucciones entre insertion_sort.c y merge_sort.cpp al crecer N.",
+        guide: {
+          open: "Explorar {{benchmark}}",
+          strategies: "Estrategias incluidas",
+          evidence: "Evidencia que conviene observar",
+          questions: "Preguntas para formular una hipótesis",
+          disclaimer:
+            "Las preguntas orientan la exploración, pero las mediciones no demuestran causalidad por sí solas. Contrasta varias métricas y controla las demás condiciones.",
         },
         lcs: {
-          title: "Longest Common Subsequence",
+          title: "LCS: matriz completa y memoria reducida",
           description:
-            "Una implementación C con programación dinámica sobre las líneas del archivo entregado por el benchmark.",
+            "Dos implementaciones de programación dinámica calculan la longitud de la subsecuencia común más larga sobre las mismas secuencias.",
           observe:
-            "Relaciona el crecimiento del trabajo con la cantidad de líneas procesadas y la tabla dinámica.",
+            "Contrasta tiempo, ciclos, instrucciones, caché y energía mientras aumenta n. Relaciona las tendencias con la cantidad de estados procesados y con el almacenamiento utilizado.",
+          strategies: {
+            fullMatrix:
+              "Conserva la matriz dinámica completa de (n + 1) × (n + 1) celdas para representar todos los subproblemas.",
+            twoRows:
+              "Aplica la misma recurrencia, pero conserva únicamente la fila anterior y la fila actual.",
+          },
+          questions: {
+            memory:
+              "Si ambas implementaciones procesan estados equivalentes, ¿qué métricas podrían reflejar la diferencia en almacenamiento?",
+            scaling:
+              "¿La separación entre las mediciones se mantiene, aumenta o disminuye al crecer n?",
+            evidence:
+              "¿Qué combinación de tiempo, ciclos, instrucciones, caché y energía respaldaría tu explicación?",
+          },
         },
         camm: {
-          title: "Multiplicación de matrices por bloques",
+          title: "CAMM: recorrido directo y multiplicación por bloques",
           description:
-            "Una implementación C++ que procesa los valores numéricos entregados como argumentos por el benchmark.",
+            "Dos implementaciones multiplican las mismas matrices y producen el mismo checksum con distintas formas de recorrer los datos.",
           observe:
-            "Revisa tiempo, instrucciones y comportamiento de caché mientras aumenta la entrada.",
+            "Examina tiempo, ciclos, instrucciones, comportamiento de caché y energía para distintos tamaños. Considera que el efecto puede depender del hardware y del tamaño de bloque.",
+          strategies: {
+            naive:
+              "Utiliza el recorrido directo i-j-k y calcula cada celda acumulando los productos correspondientes.",
+            blocked:
+              "Divide las matrices en bloques de 24 y reorganiza los recorridos para reutilizar datos cercanos antes de avanzar.",
+          },
+          questions: {
+            cache:
+              "¿Las métricas de caché cambian de manera consistente entre el recorrido directo y el bloqueado?",
+            size:
+              "¿A partir de qué tamaños aparece una diferencia estable y qué ocurre con entradas pequeñas?",
+            energy:
+              "¿Las variaciones de tiempo y actividad del procesador se reflejan también en la energía observada?",
+          },
+        },
+        size: {
+          title: "SIZE: dos estrategias para detectar un duplicado",
+          description:
+            "Ambas implementaciones generan el mismo conjunto determinista con un duplicado, pero aplican estrategias algorítmicas diferentes.",
+          observe:
+            "Compara la evolución de tiempo, instrucciones, ciclos y energía. Recuerda que también cambian el lenguaje y el compilador.",
+          strategies: {
+            quadratic:
+              "La implementación C compara pares de elementos hasta localizar dos valores iguales.",
+            sort:
+              "La implementación C++ ordena los valores y luego busca elementos iguales en posiciones adyacentes.",
+          },
+          questions: {
+            growth:
+              "¿Cómo cambia la separación entre ambas mediciones cuando aumenta el tamaño de entrada?",
+            crossover:
+              "¿Existe una zona donde el costo inicial de ordenar sea relevante antes de observar otra tendencia?",
+            confounds:
+              "¿Qué parte de la diferencia puede atribuirse al algoritmo y qué parte podría relacionarse con lenguaje, compilador o implementación?",
+          },
         },
       },
       results: {

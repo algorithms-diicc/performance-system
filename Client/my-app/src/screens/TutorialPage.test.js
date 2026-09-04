@@ -119,29 +119,50 @@ describe("TutorialPage Iteration 9", () => {
     ).toHaveAttribute("href", "/protocols");
   });
 
-  test("documents C, C++, mixed, and the three canonical example downloads", () => {
-    const { container } = renderTutorial({ route: "/tutorial#ejemplos" });
+  test("offers three guided comparisons without prescribing conclusions", () => {
+    const { container } = renderTutorial({
+      route: "/tutorial#ejemplos",
+    });
 
     expect(container.querySelector("#ejemplos")).toBeInTheDocument();
-    expect(screen.getByText("insertion_sort.c")).toBeInTheDocument();
-    expect(screen.getByText("merge_sort.cpp")).toBeInTheDocument();
-    expect(
-      screen.getByText("longest_common_subsequence.c")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("blocked_matrix_multiplication.cpp")
-    ).toBeInTheDocument();
-    expect(screen.getByText("Mixed C + C++")).toBeInTheDocument();
 
-    expect(
-      screen.getByRole("link", { name: "Descargar ejemplo SIZE" })
-    ).toHaveAttribute("href", "/tutorial-codigos/size_template.zip");
-    expect(
-      screen.getByRole("link", { name: "Descargar ejemplo LCS" })
-    ).toHaveAttribute("href", "/tutorial-codigos/lcs_template.zip");
-    expect(
-      screen.getByRole("link", { name: "Descargar ejemplo CAMM" })
-    ).toHaveAttribute("href", "/tutorial-codigos/camm_template.zip");
+    const compactFilenames = Array.from(
+      container.querySelectorAll(
+        ".tutorial-example-files code"
+      )
+    ).map((element) => element.textContent);
+
+    expect(compactFilenames).toEqual([
+      "lcs_full_matrix.cpp",
+      "lcs_two_rows.cpp",
+      "camm_naive.cpp",
+      "camm_blocked.cpp",
+      "size_duplicate_quadratic.c",
+      "size_duplicate_sort.cpp",
+    ]);
+
+    expect(screen.getAllByText("C++")).toHaveLength(2);
+    expect(screen.getByText("C + C++")).toBeInTheDocument();
+
+    [
+      [
+        "Descargar comparación LCS",
+        "/tutorial-codigos/performance-system-demo-lcs.zip",
+      ],
+      [
+        "Descargar comparación CAMM",
+        "/tutorial-codigos/performance-system-demo-camm.zip",
+      ],
+      [
+        "Descargar comparación SIZE",
+        "/tutorial-codigos/performance-system-demo-size.zip",
+      ],
+    ].forEach(([name, href]) => {
+      const link = screen.getByRole("link", { name });
+
+      expect(link).toHaveAttribute("href", href);
+      expect(link).toHaveAttribute("download");
+    });
 
     const prepareLinks = screen.getAllByRole(
       "link",
@@ -156,6 +177,44 @@ describe("TutorialPage Iteration 9", () => {
       "/?starter=size",
     ]);
 
+    const guides = [
+      screen.getByTestId("tutorial-example-guide-lcs"),
+      screen.getByTestId("tutorial-example-guide-camm"),
+      screen.getByTestId("tutorial-example-guide-size"),
+    ];
+
+    guides.forEach((guide) => {
+      expect(guide).not.toHaveAttribute("open");
+    });
+
+    const lcsSummary = within(guides[0])
+      .getByText("Explorar LCS")
+      .closest("summary");
+
+    fireEvent.click(lcsSummary);
+
+    expect(guides[0]).toHaveAttribute("open");
+    expect(
+      within(guides[0]).getByRole("heading", {
+        name: "Estrategias incluidas",
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(guides[0]).getByRole("heading", {
+        name: "Preguntas para formular una hipótesis",
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(guides[0]).getByText(
+        /conserva únicamente la fila anterior y la fila actual/i
+      )
+    ).toBeInTheDocument();
+    expect(
+      within(guides[0]).getByText(
+        /qué métricas podrían reflejar la diferencia/i
+      )
+    ).toBeInTheDocument();
+
     fireEvent.click(prepareLinks[0]);
 
     expect(
@@ -165,6 +224,7 @@ describe("TutorialPage Iteration 9", () => {
     const exampleCards = Array.from(
       container.querySelectorAll(".tutorial-example-card")
     );
+
     expect(exampleCards.map((card) =>
       within(card).getByText(/^(LCS|CAMM|SIZE)$/).textContent
     )).toEqual(["LCS", "CAMM", "SIZE"]);

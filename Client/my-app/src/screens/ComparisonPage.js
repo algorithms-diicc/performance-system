@@ -6,6 +6,10 @@ import {
   useSearchParams,
 } from "react-router-dom";
 import Plot from "react-plotly.js";
+
+import {
+  buildPlotExportConfig,
+} from "./plotExportModel";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -304,6 +308,10 @@ const readPlotThemeTokens = (themeName) => {
     borderStrong: token(
       "--ps-border-strong",
       themeName === "dark" ? "#3b4a60" : "#bcc8d6"
+    ),
+    surface: token(
+      "--ps-surface",
+      themeName === "dark" ? "#111827" : "#ffffff"
     ),
     surfaceElevated: token(
       "--ps-surface-elevated",
@@ -1723,8 +1731,8 @@ const ComparisonPage = ({ currentUser }) => {
                       data={traces}
                       layout={{
                         autosize: true,
-                        paper_bgcolor: "rgba(0,0,0,0)",
-                        plot_bgcolor: "rgba(0,0,0,0)",
+                        paper_bgcolor: plotTheme.surface,
+                        plot_bgcolor: plotTheme.surface,
                         colorway: plotTheme.colorway,
                         font: {
                           color: plotTheme.textSecondary,
@@ -1774,11 +1782,17 @@ const ComparisonPage = ({ currentUser }) => {
                           x: 0,
                           y: -0.2,
                           font: { color: plotTheme.textSecondary },
-                          bgcolor: "rgba(0,0,0,0)",
+                          bgcolor: plotTheme.surface,
                         },
                         showlegend: true,
                       }}
-                      config={{ responsive: true, displaylogo: false }}
+                      config={buildPlotExportConfig({
+                          scope: "comparison",
+                          label: humanMetricLabel(
+                            activeMetric,
+                            t
+                          ),
+                        })}
                       useResizeHandler
                       className="comparison-page__plot-element"
                       style={{ width: "100%", height: "100%" }}

@@ -6,6 +6,7 @@ import {
   hasMeaningfulDraft,
   manualSubmissionTitle,
   normalizeDraftNote,
+  parseStarterConfiguration,
   resolveSubmissionTitle,
   suggestTitleFromArchiveFilename,
 } from "./formOnboardingModel";
@@ -182,5 +183,46 @@ describe("formOnboardingModel draft compatibility", () => {
     [{ samples: 40 }],
   ])("recognizes meaningful draft evidence", (draft) => {
     expect(hasMeaningfulDraft(draft)).toBe(true);
+  });
+});
+
+describe("formOnboardingModel starter configurations", () => {
+  test.each([
+    [
+      "?starter=lcs",
+      {
+        selectedTaskType: "lcs",
+        inputSize: 500,
+        executionProfile: "rapido",
+        samples: 10,
+        dataType: "",
+      },
+    ],
+    [
+      "?starter=camm",
+      {
+        selectedTaskType: "camm",
+        inputSize: 5000,
+        executionProfile: "rapido",
+        samples: 10,
+        dataType: "cammr",
+      },
+    ],
+    [
+      "?starter=size",
+      {
+        selectedTaskType: "size",
+        inputSize: 2500,
+        executionProfile: "rapido",
+        samples: 10,
+        dataType: "",
+      },
+    ],
+  ])("parses %s with canonical defaults", (search, expected) => {
+    expect(parseStarterConfiguration(search)).toEqual(expected);
+  });
+
+  test("ignores unknown starter identifiers", () => {
+    expect(parseStarterConfiguration("?starter=unknown")).toBeNull();
   });
 });

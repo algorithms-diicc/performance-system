@@ -163,4 +163,64 @@ describe("TutorialPage Iteration 9 i18n", () => {
       )
     ).toBeInTheDocument();
   });
+
+  test("localizes guided comparison exploration", () => {
+    renderBilingualTutorial();
+
+    const lcsGuide = screen.getByTestId(
+      "tutorial-example-guide-lcs"
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Three cases for forming and testing hypotheses",
+      })
+    ).toBeInTheDocument();
+
+    const englishSummary = within(lcsGuide)
+      .getByText("Explore LCS")
+      .closest("summary");
+
+    expect(lcsGuide).not.toHaveAttribute("open");
+    fireEvent.click(englishSummary);
+    expect(lcsGuide).toHaveAttribute("open");
+
+    expect(
+      within(lcsGuide).getByRole("heading", {
+        name: "Questions for forming a hypothesis",
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(lcsGuide).getByText(
+        /which metrics might reflect their different storage requirements/i
+      )
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "switch-es",
+      })
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Tres casos para formular y contrastar hipótesis",
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(lcsGuide).getByText("Explorar LCS")
+    ).toBeInTheDocument();
+    expect(lcsGuide).toHaveAttribute("open");
+    expect(
+      within(lcsGuide).getByRole("heading", {
+        name: "Preguntas para formular una hipótesis",
+      })
+    ).toBeInTheDocument();
+    expect(
+      within(lcsGuide).getByText(
+        /qué métricas podrían reflejar la diferencia en almacenamiento/i
+      )
+    ).toBeInTheDocument();
+  });
+
 });

@@ -668,6 +668,121 @@
   outline: none;
 }
 
+.tutorial-example-guide {
+  margin-top: 0.85rem;
+  border-top: 1px solid var(--ps-divider);
+}
+
+.tutorial-example-guide > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.7rem;
+  min-height: 42px;
+  padding: 0.75rem 0.1rem 0.1rem;
+  color: var(--ps-primary);
+  font-size: 0.84rem;
+  font-weight: 780;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tutorial-example-guide > summary::-webkit-details-marker {
+  display: none;
+}
+
+.tutorial-example-guide > summary:focus-visible {
+  border-radius: var(--ps-radius-sm, 8px);
+  outline: 2px solid var(--ps-primary);
+  outline-offset: 2px;
+}
+
+.tutorial-example-guide__chevron {
+  flex: 0 0 auto;
+  transition: transform 160ms ease;
+}
+
+.tutorial-example-guide[open] .tutorial-example-guide__chevron {
+  transform: rotate(90deg);
+}
+
+.tutorial-example-guide__content {
+  display: grid;
+  gap: 1rem;
+  padding: 1rem 0 0.15rem;
+}
+
+.tutorial-example-guide__content section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tutorial-example-guide__content h4 {
+  margin: 0;
+  color: var(--ps-text);
+  font-size: 0.84rem;
+  letter-spacing: 0.01em;
+}
+
+.tutorial-example-guide__content p,
+.tutorial-example-guide__content li {
+  color: var(--ps-text-secondary);
+  font-size: 0.82rem;
+  line-height: 1.58;
+}
+
+.tutorial-example-guide__content section > p {
+  margin: 0;
+}
+
+.tutorial-example-strategies {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(180px, 100%), 1fr)
+  );
+  gap: 0.55rem;
+}
+
+.tutorial-example-strategies article {
+  padding: 0.7rem;
+  border: 1px solid var(--ps-divider);
+  border-radius: var(--ps-radius-md, 12px);
+  background: var(--ps-surface-subtle);
+}
+
+.tutorial-example-strategies code {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--ps-text);
+  font-size: 0.72rem;
+  font-weight: 750;
+}
+
+.tutorial-example-strategies p {
+  margin: 0.45rem 0 0;
+}
+
+.tutorial-example-guide__content ul {
+  display: grid;
+  gap: 0.45rem;
+  margin: 0;
+  padding-left: 1.15rem;
+}
+
+.tutorial-example-guide__content li::marker {
+  color: var(--ps-primary);
+}
+
+.tutorial-example-guide__disclaimer {
+  margin: 0;
+  padding: 0.75rem;
+  border-left: 3px solid var(--ps-primary);
+  border-radius: 0 var(--ps-radius-sm, 8px)
+    var(--ps-radius-sm, 8px) 0;
+  background: var(--ps-primary-soft);
+}
+
 .tutorial-evidence-principle {
   display: flex;
   align-items: flex-start;

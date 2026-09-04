@@ -117,13 +117,27 @@ const SCREENSHOTS = {
 const STARTER_EXAMPLES = [
   {
     benchmark: "LCS",
-    mode: "c",
+    mode: "cpp",
     titleKey: `${COPY}.examples.lcs.title`,
     descriptionKey: `${COPY}.examples.lcs.description`,
     observeKey: `${COPY}.examples.lcs.observe`,
-    modeKey: `${COPY}.examples.modes.c`,
-    files: ["longest_common_subsequence.c"],
-    href: "/tutorial-codigos/lcs_template.zip",
+    modeKey: `${COPY}.examples.modes.cpp`,
+    strategies: [
+      {
+        filename: "lcs_full_matrix.cpp",
+        key: `${COPY}.examples.lcs.strategies.fullMatrix`,
+      },
+      {
+        filename: "lcs_two_rows.cpp",
+        key: `${COPY}.examples.lcs.strategies.twoRows`,
+      },
+    ],
+    questionKeys: [
+      `${COPY}.examples.lcs.questions.memory`,
+      `${COPY}.examples.lcs.questions.scaling`,
+      `${COPY}.examples.lcs.questions.evidence`,
+    ],
+    href: "/tutorial-codigos/performance-system-demo-lcs.zip",
     starterHref: "/?starter=lcs",
   },
   {
@@ -133,8 +147,22 @@ const STARTER_EXAMPLES = [
     descriptionKey: `${COPY}.examples.camm.description`,
     observeKey: `${COPY}.examples.camm.observe`,
     modeKey: `${COPY}.examples.modes.cpp`,
-    files: ["blocked_matrix_multiplication.cpp"],
-    href: "/tutorial-codigos/camm_template.zip",
+    strategies: [
+      {
+        filename: "camm_naive.cpp",
+        key: `${COPY}.examples.camm.strategies.naive`,
+      },
+      {
+        filename: "camm_blocked.cpp",
+        key: `${COPY}.examples.camm.strategies.blocked`,
+      },
+    ],
+    questionKeys: [
+      `${COPY}.examples.camm.questions.cache`,
+      `${COPY}.examples.camm.questions.size`,
+      `${COPY}.examples.camm.questions.energy`,
+    ],
+    href: "/tutorial-codigos/performance-system-demo-camm.zip",
     starterHref: "/?starter=camm",
   },
   {
@@ -144,8 +172,22 @@ const STARTER_EXAMPLES = [
     descriptionKey: `${COPY}.examples.size.description`,
     observeKey: `${COPY}.examples.size.observe`,
     modeKey: `${COPY}.examples.modes.mixed`,
-    files: ["insertion_sort.c", "merge_sort.cpp"],
-    href: "/tutorial-codigos/size_template.zip",
+    strategies: [
+      {
+        filename: "size_duplicate_quadratic.c",
+        key: `${COPY}.examples.size.strategies.quadratic`,
+      },
+      {
+        filename: "size_duplicate_sort.cpp",
+        key: `${COPY}.examples.size.strategies.sort`,
+      },
+    ],
+    questionKeys: [
+      `${COPY}.examples.size.questions.growth`,
+      `${COPY}.examples.size.questions.crossover`,
+      `${COPY}.examples.size.questions.confounds`,
+    ],
+    href: "/tutorial-codigos/performance-system-demo-size.zip",
     starterHref: "/?starter=size",
   },
 ];
@@ -449,16 +491,42 @@ const TutorialPage = ({ currentUser = null }) => {
 
             <div className="tutorial-example-grid">
               {STARTER_EXAMPLES.map((example) => (
-                <article className="tutorial-example-card" key={example.benchmark}>
-                  <div className="tutorial-example-card__top"><span className="tutorial-example-benchmark">{example.benchmark}</span><span className={`tutorial-example-mode tutorial-example-mode--${example.mode}`}>{t(example.modeKey)}</span></div>
+                <article
+                  className="tutorial-example-card"
+                  key={example.benchmark}
+                >
+                  <div className="tutorial-example-card__top">
+                    <span className="tutorial-example-benchmark">
+                      {example.benchmark}
+                    </span>
+                    <span
+                      className={`tutorial-example-mode tutorial-example-mode--${example.mode}`}
+                    >
+                      {t(example.modeKey)}
+                    </span>
+                  </div>
+
                   <h3>{t(example.titleKey)}</h3>
                   <p>{t(example.descriptionKey)}</p>
-                  <div className="tutorial-example-files">{example.files.map((filename) => <code key={filename}>{filename}</code>)}</div>
-                  <div className="tutorial-example-observe"><strong>{t(`${COPY}.examples.observeLabel`)}</strong><span>{t(example.observeKey)}</span></div>
+
+                  <div className="tutorial-example-files">
+                    {example.strategies.map((strategy) => (
+                      <code key={strategy.filename}>
+                        {strategy.filename}
+                      </code>
+                    ))}
+                  </div>
+
                   <div className="tutorial-example-actions">
-                    <a href={example.href} download className="tutorial-example-download">
+                    <a
+                      href={example.href}
+                      download
+                      className="tutorial-example-download"
+                    >
                       <Download size={16} aria-hidden="true" />
-                      {t(`${COPY}.examples.download`, { benchmark: example.benchmark })}
+                      {t(`${COPY}.examples.download`, {
+                        benchmark: example.benchmark,
+                      })}
                     </a>
                     <Link
                       to={example.starterHref}
@@ -469,6 +537,62 @@ const TutorialPage = ({ currentUser = null }) => {
                       {t(`${COPY}.examples.prepare`)}
                     </Link>
                   </div>
+
+                  <details
+                    className="tutorial-example-guide"
+                    data-testid={`tutorial-example-guide-${example.benchmark.toLowerCase()}`}
+                  >
+                    <summary>
+                      <span>
+                        {t(`${COPY}.examples.guide.open`, {
+                          benchmark: example.benchmark,
+                        })}
+                      </span>
+                      <ChevronRight
+                        className="tutorial-example-guide__chevron"
+                        size={18}
+                        aria-hidden="true"
+                      />
+                    </summary>
+
+                    <div className="tutorial-example-guide__content">
+                      <section>
+                        <h4>
+                          {t(`${COPY}.examples.guide.strategies`)}
+                        </h4>
+                        <div className="tutorial-example-strategies">
+                          {example.strategies.map((strategy) => (
+                            <article key={strategy.filename}>
+                              <code>{strategy.filename}</code>
+                              <p>{t(strategy.key)}</p>
+                            </article>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section>
+                        <h4>
+                          {t(`${COPY}.examples.guide.evidence`)}
+                        </h4>
+                        <p>{t(example.observeKey)}</p>
+                      </section>
+
+                      <section>
+                        <h4>
+                          {t(`${COPY}.examples.guide.questions`)}
+                        </h4>
+                        <ul>
+                          {example.questionKeys.map((key) => (
+                            <li key={key}>{t(key)}</li>
+                          ))}
+                        </ul>
+                      </section>
+
+                      <p className="tutorial-example-guide__disclaimer">
+                        {t(`${COPY}.examples.guide.disclaimer`)}
+                      </p>
+                    </div>
+                  </details>
                 </article>
               ))}
             </div>

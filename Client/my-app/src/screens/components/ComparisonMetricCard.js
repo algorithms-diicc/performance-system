@@ -6,6 +6,9 @@ import {
   buildComparisonTraces,
   humanMetricLabel,
 } from "../comparisonModel";
+import {
+  buildPlotExportConfig,
+} from "../plotExportModel";
 
 function ComparisonMetricCard({
   metric,
@@ -60,8 +63,8 @@ function ComparisonMetricCard({
             data={traces}
             layout={{
               autosize: true,
-              paper_bgcolor: "rgba(0,0,0,0)",
-              plot_bgcolor: "rgba(0,0,0,0)",
+              paper_bgcolor: plotTheme.surface,
+              plot_bgcolor: plotTheme.surface,
               colorway: plotTheme.colorway,
               font: {
                 color: plotTheme.textSecondary,
@@ -95,11 +98,14 @@ function ComparisonMetricCard({
                 x: 0,
                 y: -0.2,
                 font: { color: plotTheme.textSecondary },
-                bgcolor: "rgba(0,0,0,0)",
+                bgcolor: plotTheme.surface,
               },
               showlegend: true,
             }}
-            config={{ responsive: true, displaylogo: false }}
+            config={buildPlotExportConfig({
+                scope: "comparison",
+                label,
+              })}
             useResizeHandler
             className="comparison-page__metric-plot-element"
             style={{ width: "100%", height: "100%" }}

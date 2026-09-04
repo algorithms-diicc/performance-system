@@ -18,6 +18,10 @@ import {
 } from "react-router-dom";
 import axios from "axios";
 import Plot from "react-plotly.js";
+
+import {
+  buildPlotExportConfig,
+} from "./plotExportModel";
 import {
   ArrowLeft,
   BarChart3,
@@ -2752,9 +2756,9 @@ function NativeMetricChart({
         layout={{
           autosize: true,
           paper_bgcolor:
-            "rgba(0,0,0,0)",
+            plotTheme.surface,
           plot_bgcolor:
-            "rgba(0,0,0,0)",
+            plotTheme.surface,
           colorway:
             plotTheme.colorway,
           font: {
@@ -2807,15 +2811,15 @@ function NativeMetricChart({
                 plotTheme.textSecondary,
             },
             bgcolor:
-              "rgba(0,0,0,0)",
+              plotTheme.surface,
           },
           showlegend:
             traces.length > 1,
         }}
-        config={{
-          responsive: true,
-          displaylogo: false,
-        }}
+        config={buildPlotExportConfig({
+          scope: "result",
+          label: presentation.label,
+        })}
         useResizeHandler
         className="results-native-plot"
         style={{
