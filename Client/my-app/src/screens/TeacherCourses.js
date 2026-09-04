@@ -617,7 +617,7 @@ export default function TeacherCourses({
       [
         activeView,
         items,
-        summary,
+        summaryStudents,
       ]
     );
 
