@@ -559,6 +559,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.tutorial-example-grid {
+  align-items: start;
+}
+
 .tutorial-example-card {
   display: flex;
   flex-direction: column;
@@ -634,8 +638,7 @@
 .tutorial-example-actions {
   display: grid;
   gap: 0.55rem;
-  margin-top: auto;
-  padding-top: 0.15rem;
+  margin-top: 1rem;
 }
 
 .tutorial-example-download {
